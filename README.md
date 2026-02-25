@@ -1,0 +1,236 @@
+# Linux System Setup & Utilities Installer
+
+An interactive multi-select script combining comprehensive system setup tasks and utility management. This tool integrates the functionality of both system configuration (from [linux_setup_script](https://github.com/acebmxer/linux_setup_script)) and application installation (from [install_linux_utilities](https://github.com/acebmxer/install_linux_utilities)) into a single unified interface.
+
+## Features
+
+- **Interactive TUI Menu** - Navigate with arrow keys, select with spacebar
+- **Multi-Distro Support** - Works on Debian/Ubuntu, Fedora, RHEL/CentOS, Arch/Manjaro, and openSUSE
+- **Auto-Detection** - Automatically detects your distribution and which utilities are already installed
+- **System Setup Tasks** - Full system updates, XCP-NG tools, Docker installation
+- **Utility Management** - Install, update, or uninstall common applications
+- **Visual Indicators** - Clear display of installed status and pending actions
+- **Universal Package Managers** - Supports apt, dnf, yum, pacman, and zypper along with snap, flatpak, and AUR helpers
+
+## Supported Distributions
+
+| Distro Family | Distributions | Package Manager |
+|---------------|--------------|----------------|
+| Debian/Ubuntu | Ubuntu, Debian, Linux Mint, Pop!_OS, elementary OS, Zorin, Kali, KDE neon | apt |
+| Fedora | Fedora | dnf |
+| RHEL | RHEL, CentOS, Rocky Linux, AlmaLinux, Oracle Linux | dnf / yum |
+| Arch | Arch Linux, Manjaro, EndeavourOS, Garuda, Artix | pacman (+ AUR helpers) |
+| openSUSE | openSUSE Leap, openSUSE Tumbleweed, SLES | zypper |
+
+Derivative distributions not explicitly listed are detected via the `ID_LIKE` field in `/etc/os-release`, or by auto-detecting the available package manager.
+
+## Requirements
+
+- A supported Linux distribution (see above)
+- Bash 4.0+
+- sudo access (script must NOT be run as root)
+- Interactive terminal
+- For Arch-based distros: an AUR helper (yay or paru) is recommended for some utilities
+- Internet connection (for downloads)
+
+## Installation & Usage
+
+```bash
+# Clone the repository
+git clone "https://github.com/acebmxer/linux_util.git"
+cd linux_util
+
+# Make the script executable
+chmod +x linux_util.sh
+
+# Run the installer
+./linux_util.sh
+```
+
+## Menu Controls
+
+| Key | Action |
+|-----|--------|
+| ↑ / ↓ | Navigate up/down |
+| Space | Toggle selection |
+| Enter | Confirm and proceed |
+| Q | Quit without changes |
+
+## How It Works
+
+When the script starts, it checks which utilities are already installed on your system:
+
+- **Installed utilities** are pre-selected and marked with `(installed)`
+- **Not installed utilities** are unselected
+
+Based on your selections, the script determines what action to take:
+
+| Selection State | Installed? | Action |
+|-----------------|------------|--------|
+| ✓ Selected | No | **Install** or **Run** (for setup tasks) |
+| ✓ Selected | Yes | **Update** |
+| Not Selected | Yes | **Uninstall** |
+| Not Selected | No | Skip |
+
+## Available Options
+
+### System Setup Tasks
+
+#### 1. Full System Upgrade/Update
+- Updates package lists
+- Installs essential tools (jq, tzdata, git, curl, wget, gnupg)
+- Installs software-properties-common (Ubuntu, Linux Mint, Pop!_OS only)
+- Installs Landscape Client (Ubuntu only)
+- Performs full system upgrade and cleanup
+- Removes unnecessary packages and cleans package cache
+
+#### 2. XEN Guest Utilities
+- Checks for existing xe-guest-utilities or xen-guest-agent
+- Prompts to uninstall conflicting packages
+- Mounts XCP-NG ISO (requires manual insertion)
+- Runs XCP-NG tools installer
+- Automatically unmounts ISO after installation
+
+#### 3. System Updates
+- Updates package lists
+- Performs full system upgrade
+- Removes unnecessary packages
+- Cleans package cache
+
+### Utilities
+
+| Utility | Description | Install Method |
+|---------|-------------|----------------|
+| **Dotfiles** | Shell configuration and theming from [flipsidecreations/dotfiles](https://github.com/flipsidecreations/dotfiles) | git clone + setup script |
+| **Docker** | Container platform with Engine, CLI, Compose, and Buildx | Official Docker repositories |
+| **Bitwarden Client** | Password manager | snap / flatpak / AUR |
+| **Brave Browser** | Privacy-focused web browser | Native repo (all distros) / AUR |
+| **Joplin Client** | Note-taking application | AppImage (universal) |
+| **Termius SSH Client** | SSH client for remote connections | .deb / snap / flatpak |
+| **Steam App** | Gaming platform | Native packages / RPM Fusion / flatpak |
+| **Visual Studio Code** | Code editor | Native repo (all distros) / AUR |
+
+**Note for Dotfiles:** Installation is skipped on Fedora, RHEL, CentOS, Rocky Linux, and AlmaLinux due to compatibility considerations.
+
+**Note for Docker:** After installation, you'll be added to the docker group. Log out and log back in or reboot to use Docker without sudo.
+
+## Examples
+
+### Installing Multiple Utilities
+
+1. Run the script: `./linux_util.sh`
+2. Use arrow keys to navigate
+3. Press Space to select utilities you want to install
+4. Press Enter to confirm
+5. The script will install all selected utilities
+
+### Updating Installed Software
+
+1. Run the script - installed utilities are pre-selected
+2. Keep the selections as-is or modify them
+3. Press Enter
+4. The script will update selected utilities that are already installed
+
+### System Setup
+
+1. Run the script
+2. Navigate to "Full System Upgrade/Update" or "System Updates"
+3. Press Space to select
+4. Press Enter to execute
+5. Follow any prompts
+
+
+
+## XCP-NG Tools Installation
+
+When installing XEN Guest Utilities:
+1. The script checks for conflicting packages (xe-guest-utilities, xen-guest-agent)
+2. You'll be prompted to remove any existing installations
+3. Insert the XCP-NG tools ISO when prompted
+4. The script mounts from `/dev/cdrom` to `/mnt`
+5. Installation runs automatically
+6. ISO is unmounted after completion
+
+## Adding New Utilities
+
+To add a new utility, edit `linux_util.sh` and add the following in the `UTILITY DEFINITIONS` section:
+
+```bash
+# --- My New Utility ---
+UTILITIES+=("My New Utility")
+INSTALL_FUNCS["My New Utility"]="install_my_utility"
+CHECK_FUNCS["My New Utility"]="check_my_utility"
+UNINSTALL_FUNCS["My New Utility"]="uninstall_my_utility"
+UPDATE_FUNCS["My New Utility"]="update_my_utility"
+
+check_my_utility() {
+    # Return 0 if installed, non-zero if not
+    command -v my-utility &>/dev/null || pkg_check_installed my-utility
+}
+
+install_my_utility() {
+    echo "Installing My New Utility..."
+    pkg_install my-utility
+}
+
+uninstall_my_utility() {
+    echo "Uninstalling My New Utility..."
+    pkg_remove my-utility
+}
+
+update_my_utility() {
+    echo "Updating My New Utility..."
+    pkg_upgrade my-utility
+}
+```
+
+### Available Helper Functions
+
+| Helper Function | Description |
+|----------------|-------------|
+| `pkg_install <pkg>` | Install a package using the detected package manager |
+| `pkg_remove <pkg>` | Remove a package |
+| `pkg_upgrade <pkg>` | Upgrade a package |
+| `pkg_check_installed <pkg>` | Check if a package is installed (returns 0/1) |
+| `pkg_install_local <file>` | Install from a local .deb/.rpm file |
+| `pkg_refresh` | Refresh package lists |
+| `pkg_full_upgrade` | Perform full system upgrade |
+| `pkg_autoremove` | Remove unnecessary packages |
+| `pkg_clean` | Clean package cache |
+| `has_snap` | Check if snap is available |
+| `has_flatpak` | Check if flatpak is available |
+| `has_aur_helper` | Check if yay/paru is available (Arch) |
+| `aur_install <pkg>` | Install from AUR via yay/paru |
+
+For distro-specific logic, use `$DISTRO_FAMILY` (values: `debian`, `fedora`, `rhel`, `arch`, `suse`) in a `case` statement.
+
+## Troubleshooting
+
+### Script Won't Run
+- Ensure the script is executable: `chmod +x linux_util.sh`
+- Make sure you're NOT running as root
+- Check that you're in an interactive terminal
+
+### Package Installation Fails
+- Ensure you have internet connectivity
+- Check that package repositories are accessible
+- Some packages may require additional repositories (e.g., RPM Fusion for Steam on Fedora)
+
+### AUR Packages on Arch
+- Install an AUR helper first: `yay` or `paru`
+- Some utilities require an AUR helper on Arch-based distributions
+
+## Credits
+
+This project integrates and builds upon:
+- [linux_setup_script](https://github.com/acebmxer/linux_setup_script) - System setup and configuration tasks
+- [install_linux_utilities](https://github.com/acebmxer/install_linux_utilities) - Application installation framework
+- [flipsidecreations/dotfiles](https://github.com/flipsidecreations/dotfiles) - Dotfiles configuration
+
+## License
+
+MIT License
+
+---
+
+**Note:** This script performs system-level changes. Always review the code before running it, especially on production systems. The script requires sudo privileges and will prompt for your password when needed.
