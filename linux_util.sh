@@ -351,6 +351,8 @@ setup_xen_guest_utilities() {
     if [[ -f "${MOUNT_POINT}/Linux/install.sh" ]]; then
         info "Running XCP-NG installer script..."
         run_as_root "cd '${MOUNT_POINT}/Linux' && bash ./install.sh"
+        info "Waiting 15 seconds for services to initialize..."
+        sleep 15
         run_as_root "umount '${MOUNT_POINT}'" || warn "Failed to unmount ${MOUNT_POINT}"
         info "XCP-NG Tools installation completed."
     else
@@ -419,7 +421,58 @@ EOF
     return 0
 }
 
-# --- Option 6: Install Docker ---
+# --- Option 6: Install KDE Desktop Environment ---
+setup_install_kde() {
+    info "Installing KDE Desktop Environment..."
+    ensure_tools
+    
+    case "$PKG_MGR" in
+        apt)
+            # Debian/Ubuntu-based systems
+            run_as_root "apt-get update"
+            info "Installing KDE Full Desktop Environment..."
+            run_as_root "apt-get install -y kde-full sddm"
+            info "Enabling display manager..."
+            run_as_root "systemctl enable sddm" || warn "Failed to enable sddm"
+            ;;
+            
+        dnf|yum)
+            # Fedora/RHEL-based systems
+            info "Installing KDE Plasma Desktop..."
+            run_as_root "$PKG_MGR groupinstall -y 'KDE Plasma Workspaces' || $PKG_MGR group install -y @kde-desktop-environment"
+            info "Enabling display manager..."
+            run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
+            ;;
+            
+        zypper)
+            # openSUSE/SLES
+            info "Installing KDE Plasma Desktop..."
+            run_as_root "zypper install -y -t pattern kde kde_plasma"
+            info "Enabling display manager..."
+            run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
+            ;;
+            
+        pacman)
+            # Arch Linux
+            info "Installing KDE Plasma Desktop..."
+            run_as_root "pacman -S --noconfirm plasma-meta kde-applications-meta sddm"
+            info "Enabling display manager..."
+            run_as_root "systemctl enable sddm"
+            ;;
+            
+        *)
+            error "KDE installation not fully supported for ${DISTRO_ID}"
+            return 1
+            ;;
+    esac
+    
+    info "KDE Desktop Environment installed successfully. Reboot to start using KDE."
+    info "To switch to KDE immediately, log out and select 'Plasma' from your display manager."
+    
+    return 0
+}
+
+# --- Option 7: Install Docker ---
 setup_install_docker() {
     info "Installing Docker..."
     ensure_tools
@@ -713,6 +766,25 @@ check_joplin() {
 }
 install_joplin() {
     echo "Installing Joplin Client..."
+    # Detect desktop environment for proper icon installation
+    local desktop_env=""
+    if [[ -n "$XDG_CURRENT_DESKTOP" ]]; then
+        desktop_env="$XDG_CURRENT_DESKTOP"
+    elif command -v plasmashell &>/dev/null; then
+        desktop_env="KDE"
+    elif command -v gnome-shell &>/dev/null; then
+        desktop_env="GNOME"
+    elif command -v xfce4-session &>/dev/null; then
+        desktop_env="XFCE"
+    elif command -v cinnamon &>/dev/null; then
+        desktop_env="X-Cinnamon"
+    fi
+    
+    # Export desktop environment variable for the installer
+    if [[ -n "$desktop_env" ]]; then
+        export XDG_CURRENT_DESKTOP="$desktop_env"
+    fi
+    
     wget -O - https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
 }
 uninstall_joplin() {
@@ -722,6 +794,25 @@ uninstall_joplin() {
 }
 update_joplin() {
     echo "Updating Joplin Client..."
+    # Detect desktop environment for proper icon installation
+    local desktop_env=""
+    if [[ -n "$XDG_CURRENT_DESKTOP" ]]; then
+        desktop_env="$XDG_CURRENT_DESKTOP"
+    elif command -v plasmashell &>/dev/null; then
+        desktop_env="KDE"
+    elif command -v gnome-shell &>/dev/null; then
+        desktop_env="GNOME"
+    elif command -v xfce4-session &>/dev/null; then
+        desktop_env="XFCE"
+    elif command -v cinnamon &>/dev/null; then
+        desktop_env="X-Cinnamon"
+    fi
+    
+    # Export desktop environment variable for the installer
+    if [[ -n "$desktop_env" ]]; then
+        export XDG_CURRENT_DESKTOP="$desktop_env"
+    fi
+    
     wget -O - https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
 }
 
@@ -800,15 +891,125 @@ UNINSTALL_FUNCS["Steam App"]="uninstall_steam"
 UPDATE_FUNCS["Steam App"]="update_steam"
 
 check_steam() {
-    command -v steam &>/dev/null || pkg_check_installed steam || pkg_check_installed steam-launcher
+    command -v steam &>/dev/null || \
+        pkg_check_installed steam-installer || \
+        pkg_check_installed steam-launcher || \
+        (has_flatpak && flatpak list 2>/dev/null | grep -qi "com.valvesoftware.Steam")
+}
+
+# Helper function to ensure contrib component is enabled for Debian
+ensure_debian_contrib() {
+    if [[ "$DISTRO_FAMILY" != "debian" ]]; then
+        return 0
+    fi
+    
+    # Check if contrib is already enabled
+    if grep -E "^deb .*debian.* main" /etc/apt/sources.list | grep -q "contrib"; then
+        return 0
+    fi
+    
+    echo "Steam requires the 'contrib' component in Debian repositories."
+    echo "Enabling 'contrib' component in /etc/apt/sources.list..."
+    
+    # Backup sources.list
+    sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup-$(date +%Y%m%d-%H%M%S)
+    
+    # Add contrib to main repository lines
+    sudo sed -i.tmp 's/^\(deb .*debian.* main\)$/\1 contrib/' /etc/apt/sources.list
+    sudo sed -i.tmp 's/^\(deb .*debian.* main non-free\)$/\1 contrib/' /etc/apt/sources.list
+    sudo sed -i.tmp 's/ main contrib contrib/ main contrib/' /etc/apt/sources.list  # Remove duplicates
+    
+    echo "'contrib' component enabled. Updating package lists..."
+    sudo apt update
+}
+
+# Helper function to detect mixed repository issues
+detect_debian_repo_mix() {
+    if [[ "$DISTRO_FAMILY" != "debian" ]]; then
+        return 0
+    fi
+    
+    local has_stable=false
+    local has_testing=false
+    local has_unstable=false
+    
+    # Check for different Debian releases in sources.list
+    if grep -qE "^deb .*(bookworm|bullseye|buster)" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+        has_stable=true
+    fi
+    if grep -qE "^deb .*(trixie|testing)" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+        has_testing=true
+    fi
+    if grep -qE "^deb .*(sid|unstable)" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+        has_unstable=true
+    fi
+    
+    local mix_count=0
+    $has_stable && ((mix_count++))
+    $has_testing && ((mix_count++))
+    $has_unstable && ((mix_count++))
+    
+    if [[ $mix_count -gt 1 ]]; then
+        echo "⚠️  WARNING: Mixed Debian repositories detected!"
+        echo "Your system has multiple Debian releases configured:"
+        $has_stable && echo "  - Stable (Bookworm/Bullseye)"
+        $has_testing && echo "  - Testing (Trixie)"
+        $has_unstable && echo "  - Unstable (Sid)"
+        echo "This can cause package version conflicts and dependency issues."
+        echo "Consider using a single Debian release for better stability."
+        echo ""
+        return 1
+    fi
+    return 0
 }
 install_steam() {
     echo "Installing Steam..."
     case "$DISTRO_FAMILY" in
         debian)
+            # Detect mixed repository issues first
+            detect_debian_repo_mix
+            
+            # Ensure contrib component is enabled
+            ensure_debian_contrib
+            
+            # Enable 32-bit architecture support
             sudo dpkg --add-architecture i386
             sudo apt update
-            sudo apt install -y steam
+            
+            # Install steam-installer (Debian wiki recommended method)
+            echo "Installing steam-installer package..."
+            if sudo apt install -y steam-installer 2>&1 | tee /tmp/steam-install.log; then
+                # Install graphics libraries for Intel/AMD/NVIDIA GPUs
+                echo "Installing graphics libraries for Steam (Vulkan, Mesa)..."
+                sudo apt install -y mesa-vulkan-drivers libglx-mesa0:i386 \
+                    mesa-vulkan-drivers:i386 libgl1-mesa-dri:i386 2>/dev/null || true
+            else
+                # Check if it's a dependency conflict
+                if grep -qi "depends.*steam-libs" /tmp/steam-install.log; then
+                    echo ""
+                    echo "❌ Package dependency conflict detected."
+                    echo "This is likely caused by mixed Debian repositories (stable/testing/unstable)."
+                    echo ""
+                    echo "Recommended solutions:"
+                    echo "  1. Use a single Debian release (recommended)"
+                    echo "  2. Install via Flatpak: sudo apt install flatpak && flatpak install flathub com.valvesoftware.Steam"
+                    echo ""
+                    
+                    # Fallback to Flatpak if available
+                    if has_flatpak; then
+                        echo "Attempting Flatpak installation as fallback..."
+                        flatpak install -y flathub com.valvesoftware.Steam
+                    else
+                        echo "Flatpak not installed. To install: sudo apt install flatpak"
+                        return 1
+                    fi
+                else
+                    echo "Installation failed. Check /tmp/steam-install.log for details."
+                    return 1
+                fi
+            fi
+            
+            rm -f /tmp/steam-install.log
             ;;
         fedora)
             if ! rpm -q rpmfusion-nonfree-release &>/dev/null; then
@@ -816,8 +1017,14 @@ install_steam() {
                 sudo "$PKG_MGR" install -y \
                     "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
                     "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
+                sudo "$PKG_MGR" makecache
             fi
+            echo "Installing Steam from RPM Fusion..."
             sudo "$PKG_MGR" install -y steam
+            
+            # Install graphics libraries for better compatibility
+            echo "Installing graphics libraries (Vulkan, Mesa)..."
+            sudo "$PKG_MGR" install -y mesa-vulkan-drivers vulkan-loader 2>/dev/null || true
             ;;
         rhel)
             echo "Steam is not officially available for RHEL-based distributions."
@@ -831,14 +1038,26 @@ install_steam() {
             ;;
         arch)
             if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
-                echo "Enabling multilib repository..."
+                echo "Enabling multilib repository (required for 32-bit support)..."
                 sudo bash -c 'echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf'
                 sudo pacman -Sy
             fi
+            echo "Installing Steam..."
             sudo pacman -S --noconfirm steam
+            
+            # Install 32-bit graphics libraries for better compatibility
+            echo "Installing 32-bit graphics libraries (Vulkan, Mesa)..."
+            sudo pacman -S --noconfirm lib32-mesa lib32-vulkan-icd-loader lib32-vulkan-intel \
+                lib32-vulkan-radeon lib32-nvidia-utils 2>/dev/null || true
             ;;
         suse)
+            echo "Installing Steam..."
             sudo zypper install -y steam
+            
+            # Install graphics libraries for better compatibility
+            echo "Installing graphics libraries (Vulkan, Mesa)..."
+            sudo zypper install -y libvulkan1 libvulkan1-32bit \
+                Mesa-libGL1 Mesa-libGL1-32bit 2>/dev/null || true
             ;;
     esac
 }
@@ -848,7 +1067,7 @@ uninstall_steam() {
         flatpak uninstall -y com.valvesoftware.Steam
     else
         case "$DISTRO_FAMILY" in
-            debian) sudo apt remove -y steam steam-launcher ;;
+            debian) sudo apt remove -y steam steam-installer steam-launcher ;;
             *)      pkg_remove steam 2>/dev/null || true ;;
         esac
     fi
@@ -954,6 +1173,64 @@ update_vscode() {
             ;;
         *)
             pkg_upgrade code
+            ;;
+    esac
+}
+
+# --- KDE Desktop Environment ---
+UTILITIES+=("KDE Desktop Environment")
+INSTALL_FUNCS["KDE Desktop Environment"]="install_kde"
+CHECK_FUNCS["KDE Desktop Environment"]="check_kde"
+UNINSTALL_FUNCS["KDE Desktop Environment"]="uninstall_kde"
+UPDATE_FUNCS["KDE Desktop Environment"]="update_kde"
+
+check_kde() {
+    command -v plasmashell &>/dev/null || \
+        pkg_check_installed plasma-desktop || \
+        pkg_check_installed kde-plasma-desktop || \
+        pkg_check_installed kde-full || \
+        pkg_check_installed plasma-meta
+}
+install_kde() {
+    setup_install_kde
+}
+uninstall_kde() {
+    echo "Uninstalling KDE Desktop Environment..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y kde-full kde-plasma-desktop plasma-desktop sddm
+            sudo apt autoremove -y
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" group remove -y @kde-desktop-environment || \
+                sudo "$PKG_MGR" group remove -y 'KDE Plasma Workspaces'
+            sudo "$PKG_MGR" autoremove -y
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm plasma-meta kde-applications-meta sddm 2>/dev/null || true
+            ;;
+        suse)
+            sudo zypper remove -y -t pattern kde kde_plasma
+            ;;
+    esac
+    echo "KDE Desktop Environment uninstalled. You may need to install another desktop environment."
+}
+update_kde() {
+    echo "Updating KDE Desktop Environment..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt upgrade -y kde-full plasma-desktop
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" group update -y @kde-desktop-environment || \
+                sudo "$PKG_MGR" group update -y 'KDE Plasma Workspaces'
+            ;;
+        arch)
+            sudo pacman -Syu --noconfirm plasma-meta kde-applications-meta
+            ;;
+        suse)
+            sudo zypper update -y -t pattern kde kde_plasma
             ;;
     esac
 }
@@ -1071,18 +1348,25 @@ clear_line() { printf "${CSI}2K"; }
 # Draw the menu
 draw_menu() {
     local total=${#UTILITIES[@]}
+    local system_tasks=3  # First 3 items are system tasks
+    local rows_per_column=5
+    local utilities_start=$system_tasks
+    local utilities_count=$((total - system_tasks))
+    local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
     
     echo ""
     echo "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"
     echo "${BOLD}${CYAN}║   Linux System Setup & Utilities - Select Programs/Tasks     ║${RESET}"
     echo "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════╝${RESET}"
     echo ""
-    echo "${YELLOW}Use ↑/↓ to navigate, SPACE to select/deselect, ENTER to continue, Q to quit${RESET}"
+    echo "${YELLOW}Use ↑/↓/←/→ to navigate, SPACE to select/deselect, ENTER to continue, Q to quit${RESET}"
     echo ""
     echo "${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} = selected  ${RESET}${DIM}[ ]${RESET}${DIM} = not selected  ${MAGENTA}(installed)${RESET}${DIM} = already on system${RESET}"
     echo ""
     
-    for ((i=0; i<total; i++)); do
+    # Display System Tasks section
+    echo "${BOLD}${CYAN}System Tasks:${RESET}"
+    for ((i=0; i<system_tasks; i++)); do
         local prefix="  "
         local checkbox="[ ]"
         local name="${UTILITIES[$i]}"
@@ -1108,6 +1392,66 @@ draw_menu() {
         else
             echo "${prefix}${checkbox} ${name}${status_tag}"
         fi
+    done
+    
+    echo ""
+    echo "${DIM}────────────────────────────────────────────────────────────────${RESET}"
+    echo ""
+    echo "${BOLD}${CYAN}Utilities:${RESET}"
+    
+    # Build items for utilities in columns
+    for ((row=0; row<rows_per_column; row++)); do
+        local line=""
+        for ((col=0; col<num_columns; col++)); do
+            local util_idx=$((col * rows_per_column + row))
+            local i=$((utilities_start + util_idx))
+            
+            # Skip if index is beyond total items
+            if [[ $i -ge $total ]]; then
+                continue
+            fi
+            
+            local prefix="  "
+            local checkbox="[ ]"
+            local name="${UTILITIES[$i]}"
+            local status_tag=""
+            
+            # Highlight current item
+            if [[ $i -eq $CURSOR ]]; then
+                prefix="${BOLD}${BLUE}▸ ${RESET}"
+            fi
+            
+            # Show selection state
+            if [[ ${SELECTED[$i]} -eq 1 ]]; then
+                checkbox="${GREEN}[✓]${RESET}"
+            fi
+            
+            # Show installed status
+            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
+                status_tag=" ${MAGENTA}(installed)${RESET}"
+            fi
+            
+            local item=""
+            if [[ $i -eq $CURSOR ]]; then
+                item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
+            else
+                item="${prefix}${checkbox} ${name}${status_tag}"
+            fi
+            
+            # Add padding for columns (40 chars visible width)
+            if [[ $col -lt $((num_columns - 1)) ]]; then
+                # Calculate display length without ANSI codes for padding
+                local display_name="${name}${status_tag}"
+                local display_len=${#display_name}
+                [[ ${INSTALLED[$i]} -eq 1 ]] && display_len=$((display_len + 11))  # "(installed)" length
+                local padding=$((45 - display_len))
+                [[ $padding -lt 2 ]] && padding=2
+                item="${item}$(printf '%*s' $padding '')"
+            fi
+            
+            line="${line}${item}"
+        done
+        echo "$line"
     done
     
     echo ""
@@ -1152,6 +1496,8 @@ read_key() {
         case "$key" in
             '[A') echo "UP" ;;
             '[B') echo "DOWN" ;;
+            '[C') echo "RIGHT" ;;
+            '[D') echo "LEFT" ;;
             *) echo "OTHER" ;;
         esac
     elif [[ $key == "" ]]; then
@@ -1185,6 +1531,8 @@ run_selection_menu() {
     
     while true; do
         local key=$(read_key)
+        local system_tasks=3
+        local utilities_start=3
         
         case "$key" in
             UP)
@@ -1200,6 +1548,48 @@ run_selection_menu() {
                     ((CURSOR++))
                 else
                     CURSOR=0  # Wrap to top
+                fi
+                redraw_menu
+                ;;
+            LEFT)
+                if [[ $CURSOR -lt $system_tasks ]]; then
+                    # In system tasks section, jump to last column of utilities
+                    local utilities_count=$((total - system_tasks))
+                    local num_columns=$(( (utilities_count + 4) / 5 ))
+                    local util_idx=$(( (num_columns - 1) * 5 ))
+                    local new_cursor=$((utilities_start + util_idx))
+                    [[ $new_cursor -ge $total ]] && new_cursor=$((total - 1))
+                    CURSOR=$new_cursor
+                else
+                    # In utilities section - move left one column (back 5 items)
+                    local util_idx=$((CURSOR - utilities_start))
+                    local new_util_idx=$((util_idx - 5))
+                    if [[ $new_util_idx -lt 0 ]]; then
+                        # Wrap to rightmost column, same row
+                        local row=$((util_idx % 5))
+                        local utilities_count=$((total - system_tasks))
+                        local num_columns=$(( (utilities_count + 4) / 5 ))
+                        new_util_idx=$(( (num_columns - 1) * 5 + row ))
+                        [[ $((utilities_start + new_util_idx)) -ge $total ]] && new_util_idx=$(( (num_columns - 2) * 5 + row ))
+                    fi
+                    CURSOR=$((utilities_start + new_util_idx))
+                fi
+                redraw_menu
+                ;;
+            RIGHT)
+                if [[ $CURSOR -lt $system_tasks ]]; then
+                    # In system tasks section, jump to first utility
+                    CURSOR=$utilities_start
+                else
+                    # In utilities section - move right one column (forward 5 items)
+                    local util_idx=$((CURSOR - utilities_start))
+                    local row=$((util_idx % 5))
+                    local new_util_idx=$((util_idx + 5))
+                    if [[ $((utilities_start + new_util_idx)) -ge $total ]]; then
+                        # Wrap to leftmost column, same row
+                        new_util_idx=$row
+                    fi
+                    CURSOR=$((utilities_start + new_util_idx))
                 fi
                 redraw_menu
                 ;;
