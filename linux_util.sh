@@ -757,6 +757,42 @@ check_bitwarden() {
 install_bitwarden() {
     echo "Installing Bitwarden Client..."
     case "$DISTRO_FAMILY" in
+        debian)
+            ensure_tools
+            local tmp_deb
+            tmp_deb=$(mktemp /tmp/bitwarden-XXXXXX.deb)
+            if ! wget -qO "$tmp_deb" "https://vault.bitwarden.com/download/?app=desktop&platform=linux&variant=deb"; then
+                echo "Error: Failed to download Bitwarden .deb."
+                rm -f "$tmp_deb"
+                return 1
+            fi
+            # Try installing; if deps are missing, fix them and retry
+            if ! sudo dpkg -i "$tmp_deb"; then
+                sudo apt-get install -f -y || true
+                if ! sudo dpkg -i "$tmp_deb"; then
+                    echo "Error: Failed to install Bitwarden .deb."
+                    rm -f "$tmp_deb"
+                    return 1
+                fi
+            fi
+            rm -f "$tmp_deb"
+            ;;
+        fedora|rhel)
+            ensure_tools
+            local tmp_rpm
+            tmp_rpm=$(mktemp /tmp/bitwarden-XXXXXX.rpm)
+            if ! wget -qO "$tmp_rpm" "https://vault.bitwarden.com/download/?app=desktop&platform=linux&variant=rpm"; then
+                echo "Error: Failed to download Bitwarden .rpm."
+                rm -f "$tmp_rpm"
+                return 1
+            fi
+            if ! sudo "$PKG_MGR" install -y "$tmp_rpm"; then
+                echo "Error: Failed to install Bitwarden .rpm."
+                rm -f "$tmp_rpm"
+                return 1
+            fi
+            rm -f "$tmp_rpm"
+            ;;
         arch)
             if has_aur_helper; then
                 aur_install bitwarden
@@ -798,6 +834,10 @@ update_bitwarden() {
         sudo snap refresh bitwarden
     elif has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden; then
         flatpak update -y com.bitwarden.desktop
+    elif [[ "$DISTRO_FAMILY" == "debian" ]]; then
+        install_bitwarden
+    elif [[ "$DISTRO_FAMILY" == "fedora" || "$DISTRO_FAMILY" == "rhel" ]]; then
+        install_bitwarden
     elif pkg_check_installed bitwarden; then
         pkg_upgrade bitwarden
     else
@@ -929,6 +969,12 @@ uninstall_joplin() {
     echo "Uninstalling Joplin Client..."
     rm -rf ~/.joplin
     rm -f ~/.local/share/applications/joplin.desktop
+    rm -f ~/.local/share/applications/appimagekit-joplin.desktop
+    rm -f ~/.local/share/icons/hicolor/*/apps/joplin.png
+    rm -f ~/.local/share/icons/hicolor/*/apps/appimagekit-joplin.png
+    rm -f ~/.local/bin/joplin
+    command -v update-desktop-database &>/dev/null && update-desktop-database ~/.local/share/applications || true
+    command -v gtk-update-icon-cache &>/dev/null && gtk-update-icon-cache ~/.local/share/icons/hicolor || true
 }
 update_joplin() {
     echo "Updating Joplin Client..."
@@ -1373,6 +1419,142 @@ update_kde() {
     esac
 }
 
+# --- Syncthing ---
+UTILITIES+=("Syncthing")
+INSTALL_FUNCS["Syncthing"]="install_syncthing"
+CHECK_FUNCS["Syncthing"]="check_syncthing"
+UNINSTALL_FUNCS["Syncthing"]="uninstall_syncthing"
+UPDATE_FUNCS["Syncthing"]="update_syncthing"
+
+check_syncthing() {
+    command -v syncthing &>/dev/null || pkg_check_installed syncthing
+}
+
+install_syncthing() {
+    echo "Installing Syncthing..."
+    ensure_tools
+    case "$DISTRO_FAMILY" in
+        debian)
+            # Add the Syncthing PGP key
+            sudo mkdir -p /etc/apt/keyrings
+            sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
+            
+            # Add the Syncthing repository
+            echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | \
+                sudo tee /etc/apt/sources.list.d/syncthing.list > /dev/null
+            
+            # Update and install
+            sudo apt update
+            sudo apt install -y syncthing
+            
+            # Enable and start the user service
+            systemctl --user enable syncthing.service
+            systemctl --user start syncthing.service
+            
+            echo ""
+            echo "Syncthing installed successfully!"
+            echo "Service has been enabled and started."
+            echo "Access the web GUI at: http://127.0.0.1:8384"
+            ;;
+        fedora|rhel)
+            # Add the Syncthing repository
+            sudo tee /etc/yum.repos.d/syncthing.repo > /dev/null <<EOF
+[syncthing]
+name=Syncthing
+baseurl=https://yum.syncthing.net/syncthing/stable/\$basearch/
+gpgkey=https://syncthing.net/release-key.gpg
+enabled=1
+gpgcheck=1
+EOF
+            sudo "$PKG_MGR" install -y syncthing
+            
+            # Enable and start the user service
+            systemctl --user enable syncthing.service
+            systemctl --user start syncthing.service
+            
+            echo ""
+            echo "Syncthing installed successfully!"
+            echo "Service has been enabled and started."
+            echo "Access the web GUI at: http://127.0.0.1:8384"
+            ;;
+        arch)
+            # Syncthing is available in the community repository
+            sudo pacman -S --noconfirm syncthing
+            
+            # Enable and start the user service
+            systemctl --user enable syncthing.service
+            systemctl --user start syncthing.service
+            
+            echo ""
+            echo "Syncthing installed successfully!"
+            echo "Service has been enabled and started."
+            echo "Access the web GUI at: http://127.0.0.1:8384"
+            ;;
+        suse)
+            # Install from official repository
+            sudo zypper install -y syncthing
+            
+            # Enable and start the user service
+            systemctl --user enable syncthing.service
+            systemctl --user start syncthing.service
+            
+            echo ""
+            echo "Syncthing installed successfully!"
+            echo "Service has been enabled and started."
+            echo "Access the web GUI at: http://127.0.0.1:8384"
+            ;;
+    esac
+}
+
+uninstall_syncthing() {
+    echo "Uninstalling Syncthing..."
+    
+    # Stop and disable the service if running
+    systemctl --user stop syncthing.service 2>/dev/null || true
+    systemctl --user disable syncthing.service 2>/dev/null || true
+    
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y syncthing
+            sudo rm -f /etc/apt/sources.list.d/syncthing.list
+            sudo rm -f /etc/apt/keyrings/syncthing-archive-keyring.gpg
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" remove -y syncthing
+            sudo rm -f /etc/yum.repos.d/syncthing.repo
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm syncthing
+            ;;
+        suse)
+            sudo zypper remove -y syncthing
+            ;;
+    esac
+    
+    echo "Syncthing has been uninstalled."
+    echo "Note: Your Syncthing configuration and data (~/.config/syncthing) have been preserved."
+    echo "To remove them manually, run: rm -rf ~/.config/syncthing"
+}
+
+update_syncthing() {
+    echo "Updating Syncthing..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt upgrade -y syncthing
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" upgrade -y syncthing
+            ;;
+        arch)
+            sudo pacman -S --noconfirm syncthing
+            ;;
+        suse)
+            sudo zypper update -y syncthing
+            ;;
+    esac
+}
+
 # --- Docker (utility version) ---
 check_docker() {
     command -v docker &>/dev/null && docker --version &>/dev/null
@@ -1453,15 +1635,15 @@ check_installed_utilities() {
         if [[ -n "$check_func" ]] && declare -f "$check_func" > /dev/null; then
             if $check_func 2>/dev/null; then
                 INSTALLED[$i]=1
-                SELECTED[$i]=1  # Pre-select installed utilities
             else
                 INSTALLED[$i]=0
-                SELECTED[$i]=0
             fi
         else
             INSTALLED[$i]=0
-            SELECTED[$i]=0
         fi
+
+        # Keep all options unselected by default; selection determines action
+        SELECTED[$i]=0
     done
 }
 
@@ -1502,6 +1684,7 @@ draw_menu() {
     echo "${YELLOW}Use ↑/↓/←/→ to navigate, SPACE to select/deselect, ENTER to continue, Q to quit${RESET}"
     echo ""
     echo "${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} = selected  ${RESET}${DIM}[ ]${RESET}${DIM} = not selected  ${MAGENTA}(installed)${RESET}${DIM} = already on system${RESET}"
+    echo "${DIM}Selecting an installed item queues uninstall; selecting a missing item queues install.${RESET}"
     echo ""
     
     # Display System Tasks section
@@ -1577,18 +1760,19 @@ draw_menu() {
             else
                 item="${prefix}${checkbox} ${name}${status_tag}"
             fi
-            
-            # Add padding for columns (40 chars visible width)
+
+            # Add padding for columns using visible width (no ANSI codes)
             if [[ $col -lt $((num_columns - 1)) ]]; then
-                # Calculate display length without ANSI codes for padding
-                local display_name="${name}${status_tag}"
-                local display_len=${#display_name}
-                [[ ${INSTALLED[$i]} -eq 1 ]] && display_len=$((display_len + 11))  # "(installed)" length
-                local padding=$((45 - display_len))
+                local plain_status=""
+                [[ ${INSTALLED[$i]} -eq 1 ]] && plain_status=" (installed)"
+                # Visible chars: prefix (2), checkbox (3), space (1), name, status text
+                local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
+                local column_width=46
+                local padding=$((column_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
             fi
-            
+
             line="${line}${item}"
         done
         echo "$line"
@@ -1599,23 +1783,18 @@ draw_menu() {
     
     # Count selected items and categorize actions
     local install_count=0
-    local update_count=0
     local uninstall_count=0
     for ((i=0; i<total; i++)); do
         if [[ ${SELECTED[$i]} -eq 1 ]]; then
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                ((update_count++))
+                ((uninstall_count++))
             else
                 ((install_count++))
-            fi
-        else
-            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                ((uninstall_count++))
             fi
         fi
     done
     
-    echo "${CYAN}Actions: ${GREEN}Install/Run: ${install_count}${RESET} | ${BLUE}Update: ${update_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET}"
+    echo "${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET}"
     echo ""
 }
 
@@ -1771,7 +1950,6 @@ run_selection_menu() {
 process_selected() {
     local total=${#UTILITIES[@]}
     declare -a to_install
-    declare -a to_update
     declare -a to_uninstall
     
     # Categorize utilities based on selection and installed state
@@ -1779,19 +1957,15 @@ process_selected() {
         local util="${UTILITIES[$i]}"
         if [[ ${SELECTED[$i]} -eq 1 ]]; then
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                to_update+=("$util")
+                to_uninstall+=("$util")
             else
                 to_install+=("$util")
-            fi
-        else
-            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                to_uninstall+=("$util")
             fi
         fi
     done
     
     # Check if there's anything to do
-    if [[ ${#to_install[@]} -eq 0 ]] && [[ ${#to_update[@]} -eq 0 ]] && [[ ${#to_uninstall[@]} -eq 0 ]]; then
+    if [[ ${#to_install[@]} -eq 0 ]] && [[ ${#to_uninstall[@]} -eq 0 ]]; then
         echo ""
         echo "${YELLOW}No changes to make. Exiting.${RESET}"
         exit 0
@@ -1807,14 +1981,6 @@ process_selected() {
         echo "${GREEN}To Install/Run (${#to_install[@]}):${RESET}"
         for util in "${to_install[@]}"; do
             echo "  ${GREEN}+${RESET} $util"
-        done
-        echo ""
-    fi
-    
-    if [[ ${#to_update[@]} -gt 0 ]]; then
-        echo "${BLUE}To Update (${#to_update[@]}):${RESET}"
-        for util in "${to_update[@]}"; do
-            echo "  ${BLUE}↑${RESET} $util"
         done
         echo ""
     fi
@@ -1867,33 +2033,6 @@ process_selected() {
         fi
     done
     
-    # Process updates
-    for util in "${to_update[@]}"; do
-        echo ""
-        echo "${BOLD}${BLUE}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${BOLD}${BLUE}Updating: $util${RESET}"
-        echo "${BOLD}${BLUE}────────────────────────────────────────────────────────────────${RESET}"
-        echo ""
-        
-        local func="${UPDATE_FUNCS[$util]}"
-        if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
-            if $func; then
-                echo ""
-                echo "${GREEN}✓ Successfully updated: $util${RESET}"
-                ((success_count++))
-            else
-                echo ""
-                echo "${RED}✗ Failed to update: $util${RESET}"
-                ((fail_count++))
-                failed_utils+=("$util (update)")
-            fi
-        else
-            echo "${RED}✗ No update function found for: $util${RESET}"
-            ((fail_count++))
-            failed_utils+=("$util (update)")
-        fi
-    done
-    
     # Process installations
     for util in "${to_install[@]}"; do
         echo ""
@@ -1940,7 +2079,7 @@ process_selected() {
     echo ""
     
     # Offer reboot
-    if [[ ${#to_install[@]} -gt 0 ]] || [[ ${#to_update[@]} -gt 0 ]]; then
+    if [[ ${#to_install[@]} -gt 0 ]] || [[ ${#to_uninstall[@]} -gt 0 ]]; then
         read -n 1 -rp "Reboot now? (y/N) " REBOOT_CHOICE
         echo
         REBOOT_CHOICE=${REBOOT_CHOICE:-N}
