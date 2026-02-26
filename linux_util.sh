@@ -603,6 +603,144 @@ CHECK_FUNCS["Docker"]="check_docker"
 UNINSTALL_FUNCS["Docker"]="uninstall_docker"
 UPDATE_FUNCS["Docker"]="update_docker"
 
+# NVIDIA Drivers
+UTILITIES+=("NVIDIA Drivers")
+INSTALL_FUNCS["NVIDIA Drivers"]="install_nvidia_drivers"
+CHECK_FUNCS["NVIDIA Drivers"]="check_nvidia_drivers"
+UNINSTALL_FUNCS["NVIDIA Drivers"]="uninstall_nvidia_drivers"
+UPDATE_FUNCS["NVIDIA Drivers"]="update_nvidia_drivers"
+
+# --- NVIDIA Drivers & Toolkit ---
+check_nvidia_drivers() {
+    command -v nvidia-smi &>/dev/null || lsmod | grep -q "^nvidia"
+}
+
+install_nvtop_package() {
+    echo "Installing nvtop..."
+    case "$PKG_MGR" in
+        apt)
+            sudo apt-get update
+            sudo apt-get install -y nvtop
+            ;;
+        dnf|yum)
+            sudo "$PKG_MGR" install -y nvtop
+            ;;
+        pacman)
+            sudo pacman -S --noconfirm nvtop
+            ;;
+        zypper)
+            sudo zypper install -y nvtop
+            ;;
+    esac
+}
+
+install_nvidia_container_toolkit() {
+    echo "Installing NVIDIA Container Toolkit for Docker..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            ensure_tools
+            curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+                sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+            curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+                sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+                sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null
+            sudo apt-get update
+            sudo apt-get install -y nvidia-container-toolkit
+            ;;
+        fedora|rhel)
+            ensure_tools
+            curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+            curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
+                sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo >/dev/null
+            sudo "$PKG_MGR" makecache
+            sudo "$PKG_MGR" install -y nvidia-container-toolkit
+            ;;
+        arch)
+            pkg_install nvidia-container-toolkit
+            ;;
+        suse)
+            curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+            curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
+                sudo tee /etc/zypp/repos.d/nvidia-container-toolkit.repo >/dev/null
+            sudo zypper refresh
+            sudo zypper install -y nvidia-container-toolkit
+            ;;
+        *)
+            warn "NVIDIA Container Toolkit installation not implemented for ${DISTRO_NAME}."
+            return 1
+            ;;
+    esac
+}
+
+install_nvidia_drivers() {
+    echo "Installing NVIDIA drivers..."
+    ensure_tools
+
+    local driver_version=""
+    if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+        command -v ubuntu-drivers &>/dev/null || sudo apt-get install -y ubuntu-drivers-common
+        echo "Available drivers (ubuntu-drivers list):"
+        ubuntu-drivers list || true
+    fi
+
+    read -rp "Enter NVIDIA driver version to install (e.g., 535). Leave blank to cancel: " driver_version
+    if [[ -z "$driver_version" ]]; then
+        warn "No driver version provided. Skipping NVIDIA driver installation."
+        return 1
+    fi
+
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt-get update
+            sudo apt-get install -y "nvidia-driver-${driver_version}"
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" install -y akmod-nvidia xorg-x11-drv-nvidia-cuda || sudo "$PKG_MGR" install -y "kmod-nvidia-${driver_version}"
+            ;;
+        arch)
+            sudo pacman -S --noconfirm nvidia nvidia-utils || sudo pacman -S --noconfirm nvidia-dkms
+            ;;
+        suse)
+            sudo zypper install -y "nvidia-driver-${driver_version}" || sudo zypper install -y nvidia-computeG06
+            ;;
+        *)
+            warn "NVIDIA driver installation not implemented for ${DISTRO_NAME}."
+            return 1
+            ;;
+    esac
+
+    install_nvtop_package
+
+    if check_docker; then
+        install_nvidia_container_toolkit || warn "Failed to install NVIDIA Container Toolkit."
+    else
+        info "Docker not detected. Skipping NVIDIA Container Toolkit installation."
+    fi
+}
+
+uninstall_nvidia_drivers() {
+    echo "Uninstalling NVIDIA drivers..."
+    case "$PKG_MGR" in
+        apt)
+            sudo apt-get remove -y 'nvidia-driver-*' nvtop
+            sudo apt-get autoremove -y
+            ;;
+        dnf|yum)
+            sudo "$PKG_MGR" remove -y nvidia* nvtop
+            ;;
+        pacman)
+            sudo pacman -Rs --noconfirm nvidia nvidia-utils nvtop 2>/dev/null || true
+            ;;
+        zypper)
+            sudo zypper remove -y nvidia* nvtop
+            ;;
+    esac
+}
+
+update_nvidia_drivers() {
+    install_nvidia_drivers
+}
+
 # --- Bitwarden Client ---
 UTILITIES+=("Bitwarden Client")
 INSTALL_FUNCS["Bitwarden Client"]="install_bitwarden"
@@ -1302,6 +1440,8 @@ RESET="${CSI}0m"
 declare -a SELECTED
 # Track installed state (0 = not installed, 1 = installed)
 declare -a INSTALLED
+# Rows per column for utilities section
+ROWS_PER_COLUMN=5
 
 # Check which utilities are already installed
 check_installed_utilities() {
@@ -1349,7 +1489,7 @@ clear_line() { printf "${CSI}2K"; }
 draw_menu() {
     local total=${#UTILITIES[@]}
     local system_tasks=3  # First 3 items are system tasks
-    local rows_per_column=5
+    local rows_per_column=$ROWS_PER_COLUMN
     local utilities_start=$system_tasks
     local utilities_count=$((total - system_tasks))
     local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
@@ -1555,22 +1695,25 @@ run_selection_menu() {
                 if [[ $CURSOR -lt $system_tasks ]]; then
                     # In system tasks section, jump to last column of utilities
                     local utilities_count=$((total - system_tasks))
-                    local num_columns=$(( (utilities_count + 4) / 5 ))
-                    local util_idx=$(( (num_columns - 1) * 5 ))
+                    local num_columns=$(( (utilities_count + ROWS_PER_COLUMN - 1) / ROWS_PER_COLUMN ))
+                    local util_idx=$(( (num_columns - 1) * ROWS_PER_COLUMN ))
                     local new_cursor=$((utilities_start + util_idx))
                     [[ $new_cursor -ge $total ]] && new_cursor=$((total - 1))
                     CURSOR=$new_cursor
                 else
-                    # In utilities section - move left one column (back 5 items)
+                    # In utilities section - move left one column
                     local util_idx=$((CURSOR - utilities_start))
-                    local new_util_idx=$((util_idx - 5))
+                    local new_util_idx=$((util_idx - ROWS_PER_COLUMN))
                     if [[ $new_util_idx -lt 0 ]]; then
                         # Wrap to rightmost column, same row
-                        local row=$((util_idx % 5))
+                        local row=$((util_idx % ROWS_PER_COLUMN))
                         local utilities_count=$((total - system_tasks))
-                        local num_columns=$(( (utilities_count + 4) / 5 ))
-                        new_util_idx=$(( (num_columns - 1) * 5 + row ))
-                        [[ $((utilities_start + new_util_idx)) -ge $total ]] && new_util_idx=$(( (num_columns - 2) * 5 + row ))
+                        local num_columns=$(( (utilities_count + ROWS_PER_COLUMN - 1) / ROWS_PER_COLUMN ))
+                        new_util_idx=$(( (num_columns - 1) * ROWS_PER_COLUMN + row ))
+                        if [[ $((utilities_start + new_util_idx)) -ge $total ]]; then
+                            new_util_idx=$(( (num_columns - 2) * ROWS_PER_COLUMN + row ))
+                            [[ $new_util_idx -lt 0 ]] && new_util_idx=$row
+                        fi
                     fi
                     CURSOR=$((utilities_start + new_util_idx))
                 fi
@@ -1581,10 +1724,10 @@ run_selection_menu() {
                     # In system tasks section, jump to first utility
                     CURSOR=$utilities_start
                 else
-                    # In utilities section - move right one column (forward 5 items)
+                    # In utilities section - move right one column
                     local util_idx=$((CURSOR - utilities_start))
-                    local row=$((util_idx % 5))
-                    local new_util_idx=$((util_idx + 5))
+                    local row=$((util_idx % ROWS_PER_COLUMN))
+                    local new_util_idx=$((util_idx + ROWS_PER_COLUMN))
                     if [[ $((utilities_start + new_util_idx)) -ge $total ]]; then
                         # Wrap to leftmost column, same row
                         new_util_idx=$row
