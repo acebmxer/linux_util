@@ -1,6 +1,44 @@
 # Linux System Setup & Utilities Installer
 
-An interactive multi-select script combining comprehensive system setup tasks and utility management. This tool integrates the functionality of both system configuration (from [linux_setup_script](https://github.com/acebmxer/linux_setup_script)) and application installation (from [install_linux_utilities](https://github.com/acebmxer/install_linux_utilities)) into a single unified interface.
+An interactive multi-select script combining comprehensive system setup tasks and utility management.
+
+## Menu Preview
+
+When you run the script, you'll see an interactive menu like this:
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║   Linux System Setup & Utilities - Select Programs/Tasks     ║
+╚══════════════════════════════════════════════════════════════╝
+
+Use ↑/↓/←/→ to navigate, SPACE to select/deselect, ENTER to continue, Q to quit
+
+Legend: [✓] = selected  [ ] = not selected  (installed) = already on system
+
+System Tasks:
+▸ [✓] Full System Upgrade/Update
+  [ ] XEN Guest Utilities
+  [ ] System Updates
+
+────────────────────────────────────────────────────────────────
+
+Utilities:
+  [✓] Dotfiles (installed)                [ ] Termius SSH Client
+  [✓] Docker (installed)                  [ ] Steam App
+  [ ] Bitwarden Client                    [✓] Visual Studio Code (installed)
+  [ ] Brave Browser                       [ ] KDE Desktop Environment
+  [✓] Joplin Client (installed)
+
+────────────────────────────────────────────────────────────────
+Actions: Install/Run: 1 | Update: 4 | Uninstall: 0
+
+```
+
+The menu dynamically detects which utilities are already installed and intelligently determines the action:
+- **Selected + Not Installed** → Install
+- **Selected + Installed** → Update  
+- **Not Selected + Installed** → Uninstall
+- **Not Selected + Not Installed** → Skip
 
 ## Features
 
@@ -109,6 +147,7 @@ Based on your selections, the script determines what action to take:
 | **Termius SSH Client** | SSH client for remote connections | .deb / snap / flatpak |
 | **Steam App** | Gaming platform | Native packages / RPM Fusion / flatpak |
 | **Visual Studio Code** | Code editor | Native repo (all distros) / AUR |
+| **KDE Desktop Environment** | Full KDE Plasma desktop environment | Native packages (all distros) |
 
 **Note for Dotfiles:** Installation is skipped on Fedora, RHEL, CentOS, Rocky Linux, and AlmaLinux due to compatibility considerations.
 
