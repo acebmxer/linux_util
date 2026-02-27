@@ -576,11 +576,67 @@ CHECK_FUNCS["System Updates"]="check_always_false"
 UNINSTALL_FUNCS["System Updates"]="noop_function"
 UPDATE_FUNCS["System Updates"]="setup_system_updates"
 
+UTILITIES+=("KDE Desktop Environment")
+INSTALL_FUNCS["KDE Desktop Environment"]="install_kde"
+CHECK_FUNCS["KDE Desktop Environment"]="check_kde"
+UNINSTALL_FUNCS["KDE Desktop Environment"]="uninstall_kde"
+UPDATE_FUNCS["KDE Desktop Environment"]="update_kde"
+
 # Helper functions for system setup tasks
 check_always_false() { return 1; }
 noop_function() { return 0; }
 check_xen_guest_utilities() {
     pkg_check_installed xe-guest-utilities || pkg_check_installed xen-guest-agent
+}
+check_kde() {
+    command -v plasmashell &>/dev/null || \
+        pkg_check_installed plasma-desktop || \
+        pkg_check_installed kde-plasma-desktop || \
+        pkg_check_installed kde-full || \
+        pkg_check_installed plasma-meta
+}
+install_kde() {
+    setup_install_kde
+}
+uninstall_kde() {
+    echo "Uninstalling KDE Desktop Environment..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y kde-full kde-plasma-desktop plasma-desktop sddm
+            sudo apt autoremove -y
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" group remove -y @kde-desktop-environment || \
+                sudo "$PKG_MGR" group remove -y 'KDE Plasma Workspaces'
+            sudo "$PKG_MGR" autoremove -y
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm plasma-meta kde-applications-meta sddm 2>/dev/null || true
+            ;;
+        suse)
+            sudo zypper remove -y -t pattern kde kde_plasma
+            ;;
+    esac
+    echo "KDE Desktop Environment uninstalled. You may need to install another desktop environment."
+}
+update_kde() {
+    echo "Updating KDE Desktop Environment..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt upgrade -y kde-full plasma-desktop
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" group update -y @kde-desktop-environment || \
+                sudo "$PKG_MGR" group update -y 'KDE Plasma Workspaces'
+            ;;
+        arch)
+            sudo pacman -Syu --noconfirm plasma-meta kde-applications-meta
+            ;;
+        suse)
+            sudo zypper update -y -t pattern kde kde_plasma
+            ;;
+    esac
 }
 
 # --- Installable Utilities ---
@@ -1067,6 +1123,149 @@ update_termius() {
     esac
 }
 
+# --- Devolutions Remote Desktop Manager ---
+UTILITIES+=("Devolutions Remote Desktop Manager")
+INSTALL_FUNCS["Devolutions Remote Desktop Manager"]="install_devolutions_rdm"
+CHECK_FUNCS["Devolutions Remote Desktop Manager"]="check_devolutions_rdm"
+UNINSTALL_FUNCS["Devolutions Remote Desktop Manager"]="uninstall_devolutions_rdm"
+UPDATE_FUNCS["Devolutions Remote Desktop Manager"]="update_devolutions_rdm"
+
+check_devolutions_rdm() {
+    command -v remotedesktopmanager &>/dev/null || pkg_check_installed remotedesktopmanager || pkg_check_installed remote-desktop-manager
+}
+install_devolutions_rdm() {
+    echo "Installing Devolutions Remote Desktop Manager..."
+    ensure_tools
+    case "$DISTRO_FAMILY" in
+        debian)
+            # Ubuntu/Debian repository setup
+            echo "Setting up Cloudsmith repository for Remote Desktop Manager..."
+            curl -1sLf 'https://dl.cloudsmith.io/public/devolutions/rdm/setup.deb.sh' | sudo -E bash
+            
+            # Install required packages for repository management
+            sudo apt-get install -y apt-transport-https 2>/dev/null || true
+            
+            # Update package lists and install Remote Desktop Manager
+            sudo apt-get update
+            sudo apt-get install -y remotedesktopmanager
+            ;;
+        fedora|rhel)
+            # Fedora/RHEL repository setup
+            echo "Setting up Cloudsmith repository for Remote Desktop Manager..."
+            
+            # Ensure required tools
+            sudo "$PKG_MGR" install -y dnf-plugins-core pygpgme 2>/dev/null || true
+            
+            # Import GPG key
+            sudo rpm --import 'https://dl.cloudsmith.io/public/devolutions/rdm/gpg.FE7407ECB26FD2FE.key'
+            
+            # Add repository
+            curl -1sLf "https://dl.cloudsmith.io/public/devolutions/rdm/config.rpm.txt?distro=${DISTRO_ID}&codename=${DISTRO_VERSION_ID}" | \
+                sudo tee /etc/yum.repos.d/devolutions-rdm.repo > /dev/null
+            
+            # Update repository cache and install
+            sudo "$PKG_MGR" makecache -y
+            sudo "$PKG_MGR" install -y remotedesktopmanager
+            ;;
+        arch)
+            # Arch-based distributions using AUR
+            if has_aur_helper; then
+                echo "Installing from AUR..."
+                aur_install remote-desktop-manager
+            else
+                echo "Error: An AUR helper (yay/paru) is required."
+                echo "Please install yay or paru first:"
+                echo "  sudo pacman -Sy yay"
+                return 1
+            fi
+            ;;
+        suse)
+            # openSUSE support via Flatpak or snap (as direct repos may not be available)
+            if has_flatpak; then
+                echo "Installing via Flatpak..."
+                flatpak install -y flathub com.devolutions.RemoteDesktopManager
+            elif has_snap; then
+                echo "Installing via Snap..."
+                sudo snap install remote-desktop-manager
+            else
+                echo "Error: Flatpak or Snap is required to install Remote Desktop Manager on this distribution."
+                echo "Please install flatpak or snap first."
+                return 1
+            fi
+            ;;
+        *)
+            # Fallback to Flatpak or Snap
+            if has_flatpak; then
+                echo "Installing via Flatpak..."
+                flatpak install -y flathub com.devolutions.RemoteDesktopManager
+            elif has_snap; then
+                echo "Installing via Snap..."
+                sudo snap install remote-desktop-manager
+            else
+                echo "Error: No compatible installation method found for this distribution."
+                return 1
+            fi
+            ;;
+    esac
+}
+uninstall_devolutions_rdm() {
+    echo "Uninstalling Devolutions Remote Desktop Manager..."
+    case "$DISTRO_FAMILY" in
+        debian|fedora|rhel)
+            pkg_remove remotedesktopmanager 2>/dev/null || pkg_remove remote-desktop-manager 2>/dev/null || true
+            # Clean up repository configuration for Debian
+            if [[ "$DISTRO_FAMILY" == "debian" ]]; then
+                sudo rm -f /etc/apt/sources.list.d/devolutions-rdm.list
+            fi
+            # Clean up repository configuration for RHEL/Fedora
+            if [[ "$DISTRO_FAMILY" == "fedora" ]] || [[ "$DISTRO_FAMILY" == "rhel" ]]; then
+                sudo rm -f /etc/yum.repos.d/devolutions-rdm.repo
+            fi
+            ;;
+        arch)
+            aur_remove remote-desktop-manager 2>/dev/null || pkg_remove remote-desktop-manager 2>/dev/null || true
+            ;;
+        *)
+            if has_flatpak && flatpak list 2>/dev/null | grep -qi "remote.*desktop.*manager\|RemoteDesktopManager"; then
+                flatpak uninstall -y com.devolutions.RemoteDesktopManager || true
+            elif has_snap && snap list 2>/dev/null | grep -qi "remote-desktop-manager"; then
+                sudo snap remove remote-desktop-manager || true
+            else
+                pkg_remove remotedesktopmanager 2>/dev/null || pkg_remove remote-desktop-manager 2>/dev/null || true
+            fi
+            ;;
+    esac
+}
+update_devolutions_rdm() {
+    echo "Updating Devolutions Remote Desktop Manager..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt install --only-upgrade -y remotedesktopmanager
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" upgrade -y remotedesktopmanager
+            ;;
+        arch)
+            if has_aur_helper; then
+                aur_upgrade remote-desktop-manager
+            else
+                echo "Error: An AUR helper (yay/paru) is required."
+                return 1
+            fi
+            ;;
+        *)
+            if has_flatpak && flatpak list 2>/dev/null | grep -qi "remote.*desktop.*manager\|RemoteDesktopManager"; then
+                flatpak update -y com.devolutions.RemoteDesktopManager
+            elif has_snap && snap list 2>/dev/null | grep -qi "remote-desktop-manager"; then
+                sudo snap refresh remote-desktop-manager
+            else
+                pkg_upgrade remotedesktopmanager 2>/dev/null || true
+            fi
+            ;;
+    esac
+}
+
 # --- Steam App ---
 UTILITIES+=("Steam App")
 INSTALL_FUNCS["Steam App"]="install_steam"
@@ -1361,64 +1560,6 @@ update_vscode() {
     esac
 }
 
-# --- KDE Desktop Environment ---
-UTILITIES+=("KDE Desktop Environment")
-INSTALL_FUNCS["KDE Desktop Environment"]="install_kde"
-CHECK_FUNCS["KDE Desktop Environment"]="check_kde"
-UNINSTALL_FUNCS["KDE Desktop Environment"]="uninstall_kde"
-UPDATE_FUNCS["KDE Desktop Environment"]="update_kde"
-
-check_kde() {
-    command -v plasmashell &>/dev/null || \
-        pkg_check_installed plasma-desktop || \
-        pkg_check_installed kde-plasma-desktop || \
-        pkg_check_installed kde-full || \
-        pkg_check_installed plasma-meta
-}
-install_kde() {
-    setup_install_kde
-}
-uninstall_kde() {
-    echo "Uninstalling KDE Desktop Environment..."
-    case "$DISTRO_FAMILY" in
-        debian)
-            sudo apt remove -y kde-full kde-plasma-desktop plasma-desktop sddm
-            sudo apt autoremove -y
-            ;;
-        fedora|rhel)
-            sudo "$PKG_MGR" group remove -y @kde-desktop-environment || \
-                sudo "$PKG_MGR" group remove -y 'KDE Plasma Workspaces'
-            sudo "$PKG_MGR" autoremove -y
-            ;;
-        arch)
-            sudo pacman -Rs --noconfirm plasma-meta kde-applications-meta sddm 2>/dev/null || true
-            ;;
-        suse)
-            sudo zypper remove -y -t pattern kde kde_plasma
-            ;;
-    esac
-    echo "KDE Desktop Environment uninstalled. You may need to install another desktop environment."
-}
-update_kde() {
-    echo "Updating KDE Desktop Environment..."
-    case "$DISTRO_FAMILY" in
-        debian)
-            sudo apt update
-            sudo apt upgrade -y kde-full plasma-desktop
-            ;;
-        fedora|rhel)
-            sudo "$PKG_MGR" group update -y @kde-desktop-environment || \
-                sudo "$PKG_MGR" group update -y 'KDE Plasma Workspaces'
-            ;;
-        arch)
-            sudo pacman -Syu --noconfirm plasma-meta kde-applications-meta
-            ;;
-        suse)
-            sudo zypper update -y -t pattern kde kde_plasma
-            ;;
-    esac
-}
-
 # --- Syncthing ---
 UTILITIES+=("Syncthing")
 INSTALL_FUNCS["Syncthing"]="install_syncthing"
@@ -1623,7 +1764,7 @@ declare -a SELECTED
 # Track installed state (0 = not installed, 1 = installed)
 declare -a INSTALLED
 # Rows per column for utilities section
-ROWS_PER_COLUMN=5
+ROWS_PER_COLUMN=6
 
 # Check which utilities are already installed
 check_installed_utilities() {
@@ -1670,55 +1811,79 @@ clear_line() { printf "${CSI}2K"; }
 # Draw the menu
 draw_menu() {
     local total=${#UTILITIES[@]}
-    local system_tasks=3  # First 3 items are system tasks
-    local rows_per_column=$ROWS_PER_COLUMN
+    local system_tasks=4  # First 4 items are system tasks
+    local system_rows_per_column=3  # 3 rows per column for System Tasks
+    local rows_per_column=$ROWS_PER_COLUMN  # 5 rows per column for Utilities
     local utilities_start=$system_tasks
     local utilities_count=$((total - system_tasks))
     local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
+    local system_num_columns=$(( (system_tasks + system_rows_per_column - 1) / system_rows_per_column ))
     
     echo ""
     echo "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"
     echo "${BOLD}${CYAN}║   Linux System Setup & Utilities - Select Programs/Tasks     ║${RESET}"
     echo "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════╝${RESET}"
     echo ""
-    echo "${YELLOW}Use ↑/↓/←/→ to navigate, SPACE to select/deselect, ENTER to continue, Q to quit${RESET}"
-    echo ""
-    echo "${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} = selected  ${RESET}${DIM}[ ]${RESET}${DIM} = not selected  ${MAGENTA}(installed)${RESET}${DIM} = already on system${RESET}"
-    echo "${DIM}Selecting an installed item queues uninstall; selecting a missing item queues install.${RESET}"
-    echo ""
     
     # Display System Tasks section
     echo "${BOLD}${CYAN}System Tasks:${RESET}"
-    for ((i=0; i<system_tasks; i++)); do
-        local prefix="  "
-        local checkbox="[ ]"
-        local name="${UTILITIES[$i]}"
-        local status_tag=""
-        
-        # Highlight current item
-        if [[ $i -eq $CURSOR ]]; then
-            prefix="${BOLD}${BLUE}▸ ${RESET}"
-        fi
-        
-        # Show selection state
-        if [[ ${SELECTED[$i]} -eq 1 ]]; then
-            checkbox="${GREEN}[✓]${RESET}"
-        fi
-        
-        # Show installed status
-        if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-            status_tag=" ${MAGENTA}(installed)${RESET}"
-        fi
-        
-        if [[ $i -eq $CURSOR ]]; then
-            echo "${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
-        else
-            echo "${prefix}${checkbox} ${name}${status_tag}"
-        fi
+    for ((row=0; row<system_rows_per_column; row++)); do
+        local line=""
+        for ((col=0; col<system_num_columns; col++)); do
+            local task_idx=$((col * system_rows_per_column + row))
+            local i=$task_idx
+            
+            # Skip if index is beyond system tasks
+            if [[ $i -ge $system_tasks ]]; then
+                continue
+            fi
+            
+            local prefix="  "
+            local checkbox="[ ]"
+            local name="${UTILITIES[$i]}"
+            local status_tag=""
+            
+            # Highlight current item
+            if [[ $i -eq $CURSOR ]]; then
+                prefix="${BOLD}${BLUE}▸ ${RESET}"
+            fi
+            
+            # Show selection state
+            if [[ ${SELECTED[$i]} -eq 1 ]]; then
+                checkbox="${GREEN}[✓]${RESET}"
+            fi
+            
+            # Show installed status
+            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
+                status_tag=" ${MAGENTA}(installed)${RESET}"
+            fi
+            
+            local item=""
+            if [[ $i -eq $CURSOR ]]; then
+                item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
+            else
+                item="${prefix}${checkbox} ${name}${status_tag}"
+            fi
+
+            # Add padding for columns using visible width (no ANSI codes)
+            if [[ $col -lt $((system_num_columns - 1)) ]]; then
+                local plain_status=""
+                [[ ${INSTALLED[$i]} -eq 1 ]] && plain_status=" (installed)"
+                # Visible chars: prefix (2), checkbox (3), space (1), name, status text
+                local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
+                local column_width=26
+                local padding=$((column_width - visible_len))
+                [[ $padding -lt 2 ]] && padding=2
+                item="${item}$(printf '%*s' $padding '')"
+            fi
+
+            line="${line}${item}"
+        done
+        echo "$line"
     done
     
     echo ""
-    echo "${DIM}────────────────────────────────────────────────────────────────${RESET}"
+    echo "${DIM}----------------------------------------------------------------${RESET}"
     echo ""
     echo "${BOLD}${CYAN}Utilities:${RESET}"
     
@@ -1767,7 +1932,7 @@ draw_menu() {
                 [[ ${INSTALLED[$i]} -eq 1 ]] && plain_status=" (installed)"
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local column_width=46
+                local column_width=32
                 local padding=$((column_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
@@ -1779,7 +1944,7 @@ draw_menu() {
     done
     
     echo ""
-    echo "────────────────────────────────────────────────────────────────"
+    echo "----------------------------------------------------------------"
     
     # Count selected items and categorize actions
     local install_count=0
@@ -1795,6 +1960,11 @@ draw_menu() {
     done
     
     echo "${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET}"
+    echo ""
+    echo "${YELLOW}Use ↑/↓/←/→ to navigate, SPACE to select/deselect, ENTER to continue, Q to quit${RESET}"
+    echo ""
+    echo "${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} = selected  ${RESET}${DIM}[ ]${RESET}${DIM} = not selected  ${MAGENTA}(installed)${RESET}${DIM} = already on system${RESET}"
+    echo "${DIM}Selecting an installed item queues uninstall; selecting a missing item queues install.${RESET}"
     echo ""
 }
 
@@ -1850,23 +2020,96 @@ run_selection_menu() {
     
     while true; do
         local key=$(read_key)
-        local system_tasks=3
-        local utilities_start=3
+        local system_tasks=4
+        local utilities_start=4
+        local system_rows_per_column=3
         
         case "$key" in
             UP)
-                if [[ $CURSOR -gt 0 ]]; then
-                    ((CURSOR--))
+                if [[ $CURSOR -lt $system_tasks ]]; then
+                    # In system tasks section
+                    local col=$((CURSOR / system_rows_per_column))
+                    local row=$((CURSOR % system_rows_per_column))
+                    
+                    if [[ $row -gt 0 ]]; then
+                        # Move up within same column
+                        ((CURSOR--))
+                    else
+                        # At top of column, move to bottom of previous column
+                        if [[ $col -gt 0 ]]; then
+                            ((col--))
+                            CURSOR=$((col * system_rows_per_column + system_rows_per_column - 1))
+                            [[ $CURSOR -ge $system_tasks ]] && CURSOR=$((system_tasks - 1))
+                        else
+                            # Wrap to last utility (rightmost column, bottom row)
+                            CURSOR=$((total - 1))
+                        fi
+                    fi
                 else
-                    CURSOR=$((total - 1))  # Wrap to bottom
+                    # In utilities section
+                    local util_idx=$((CURSOR - utilities_start))
+                    local col=$((util_idx / ROWS_PER_COLUMN))
+                    local row=$((util_idx % ROWS_PER_COLUMN))
+                    
+                    if [[ $row -gt 0 ]]; then
+                        # Move up within same column
+                        ((CURSOR--))
+                    else
+                        # At top of column, move to bottom of previous column
+                        if [[ $col -gt 0 ]]; then
+                            ((col--))
+                            local new_util_idx=$((col * ROWS_PER_COLUMN + ROWS_PER_COLUMN - 1))
+                            CURSOR=$((utilities_start + new_util_idx))
+                            [[ $CURSOR -ge $total ]] && CURSOR=$((total - 1))
+                        else
+                            # Wrap to last system task (rightmost column, bottom row)
+                            CURSOR=$((system_tasks - 1))
+                        fi
+                    fi
                 fi
                 redraw_menu
                 ;;
             DOWN)
-                if [[ $CURSOR -lt $((total - 1)) ]]; then
-                    ((CURSOR++))
+                if [[ $CURSOR -lt $system_tasks ]]; then
+                    # In system tasks section
+                    local col=$((CURSOR / system_rows_per_column))
+                    local row=$((CURSOR % system_rows_per_column))
+                    
+                    if [[ $row -lt $((system_rows_per_column - 1)) ]] && [[ $((CURSOR + 1)) -lt $system_tasks ]]; then
+                        # Move down within same column
+                        ((CURSOR++))
+                    else
+                        # At bottom of column, move to top of next column
+                        ((col++))
+                        local new_cursor=$((col * system_rows_per_column))
+                        if [[ $new_cursor -lt $system_tasks ]]; then
+                            CURSOR=$new_cursor
+                        else
+                            # Move to first utility
+                            CURSOR=$utilities_start
+                        fi
+                    fi
                 else
-                    CURSOR=0  # Wrap to top
+                    # In utilities section
+                    local util_idx=$((CURSOR - utilities_start))
+                    local col=$((util_idx / ROWS_PER_COLUMN))
+                    local row=$((util_idx % ROWS_PER_COLUMN))
+                    
+                    if [[ $row -lt $((ROWS_PER_COLUMN - 1)) ]] && [[ $((CURSOR + 1)) -lt $total ]]; then
+                        # Move down within same column
+                        ((CURSOR++))
+                    else
+                        # At bottom of column, move to top of next column
+                        ((col++))
+                        local new_util_idx=$((col * ROWS_PER_COLUMN))
+                        local new_cursor=$((utilities_start + new_util_idx))
+                        if [[ $new_cursor -lt $total ]]; then
+                            CURSOR=$new_cursor
+                        else
+                            # Wrap to first system task
+                            CURSOR=0
+                        fi
+                    fi
                 fi
                 redraw_menu
                 ;;
@@ -2100,12 +2343,6 @@ process_selected() {
 # ============================================================================
 
 main() {
-    # Check if running in interactive terminal
-    if [[ ! -t 0 ]]; then
-        echo "Error: This script must be run in an interactive terminal."
-        exit 1
-    fi
-    
     run_selection_menu
     process_selected
 }
