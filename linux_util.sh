@@ -1061,7 +1061,40 @@ install_nvidia_drivers() {
         debian)
             sudo apt-get update
             sudo apt-get install -y "nvidia-driver-${driver_version}"
-            ;;
+
+            # KDE Neon: install matching i386 NVIDIA driver libs for Steam compatibility
+            if [[ "$DISTRO_ID" == "neon" ]]; then
+                echo "Adding i386 architecture for NVIDIA driver libs (Steam compatibility)..."
+                log_info "Adding i386 architecture for NVIDIA driver libs (Steam compatibility)"
+                if sudo dpkg --add-architecture i386 2>&1 | tee /tmp/nvidia_i386_arch.log; then
+                    log_success "Added i386 architecture."
+                else
+                    log_error "Failed to add i386 architecture."
+                    cat /tmp/nvidia_i386_arch.log >> "$ERROR_LOG"
+                fi
+                rm -f /tmp/nvidia_i386_arch.log
+
+                echo "Updating apt package lists for i386..."
+                log_info "Updating apt package lists for i386"
+                if sudo apt update 2>&1 | tee /tmp/nvidia_i386_update.log; then
+                    log_success "apt update for i386 completed."
+                else
+                    log_error "apt update for i386 failed."
+                    cat /tmp/nvidia_i386_update.log >> "$ERROR_LOG"
+                fi
+                rm -f /tmp/nvidia_i386_update.log
+
+                echo "Installing libnvidia-gl-${driver_version}:i386 for Steam..."
+                log_info "Installing libnvidia-gl-${driver_version}:i386 for Steam compatibility"
+                if sudo apt install -y "libnvidia-gl-${driver_version}:i386" 2>&1 | tee /tmp/nvidia_i386_libs.log; then
+                    log_success "Installed libnvidia-gl-${driver_version}:i386."
+                else
+                    log_error "Failed to install libnvidia-gl-${driver_version}:i386."
+                    cat /tmp/nvidia_i386_libs.log >> "$ERROR_LOG"
+                fi
+                rm -f /tmp/nvidia_i386_libs.log
+            fi
+            ;
         fedora|rhel)
             case "$driver_version" in
                 latest)
@@ -1503,14 +1536,64 @@ install_devolutions_rdm() {
         debian)
             # Ubuntu/Debian repository setup
             echo "Setting up Cloudsmith repository for Remote Desktop Manager..."
-            curl -1sLf 'https://dl.cloudsmith.io/public/devolutions/rdm/setup.deb.sh' | sudo -E bash
-            
+
+            # KDE Neon reports DISTRO_ID="neon" which Cloudsmith's setup script does not
+            # recognise. Override distro/version/codename so the script selects the
+            # correct Ubuntu repository.
+            local _rdm_setup_tmp
+            _rdm_setup_tmp=$(mktemp)
+            if [[ "$DISTRO_ID" == "neon" ]]; then
+                echo "Detected KDE Neon - overriding distro to ubuntu for Cloudsmith repository setup..."
+                (
+                    export distro=ubuntu
+                    export version="${DISTRO_VERSION_ID}"
+                    export codename="${DISTRO_VERSION_CODENAME}"
+                    curl -1sLf 'https://dl.cloudsmith.io/public/devolutions/rdm/setup.deb.sh' | sudo -E bash
+                ) 2>&1 | tee "$_rdm_setup_tmp"
+            else
+                curl -1sLf 'https://dl.cloudsmith.io/public/devolutions/rdm/setup.deb.sh' | sudo -E bash \
+                    2>&1 | tee "$_rdm_setup_tmp"
+            fi
+            local _rdm_setup_exit=${PIPESTATUS[0]}
+            if [[ $_rdm_setup_exit -ne 0 ]]; then
+                log_error "Cloudsmith repository setup failed (exit code ${_rdm_setup_exit})"
+                init_error_log
+                echo "[CLOUDSMITH SETUP OUTPUT]" >> "$ERROR_LOG"
+                cat "$_rdm_setup_tmp" >> "$ERROR_LOG"
+                rm -f "$_rdm_setup_tmp"
+                return 1
+            fi
+            rm -f "$_rdm_setup_tmp"
+
             # Install required packages for repository management
             sudo apt-get install -y apt-transport-https 2>/dev/null || true
-            
-            # Update package lists and install Remote Desktop Manager
-            sudo apt-get update
-            sudo apt-get install -y remotedesktopmanager
+
+            # Update package lists - capture output so errors land in the error log
+            local _rdm_update_tmp
+            _rdm_update_tmp=$(mktemp)
+            sudo apt-get update 2>&1 | tee "$_rdm_update_tmp"
+            if grep -qE '^E:|^Err:' "$_rdm_update_tmp" 2>/dev/null; then
+                log_error "apt-get update encountered errors (see details below)"
+                init_error_log
+                echo "[APT UPDATE ERRORS]" >> "$ERROR_LOG"
+                grep -E '^E:|^Err:|^N:' "$_rdm_update_tmp" >> "$ERROR_LOG" || true
+            fi
+            rm -f "$_rdm_update_tmp"
+
+            # Install Remote Desktop Manager - capture output so failures land in the error log
+            local _rdm_install_tmp
+            _rdm_install_tmp=$(mktemp)
+            sudo apt-get install -y remotedesktopmanager 2>&1 | tee "$_rdm_install_tmp"
+            local _rdm_install_exit=${PIPESTATUS[0]}
+            if [[ $_rdm_install_exit -ne 0 ]]; then
+                log_error "apt-get install remotedesktopmanager failed (exit code ${_rdm_install_exit})"
+                init_error_log
+                echo "[APT INSTALL OUTPUT]" >> "$ERROR_LOG"
+                cat "$_rdm_install_tmp" >> "$ERROR_LOG"
+                rm -f "$_rdm_install_tmp"
+                return 1
+            fi
+            rm -f "$_rdm_install_tmp"
             ;;
         fedora|rhel)
             # Fedora/RHEL repository setup
@@ -2639,7 +2722,8 @@ process_selected() {
         
         local func="${UNINSTALL_FUNCS[$util]}"
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
-            if $func; then
+            init_error_log
+            if $func 2> >(tee -a "$ERROR_LOG" >&2); then
                 echo ""
                 echo "${GREEN}✓ Successfully uninstalled: $util${RESET}"
                 log_success "Uninstalled: $util"
@@ -2671,7 +2755,10 @@ process_selected() {
         
         local func="${INSTALL_FUNCS[$util]}"
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
-            if $func; then
+            # Ensure error log exists before tee appends to it, then pipe stderr
+            # to both the terminal and the error log so failures are always captured.
+            init_error_log
+            if $func 2> >(tee -a "$ERROR_LOG" >&2); then
                 echo ""
                 echo "${GREEN}✓ Successfully completed: $util${RESET}"
                 log_success "Installed: $util"
