@@ -1094,7 +1094,8 @@ install_nvidia_drivers() {
                 fi
                 rm -f /tmp/nvidia_i386_libs.log
             fi
-            ;
+            # End of debian/neon i386 install block
+        ;;
         fedora|rhel)
             case "$driver_version" in
                 latest)
