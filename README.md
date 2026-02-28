@@ -49,6 +49,77 @@ The menu dynamically detects which utilities are already installed and intellige
 - **Utility Management** - Install, update, or uninstall common applications
 - **Visual Indicators** - Clear display of installed status and pending actions
 - **Universal Package Managers** - Supports apt, dnf, yum, pacman, and zypper along with snap, flatpak, and AUR helpers
+- **Comprehensive Logging** - Automatic logging of all operations to timestamped log files with separate success and error tracking
+
+## Logging System
+
+The script automatically logs all operations with no configuration required. The `logs/` directory is created automatically on first run, and every execution generates detailed timestamped log files for both successful operations and errors.
+
+### Log Files
+
+Each time you run the script, it automatically creates timestamped log files in the `logs/` directory:
+
+- **Success Logs**: `logs/success_YYYYMMDD_HHMMSS.log` - Records successful operations, system info, installation progress, and execution summary
+- **Error Logs**: `logs/error_YYYYMMDD_HHMMSS.log` - Captures errors, warnings, failed operations, and troubleshooting information
+- **Latest Logs**: `logs/success_latest.log` and `logs/error_latest.log` - Symlinks automatically updated to point to the most recent logs
+
+All log files are created with timestamps in the format `YYYYMMDD_HHMMSS` (e.g., `success_20260227_143052.log`), making it easy to track when operations occurred.
+
+### Log Management
+
+The `manage_logs.sh` utility provides easy access to view, search, and maintain your log files. Make it executable first:
+
+```bash
+chmod +x manage_logs.sh
+```
+
+Then use any of these commands to manage your logs:
+
+```bash
+# View all log files
+./manage_logs.sh list
+
+# View latest logs
+./manage_logs.sh view latest
+
+# Search logs for specific text
+./manage_logs.sh search "Docker"
+
+# Show statistics
+./manage_logs.sh stats
+
+# Clean old logs (older than 30 days)
+./manage_logs.sh clean 30
+
+# Compress old logs
+./manage_logs.sh compress
+
+# Show help
+./manage_logs.sh help
+```
+
+### What Gets Logged
+
+The script automatically captures detailed information about every operation:
+
+- **System Information**: Distribution detected, package manager in use, architecture
+- **Pre-flight Checks**: DNS connectivity tests, repository availability
+- **Installation Progress**: Each utility/task being processed with real-time status
+- **Package Management**: All package installs, updates, and removals with full output
+- **Success Messages**: Confirmation of completed operations with timestamps
+- **Error Details**: Failed operations with error messages and exit codes
+- **Warnings**: Potential issues that don't stop execution but need attention
+- **Execution Summary**: Final count of successful and failed operations
+- **Timing Information**: When the script started and completed
+
+### Viewing Logs After Execution
+
+After running the script, logs are automatically saved and the script displays:
+```
+Log files saved to: /home/nick/Github/linux_util/logs
+```
+
+You can quickly view or manage logs using the included log management utility (see below).
 
 ## Supported Distributions
 
@@ -84,6 +155,8 @@ chmod +x linux_util.sh
 # Run the installer
 ./linux_util.sh
 ```
+
+**Note:** All operations are automatically logged to the `logs/` directory. You can review what happened at any time using the log management utility or by viewing the log files directly.
 
 ## Menu Controls
 

@@ -14,6 +14,123 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 # ============================================================================
+# LOGGING SETUP
+# ============================================================================
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_DIR="${SCRIPT_DIR}/logs"
+
+# Create log directory if it doesn't exist
+mkdir -p "$LOG_DIR"
+
+# Log file names with timestamp
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+SUCCESS_LOG="${LOG_DIR}/success_${TIMESTAMP}.log"
+ERROR_LOG="${LOG_DIR}/error_${TIMESTAMP}.log"
+
+# Also maintain latest logs (symlinks or copies)
+LATEST_SUCCESS_LOG="${LOG_DIR}/success_latest.log"
+LATEST_ERROR_LOG="${LOG_DIR}/error_latest.log"
+
+# Track if any errors have occurred
+ERROR_LOG_INITIALIZED=false
+
+# Initialize success log only
+{
+    echo "════════════════════════════════════════════════════════════════"
+    echo "Linux Utilities Installer - Execution Log"
+    echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "User: $USER"
+    echo "Hostname: $(hostname)"
+    echo "════════════════════════════════════════════════════════════════"
+    echo ""
+} > "$SUCCESS_LOG"
+
+# Create/update latest success log symlink
+ln -sf "$(basename "$SUCCESS_LOG")" "$LATEST_SUCCESS_LOG" 2>/dev/null || cp "$SUCCESS_LOG" "$LATEST_SUCCESS_LOG"
+
+# Function to initialize error log on first error
+init_error_log() {
+    if [[ "$ERROR_LOG_INITIALIZED" == "false" ]]; then
+        {
+            echo "════════════════════════════════════════════════════════════════"
+            echo "Linux Utilities Installer - Error Log"
+            echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "User: $USER"
+            echo "Hostname: $(hostname)"
+            echo "════════════════════════════════════════════════════════════════"
+            echo ""
+        } > "$ERROR_LOG"
+        ERROR_LOG_INITIALIZED=true
+        # Create/update latest error log symlink
+        ln -sf "$(basename "$ERROR_LOG")" "$LATEST_ERROR_LOG" 2>/dev/null || cp "$ERROR_LOG" "$LATEST_ERROR_LOG"
+    fi
+}
+
+# Logging functions
+log_success() {
+    local message="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[${timestamp}] [SUCCESS] ${message}" >> "$SUCCESS_LOG"
+}
+
+log_error() {
+    local message="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    init_error_log
+    echo "[${timestamp}] [ERROR] ${message}" | tee -a "$ERROR_LOG" >&2
+}
+
+log_warning() {
+    local message="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    init_error_log
+    echo "[${timestamp}] [WARNING] ${message}" | tee -a "$ERROR_LOG"
+}
+
+log_info() {
+    local message="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[${timestamp}] [INFO] ${message}" >> "$SUCCESS_LOG"
+}
+
+# Function to log command execution with error capture
+log_command() {
+    local description="$1"
+    shift
+    local cmd="$@"
+    
+    log_info "Executing: ${description}"
+    log_info "Command: ${cmd}"
+    
+    local output
+    local exit_code
+    
+    output=$("$@" 2>&1)
+    exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]]; then
+        log_success "${description} completed successfully"
+        if [[ -n "$output" ]]; then
+            echo "[OUTPUT] ${output}" >> "$SUCCESS_LOG"
+        fi
+    else
+        log_error "${description} failed with exit code ${exit_code}"
+        log_error "Command: ${cmd}"
+        if [[ -n "$output" ]]; then
+            init_error_log
+            echo "[ERROR OUTPUT] ${output}" >> "$ERROR_LOG"
+        fi
+    fi
+    
+    return $exit_code
+}
+
+# Trap errors and log them
+trap 'log_error "Script error at line $LINENO: Command \"$BASH_COMMAND\" failed with exit code $?"' ERR
+
+# ============================================================================
 # DISTRO DETECTION & PACKAGE MANAGER ABSTRACTION
 # ============================================================================
 
@@ -91,6 +208,7 @@ detect_distro() {
     esac
 
     echo "Detected: ${DISTRO_NAME} (family: ${DISTRO_FAMILY}, package manager: ${PKG_MGR})"
+    log_info "System detected: ${DISTRO_NAME} (family: ${DISTRO_FAMILY}, package manager: ${PKG_MGR})"
 }
 
 # --- Package Manager Wrappers ---
@@ -197,6 +315,88 @@ has_flatpak() {
 
 has_aur_helper() {
     command -v yay &>/dev/null || command -v paru &>/dev/null
+}
+
+# --- DNS Readiness Check ---
+
+check_dns_ready() {
+    local max_attempts=5
+    local attempt=1
+    local test_hosts=("raw.githubusercontent.com" "cloudsmith.io" "mirrors.rpmfusion.org")
+    
+    echo "Checking DNS resolution..."
+    log_info "Starting DNS resolution check for hosts: ${test_hosts[*]}"
+    
+    while [[ $attempt -le $max_attempts ]]; do
+        local all_resolved=true
+        
+        for host in "${test_hosts[@]}"; do
+            if ! host "$host" &>/dev/null && ! nslookup "$host" &>/dev/null; then
+                all_resolved=false
+                log_warning "DNS resolution failed for ${host} (attempt ${attempt}/${max_attempts})"
+                break
+            fi
+        done
+        
+        if $all_resolved; then
+            echo "✓ DNS resolution is working."
+            log_success "DNS resolution verified successfully"
+            return 0
+        fi
+        
+        if [[ $attempt -lt $max_attempts ]]; then
+            echo "⚠ DNS resolution not ready (attempt $attempt/$max_attempts). Waiting 2 seconds..."
+            sleep 2
+        fi
+        
+        ((attempt++))
+    done
+    
+    log_error "DNS resolution failed after ${max_attempts} attempts for hosts: ${test_hosts[*]}"
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ DNS RESOLUTION FAILURE"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "The system cannot resolve hostnames to IP addresses."
+    echo "This will cause all network-dependent installations to fail."
+    echo ""
+    echo "Common causes:"
+    echo "  • Network not fully initialized"
+    echo "  • systemd-resolved not running"
+    echo "  • No DNS servers configured"
+    echo "  • Firewall blocking DNS traffic"
+    echo ""
+    echo "Troubleshooting steps:"
+    echo "  1. Check DNS configuration:"
+    echo "     resolvectl status"
+    echo "     cat /etc/resolv.conf"
+    echo ""
+    echo "  2. Test DNS resolution manually:"
+    echo "     nslookup google.com"
+    echo "     host github.com"
+    echo ""
+    echo "  3. Restart systemd-resolved:"
+    echo "     sudo systemctl restart systemd-resolved"
+    echo ""
+    echo "  4. Check if network is fully up:"
+    echo "     ping -c 2 8.8.8.8"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    read -p "Do you want to continue anyway? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Operation cancelled."
+        log_info "User cancelled operation due to DNS failure"
+        return 1
+    fi
+    
+    echo "⚠ Continuing without DNS verification. Expect failures."
+    log_warning "User chose to continue despite DNS resolution failure"
+    return 0
 }
 
 aur_install() {
@@ -505,7 +705,7 @@ setup_install_docker() {
             local docker_repo
             [[ "$DISTRO_ID" == "fedora" ]] && docker_repo="https://download.docker.com/linux/fedora/docker-ce.repo" || docker_repo="https://download.docker.com/linux/centos/docker-ce.repo"
             
-            run_as_root "$PKG_MGR config-manager --add-repo ${docker_repo}"
+            run_as_root "curl -fsSLo /etc/yum.repos.d/docker-ce.repo ${docker_repo}"
             run_as_root "$PKG_MGR install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
             run_as_root "systemctl start docker"
             run_as_root "systemctl enable docker"
@@ -733,35 +933,178 @@ install_nvidia_drivers() {
     ensure_tools
 
     local driver_version=""
-    if [[ "$DISTRO_ID" == "ubuntu" ]]; then
-        command -v ubuntu-drivers &>/dev/null || sudo apt-get install -y ubuntu-drivers-common
-        echo "Available drivers (ubuntu-drivers list):"
-        ubuntu-drivers list || true
-    fi
+    local -a available_drivers=()
 
-    read -rp "Enter NVIDIA driver version to install (e.g., 535). Leave blank to cancel: " driver_version
-    if [[ -z "$driver_version" ]]; then
-        warn "No driver version provided. Skipping NVIDIA driver installation."
+    # Detect available NVIDIA drivers based on distribution
+    case "$DISTRO_FAMILY" in
+        debian)
+            echo "Detecting available NVIDIA drivers..."
+            pkg_refresh >/dev/null 2>&1
+            
+            if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+                command -v ubuntu-drivers &>/dev/null || sudo apt-get install -y ubuntu-drivers-common
+                mapfile -t available_drivers < <(ubuntu-drivers list 2>/dev/null | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
+            else
+                # Debian and derivatives
+                mapfile -t available_drivers < <(apt-cache search '^nvidia-driver-[0-9]+$' 2>/dev/null | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
+            fi
+            ;;
+        fedora|rhel)
+            echo "Detecting available NVIDIA drivers..."
+            
+            # Check if RPM Fusion (nonfree) is enabled
+            if ! dnf repolist 2>/dev/null | grep -qi 'rpmfusion.*nonfree'; then
+                echo ""
+                echo "[!] RPM Fusion (nonfree) repository is required for NVIDIA drivers on Fedora/RHEL."
+                echo ""
+                read -rp "Would you like to enable RPM Fusion repositories now? (y/N): " enable_rpmfusion
+                
+                if [[ "$enable_rpmfusion" =~ ^[Yy]$ ]]; then
+                    echo "Enabling RPM Fusion repositories..."
+                    if [[ "$DISTRO_ID" == "fedora" ]]; then
+                        sudo "$PKG_MGR" install -y \
+                            "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-${DISTRO_VERSION_ID}.noarch.rpm" \
+                            "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${DISTRO_VERSION_ID}.noarch.rpm"
+                    else
+                        # RHEL/CentOS
+                        sudo "$PKG_MGR" install -y \
+                            "https://download1.rpmfusion.org/free/el/rpmfusion-free-release-${DISTRO_VERSION_ID}.noarch.rpm" \
+                            "https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-${DISTRO_VERSION_ID}.noarch.rpm"
+                    fi
+                    pkg_refresh >/dev/null 2>&1
+                else
+                    warn "RPM Fusion is required for NVIDIA drivers. Installation cancelled."
+                    return 1
+                fi
+            fi
+            
+            pkg_refresh >/dev/null 2>&1
+            
+            # Check for available NVIDIA driver packages
+            # Main driver: akmod-nvidia (latest, recommended)
+            if $PKG_MGR list available akmod-nvidia &>/dev/null; then
+                available_drivers+=("latest")
+            fi
+            
+            # Legacy drivers
+            if $PKG_MGR list available xorg-x11-drv-nvidia-470xx &>/dev/null; then
+                available_drivers+=("470xx")
+            fi
+            
+            if $PKG_MGR list available xorg-x11-drv-nvidia-390xx &>/dev/null; then
+                available_drivers+=("390xx")
+            fi
+            
+            # Also check for any kmod-nvidia versioned packages
+            local kmod_versions
+            mapfile -t kmod_versions < <($PKG_MGR list available 'kmod-nvidia-*' 2>/dev/null | grep -oP 'kmod-nvidia-\K[0-9]+' | sort -rn | uniq)
+            available_drivers+=("${kmod_versions[@]}")
+            ;;
+        arch)
+            echo "Detecting available NVIDIA drivers..."
+            # Arch typically has nvidia (latest), nvidia-lts, nvidia-dkms
+            available_drivers=("latest" "dkms" "lts")
+            ;;
+        suse)
+            echo "Detecting available NVIDIA drivers..."
+            pkg_refresh >/dev/null 2>&1
+            
+            mapfile -t available_drivers < <(zypper search -s nvidia-driver 2>/dev/null | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
+            
+            # Check for G06/G05 packages (openSUSE naming)
+            if zypper search -s nvidia-computeG06 &>/dev/null; then
+                available_drivers+=("G06")
+            fi
+            if zypper search -s nvidia-computeG05 &>/dev/null; then
+                available_drivers+=("G05")
+            fi
+            ;;
+        *)
+            warn "NVIDIA driver detection not implemented for ${DISTRO_NAME}."
+            return 1
+            ;;
+    esac
+
+    # Display available drivers and let user select
+    if [[ ${#available_drivers[@]} -eq 0 ]]; then
+        warn "No NVIDIA drivers found in repositories. Please check your repository configuration."
         return 1
     fi
 
+    echo ""
+    echo "Available NVIDIA driver versions:"
+    echo "────────────────────────────────────────────────────────────────"
+    for i in "${!available_drivers[@]}"; do
+        echo "  $((i+1)). ${available_drivers[$i]}"
+    done
+    echo "  0. Cancel"
+    echo "────────────────────────────────────────────────────────────────"
+    
+    local choice
+    read -rp "Select driver version to install (1-${#available_drivers[@]}, or 0 to cancel): " choice
+    
+    if [[ "$choice" == "0" ]] || [[ -z "$choice" ]]; then
+        warn "Installation cancelled."
+        return 1
+    fi
+    
+    if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le ${#available_drivers[@]} ]]; then
+        driver_version="${available_drivers[$((choice-1))]}"
+        echo "Selected driver version: $driver_version"
+    else
+        warn "Invalid selection. Cancelling installation."
+        return 1
+    fi
+
+    # Install the selected driver
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt-get update
             sudo apt-get install -y "nvidia-driver-${driver_version}"
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y akmod-nvidia xorg-x11-drv-nvidia-cuda || sudo "$PKG_MGR" install -y "kmod-nvidia-${driver_version}"
+            case "$driver_version" in
+                latest)
+                    echo "Installing latest NVIDIA driver (akmod-nvidia)..."
+                    sudo "$PKG_MGR" install -y akmod-nvidia xorg-x11-drv-nvidia-cuda
+                    ;;
+                470xx)
+                    echo "Installing legacy NVIDIA 470 driver..."
+                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-470xx akmod-nvidia-470xx
+                    ;;
+                390xx)
+                    echo "Installing legacy NVIDIA 390 driver..."
+                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-390xx akmod-nvidia-390xx
+                    ;;
+                [0-9]*)
+                    echo "Installing NVIDIA driver version ${driver_version}..."
+                    sudo "$PKG_MGR" install -y "kmod-nvidia-${driver_version}"
+                    ;;
+                *)
+                    warn "Unknown driver version: ${driver_version}"
+                    return 1
+                    ;;
+            esac
             ;;
         arch)
-            sudo pacman -S --noconfirm nvidia nvidia-utils || sudo pacman -S --noconfirm nvidia-dkms
+            case "$driver_version" in
+                latest)
+                    sudo pacman -S --noconfirm nvidia nvidia-utils
+                    ;;
+                dkms)
+                    sudo pacman -S --noconfirm nvidia-dkms nvidia-utils
+                    ;;
+                lts)
+                    sudo pacman -S --noconfirm nvidia-lts nvidia-utils
+                    ;;
+            esac
             ;;
         suse)
-            sudo zypper install -y "nvidia-driver-${driver_version}" || sudo zypper install -y nvidia-computeG06
-            ;;
-        *)
-            warn "NVIDIA driver installation not implemented for ${DISTRO_NAME}."
-            return 1
+            if [[ "$driver_version" =~ ^G0[0-9]$ ]]; then
+                sudo zypper install -y "nvidia-compute${driver_version}"
+            else
+                sudo zypper install -y "nvidia-driver-${driver_version}"
+            fi
             ;;
     esac
 
@@ -926,7 +1269,7 @@ install_brave() {
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" install -y dnf-plugins-core 2>/dev/null || true
-            sudo "$PKG_MGR" config-manager --add-repo https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+            sudo curl -fsSLo /etc/yum.repos.d/brave-browser.repo https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
             sudo rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
             sudo "$PKG_MGR" install -y brave-browser
             ;;
@@ -1019,7 +1362,22 @@ install_joplin() {
         export XDG_CURRENT_DESKTOP="$desktop_env"
     fi
     
-    wget -O - https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
+    # Download and run installer script
+    local install_script
+    install_script=$(wget -qO- https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh) || {
+        echo "Error: Failed to download Joplin installer script."
+        return 1
+    }
+    
+    if [[ -z "$install_script" ]]; then
+        echo "Error: Downloaded installer script is empty."
+        return 1
+    fi
+    
+    echo "$install_script" | bash || {
+        echo "Error: Joplin installation script failed."
+        return 1
+    }
 }
 uninstall_joplin() {
     echo "Uninstalling Joplin Client..."
@@ -1081,6 +1439,11 @@ install_termius() {
             if has_snap; then
                 sudo snap install termius-app
             elif has_flatpak; then
+                # Ensure flathub remote is properly configured
+                if ! flatpak remotes | grep -q flathub; then
+                    echo "Adding flathub remote..."
+                    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+                fi
                 flatpak install -y flathub com.termius.Termius
             else
                 echo "Error: snap or flatpak is required to install Termius on ${DISTRO_NAME}."
@@ -1131,7 +1494,7 @@ UNINSTALL_FUNCS["Devolutions Remote Desktop Manager"]="uninstall_devolutions_rdm
 UPDATE_FUNCS["Devolutions Remote Desktop Manager"]="update_devolutions_rdm"
 
 check_devolutions_rdm() {
-    command -v remotedesktopmanager &>/dev/null || pkg_check_installed remotedesktopmanager || pkg_check_installed remote-desktop-manager
+    command -v remotedesktopmanager &>/dev/null || pkg_check_installed RemoteDesktopManager || pkg_check_installed remotedesktopmanager || pkg_check_installed remote-desktop-manager
 }
 install_devolutions_rdm() {
     echo "Installing Devolutions Remote Desktop Manager..."
@@ -1165,7 +1528,7 @@ install_devolutions_rdm() {
             
             # Update repository cache and install
             sudo "$PKG_MGR" makecache -y
-            sudo "$PKG_MGR" install -y remotedesktopmanager
+            sudo "$PKG_MGR" install -y RemoteDesktopManager
             ;;
         arch)
             # Arch-based distributions using AUR
@@ -1212,7 +1575,7 @@ uninstall_devolutions_rdm() {
     echo "Uninstalling Devolutions Remote Desktop Manager..."
     case "$DISTRO_FAMILY" in
         debian|fedora|rhel)
-            pkg_remove remotedesktopmanager 2>/dev/null || pkg_remove remote-desktop-manager 2>/dev/null || true
+            pkg_remove RemoteDesktopManager 2>/dev/null || pkg_remove remotedesktopmanager 2>/dev/null || pkg_remove remote-desktop-manager 2>/dev/null || true
             # Clean up repository configuration for Debian
             if [[ "$DISTRO_FAMILY" == "debian" ]]; then
                 sudo rm -f /etc/apt/sources.list.d/devolutions-rdm.list
@@ -1244,7 +1607,7 @@ update_devolutions_rdm() {
             sudo apt install --only-upgrade -y remotedesktopmanager
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y remotedesktopmanager
+            sudo "$PKG_MGR" upgrade -y RemoteDesktopManager
             ;;
         arch)
             if has_aur_helper; then
@@ -1361,7 +1724,10 @@ install_steam() {
             
             # Install steam-installer (Debian wiki recommended method)
             echo "Installing steam-installer package..."
-            if sudo apt install -y steam-installer 2>&1 | tee /tmp/steam-install.log; then
+            local install_result=0
+            sudo apt install -y steam-installer 2>&1 | tee /tmp/steam-install.log || install_result=$?
+            
+            if [[ $install_result -eq 0 ]]; then
                 # Install graphics libraries for Intel/AMD/NVIDIA GPUs
                 echo "Installing graphics libraries for Steam (Vulkan, Mesa)..."
                 sudo apt install -y mesa-vulkan-drivers libglx-mesa0:i386 \
@@ -1397,13 +1763,19 @@ install_steam() {
         fedora)
             if ! rpm -q rpmfusion-nonfree-release &>/dev/null; then
                 echo "Enabling RPM Fusion repositories (required for Steam)..."
-                sudo "$PKG_MGR" install -y \
+                if ! sudo "$PKG_MGR" install -y \
                     "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
-                    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
+                    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"; then
+                    echo "Error: Failed to enable RPM Fusion repositories."
+                    return 1
+                fi
                 sudo "$PKG_MGR" makecache
             fi
             echo "Installing Steam from RPM Fusion..."
-            sudo "$PKG_MGR" install -y steam
+            if ! sudo "$PKG_MGR" install -y steam; then
+                echo "Error: Failed to install Steam."
+                return 1
+            fi
             
             # Install graphics libraries for better compatibility
             echo "Installing graphics libraries (Vulkan, Mesa)..."
@@ -1426,7 +1798,10 @@ install_steam() {
                 sudo pacman -Sy
             fi
             echo "Installing Steam..."
-            sudo pacman -S --noconfirm steam
+            if ! sudo pacman -S --noconfirm steam; then
+                echo "Error: Failed to install Steam."
+                return 1
+            fi
             
             # Install 32-bit graphics libraries for better compatibility
             echo "Installing 32-bit graphics libraries (Vulkan, Mesa)..."
@@ -1435,7 +1810,10 @@ install_steam() {
             ;;
         suse)
             echo "Installing Steam..."
-            sudo zypper install -y steam
+            if ! sudo zypper install -y steam; then
+                echo "Error: Failed to install Steam."
+                return 1
+            fi
             
             # Install graphics libraries for better compatibility
             echo "Installing graphics libraries (Vulkan, Mesa)..."
@@ -1598,15 +1976,7 @@ install_syncthing() {
             echo "Access the web GUI at: http://127.0.0.1:8384"
             ;;
         fedora|rhel)
-            # Add the Syncthing repository
-            sudo tee /etc/yum.repos.d/syncthing.repo > /dev/null <<EOF
-[syncthing]
-name=Syncthing
-baseurl=https://yum.syncthing.net/syncthing/stable/\$basearch/
-gpgkey=https://syncthing.net/release-key.gpg
-enabled=1
-gpgcheck=1
-EOF
+            # Install from official Fedora repos (Syncthing is included by default)
             sudo "$PKG_MGR" install -y syncthing
             
             # Enable and start the user service
@@ -2239,6 +2609,14 @@ process_selected() {
     read -p "Press ENTER to continue or Ctrl+C to cancel..."
     echo ""
     
+    # Check DNS readiness before proceeding
+    if [[ ${#to_install[@]} -gt 0 ]]; then
+        if ! check_dns_ready; then
+            return 1
+        fi
+        echo ""
+    fi
+    
     # Update package lists first
     echo "${CYAN}Updating package lists...${RESET}"
     pkg_refresh
@@ -2257,20 +2635,25 @@ process_selected() {
         echo "${BOLD}${RED}────────────────────────────────────────────────────────────────${RESET}"
         echo ""
         
+        log_info "Starting uninstallation: $util"
+        
         local func="${UNINSTALL_FUNCS[$util]}"
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
             if $func; then
                 echo ""
                 echo "${GREEN}✓ Successfully uninstalled: $util${RESET}"
+                log_success "Uninstalled: $util"
                 ((success_count++))
             else
                 echo ""
                 echo "${RED}✗ Failed to uninstall: $util${RESET}"
+                log_error "Failed to uninstall: $util"
                 ((fail_count++))
                 failed_utils+=("$util (uninstall)")
             fi
         else
             echo "${RED}✗ No uninstall function found for: $util${RESET}"
+            log_error "No uninstall function found for: $util"
             ((fail_count++))
             failed_utils+=("$util (uninstall)")
         fi
@@ -2284,20 +2667,25 @@ process_selected() {
         echo "${BOLD}${GREEN}────────────────────────────────────────────────────────────────${RESET}"
         echo ""
         
+        log_info "Starting installation: $util"
+        
         local func="${INSTALL_FUNCS[$util]}"
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
             if $func; then
                 echo ""
                 echo "${GREEN}✓ Successfully completed: $util${RESET}"
+                log_success "Installed: $util"
                 ((success_count++))
             else
                 echo ""
                 echo "${RED}✗ Failed: $util${RESET}"
+                log_error "Failed to install: $util"
                 ((fail_count++))
                 failed_utils+=("$util (install)")
             fi
         else
             echo "${RED}✗ No installation function found for: $util${RESET}"
+            log_error "No installation function found for: $util"
             ((fail_count++))
             failed_utils+=("$util (install)")
         fi
@@ -2311,14 +2699,33 @@ process_selected() {
     echo ""
     echo "Summary:"
     echo "  ${GREEN}✓ Successful: ${success_count}${RESET}"
+    
+    # Log execution summary
+    log_info "════════════════════════════════════════════════════════════════"
+    log_info "Execution Summary"
+    log_info "════════════════════════════════════════════════════════════════"
+    log_info "Successful operations: ${success_count}"
+    log_info "Failed operations: ${fail_count}"
+    
     if [[ $fail_count -gt 0 ]]; then
         echo "  ${RED}✗ Failed: ${fail_count}${RESET}"
         echo ""
         echo "Failed operations:"
         for util in "${failed_utils[@]}"; do
             echo "    ${RED}- $util${RESET}"
+            log_error "Operation failed: $util"
         done
     fi
+    echo ""
+    
+    log_info "Script execution completed at: $(date '+%Y-%m-%d %H:%M:%S')"
+    log_info "Log files saved to: ${LOG_DIR}"
+    log_info "  - Success log: $(basename "$SUCCESS_LOG")"
+    if [[ "$ERROR_LOG_INITIALIZED" == "true" ]]; then
+        log_info "  - Error log: $(basename "$ERROR_LOG")"
+    fi
+    
+    echo "Log files saved to: ${LOG_DIR}"
     echo ""
     
     # Offer reboot
