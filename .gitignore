@@ -1,6 +1,6 @@
-# Log files
-logs/
-*.log
+# Log files (but allow sample logs)
+logs/*
+!logs/sample_*.log
 
 # Backup files
 *.bak

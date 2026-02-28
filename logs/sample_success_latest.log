@@ -1,0 +1,28 @@
+════════════════════════════════════════════════════════════════
+Linux Utilities Installer - Execution Log
+Started: 2026-02-27 20:22:29
+User: user
+Hostname: localhost
+════════════════════════════════════════════════════════════════
+
+[2026-02-27 20:22:29] [INFO] System detected: Fedora Linux (family: fedora, package manager: dnf)
+[2026-02-27 20:22:43] [INFO] Starting DNS resolution check for hosts: raw.githubusercontent.com cloudsmith.io mirrors.rpmfusion.org
+[2026-02-27 20:22:44] [SUCCESS] DNS resolution verified successfully
+[2026-02-27 20:22:45] [INFO] Starting installation: Docker
+[2026-02-27 20:22:52] [SUCCESS] Installed: Docker
+[2026-02-27 20:22:52] [INFO] Starting installation: Bitwarden Client
+[2026-02-27 20:23:00] [SUCCESS] Installed: Bitwarden Client
+[2026-02-27 20:23:00] [INFO] Starting installation: Joplin Client
+[2026-02-27 20:23:04] [SUCCESS] Installed: Joplin Client
+[2026-02-27 20:23:04] [INFO] Starting installation: Termius SSH Client
+[2026-02-27 20:23:12] [SUCCESS] Installed: Termius SSH Client
+[2026-02-27 20:23:12] [INFO] Starting installation: Devolutions Remote Desktop Manager
+[2026-02-27 20:23:23] [SUCCESS] Installed: Devolutions Remote Desktop Manager
+[2026-02-27 20:23:23] [INFO] ════════════════════════════════════════════════════════════════
+[2026-02-27 20:23:23] [INFO] Execution Summary
+[2026-02-27 20:23:23] [INFO] ════════════════════════════════════════════════════════════════
+[2026-02-27 20:23:23] [INFO] Successful operations: 5
+[2026-02-27 20:23:23] [INFO] Failed operations: 0
+[2026-02-27 20:23:23] [INFO] Script execution completed at: 2026-02-27 20:23:23
+[2026-02-27 20:23:23] [INFO] Log files saved to: /home/user/Github/linux_util/logs
+[2026-02-27 20:23:23] [INFO]   - Success log: success_20260227_202229.log
