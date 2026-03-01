@@ -2204,7 +2204,7 @@ draw_menu() {
     else
         remote_commit="unknown"
     fi
-    echo "  Script commit: ${BOLD}${local_commit}${RESET}  |  Latest commit: ${BOLD}${remote_commit}${RESET}"
+    echo "       Script commit: ${BOLD}${local_commit}${RESET}  |  Latest commit: ${BOLD}${remote_commit}${RESET}"
     if [[ "$local_commit" != "unknown" && "$remote_commit" != "unknown" && "$local_commit" != "$remote_commit" ]]; then
         echo "  ${BOLD}${YELLOW}Script out of date, please update.${RESET}"
     fi
