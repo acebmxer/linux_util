@@ -33,6 +33,10 @@ ERROR_LOG="${LOG_DIR}/error_${TIMESTAMP}.log"
 LATEST_SUCCESS_LOG="${LOG_DIR}/success_latest.log"
 LATEST_ERROR_LOG="${LOG_DIR}/error_latest.log"
 
+# Config file that persists the NVIDIA driver version chosen at install time
+# (used by other installers, e.g. Steam, to install matching 32-bit libraries)
+NVIDIA_VERSION_FILE="${HOME}/.config/linux_util/nvidia_driver_version"
+
 # Track if any errors have occurred
 ERROR_LOG_INITIALIZED=false
 
@@ -928,6 +932,113 @@ install_nvidia_container_toolkit() {
     esac
 }
 
+# --- NVIDIA i386 / 32-bit library helpers ---
+
+# Save the selected NVIDIA driver version to a persistent config file so that
+# other installers (e.g. Steam) can reference it later.
+save_nvidia_driver_version() {
+    local version="$1"
+    mkdir -p "$(dirname "$NVIDIA_VERSION_FILE")"
+    echo "$version" > "$NVIDIA_VERSION_FILE"
+}
+
+# Return the saved NVIDIA driver version, falling back to package detection.
+get_nvidia_installed_version() {
+    if [[ -f "$NVIDIA_VERSION_FILE" ]]; then
+        cat "$NVIDIA_VERSION_FILE"
+        return 0
+    fi
+    # Fallback: detect from installed packages
+    case "$DISTRO_FAMILY" in
+        debian)
+            dpkg -l 'nvidia-driver-*' 2>/dev/null | grep '^ii' | \
+                grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | head -1
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+# Return 0 if the matching NVIDIA 32-bit libraries are already installed.
+check_nvidia_i386_libs() {
+    local driver_version
+    driver_version=$(get_nvidia_installed_version)
+    [[ -z "$driver_version" ]] && return 1
+
+    case "$DISTRO_FAMILY" in
+        debian)
+            dpkg -l "libnvidia-gl-${driver_version}:i386" 2>/dev/null | grep -q '^ii'
+            ;;
+        fedora|rhel)
+            rpm -q nvidia-driver-libs.i686 &>/dev/null || \
+                rpm -q xorg-x11-drv-nvidia-470xx-libs.i686 &>/dev/null || \
+                rpm -q xorg-x11-drv-nvidia-390xx-libs.i686 &>/dev/null
+            ;;
+        arch)
+            pacman -Qi lib32-nvidia-utils &>/dev/null
+            ;;
+        suse)
+            rpm -q nvidia-32bit &>/dev/null
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Install the NVIDIA 32-bit libraries that match the installed driver version.
+# An explicit version can be passed as $1; otherwise the saved version is used.
+install_nvidia_i386_libs() {
+    local driver_version="${1:-}"
+    if [[ -z "$driver_version" ]]; then
+        driver_version=$(get_nvidia_installed_version)
+    fi
+
+    if [[ -z "$driver_version" ]]; then
+        warn "Cannot determine NVIDIA driver version for 32-bit library installation."
+        return 1
+    fi
+
+    echo "Installing NVIDIA 32-bit libraries (version ${driver_version})..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo dpkg --add-architecture i386
+            sudo apt update
+            sudo apt install -y "libnvidia-gl-${driver_version}:i386"
+            ;;
+        fedora|rhel)
+            case "$driver_version" in
+                470xx)
+                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-470xx-libs.i686
+                    ;;
+                390xx)
+                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-390xx-libs.i686
+                    ;;
+                *)
+                    sudo "$PKG_MGR" install -y nvidia-driver-libs.i686
+                    ;;
+            esac
+            ;;
+        arch)
+            sudo pacman -S --noconfirm lib32-nvidia-utils
+            ;;
+        suse)
+            if [[ "$driver_version" =~ ^G0[0-9]$ ]]; then
+                sudo zypper install -y "nvidia-${driver_version}-32bit" 2>/dev/null || \
+                    sudo zypper install -y nvidia-32bit 2>/dev/null || true
+            else
+                sudo zypper install -y "libnvidia-gl${driver_version}-32bit" 2>/dev/null || \
+                    sudo zypper install -y nvidia-32bit 2>/dev/null || true
+            fi
+            ;;
+        *)
+            warn "NVIDIA 32-bit library installation not implemented for ${DISTRO_NAME}."
+            return 1
+            ;;
+    esac
+}
+
 install_nvidia_drivers() {
     echo "Installing NVIDIA drivers..."
     ensure_tools
@@ -1051,6 +1162,8 @@ install_nvidia_drivers() {
     if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le ${#available_drivers[@]} ]]; then
         driver_version="${available_drivers[$((choice-1))]}"
         echo "Selected driver version: $driver_version"
+        # Persist the chosen version so other installers (e.g. Steam) can reference it
+        save_nvidia_driver_version "$driver_version"
     else
         warn "Invalid selection. Cancelling installation."
         return 1
@@ -1107,6 +1220,9 @@ install_nvidia_drivers() {
             fi
             ;;
     esac
+
+    # Install matching 32-bit libraries (required by Steam and other 32-bit apps)
+    install_nvidia_i386_libs "$driver_version"
 
     install_nvtop_package
 
@@ -1710,6 +1826,18 @@ detect_debian_repo_mix() {
 }
 install_steam() {
     echo "Installing Steam..."
+
+    # Steam requires NVIDIA 32-bit GL libraries to launch on NVIDIA systems.
+    # Check whether they are present and install them if not.
+    if check_nvidia_drivers; then
+        if check_nvidia_i386_libs; then
+            echo "NVIDIA 32-bit libraries already installed."
+        else
+            echo "NVIDIA drivers detected. Installing required 32-bit libraries for Steam..."
+            install_nvidia_i386_libs || warn "Failed to install NVIDIA 32-bit libraries. Steam may not function correctly."
+        fi
+    fi
+
     case "$DISTRO_FAMILY" in
         debian)
             # Detect mixed repository issues first
