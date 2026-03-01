@@ -2196,9 +2196,14 @@ draw_menu() {
     echo ""
 
     # Display commit version info
-    local local_commit remote_commit
+    local local_commit remote_commit_full remote_commit
     local_commit=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    remote_commit=$(git -C "$SCRIPT_DIR" rev-parse --short origin/main 2>/dev/null || echo "unknown")
+    remote_commit_full=$(git -C "$SCRIPT_DIR" ls-remote origin HEAD 2>/dev/null | awk '{print $1}')
+    if [[ -n "$remote_commit_full" ]]; then
+        remote_commit="${remote_commit_full:0:7}"
+    else
+        remote_commit="unknown"
+    fi
     echo "  Script commit: ${BOLD}${local_commit}${RESET}  |  Latest commit: ${BOLD}${remote_commit}${RESET}"
     if [[ "$local_commit" != "unknown" && "$remote_commit" != "unknown" && "$local_commit" != "$remote_commit" ]]; then
         echo "  ${BOLD}${YELLOW}Script out of date, please update.${RESET}"
