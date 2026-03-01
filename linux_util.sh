@@ -2562,8 +2562,10 @@ run_selection_menu() {
 
 process_selected() {
     local total=${#UTILITIES[@]}
+    local system_tasks=4  # First 4 entries are System Tasks
     declare -a to_install
     declare -a to_uninstall
+    local needs_reboot=false
     
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do
@@ -2573,6 +2575,10 @@ process_selected() {
                 to_uninstall+=("$util")
             else
                 to_install+=("$util")
+            fi
+            # Reboot required for System Tasks, Docker, and NVIDIA Drivers
+            if [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]] || [[ "$util" == "NVIDIA Drivers" ]]; then
+                needs_reboot=true
             fi
         fi
     done
@@ -2728,8 +2734,8 @@ process_selected() {
     echo "Log files saved to: ${LOG_DIR}"
     echo ""
     
-    # Offer reboot
-    if [[ ${#to_install[@]} -gt 0 ]] || [[ ${#to_uninstall[@]} -gt 0 ]]; then
+    # Offer reboot (only for System Tasks, Docker, and NVIDIA Drivers)
+    if [[ "$needs_reboot" == "true" ]]; then
         read -n 1 -rp "Reboot now? (y/N) " REBOOT_CHOICE
         echo
         REBOOT_CHOICE=${REBOOT_CHOICE:-N}
