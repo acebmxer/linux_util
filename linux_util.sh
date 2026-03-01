@@ -2194,7 +2194,17 @@ draw_menu() {
     echo "${BOLD}${CYAN}║   Linux System Setup & Utilities - Select Programs/Tasks     ║${RESET}"
     echo "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════╝${RESET}"
     echo ""
-    
+
+    # Display commit version info
+    local local_commit remote_commit
+    local_commit=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    remote_commit=$(git -C "$SCRIPT_DIR" rev-parse --short origin/main 2>/dev/null || echo "unknown")
+    echo "  Script commit: ${BOLD}${local_commit}${RESET}  |  Latest commit: ${BOLD}${remote_commit}${RESET}"
+    if [[ "$local_commit" != "unknown" && "$remote_commit" != "unknown" && "$local_commit" != "$remote_commit" ]]; then
+        echo "  ${BOLD}${YELLOW}Script out of date, please update.${RESET}"
+    fi
+    echo ""
+
     # Display System Tasks section
     echo "${BOLD}${CYAN}System Tasks:${RESET}"
     for ((row=0; row<system_rows_per_column; row++)); do
