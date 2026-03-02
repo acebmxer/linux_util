@@ -498,11 +498,46 @@ setup_full_update_bare_metal() {
         run_as_root "apt-get update && apt-get install -y --no-install-recommends landscape-client" || warn "Failed to install landscape-client"
     fi
     
+    # Backup GNOME keyring before upgrade to prevent credentials being wiped
+    # if gnome-keyring or libsecret is upgraded and restarts the daemon mid-session.
+    local keyring_dir="${HOME}/.local/share/keyrings"
+    local keyring_backup=""
+    if [[ -d "$keyring_dir" ]] && [[ -n "$(ls -A "$keyring_dir" 2>/dev/null)" ]]; then
+        keyring_backup=$(mktemp -d)
+        cp -a "$keyring_dir/." "$keyring_backup/"
+        info "Keyring backed up to ${keyring_backup}"
+    fi
+
     # Full system upgrade
     pkg_full_upgrade
     pkg_autoremove
     pkg_clean
-    
+
+    # Restore keyring if the upgrade caused any keyring files to change
+    if [[ -n "$keyring_backup" ]]; then
+        local restored=false
+        for backed_up_file in "$keyring_backup"/*; do
+            local filename
+            filename=$(basename "$backed_up_file")
+            local live_file="${keyring_dir}/${filename}"
+            # Restore if the live file is missing or smaller than the backup
+            # (upgrade reset it to an empty/new keyring)
+            if [[ ! -f "$live_file" ]] || \
+               [[ $(stat -c%s "$backed_up_file") -gt $(stat -c%s "$live_file") ]]; then
+                mkdir -p "$keyring_dir"
+                cp -a "$backed_up_file" "$live_file"
+                restored=true
+                info "Restored keyring file: ${filename}"
+            fi
+        done
+        if [[ "$restored" == "true" ]]; then
+            info "Keyring restored. Restarting gnome-keyring daemon..."
+            pkill -u "$USER" gnome-keyring-daemon 2>/dev/null || true
+            sleep 1
+        fi
+        rm -rf "$keyring_backup"
+    fi
+
     info "System has been fully updated and upgraded."
     return 0
 }
