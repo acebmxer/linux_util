@@ -721,18 +721,6 @@ CHECK_FUNCS["Full System Upgrade/Update"]="check_always_false"
 UNINSTALL_FUNCS["Full System Upgrade/Update"]="noop_function"
 UPDATE_FUNCS["Full System Upgrade/Update"]="setup_full_update_bare_metal"
 
-UTILITIES+=("XEN Guest Utilities")
-INSTALL_FUNCS["XEN Guest Utilities"]="setup_xen_guest_utilities"
-CHECK_FUNCS["XEN Guest Utilities"]="check_always_false"
-UNINSTALL_FUNCS["XEN Guest Utilities"]="noop_function"
-UPDATE_FUNCS["XEN Guest Utilities"]="setup_xen_guest_utilities"
-
-UTILITIES+=("System Updates")
-INSTALL_FUNCS["System Updates"]="setup_system_updates"
-CHECK_FUNCS["System Updates"]="check_always_false"
-UNINSTALL_FUNCS["System Updates"]="noop_function"
-UPDATE_FUNCS["System Updates"]="setup_system_updates"
-
 UTILITIES+=("KDE Desktop Environment")
 INSTALL_FUNCS["KDE Desktop Environment"]="install_kde"
 CHECK_FUNCS["KDE Desktop Environment"]="check_kde"
@@ -744,6 +732,18 @@ INSTALL_FUNCS["NVIDIA Drivers"]="install_nvidia_drivers"
 CHECK_FUNCS["NVIDIA Drivers"]="check_nvidia_drivers"
 UNINSTALL_FUNCS["NVIDIA Drivers"]="uninstall_nvidia_drivers"
 UPDATE_FUNCS["NVIDIA Drivers"]="update_nvidia_drivers"
+
+UTILITIES+=("System Updates")
+INSTALL_FUNCS["System Updates"]="setup_system_updates"
+CHECK_FUNCS["System Updates"]="check_always_false"
+UNINSTALL_FUNCS["System Updates"]="noop_function"
+UPDATE_FUNCS["System Updates"]="setup_system_updates"
+
+UTILITIES+=("XEN Guest Utilities")
+INSTALL_FUNCS["XEN Guest Utilities"]="setup_xen_guest_utilities"
+CHECK_FUNCS["XEN Guest Utilities"]="check_always_false"
+UNINSTALL_FUNCS["XEN Guest Utilities"]="noop_function"
+UPDATE_FUNCS["XEN Guest Utilities"]="setup_xen_guest_utilities"
 
 # Helper functions for system setup tasks
 check_always_false() { return 1; }
@@ -803,6 +803,38 @@ update_kde() {
 }
 
 # --- Installable Utilities ---
+# NOTE: Utilities are sorted A-Z by display name.
+# When adding a new utility, insert its registration block and its
+# implementation functions in the correct alphabetical position to
+# maintain the sorted order in the menu.
+
+# Bitwarden Client
+UTILITIES+=("Bitwarden Client")
+INSTALL_FUNCS["Bitwarden Client"]="install_bitwarden"
+CHECK_FUNCS["Bitwarden Client"]="check_bitwarden"
+UNINSTALL_FUNCS["Bitwarden Client"]="uninstall_bitwarden"
+UPDATE_FUNCS["Bitwarden Client"]="update_bitwarden"
+
+# Brave Browser
+UTILITIES+=("Brave Browser")
+INSTALL_FUNCS["Brave Browser"]="install_brave"
+CHECK_FUNCS["Brave Browser"]="check_brave"
+UNINSTALL_FUNCS["Brave Browser"]="uninstall_brave"
+UPDATE_FUNCS["Brave Browser"]="update_brave"
+
+# Devolutions RDM
+UTILITIES+=("Devolutions RDM")
+INSTALL_FUNCS["Devolutions RDM"]="install_devolutions_rdm"
+CHECK_FUNCS["Devolutions RDM"]="check_devolutions_rdm"
+UNINSTALL_FUNCS["Devolutions RDM"]="uninstall_devolutions_rdm"
+UPDATE_FUNCS["Devolutions RDM"]="update_devolutions_rdm"
+
+# Docker
+UTILITIES+=("Docker")
+INSTALL_FUNCS["Docker"]="setup_install_docker"
+CHECK_FUNCS["Docker"]="check_docker"
+UNINSTALL_FUNCS["Docker"]="uninstall_docker"
+UPDATE_FUNCS["Docker"]="update_docker"
 
 # Dotfiles
 UTILITIES+=("Dotfiles")
@@ -815,12 +847,54 @@ check_dotfiles() {
     [[ -d ~/dotfiles ]] && [[ -f ~/.zshrc ]]
 }
 
-# Docker
-UTILITIES+=("Docker")
-INSTALL_FUNCS["Docker"]="setup_install_docker"
-CHECK_FUNCS["Docker"]="check_docker"
-UNINSTALL_FUNCS["Docker"]="uninstall_docker"
-UPDATE_FUNCS["Docker"]="update_docker"
+# Joplin Client
+UTILITIES+=("Joplin Client")
+INSTALL_FUNCS["Joplin Client"]="install_joplin"
+CHECK_FUNCS["Joplin Client"]="check_joplin"
+UNINSTALL_FUNCS["Joplin Client"]="uninstall_joplin"
+UPDATE_FUNCS["Joplin Client"]="update_joplin"
+
+# OpenSSH Server
+UTILITIES+=("OpenSSH Server")
+INSTALL_FUNCS["OpenSSH Server"]="install_openssh_server"
+CHECK_FUNCS["OpenSSH Server"]="check_openssh_server"
+UNINSTALL_FUNCS["OpenSSH Server"]="uninstall_openssh_server"
+UPDATE_FUNCS["OpenSSH Server"]="update_openssh_server"
+
+# Steam App
+UTILITIES+=("Steam App")
+INSTALL_FUNCS["Steam App"]="install_steam"
+CHECK_FUNCS["Steam App"]="check_steam"
+UNINSTALL_FUNCS["Steam App"]="uninstall_steam"
+UPDATE_FUNCS["Steam App"]="update_steam"
+
+# Syncthing
+UTILITIES+=("Syncthing")
+INSTALL_FUNCS["Syncthing"]="install_syncthing"
+CHECK_FUNCS["Syncthing"]="check_syncthing"
+UNINSTALL_FUNCS["Syncthing"]="uninstall_syncthing"
+UPDATE_FUNCS["Syncthing"]="update_syncthing"
+
+# Termius SSH Client
+UTILITIES+=("Termius SSH Client")
+INSTALL_FUNCS["Termius SSH Client"]="install_termius"
+CHECK_FUNCS["Termius SSH Client"]="check_termius"
+UNINSTALL_FUNCS["Termius SSH Client"]="uninstall_termius"
+UPDATE_FUNCS["Termius SSH Client"]="update_termius"
+
+# Timeshift
+UTILITIES+=("Timeshift")
+INSTALL_FUNCS["Timeshift"]="install_timeshift"
+CHECK_FUNCS["Timeshift"]="check_timeshift"
+UNINSTALL_FUNCS["Timeshift"]="uninstall_timeshift"
+UPDATE_FUNCS["Timeshift"]="update_timeshift"
+
+# Visual Studio Code
+UTILITIES+=("Visual Studio Code")
+INSTALL_FUNCS["Visual Studio Code"]="install_vscode"
+CHECK_FUNCS["Visual Studio Code"]="check_vscode"
+UNINSTALL_FUNCS["Visual Studio Code"]="uninstall_vscode"
+UPDATE_FUNCS["Visual Studio Code"]="update_vscode"
 
 # --- NVIDIA Drivers & Toolkit ---
 check_nvidia_drivers() {
@@ -1233,11 +1307,6 @@ update_nvidia_drivers() {
 }
 
 # --- Bitwarden Client ---
-UTILITIES+=("Bitwarden Client")
-INSTALL_FUNCS["Bitwarden Client"]="install_bitwarden"
-CHECK_FUNCS["Bitwarden Client"]="check_bitwarden"
-UNINSTALL_FUNCS["Bitwarden Client"]="uninstall_bitwarden"
-UPDATE_FUNCS["Bitwarden Client"]="update_bitwarden"
 
 check_bitwarden() {
     command -v bitwarden &>/dev/null || \
@@ -1338,11 +1407,6 @@ update_bitwarden() {
 }
 
 # --- Brave Browser ---
-UTILITIES+=("Brave Browser")
-INSTALL_FUNCS["Brave Browser"]="install_brave"
-CHECK_FUNCS["Brave Browser"]="check_brave"
-UNINSTALL_FUNCS["Brave Browser"]="uninstall_brave"
-UPDATE_FUNCS["Brave Browser"]="update_brave"
 
 check_brave() {
     command -v brave-browser &>/dev/null || pkg_check_installed brave-browser
@@ -1424,11 +1488,6 @@ update_brave() {
 }
 
 # --- Joplin Client ---
-UTILITIES+=("Joplin Client")
-INSTALL_FUNCS["Joplin Client"]="install_joplin"
-CHECK_FUNCS["Joplin Client"]="check_joplin"
-UNINSTALL_FUNCS["Joplin Client"]="uninstall_joplin"
-UPDATE_FUNCS["Joplin Client"]="update_joplin"
 
 check_joplin() {
     [[ -f ~/.joplin/Joplin.AppImage ]] || command -v joplin &>/dev/null
@@ -1507,11 +1566,6 @@ update_joplin() {
 }
 
 # --- Termius SSH Client ---
-UTILITIES+=("Termius SSH Client")
-INSTALL_FUNCS["Termius SSH Client"]="install_termius"
-CHECK_FUNCS["Termius SSH Client"]="check_termius"
-UNINSTALL_FUNCS["Termius SSH Client"]="uninstall_termius"
-UPDATE_FUNCS["Termius SSH Client"]="update_termius"
 
 check_termius() {
     command -v termius-app &>/dev/null || \
@@ -1578,18 +1632,13 @@ update_termius() {
     esac
 }
 
-# --- Devolutions Remote Desktop Manager ---
-UTILITIES+=("Devolutions Remote Desktop Manager")
-INSTALL_FUNCS["Devolutions Remote Desktop Manager"]="install_devolutions_rdm"
-CHECK_FUNCS["Devolutions Remote Desktop Manager"]="check_devolutions_rdm"
-UNINSTALL_FUNCS["Devolutions Remote Desktop Manager"]="uninstall_devolutions_rdm"
-UPDATE_FUNCS["Devolutions Remote Desktop Manager"]="update_devolutions_rdm"
+# --- Devolutions RDM ---
 
 check_devolutions_rdm() {
     command -v remotedesktopmanager &>/dev/null || pkg_check_installed RemoteDesktopManager || pkg_check_installed remotedesktopmanager || pkg_check_installed remote-desktop-manager
 }
 install_devolutions_rdm() {
-    echo "Installing Devolutions Remote Desktop Manager..."
+    echo "Installing Devolutions RDM..."
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
@@ -1664,7 +1713,7 @@ install_devolutions_rdm() {
     esac
 }
 uninstall_devolutions_rdm() {
-    echo "Uninstalling Devolutions Remote Desktop Manager..."
+    echo "Uninstalling Devolutions RDM..."
     case "$DISTRO_FAMILY" in
         debian|fedora|rhel)
             pkg_remove RemoteDesktopManager 2>/dev/null || pkg_remove remotedesktopmanager 2>/dev/null || pkg_remove remote-desktop-manager 2>/dev/null || true
@@ -1692,7 +1741,7 @@ uninstall_devolutions_rdm() {
     esac
 }
 update_devolutions_rdm() {
-    echo "Updating Devolutions Remote Desktop Manager..."
+    echo "Updating Devolutions RDM..."
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
@@ -1722,11 +1771,6 @@ update_devolutions_rdm() {
 }
 
 # --- Steam App ---
-UTILITIES+=("Steam App")
-INSTALL_FUNCS["Steam App"]="install_steam"
-CHECK_FUNCS["Steam App"]="check_steam"
-UNINSTALL_FUNCS["Steam App"]="uninstall_steam"
-UPDATE_FUNCS["Steam App"]="update_steam"
 
 check_steam() {
     command -v steam &>/dev/null || \
@@ -1931,11 +1975,6 @@ update_steam() {
 }
 
 # --- Timeshift ---
-UTILITIES+=("Timeshift")
-INSTALL_FUNCS["Timeshift"]="install_timeshift"
-CHECK_FUNCS["Timeshift"]="check_timeshift"
-UNINSTALL_FUNCS["Timeshift"]="uninstall_timeshift"
-UPDATE_FUNCS["Timeshift"]="update_timeshift"
 
 check_timeshift() {
     command -v timeshift &>/dev/null
@@ -1996,11 +2035,6 @@ update_timeshift() {
 }
 
 # --- Visual Studio Code ---
-UTILITIES+=("Visual Studio Code")
-INSTALL_FUNCS["Visual Studio Code"]="install_vscode"
-CHECK_FUNCS["Visual Studio Code"]="check_vscode"
-UNINSTALL_FUNCS["Visual Studio Code"]="uninstall_vscode"
-UPDATE_FUNCS["Visual Studio Code"]="update_vscode"
 
 check_vscode() {
     command -v code &>/dev/null || pkg_check_installed code
@@ -2084,11 +2118,6 @@ update_vscode() {
 }
 
 # --- Syncthing ---
-UTILITIES+=("Syncthing")
-INSTALL_FUNCS["Syncthing"]="install_syncthing"
-CHECK_FUNCS["Syncthing"]="check_syncthing"
-UNINSTALL_FUNCS["Syncthing"]="uninstall_syncthing"
-UPDATE_FUNCS["Syncthing"]="update_syncthing"
 
 check_syncthing() {
     command -v syncthing &>/dev/null || pkg_check_installed syncthing
@@ -2207,6 +2236,81 @@ update_syncthing() {
             ;;
         suse)
             sudo zypper update -y syncthing
+            ;;
+    esac
+}
+
+# --- OpenSSH Server ---
+check_openssh_server() {
+    pkg_check_installed openssh-server || \
+        systemctl is-active --quiet ssh 2>/dev/null || \
+        systemctl is-active --quiet sshd 2>/dev/null
+}
+
+install_openssh_server() {
+    echo "Installing OpenSSH Server..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt install openssh-server -y
+            sudo systemctl enable ssh
+            sudo systemctl start ssh
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" install -y openssh-server
+            sudo systemctl enable sshd
+            sudo systemctl start sshd
+            ;;
+        arch)
+            sudo pacman -S --noconfirm openssh
+            sudo systemctl enable sshd
+            sudo systemctl start sshd
+            ;;
+        suse)
+            sudo zypper install -y openssh
+            sudo systemctl enable sshd
+            sudo systemctl start sshd
+            ;;
+    esac
+    echo "OpenSSH Server installed and started."
+}
+
+uninstall_openssh_server() {
+    echo "Uninstalling OpenSSH Server..."
+    sudo systemctl stop ssh 2>/dev/null || sudo systemctl stop sshd 2>/dev/null || true
+    sudo systemctl disable ssh 2>/dev/null || sudo systemctl disable sshd 2>/dev/null || true
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y openssh-server
+            sudo apt autoremove -y
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" remove -y openssh-server
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm openssh
+            ;;
+        suse)
+            sudo zypper remove -y openssh
+            ;;
+    esac
+    echo "OpenSSH Server has been uninstalled."
+}
+
+update_openssh_server() {
+    echo "Updating OpenSSH Server..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt upgrade -y openssh-server
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" upgrade -y openssh-server
+            ;;
+        arch)
+            sudo pacman -S --noconfirm openssh
+            ;;
+        suse)
+            sudo zypper update -y openssh
             ;;
     esac
 }
@@ -2393,7 +2497,7 @@ draw_menu() {
                 [[ ${INSTALLED[$i]} -eq 1 ]] && plain_status=" (installed)"
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local column_width=36
+                local column_width=43
                 local padding=$((column_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
@@ -2454,7 +2558,7 @@ draw_menu() {
                 [[ ${INSTALLED[$i]} -eq 1 ]] && plain_status=" (installed)"
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local column_width=36
+                local column_width=42
                 local padding=$((column_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
