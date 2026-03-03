@@ -321,88 +321,6 @@ has_aur_helper() {
     command -v yay &>/dev/null || command -v paru &>/dev/null
 }
 
-# --- DNS Readiness Check ---
-
-check_dns_ready() {
-    local max_attempts=5
-    local attempt=1
-    local test_hosts=("raw.githubusercontent.com" "cloudsmith.io" "mirrors.rpmfusion.org")
-    
-    echo "Checking DNS resolution..."
-    log_info "Starting DNS resolution check for hosts: ${test_hosts[*]}"
-    
-    while [[ $attempt -le $max_attempts ]]; do
-        local all_resolved=true
-        
-        for host in "${test_hosts[@]}"; do
-            if ! host "$host" &>/dev/null && ! nslookup "$host" &>/dev/null; then
-                all_resolved=false
-                log_warning "DNS resolution failed for ${host} (attempt ${attempt}/${max_attempts})"
-                break
-            fi
-        done
-        
-        if $all_resolved; then
-            echo "✓ DNS resolution is working."
-            log_success "DNS resolution verified successfully"
-            return 0
-        fi
-        
-        if [[ $attempt -lt $max_attempts ]]; then
-            echo "⚠ DNS resolution not ready (attempt $attempt/$max_attempts). Waiting 2 seconds..."
-            sleep 2
-        fi
-        
-        ((attempt++))
-    done
-    
-    log_error "DNS resolution failed after ${max_attempts} attempts for hosts: ${test_hosts[*]}"
-    
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "❌ DNS RESOLUTION FAILURE"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "The system cannot resolve hostnames to IP addresses."
-    echo "This will cause all network-dependent installations to fail."
-    echo ""
-    echo "Common causes:"
-    echo "  • Network not fully initialized"
-    echo "  • systemd-resolved not running"
-    echo "  • No DNS servers configured"
-    echo "  • Firewall blocking DNS traffic"
-    echo ""
-    echo "Troubleshooting steps:"
-    echo "  1. Check DNS configuration:"
-    echo "     resolvectl status"
-    echo "     cat /etc/resolv.conf"
-    echo ""
-    echo "  2. Test DNS resolution manually:"
-    echo "     nslookup google.com"
-    echo "     host github.com"
-    echo ""
-    echo "  3. Restart systemd-resolved:"
-    echo "     sudo systemctl restart systemd-resolved"
-    echo ""
-    echo "  4. Check if network is fully up:"
-    echo "     ping -c 2 8.8.8.8"
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    
-    read -p "Do you want to continue anyway? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Operation cancelled."
-        log_info "User cancelled operation due to DNS failure"
-        return 1
-    fi
-    
-    echo "⚠ Continuing without DNS verification. Expect failures."
-    log_warning "User chose to continue despite DNS resolution failure"
-    return 0
-}
-
 aur_install() {
     if command -v yay &>/dev/null; then
         yay -S --noconfirm "$@"
@@ -821,6 +739,12 @@ CHECK_FUNCS["KDE Desktop Environment"]="check_kde"
 UNINSTALL_FUNCS["KDE Desktop Environment"]="uninstall_kde"
 UPDATE_FUNCS["KDE Desktop Environment"]="update_kde"
 
+UTILITIES+=("NVIDIA Drivers")
+INSTALL_FUNCS["NVIDIA Drivers"]="install_nvidia_drivers"
+CHECK_FUNCS["NVIDIA Drivers"]="check_nvidia_drivers"
+UNINSTALL_FUNCS["NVIDIA Drivers"]="uninstall_nvidia_drivers"
+UPDATE_FUNCS["NVIDIA Drivers"]="update_nvidia_drivers"
+
 # Helper functions for system setup tasks
 check_always_false() { return 1; }
 noop_function() { return 0; }
@@ -897,13 +821,6 @@ INSTALL_FUNCS["Docker"]="setup_install_docker"
 CHECK_FUNCS["Docker"]="check_docker"
 UNINSTALL_FUNCS["Docker"]="uninstall_docker"
 UPDATE_FUNCS["Docker"]="update_docker"
-
-# NVIDIA Drivers
-UTILITIES+=("NVIDIA Drivers")
-INSTALL_FUNCS["NVIDIA Drivers"]="install_nvidia_drivers"
-CHECK_FUNCS["NVIDIA Drivers"]="check_nvidia_drivers"
-UNINSTALL_FUNCS["NVIDIA Drivers"]="uninstall_nvidia_drivers"
-UPDATE_FUNCS["NVIDIA Drivers"]="update_nvidia_drivers"
 
 # --- NVIDIA Drivers & Toolkit ---
 check_nvidia_drivers() {
@@ -1040,7 +957,31 @@ install_nvidia_i386_libs() {
         debian)
             sudo dpkg --add-architecture i386
             sudo apt update
-            sudo apt install -y "libnvidia-gl-${driver_version}:i386"
+
+            # Show currently installed NVIDIA driver to confirm version
+            echo "Installed NVIDIA driver packages:"
+            dpkg -l | grep nvidia-driver || echo "  (none found)"
+
+            echo "Installing libnvidia-gl-${driver_version}:i386..."
+            if ! sudo apt install -y "libnvidia-gl-${driver_version}:i386"; then
+                echo ""
+                echo "⚠  libnvidia-gl-${driver_version}:i386 is unavailable via apt."
+                echo "Alternative: manually extract 32-bit libraries from the NVIDIA installer."
+                echo ""
+                echo "  1. Download the driver .run file from NVIDIA's website:"
+                echo "     https://www.nvidia.com/en-us/drivers/"
+                echo "     (e.g. NVIDIA-Linux-x86_64-${driver_version}.run)"
+                echo ""
+                echo "  2. Extract the installer:"
+                echo "     sudo ./NVIDIA-Linux-x86_64-${driver_version}.run -x"
+                echo ""
+                echo "  3. Copy 32-bit libraries to /usr/lib32:"
+                echo "     sudo cp NVIDIA-Linux-x86_64-${driver_version}/32/*.so* /usr/lib32/"
+                echo "     sudo ldconfig"
+                echo ""
+                warn "32-bit library installation incomplete. Use the manual method above if needed."
+                return 1
+            fi
             ;;
         fedora|rhel)
             case "$driver_version" in
@@ -1875,53 +1816,29 @@ install_steam() {
 
     case "$DISTRO_FAMILY" in
         debian)
-            # Detect mixed repository issues first
-            detect_debian_repo_mix
-            
-            # Ensure contrib component is enabled
-            ensure_debian_contrib
-            
             # Enable 32-bit architecture support
             sudo dpkg --add-architecture i386
             sudo apt update
-            
-            # Install steam-installer (Debian wiki recommended method)
-            echo "Installing steam-installer package..."
-            local install_result=0
-            sudo apt install -y steam-installer 2>&1 | tee /tmp/steam-install.log || install_result=$?
-            
-            if [[ $install_result -eq 0 ]]; then
-                # Install graphics libraries for Intel/AMD/NVIDIA GPUs
-                echo "Installing graphics libraries for Steam (Vulkan, Mesa)..."
-                sudo apt install -y mesa-vulkan-drivers libglx-mesa0:i386 \
-                    mesa-vulkan-drivers:i386 libgl1-mesa-dri:i386 2>/dev/null || true
-            else
-                # Check if it's a dependency conflict
-                if grep -qi "depends.*steam-libs" /tmp/steam-install.log; then
-                    echo ""
-                    echo "❌ Package dependency conflict detected."
-                    echo "This is likely caused by mixed Debian repositories (stable/testing/unstable)."
-                    echo ""
-                    echo "Recommended solutions:"
-                    echo "  1. Use a single Debian release (recommended)"
-                    echo "  2. Install via Flatpak: sudo apt install flatpak && flatpak install flathub com.valvesoftware.Steam"
-                    echo ""
-                    
-                    # Fallback to Flatpak if available
-                    if has_flatpak; then
-                        echo "Attempting Flatpak installation as fallback..."
-                        flatpak install -y flathub com.valvesoftware.Steam
-                    else
-                        echo "Flatpak not installed. To install: sudo apt install flatpak"
-                        return 1
-                    fi
-                else
-                    echo "Installation failed. Check /tmp/steam-install.log for details."
-                    return 1
-                fi
+
+            # Download Steam installer from the official Valve website
+            echo "Downloading Steam installer from store.steampowered.com..."
+            local steam_deb="/tmp/steam_latest.deb"
+            if ! wget -O "$steam_deb" "https://cdn.akamai.steamstatic.com/client/installer/steam.deb"; then
+                echo "Error: Failed to download Steam installer."
+                rm -f "$steam_deb"
+                return 1
             fi
-            
-            rm -f /tmp/steam-install.log
+
+            # Install Steam - prompts will be shown for user to accept/decline
+            echo "Installing Steam (follow any on-screen prompts)..."
+            sudo apt install "$steam_deb"
+            local install_result=$?
+            rm -f "$steam_deb"
+
+            if [[ $install_result -ne 0 ]]; then
+                echo "Error: Steam installation failed."
+                return 1
+            fi
             ;;
         fedora)
             if ! rpm -q rpmfusion-nonfree-release &>/dev/null; then
@@ -2011,6 +1928,71 @@ update_steam() {
                 ;;
         esac
     fi
+}
+
+# --- Timeshift ---
+UTILITIES+=("Timeshift")
+INSTALL_FUNCS["Timeshift"]="install_timeshift"
+CHECK_FUNCS["Timeshift"]="check_timeshift"
+UNINSTALL_FUNCS["Timeshift"]="uninstall_timeshift"
+UPDATE_FUNCS["Timeshift"]="update_timeshift"
+
+check_timeshift() {
+    command -v timeshift &>/dev/null
+}
+
+install_timeshift() {
+    echo "Installing Timeshift..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt install timeshift -y
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" install -y timeshift
+            ;;
+        arch)
+            sudo pacman -S --noconfirm timeshift
+            ;;
+        suse)
+            sudo zypper install -y timeshift
+            ;;
+        *)
+            warn "Timeshift installation not implemented for ${DISTRO_NAME}."
+            return 1
+            ;;
+    esac
+    echo "Timeshift installed successfully."
+}
+
+uninstall_timeshift() {
+    echo "Uninstalling Timeshift..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y timeshift
+            sudo apt autoremove -y
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" remove -y timeshift
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm timeshift
+            ;;
+        suse)
+            sudo zypper remove -y timeshift
+            ;;
+    esac
+}
+
+update_timeshift() {
+    echo "Updating Timeshift..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update && sudo apt upgrade -y timeshift
+            ;;
+        *)
+            pkg_upgrade timeshift
+            ;;
+    esac
 }
 
 # --- Visual Studio Code ---
@@ -2344,7 +2326,7 @@ clear_line() { printf "${CSI}2K"; }
 # Draw the menu
 draw_menu() {
     local total=${#UTILITIES[@]}
-    local system_tasks=4  # First 4 items are system tasks
+    local system_tasks=5  # First 5 items are system tasks
     local system_rows_per_column=3  # 3 rows per column for System Tasks
     local rows_per_column=$ROWS_PER_COLUMN  # 5 rows per column for Utilities
     local utilities_start=$system_tasks
@@ -2570,8 +2552,8 @@ run_selection_menu() {
     
     while true; do
         local key=$(read_key)
-        local system_tasks=4
-        local utilities_start=4
+        local system_tasks=5
+        local utilities_start=5
         local system_rows_per_column=3
         
         case "$key" in
@@ -2742,7 +2724,7 @@ run_selection_menu() {
 
 process_selected() {
     local total=${#UTILITIES[@]}
-    local system_tasks=4  # First 4 entries are System Tasks
+    local system_tasks=5  # First 5 entries are System Tasks
     declare -a to_install
     declare -a to_uninstall
     local needs_reboot=false
@@ -2756,8 +2738,8 @@ process_selected() {
             else
                 to_install+=("$util")
             fi
-            # Reboot required for System Tasks, Docker, and NVIDIA Drivers
-            if [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]] || [[ "$util" == "NVIDIA Drivers" ]]; then
+            # Reboot required for System Tasks and Docker
+            if [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]]; then
                 needs_reboot=true
             fi
         fi
@@ -2794,14 +2776,6 @@ process_selected() {
     
     read -p "Press ENTER to continue or Ctrl+C to cancel..."
     echo ""
-    
-    # Check DNS readiness before proceeding
-    if [[ ${#to_install[@]} -gt 0 ]]; then
-        if ! check_dns_ready; then
-            return 1
-        fi
-        echo ""
-    fi
     
     # Update package lists first
     echo "${CYAN}Updating package lists...${RESET}"
@@ -2914,7 +2888,7 @@ process_selected() {
     echo "Log files saved to: ${LOG_DIR}"
     echo ""
     
-    # Offer reboot (only for System Tasks, Docker, and NVIDIA Drivers)
+    # Offer reboot (only for System Tasks and Docker)
     if [[ "$needs_reboot" == "true" ]]; then
         read -n 1 -rp "Reboot now? (y/N) " REBOOT_CHOICE
         echo
