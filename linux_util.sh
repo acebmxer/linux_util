@@ -1104,7 +1104,7 @@ install_nvidia_drivers() {
             
             if [[ "$DISTRO_ID" == "ubuntu" ]]; then
                 command -v ubuntu-drivers &>/dev/null || sudo apt-get install -y ubuntu-drivers-common
-                mapfile -t available_drivers < <(ubuntu-drivers list 2>/dev/null | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
+                mapfile -t available_drivers < <(ubuntu-drivers list --gpgpu 2>/dev/null | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
             else
                 # Debian and derivatives
                 mapfile -t available_drivers < <(apt-cache search '^nvidia-driver-[0-9]+$' 2>/dev/null | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
@@ -1864,24 +1864,36 @@ install_steam() {
             sudo dpkg --add-architecture i386
             sudo apt update
 
-            # Download Steam installer from the official Valve website
-            echo "Downloading Steam installer from store.steampowered.com..."
-            local steam_deb="/tmp/steam_latest.deb"
-            if ! wget -O "$steam_deb" "https://cdn.akamai.steamstatic.com/client/installer/steam.deb"; then
-                echo "Error: Failed to download Steam installer."
+            if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+                # Ubuntu / Kubuntu: install Steam via the multiverse repository
+                echo "Enabling multiverse repository..."
+                sudo add-apt-repository multiverse -y
+                sudo apt update
+                echo "Installing Steam..."
+                if ! sudo apt install -y steam; then
+                    echo "Error: Steam installation failed."
+                    return 1
+                fi
+            else
+                # Debian and other derivatives: download the official .deb installer
+                echo "Downloading Steam installer from store.steampowered.com..."
+                local steam_deb="/tmp/steam_latest.deb"
+                if ! wget -O "$steam_deb" "https://cdn.akamai.steamstatic.com/client/installer/steam.deb"; then
+                    echo "Error: Failed to download Steam installer."
+                    rm -f "$steam_deb"
+                    return 1
+                fi
+
+                # Install Steam - prompts will be shown for user to accept/decline
+                echo "Installing Steam (follow any on-screen prompts)..."
+                sudo apt install "$steam_deb"
+                local install_result=$?
                 rm -f "$steam_deb"
-                return 1
-            fi
 
-            # Install Steam - prompts will be shown for user to accept/decline
-            echo "Installing Steam (follow any on-screen prompts)..."
-            sudo apt install "$steam_deb"
-            local install_result=$?
-            rm -f "$steam_deb"
-
-            if [[ $install_result -ne 0 ]]; then
-                echo "Error: Steam installation failed."
-                return 1
+                if [[ $install_result -ne 0 ]]; then
+                    echo "Error: Steam installation failed."
+                    return 1
+                fi
             fi
             ;;
         fedora)
@@ -2656,142 +2668,64 @@ run_selection_menu() {
     
     while true; do
         local key=$(read_key)
-        local system_tasks=5
-        local utilities_start=5
-        local system_rows_per_column=3
-        
+
+        # Unified two-column navigation model.
+        # The menu is displayed as two visual columns that span both the
+        # System Tasks section and the Utilities section.  UP/DOWN stays
+        # within the same column (wrapping at the ends); LEFT/RIGHT jumps
+        # to the same row position in the other column (clamped if shorter).
+        #
+        # Left  column indices (display order): 0 1 2 | 5 6 7 8 9 10
+        # Right column indices (display order): 3 4   | 11 12 13 14 15 16
+        local -a _nav_left=(0 1 2 5 6 7 8 9 10)
+        local -a _nav_right=(3 4 11 12 13 14 15 16)
+
+        # Determine which column the cursor is in and its position within it.
+        local _nav_col=-1   # 0 = left, 1 = right
+        local _nav_pos=-1   # 0-based position within the column
+        local _i
+        for _i in "${!_nav_left[@]}"; do
+            if [[ ${_nav_left[$_i]} -eq $CURSOR ]]; then _nav_col=0; _nav_pos=$_i; break; fi
+        done
+        if [[ $_nav_col -eq -1 ]]; then
+            for _i in "${!_nav_right[@]}"; do
+                if [[ ${_nav_right[$_i]} -eq $CURSOR ]]; then _nav_col=1; _nav_pos=$_i; break; fi
+            done
+        fi
+        # Fallback: keep cursor as-is if somehow not found
+        [[ $_nav_col -eq -1 ]] && { _nav_col=0; _nav_pos=0; }
+
         case "$key" in
             UP)
-                if [[ $CURSOR -lt $system_tasks ]]; then
-                    # In system tasks section
-                    local col=$((CURSOR / system_rows_per_column))
-                    local row=$((CURSOR % system_rows_per_column))
-                    
-                    if [[ $row -gt 0 ]]; then
-                        # Move up within same column
-                        ((CURSOR--))
-                    else
-                        # At top of column, move to bottom of previous column
-                        if [[ $col -gt 0 ]]; then
-                            ((col--))
-                            CURSOR=$((col * system_rows_per_column + system_rows_per_column - 1))
-                            [[ $CURSOR -ge $system_tasks ]] && CURSOR=$((system_tasks - 1))
-                        else
-                            # Wrap to last utility (rightmost column, bottom row)
-                            CURSOR=$((total - 1))
-                        fi
-                    fi
+                if [[ $_nav_col -eq 0 ]]; then
+                    local _new_pos=$(( (_nav_pos - 1 + ${#_nav_left[@]}) % ${#_nav_left[@]} ))
+                    CURSOR=${_nav_left[$_new_pos]}
                 else
-                    # In utilities section
-                    local util_idx=$((CURSOR - utilities_start))
-                    local col=$((util_idx / ROWS_PER_COLUMN))
-                    local row=$((util_idx % ROWS_PER_COLUMN))
-                    
-                    if [[ $row -gt 0 ]]; then
-                        # Move up within same column
-                        ((CURSOR--))
-                    else
-                        # At top of column, move to bottom of previous column
-                        if [[ $col -gt 0 ]]; then
-                            ((col--))
-                            local new_util_idx=$((col * ROWS_PER_COLUMN + ROWS_PER_COLUMN - 1))
-                            CURSOR=$((utilities_start + new_util_idx))
-                            [[ $CURSOR -ge $total ]] && CURSOR=$((total - 1))
-                        else
-                            # Wrap to last system task (rightmost column, bottom row)
-                            CURSOR=$((system_tasks - 1))
-                        fi
-                    fi
+                    local _new_pos=$(( (_nav_pos - 1 + ${#_nav_right[@]}) % ${#_nav_right[@]} ))
+                    CURSOR=${_nav_right[$_new_pos]}
                 fi
                 redraw_menu
                 ;;
             DOWN)
-                if [[ $CURSOR -lt $system_tasks ]]; then
-                    # In system tasks section
-                    local col=$((CURSOR / system_rows_per_column))
-                    local row=$((CURSOR % system_rows_per_column))
-                    
-                    if [[ $row -lt $((system_rows_per_column - 1)) ]] && [[ $((CURSOR + 1)) -lt $system_tasks ]]; then
-                        # Move down within same column
-                        ((CURSOR++))
-                    else
-                        # At bottom of column, move to top of next column
-                        ((col++))
-                        local new_cursor=$((col * system_rows_per_column))
-                        if [[ $new_cursor -lt $system_tasks ]]; then
-                            CURSOR=$new_cursor
-                        else
-                            # Move to first utility
-                            CURSOR=$utilities_start
-                        fi
-                    fi
+                if [[ $_nav_col -eq 0 ]]; then
+                    local _new_pos=$(( (_nav_pos + 1) % ${#_nav_left[@]} ))
+                    CURSOR=${_nav_left[$_new_pos]}
                 else
-                    # In utilities section
-                    local util_idx=$((CURSOR - utilities_start))
-                    local col=$((util_idx / ROWS_PER_COLUMN))
-                    local row=$((util_idx % ROWS_PER_COLUMN))
-                    
-                    if [[ $row -lt $((ROWS_PER_COLUMN - 1)) ]] && [[ $((CURSOR + 1)) -lt $total ]]; then
-                        # Move down within same column
-                        ((CURSOR++))
-                    else
-                        # At bottom of column, move to top of next column
-                        ((col++))
-                        local new_util_idx=$((col * ROWS_PER_COLUMN))
-                        local new_cursor=$((utilities_start + new_util_idx))
-                        if [[ $new_cursor -lt $total ]]; then
-                            CURSOR=$new_cursor
-                        else
-                            # Wrap to first system task
-                            CURSOR=0
-                        fi
-                    fi
+                    local _new_pos=$(( (_nav_pos + 1) % ${#_nav_right[@]} ))
+                    CURSOR=${_nav_right[$_new_pos]}
                 fi
                 redraw_menu
                 ;;
             LEFT)
-                if [[ $CURSOR -lt $system_tasks ]]; then
-                    # In system tasks section, jump to last column of utilities
-                    local utilities_count=$((total - system_tasks))
-                    local num_columns=$(( (utilities_count + ROWS_PER_COLUMN - 1) / ROWS_PER_COLUMN ))
-                    local util_idx=$(( (num_columns - 1) * ROWS_PER_COLUMN ))
-                    local new_cursor=$((utilities_start + util_idx))
-                    [[ $new_cursor -ge $total ]] && new_cursor=$((total - 1))
-                    CURSOR=$new_cursor
-                else
-                    # In utilities section - move left one column
-                    local util_idx=$((CURSOR - utilities_start))
-                    local new_util_idx=$((util_idx - ROWS_PER_COLUMN))
-                    if [[ $new_util_idx -lt 0 ]]; then
-                        # Wrap to rightmost column, same row
-                        local row=$((util_idx % ROWS_PER_COLUMN))
-                        local utilities_count=$((total - system_tasks))
-                        local num_columns=$(( (utilities_count + ROWS_PER_COLUMN - 1) / ROWS_PER_COLUMN ))
-                        new_util_idx=$(( (num_columns - 1) * ROWS_PER_COLUMN + row ))
-                        if [[ $((utilities_start + new_util_idx)) -ge $total ]]; then
-                            new_util_idx=$(( (num_columns - 2) * ROWS_PER_COLUMN + row ))
-                            [[ $new_util_idx -lt 0 ]] && new_util_idx=$row
-                        fi
-                    fi
-                    CURSOR=$((utilities_start + new_util_idx))
-                fi
+                # Jump to the same row in the left column (clamped to its size)
+                local _target_pos=$(( _nav_pos < ${#_nav_left[@]} ? _nav_pos : ${#_nav_left[@]} - 1 ))
+                CURSOR=${_nav_left[$_target_pos]}
                 redraw_menu
                 ;;
             RIGHT)
-                if [[ $CURSOR -lt $system_tasks ]]; then
-                    # In system tasks section, jump to first utility
-                    CURSOR=$utilities_start
-                else
-                    # In utilities section - move right one column
-                    local util_idx=$((CURSOR - utilities_start))
-                    local row=$((util_idx % ROWS_PER_COLUMN))
-                    local new_util_idx=$((util_idx + ROWS_PER_COLUMN))
-                    if [[ $((utilities_start + new_util_idx)) -ge $total ]]; then
-                        # Wrap to leftmost column, same row
-                        new_util_idx=$row
-                    fi
-                    CURSOR=$((utilities_start + new_util_idx))
-                fi
+                # Jump to the same row in the right column (clamped to its size)
+                local _target_pos=$(( _nav_pos < ${#_nav_right[@]} ? _nav_pos : ${#_nav_right[@]} - 1 ))
+                CURSOR=${_nav_right[$_target_pos]}
                 redraw_menu
                 ;;
             SPACE)
