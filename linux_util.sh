@@ -75,27 +75,27 @@ init_error_log() {
 # Logging functions
 log_success() {
     local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp; printf -v timestamp '%(%Y-%m-%d %H:%M:%S)T' -1
     echo "[${timestamp}] [SUCCESS] ${message}" >> "$SUCCESS_LOG"
 }
 
 log_error() {
     local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp; printf -v timestamp '%(%Y-%m-%d %H:%M:%S)T' -1
     init_error_log
     echo "[${timestamp}] [ERROR] ${message}" | tee -a "$ERROR_LOG" >&2
 }
 
 log_warning() {
     local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp; printf -v timestamp '%(%Y-%m-%d %H:%M:%S)T' -1
     init_error_log
     echo "[${timestamp}] [WARNING] ${message}" | tee -a "$ERROR_LOG"
 }
 
 log_info() {
     local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp; printf -v timestamp '%(%Y-%m-%d %H:%M:%S)T' -1
     echo "[${timestamp}] [INFO] ${message}" >> "$SUCCESS_LOG"
 }
 
@@ -1104,10 +1104,10 @@ install_nvidia_drivers() {
             
             if [[ "$DISTRO_ID" == "ubuntu" ]]; then
                 command -v ubuntu-drivers &>/dev/null || sudo apt-get install -y ubuntu-drivers-common
-                mapfile -t available_drivers < <(ubuntu-drivers list --gpgpu 2>/dev/null | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
+                mapfile -t available_drivers < <(ubuntu-drivers list 2>/dev/null | grep -oP 'nvidia-driver-[0-9]+(-server)?' | sort -rn | uniq)
             else
                 # Debian and derivatives
-                mapfile -t available_drivers < <(apt-cache search '^nvidia-driver-[0-9]+$' 2>/dev/null | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
+                mapfile -t available_drivers < <(apt-cache search 'nvidia-driver-[0-9]' 2>/dev/null | awk '{print $1}' | grep -E '^nvidia-driver-[0-9]+(-server)?$' | sort -rn | uniq)
             fi
             ;;
         fedora|rhel)
@@ -1211,9 +1211,11 @@ install_nvidia_drivers() {
     
     if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le ${#available_drivers[@]} ]]; then
         driver_version="${available_drivers[$((choice-1))]}"
-        echo "Selected driver version: $driver_version"
-        # Persist the chosen version so other installers (e.g. Steam) can reference it
-        save_nvidia_driver_version "$driver_version"
+        echo "Selected driver: $driver_version"
+        # Persist only the numeric version for 32-bit library lookups (e.g. "590" from "nvidia-driver-590-server")
+        local numeric_version
+        numeric_version=$(echo "$driver_version" | grep -oP '[0-9]+' | head -1)
+        save_nvidia_driver_version "${numeric_version:-$driver_version}"
     else
         warn "Invalid selection. Cancelling installation."
         return 1
@@ -1223,7 +1225,8 @@ install_nvidia_drivers() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt-get update
-            sudo apt-get install -y "nvidia-driver-${driver_version}"
+            # driver_version is the full package name (e.g. nvidia-driver-590 or nvidia-driver-590-server)
+            sudo apt-get install -y "${driver_version}"
             ;;
         fedora|rhel)
             case "$driver_version" in
@@ -1492,9 +1495,8 @@ update_brave() {
 check_joplin() {
     [[ -f ~/.joplin/Joplin.AppImage ]] || command -v joplin &>/dev/null
 }
-install_joplin() {
-    echo "Installing Joplin Client..."
-    # Detect desktop environment for proper icon installation
+
+_joplin_set_desktop_env() {
     local desktop_env=""
     if [[ -n "$XDG_CURRENT_DESKTOP" ]]; then
         desktop_env="$XDG_CURRENT_DESKTOP"
@@ -1507,12 +1509,13 @@ install_joplin() {
     elif command -v cinnamon &>/dev/null; then
         desktop_env="X-Cinnamon"
     fi
-    
-    # Export desktop environment variable for the installer
-    if [[ -n "$desktop_env" ]]; then
-        export XDG_CURRENT_DESKTOP="$desktop_env"
-    fi
-    
+    [[ -n "$desktop_env" ]] && export XDG_CURRENT_DESKTOP="$desktop_env"
+}
+
+install_joplin() {
+    echo "Installing Joplin Client..."
+    _joplin_set_desktop_env
+
     # Download and run installer script
     local install_script
     install_script=$(wget -qO- https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh) || {
@@ -1543,26 +1546,23 @@ uninstall_joplin() {
 }
 update_joplin() {
     echo "Updating Joplin Client..."
-    # Detect desktop environment for proper icon installation
-    local desktop_env=""
-    if [[ -n "$XDG_CURRENT_DESKTOP" ]]; then
-        desktop_env="$XDG_CURRENT_DESKTOP"
-    elif command -v plasmashell &>/dev/null; then
-        desktop_env="KDE"
-    elif command -v gnome-shell &>/dev/null; then
-        desktop_env="GNOME"
-    elif command -v xfce4-session &>/dev/null; then
-        desktop_env="XFCE"
-    elif command -v cinnamon &>/dev/null; then
-        desktop_env="X-Cinnamon"
+    _joplin_set_desktop_env
+
+    local install_script
+    install_script=$(wget -qO- https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh) || {
+        echo "Error: Failed to download Joplin installer script."
+        return 1
+    }
+
+    if [[ -z "$install_script" ]]; then
+        echo "Error: Downloaded installer script is empty."
+        return 1
     fi
-    
-    # Export desktop environment variable for the installer
-    if [[ -n "$desktop_env" ]]; then
-        export XDG_CURRENT_DESKTOP="$desktop_env"
-    fi
-    
-    wget -O - https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
+
+    echo "$install_script" | bash || {
+        echo "Error: Joplin update script failed."
+        return 1
+    }
 }
 
 # --- Termius SSH Client ---
@@ -1797,9 +1797,9 @@ ensure_debian_contrib() {
     sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup-$(date +%Y%m%d-%H%M%S)
     
     # Add contrib to main repository lines
-    sudo sed -i.tmp 's/^\(deb .*debian.* main\)$/\1 contrib/' /etc/apt/sources.list
-    sudo sed -i.tmp 's/^\(deb .*debian.* main non-free\)$/\1 contrib/' /etc/apt/sources.list
-    sudo sed -i.tmp 's/ main contrib contrib/ main contrib/' /etc/apt/sources.list  # Remove duplicates
+    sudo sed -i 's/^\(deb .*debian.* main\)$/\1 contrib/' /etc/apt/sources.list
+    sudo sed -i 's/^\(deb .*debian.* main non-free\)$/\1 contrib/' /etc/apt/sources.list
+    sudo sed -i 's/ main contrib contrib/ main contrib/' /etc/apt/sources.list
     
     echo "'contrib' component enabled. Updating package lists..."
     sudo apt update
@@ -2143,64 +2143,34 @@ install_syncthing() {
             # Add the Syncthing PGP key
             sudo mkdir -p /etc/apt/keyrings
             sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
-            
+
             # Add the Syncthing repository
             echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | \
                 sudo tee /etc/apt/sources.list.d/syncthing.list > /dev/null
-            
+
             # Update and install
             sudo apt update
             sudo apt install -y syncthing
-            
-            # Enable and start the user service
-            systemctl --user enable syncthing.service
-            systemctl --user start syncthing.service
-            
-            echo ""
-            echo "Syncthing installed successfully!"
-            echo "Service has been enabled and started."
-            echo "Access the web GUI at: http://127.0.0.1:8384"
             ;;
         fedora|rhel)
-            # Install from official Fedora repos (Syncthing is included by default)
             sudo "$PKG_MGR" install -y syncthing
-            
-            # Enable and start the user service
-            systemctl --user enable syncthing.service
-            systemctl --user start syncthing.service
-            
-            echo ""
-            echo "Syncthing installed successfully!"
-            echo "Service has been enabled and started."
-            echo "Access the web GUI at: http://127.0.0.1:8384"
             ;;
         arch)
-            # Syncthing is available in the community repository
             sudo pacman -S --noconfirm syncthing
-            
-            # Enable and start the user service
-            systemctl --user enable syncthing.service
-            systemctl --user start syncthing.service
-            
-            echo ""
-            echo "Syncthing installed successfully!"
-            echo "Service has been enabled and started."
-            echo "Access the web GUI at: http://127.0.0.1:8384"
             ;;
         suse)
-            # Install from official repository
             sudo zypper install -y syncthing
-            
-            # Enable and start the user service
-            systemctl --user enable syncthing.service
-            systemctl --user start syncthing.service
-            
-            echo ""
-            echo "Syncthing installed successfully!"
-            echo "Service has been enabled and started."
-            echo "Access the web GUI at: http://127.0.0.1:8384"
             ;;
     esac
+
+    # Enable and start the user service
+    systemctl --user enable syncthing.service
+    systemctl --user start syncthing.service
+
+    echo ""
+    echo "Syncthing installed successfully!"
+    echo "Service has been enabled and started."
+    echo "Access the web GUI at: http://127.0.0.1:8384"
 }
 
 uninstall_syncthing() {
@@ -2444,7 +2414,7 @@ draw_menu() {
     local total=${#UTILITIES[@]}
     local system_tasks=5  # First 5 items are system tasks
     local system_rows_per_column=3  # 3 rows per column for System Tasks
-    local rows_per_column=$ROWS_PER_COLUMN  # 5 rows per column for Utilities
+    local rows_per_column=$ROWS_PER_COLUMN  # 6 rows per column for Utilities
     local utilities_start=$system_tasks
     local utilities_count=$((total - system_tasks))
     local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
