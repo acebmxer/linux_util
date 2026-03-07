@@ -383,6 +383,17 @@ ensure_tools() {
                 sudo "$PKG_MGR" install -y gnupg2 curl wget 2>/dev/null || true
             fi
             ;;
+        pacman)
+            if ! command -v gpg &>/dev/null || ! command -v curl &>/dev/null || ! command -v wget &>/dev/null; then
+                info "Installing required tools (gnupg, curl, wget)..."
+                sudo pacman -S --noconfirm --needed gnupg curl wget 2>/dev/null || true
+            fi
+            ;;
+        zypper)
+            if ! command -v gpg &>/dev/null || ! command -v curl &>/dev/null || ! command -v wget &>/dev/null; then
+                sudo zypper install -y gpg2 curl wget 2>/dev/null || true
+            fi
+            ;;
     esac
 }
 
@@ -403,6 +414,12 @@ setup_full_update_bare_metal() {
             ;;
         dnf|yum)
             run_as_root "$PKG_MGR install -y jq git curl wget util-linux-user"
+            ;;
+        pacman)
+            run_as_root "pacman -S --noconfirm --needed jq git curl wget"
+            ;;
+        zypper)
+            run_as_root "zypper install -y jq git curl wget"
             ;;
         *)
             run_as_root "$PKG_MGR install -y jq git curl wget"
