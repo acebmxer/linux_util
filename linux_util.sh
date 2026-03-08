@@ -1755,10 +1755,13 @@ install_devolutions_rdm() {
                 echo "Installing from AUR..."
                 aur_install remote-desktop-manager
             else
-                echo "Error: An AUR helper (yay/paru) is required."
-                echo "Please install yay or paru first:"
-                echo "  sudo pacman -Sy yay"
-                return 1
+                echo "No AUR helper found. Building remote-desktop-manager from AUR..."
+                ensure_aur_build_deps
+                local build_dir
+                build_dir=$(mktemp -d)
+                git clone https://aur.archlinux.org/remote-desktop-manager.git "$build_dir/remote-desktop-manager"
+                (cd "$build_dir/remote-desktop-manager" && makepkg -si --noconfirm)
+                rm -rf "$build_dir"
             fi
             ;;
         suse)
