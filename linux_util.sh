@@ -13,6 +13,15 @@ if [[ $EUID -eq 0 ]]; then
     exit 1
 fi
 
+# Require Bash 4.0+ (associative arrays, mapfile, etc.)
+if (( BASH_VERSINFO[0] < 4 )); then
+    echo "Error: Bash 4.0 or newer is required (running: ${BASH_VERSION})."
+    exit 1
+fi
+
+# Dry-run flag — set to true via --dry-run CLI argument
+DRY_RUN=false
+
 # ============================================================================
 # LOGGING SETUP
 # ============================================================================
@@ -406,6 +415,33 @@ ensure_tools() {
     esac
 }
 
+# Check for internet connectivity; warns but does not abort (best-effort).
+check_internet() {
+    if ! { curl -fsS --max-time 5 https://1.1.1.1 || ping -c1 -W3 8.8.8.8; } &>/dev/null; then
+        warn "Internet connectivity check failed. Downloads may not work."
+        return 1
+    fi
+    return 0
+}
+
+# download_file <url> <dest> [retries=3]
+# Robust download with retries; prefers wget, falls back to curl.
+download_file() {
+    local url="$1" dest="$2" retries="${3:-3}" attempt=1
+    while (( attempt <= retries )); do
+        if command -v wget &>/dev/null; then
+            wget -q --timeout=30 -O "$dest" "$url" && return 0
+        else
+            curl -fsSL --max-time 30 --retry 2 -o "$dest" "$url" && return 0
+        fi
+        warn "Download attempt $attempt/$retries failed: $(basename "$url")"
+        (( attempt++ ))
+        (( attempt <= retries )) && sleep 2
+    done
+    error "Failed to download after $retries attempts: $url"
+    return 1
+}
+
 # --- Option 1: Full System Update (Bare Metal) ---
 setup_full_update_bare_metal() {
     info "Starting full system update and upgrade (bare metal)..."
@@ -771,6 +807,17 @@ CHECK_FUNCS["XEN Guest Utilities"]="check_always_false"
 UNINSTALL_FUNCS["XEN Guest Utilities"]="noop_function"
 UPDATE_FUNCS["XEN Guest Utilities"]="setup_xen_guest_utilities"
 
+# Self-Update Script
+UTILITIES+=("Self-Update Script")
+INSTALL_FUNCS["Self-Update Script"]="self_update_script"
+CHECK_FUNCS["Self-Update Script"]="check_always_false"
+UNINSTALL_FUNCS["Self-Update Script"]="noop_function"
+UPDATE_FUNCS["Self-Update Script"]="self_update_script"
+
+# Number of "System Task" entries at the top of the UTILITIES array.
+# *** INCREMENT THIS when adding a new System Task above this line. ***
+readonly SYSTEM_TASK_COUNT=6
+
 # Helper functions for system setup tasks
 check_always_false() { return 1; }
 noop_function() { return 0; }
@@ -826,6 +873,33 @@ update_kde() {
             sudo zypper update -y -t pattern kde kde_plasma
             ;;
     esac
+}
+
+self_update_script() {
+    info "Checking for script updates..."
+    if ! command -v git &>/dev/null; then
+        warn "git is not installed; cannot self-update."
+        return 1
+    fi
+    if [[ ! -d "${SCRIPT_DIR}/.git" ]]; then
+        warn "Script directory is not a git repository; cannot self-update."
+        return 1
+    fi
+    local before
+    before=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
+    if ! git -C "$SCRIPT_DIR" pull --ff-only; then
+        warn "git pull failed. Ensure you have network access and no local uncommitted changes."
+        return 1
+    fi
+    local after
+    after=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
+    if [[ "$before" != "$after" ]]; then
+        info "Script updated to $(git -C "$SCRIPT_DIR" rev-parse --short HEAD). Please re-run the script."
+        exit 0
+    else
+        info "Script is already up to date."
+    fi
+    return 0
 }
 
 # --- Installable Utilities ---
@@ -2483,10 +2557,17 @@ BOLD="${CSI}1m"
 DIM="${CSI}2m"
 RESET="${CSI}0m"
 
+# Respect the NO_COLOR standard (https://no-color.org/) and non-interactive terminals.
+if [[ ! -t 1 || -n "${NO_COLOR:-}" ]]; then
+    RED="" GREEN="" YELLOW="" BLUE="" CYAN="" MAGENTA="" BOLD="" DIM="" RESET=""
+fi
+
 # Track selections (0 = not selected, 1 = selected)
 declare -a SELECTED
 # Track installed state (0 = not installed, 1 = installed)
 declare -a INSTALLED
+# Track items queued for update (0 = no, 1 = yes; only valid for installed items)
+declare -a UPDATE_SELECTED
 # Rows per column for utilities section
 ROWS_PER_COLUMN=6
 
@@ -2516,6 +2597,7 @@ check_installed_utilities() {
 for ((i=0; i<${#UTILITIES[@]}; i++)); do
     SELECTED[$i]=0
     INSTALLED[$i]=0
+    UPDATE_SELECTED[$i]=0
 done
 
 # Current cursor position
@@ -2535,9 +2617,9 @@ clear_line() { printf "${CSI}2K"; }
 # Draw the menu
 draw_menu() {
     local total=${#UTILITIES[@]}
-    local system_tasks=5  # First 5 items are system tasks
+    local system_tasks=$SYSTEM_TASK_COUNT
     local system_rows_per_column=3  # 3 rows per column for System Tasks
-    local rows_per_column=$ROWS_PER_COLUMN  # 5 rows per column for Utilities
+    local rows_per_column=$ROWS_PER_COLUMN  # rows per column for Utilities
     local utilities_start=$system_tasks
     local utilities_count=$((total - system_tasks))
     local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
@@ -2579,8 +2661,10 @@ draw_menu() {
                 prefix="${BOLD}${BLUE}▸ ${RESET}"
             fi
             
-            # Show selection state
-            if [[ ${SELECTED[$i]} -eq 1 ]]; then
+            # Show selection / update-queued state
+            if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
+                checkbox="${YELLOW}[U]${RESET}"
+            elif [[ ${SELECTED[$i]} -eq 1 ]]; then
                 checkbox="${GREEN}[✓]${RESET}"
             fi
             
@@ -2640,8 +2724,10 @@ draw_menu() {
                 prefix="${BOLD}${BLUE}▸ ${RESET}"
             fi
             
-            # Show selection state
-            if [[ ${SELECTED[$i]} -eq 1 ]]; then
+            # Show selection / update-queued state
+            if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
+                checkbox="${YELLOW}[U]${RESET}"
+            elif [[ ${SELECTED[$i]} -eq 1 ]]; then
                 checkbox="${GREEN}[✓]${RESET}"
             fi
             
@@ -2680,8 +2766,11 @@ draw_menu() {
     # Count selected items and categorize actions
     local install_count=0
     local uninstall_count=0
+    local update_count=0
     for ((i=0; i<total; i++)); do
-        if [[ ${SELECTED[$i]} -eq 1 ]]; then
+        if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
+            ((update_count++))
+        elif [[ ${SELECTED[$i]} -eq 1 ]]; then
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
                 ((uninstall_count++))
             else
@@ -2690,12 +2779,12 @@ draw_menu() {
         fi
     done
     
-    echo "${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET}"
+    echo "${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET} | ${YELLOW}Update: ${update_count}${RESET}"
     echo ""
-    echo "${YELLOW}Use ↑/↓/←/→ to navigate, SPACE to select/deselect, ENTER to continue, Q to quit${RESET}"
+    echo "${YELLOW}↑/↓/←/→ navigate  SPACE select  U update installed  A select-all  D deselect-all  ENTER confirm  Q quit${RESET}"
     echo ""
-    echo "${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} = selected  ${RESET}${DIM}[ ]${RESET}${DIM} = not selected  ${MAGENTA}(installed)${RESET}${DIM} = already on system${RESET}"
-    echo "${DIM}Selecting an installed item queues uninstall; selecting a missing item queues install.${RESET}"
+    echo "${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} select  ${YELLOW}[U]${RESET}${DIM} update  ${RESET}${DIM}[ ]${RESET}${DIM} none  ${MAGENTA}(installed)${RESET}${DIM} = on system${RESET}"
+    echo "${DIM}[✓] on installed = uninstall; [✓] on missing = install; [U] on installed = update.${RESET}"
     echo ""
 }
 
@@ -2703,6 +2792,37 @@ draw_menu() {
 redraw_menu() {
     clear
     draw_menu
+}
+
+# Dynamically build the two navigational columns used by keyboard navigation.
+# Left column  = visual display-column 0 of System Tasks + display-column 0 of Utilities.
+# Right column = visual display-column 1 of System Tasks + display-column 1 of Utilities.
+# Results are stored in global arrays NAV_LEFT and NAV_RIGHT.
+build_nav_columns() {
+    NAV_LEFT=()
+    NAV_RIGHT=()
+    local total=${#UTILITIES[@]}
+    local sys_tasks=$SYSTEM_TASK_COUNT
+    local sys_rows=3              # rows per column in System Tasks section
+    local util_rows=$ROWS_PER_COLUMN
+
+    for (( i=0; i<sys_tasks && i<total; i++ )); do
+        if (( i / sys_rows == 0 )); then
+            NAV_LEFT+=( "$i" )
+        else
+            NAV_RIGHT+=( "$i" )
+        fi
+    done
+
+    local u=0
+    for (( i=sys_tasks; i<total; i++ )); do
+        if (( u / util_rows == 0 )); then
+            NAV_LEFT+=( "$i" )
+        else
+            NAV_RIGHT+=( "$i" )
+        fi
+        (( u++ ))
+    done
 }
 
 # Read a single keypress
@@ -2726,6 +2846,12 @@ read_key() {
         echo "SPACE"
     elif [[ $key == "q" ]] || [[ $key == "Q" ]]; then
         echo "QUIT"
+    elif [[ $key == "a" ]] || [[ $key == "A" ]]; then
+        echo "SELECT_ALL"
+    elif [[ $key == "d" ]] || [[ $key == "D" ]]; then
+        echo "DESELECT_ALL"
+    elif [[ $key == "u" ]] || [[ $key == "U" ]]; then
+        echo "UPDATE"
     else
         echo "OTHER"
     fi
@@ -2748,6 +2874,9 @@ run_selection_menu() {
         CACHED_REMOTE_COMMIT="unknown"
     fi
     
+    # Build navigation column layout once (dynamic — adapts to UTILITIES count)
+    build_nav_columns
+
     # Setup terminal
     hide_cursor
     stty -echo
@@ -2767,11 +2896,9 @@ run_selection_menu() {
         # System Tasks section and the Utilities section.  UP/DOWN stays
         # within the same column (wrapping at the ends); LEFT/RIGHT jumps
         # to the same row position in the other column (clamped if shorter).
-        #
-        # Left  column indices (display order): 0 1 2 | 5 6 7 8 9 10
-        # Right column indices (display order): 3 4   | 11 12 13 14 15 16
-        local -a _nav_left=(0 1 2 5 6 7 8 9 10)
-        local -a _nav_right=(3 4 11 12 13 14 15 16)
+        # Columns are computed dynamically by build_nav_columns() (called once above).
+        local -a _nav_left=("${NAV_LEFT[@]}")
+        local -a _nav_right=("${NAV_RIGHT[@]}")
 
         # Determine which column the cursor is in and its position within it.
         local _nav_col=-1   # 0 = left, 1 = right
@@ -2822,12 +2949,39 @@ run_selection_menu() {
                 redraw_menu
                 ;;
             SPACE)
-                # Toggle selection
+                # Toggle selection; clear any pending update for this item
+                UPDATE_SELECTED[$CURSOR]=0
                 if [[ ${SELECTED[$CURSOR]} -eq 0 ]]; then
                     SELECTED[$CURSOR]=1
                 else
                     SELECTED[$CURSOR]=0
                 fi
+                redraw_menu
+                ;;
+            UPDATE)
+                # Toggle update mode for installed items only
+                if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                    SELECTED[$CURSOR]=0   # clear install/uninstall selection
+                    if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 0 ]]; then
+                        UPDATE_SELECTED[$CURSOR]=1
+                    else
+                        UPDATE_SELECTED[$CURSOR]=0
+                    fi
+                    redraw_menu
+                fi
+                ;;
+            SELECT_ALL)
+                for ((i=0; i<${#UTILITIES[@]}; i++)); do
+                    SELECTED[$i]=1
+                    UPDATE_SELECTED[$i]=0
+                done
+                redraw_menu
+                ;;
+            DESELECT_ALL)
+                for ((i=0; i<${#UTILITIES[@]}; i++)); do
+                    SELECTED[$i]=0
+                    UPDATE_SELECTED[$i]=0
+                done
                 redraw_menu
                 ;;
             ENTER)
@@ -2855,29 +3009,33 @@ run_selection_menu() {
 
 process_selected() {
     local total=${#UTILITIES[@]}
-    local system_tasks=5  # First 5 entries are System Tasks
+    local system_tasks=$SYSTEM_TASK_COUNT
     declare -a to_install
     declare -a to_uninstall
+    declare -a to_update
     local needs_reboot=false
     
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do
         local util="${UTILITIES[$i]}"
-        if [[ ${SELECTED[$i]} -eq 1 ]]; then
+        if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
+            to_update+=("$util")
+        elif [[ ${SELECTED[$i]} -eq 1 ]]; then
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
                 to_uninstall+=("$util")
             else
                 to_install+=("$util")
             fi
-            # Reboot required for System Tasks and Docker
-            if [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]]; then
+            # Reboot required for System Tasks (except Self-Update) and Docker
+            if [[ "$util" != "Self-Update Script" ]] && \
+               { [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]]; }; then
                 needs_reboot=true
             fi
         fi
     done
     
     # Check if there's anything to do
-    if [[ ${#to_install[@]} -eq 0 ]] && [[ ${#to_uninstall[@]} -eq 0 ]]; then
+    if [[ ${#to_install[@]} -eq 0 ]] && [[ ${#to_uninstall[@]} -eq 0 ]] && [[ ${#to_update[@]} -eq 0 ]]; then
         echo ""
         echo "${YELLOW}No changes to make. Exiting.${RESET}"
         exit 0
@@ -2904,10 +3062,26 @@ process_selected() {
         done
         echo ""
     fi
+
+    if [[ ${#to_update[@]} -gt 0 ]]; then
+        echo "${YELLOW}To Update (${#to_update[@]}):${RESET}"
+        for util in "${to_update[@]}"; do
+            echo "  ${YELLOW}↑${RESET} $util"
+        done
+        echo ""
+    fi
     
     read -p "Press ENTER to continue or Ctrl+C to cancel..."
     echo ""
-    
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "${YELLOW}[DRY RUN] No changes made. Exiting.${RESET}"
+        exit 0
+    fi
+
+    # Check internet before any downloads
+    check_internet || true
+
     # Update package lists first
     echo "${CYAN}Updating package lists...${RESET}"
     pkg_refresh
@@ -2981,6 +3155,38 @@ process_selected() {
             failed_utils+=("$util (install)")
         fi
     done
+
+    # Process updates
+    for util in "${to_update[@]}"; do
+        echo ""
+        echo "${BOLD}${YELLOW}────────────────────────────────────────────────────────────────${RESET}"
+        echo "${BOLD}${YELLOW}Updating: $util${RESET}"
+        echo "${BOLD}${YELLOW}────────────────────────────────────────────────────────────────${RESET}"
+        echo ""
+
+        log_info "Starting update: $util"
+
+        local func="${UPDATE_FUNCS[$util]}"
+        if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
+            if $func; then
+                echo ""
+                echo "${GREEN}✓ Successfully updated: $util${RESET}"
+                log_success "Updated: $util"
+                ((success_count++))
+            else
+                echo ""
+                echo "${RED}✗ Failed to update: $util${RESET}"
+                log_error "Failed to update: $util"
+                ((fail_count++))
+                failed_utils+=("$util (update)")
+            fi
+        else
+            echo "${RED}✗ No update function found for: $util${RESET}"
+            log_error "No update function found for: $util"
+            ((fail_count++))
+            failed_utils+=("$util (update)")
+        fi
+    done
     
     # Summary
     echo ""
@@ -3040,7 +3246,137 @@ process_selected() {
 # MAIN
 # ============================================================================
 
+# Parse CLI arguments for non-interactive / scripted usage.
+# All flags are processed before the interactive menu is shown.
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --help|-h)
+                cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Options:
+  --help, -h            Show this help message and exit
+  --list                List all available utilities with install status
+  --dry-run             Preview actions without making any changes
+  --install <name>      Non-interactively install a utility by name
+  --uninstall <name>    Non-interactively uninstall a utility by name
+  --update <name>       Non-interactively update a utility by name
+  --update-all          Update every currently installed utility
+  --check <name>        Exit 0 if utility is installed, 1 if not
+
+Utility names must match exactly as shown by --list (case-sensitive).
+EOF
+                exit 0
+                ;;
+            --list)
+                echo "Available utilities:"
+                for util in "${UTILITIES[@]}"; do
+                    local check_func="${CHECK_FUNCS[$util]}"
+                    local status="not installed"
+                    if [[ -n "$check_func" ]] && declare -f "$check_func" &>/dev/null; then
+                        $check_func 2>/dev/null && status="installed"
+                    fi
+                    printf "  %-35s [%s]\n" "$util" "$status"
+                done
+                exit 0
+                ;;
+            --dry-run)
+                DRY_RUN=true
+                echo "${YELLOW}[DRY RUN] No changes will be made.${RESET}"
+                shift
+                ;;
+            --install)
+                [[ -z "${2:-}" ]] && { echo "Error: --install requires a utility name."; exit 1; }
+                local _util="$2"; shift 2
+                local _func="${INSTALL_FUNCS[$_util]:-}"
+                if [[ -z "$_func" ]]; then
+                    echo "Error: Unknown utility '${_util}'. Run --list to see available options."
+                    exit 1
+                fi
+                pkg_refresh
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[DRY RUN] Would install: $_util"; exit 0
+                fi
+                $_func && { echo "Installed: $_util"; exit 0; } || { echo "Failed: $_util"; exit 1; }
+                ;;
+            --uninstall)
+                [[ -z "${2:-}" ]] && { echo "Error: --uninstall requires a utility name."; exit 1; }
+                local _util="$2"; shift 2
+                local _func="${UNINSTALL_FUNCS[$_util]:-}"
+                if [[ -z "$_func" ]]; then
+                    echo "Error: Unknown utility '${_util}'. Run --list to see available options."
+                    exit 1
+                fi
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[DRY RUN] Would uninstall: $_util"; exit 0
+                fi
+                $_func && { echo "Uninstalled: $_util"; exit 0; } || { echo "Failed: $_util"; exit 1; }
+                ;;
+            --update)
+                [[ -z "${2:-}" ]] && { echo "Error: --update requires a utility name."; exit 1; }
+                local _util="$2"; shift 2
+                local _func="${UPDATE_FUNCS[$_util]:-}"
+                if [[ -z "$_func" ]]; then
+                    echo "Error: Unknown utility '${_util}'. Run --list to see available options."
+                    exit 1
+                fi
+                pkg_refresh
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[DRY RUN] Would update: $_util"; exit 0
+                fi
+                $_func && { echo "Updated: $_util"; exit 0; } || { echo "Failed: $_util"; exit 1; }
+                ;;
+            --update-all)
+                shift
+                echo "Updating all installed utilities..."
+                pkg_refresh
+                local _updated=0 _failed=0
+                for _util in "${UTILITIES[@]}"; do
+                    local _check="${CHECK_FUNCS[$_util]:-}"
+                    local _upd="${UPDATE_FUNCS[$_util]:-}"
+                    if [[ -n "$_check" ]] && declare -f "$_check" &>/dev/null && $_check 2>/dev/null; then
+                        if [[ -n "$_upd" ]] && declare -f "$_upd" &>/dev/null; then
+                            echo "Updating: $_util"
+                            if [[ "$DRY_RUN" == "true" ]]; then
+                                echo "  (dry-run skipped)"
+                            elif $_upd; then
+                                (( _updated++ ))
+                            else
+                                echo "  Failed to update: $_util"
+                                (( _failed++ ))
+                            fi
+                        fi
+                    fi
+                done
+                echo "Done. Updated: ${_updated}, Failed: ${_failed}."
+                exit $(( _failed > 0 ? 1 : 0 ))
+                ;;
+            --check)
+                [[ -z "${2:-}" ]] && { echo "Error: --check requires a utility name."; exit 1; }
+                local _util="$2"; shift 2
+                local _func="${CHECK_FUNCS[$_util]:-}"
+                if [[ -z "$_func" ]]; then
+                    echo "Error: Unknown utility '${_util}'. Run --list to see available options."
+                    exit 1
+                fi
+                if $_func 2>/dev/null; then
+                    echo "${_util} is installed"; exit 0
+                else
+                    echo "${_util} is not installed"; exit 1
+                fi
+                ;;
+            *)
+                echo "Unknown option: $1"
+                echo "Run '$(basename "$0") --help' for usage."
+                exit 1
+                ;;
+        esac
+    done
+}
+
 main() {
+    parse_args "$@"
     run_selection_menu
     process_selected
 }
