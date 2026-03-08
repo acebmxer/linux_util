@@ -722,7 +722,7 @@ setup_install_docker() {
                 fi
             fi
 
-            run_as_root "curl -fsSL https://download.docker.com/linux/${docker_dist}/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
+            run_as_root "curl -fsSL https://download.docker.com/linux/${docker_dist}/gpg | gpg --yes --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
             echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/${docker_dist} ${docker_codename} stable" | \
                 sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
             run_as_root "apt-get update"
