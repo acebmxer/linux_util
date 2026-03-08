@@ -28,6 +28,7 @@ DRY_RUN=false
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")"
 LOG_DIR="${SCRIPT_DIR}/logs"
 
 # Create log directory if it doesn't exist
@@ -702,16 +703,27 @@ setup_install_docker() {
             run_as_root "apt-get update"
             run_as_root "apt-get install -y apt-transport-https ca-certificates curl gnupg"
             
-            # Install software-properties-common only on Ubuntu
-            if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "linuxmint" ]] || [[ "$DISTRO_ID" == "pop" ]]; then
+            # Install software-properties-common only on Ubuntu-based distros
+            if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "linuxmint" || "$DISTRO_ID" == "pop" || "$DISTRO_ID" == "neon" ]]; then
                 run_as_root "apt-get install -y software-properties-common"
             fi
             
             local docker_dist="$DISTRO_ID"
-            [[ "$DISTRO_ID" == "linuxmint" || "$DISTRO_ID" == "pop" ]] && docker_dist="ubuntu"
-            
+            local docker_codename="${DISTRO_VERSION_CODENAME:-stable}"
+            # Distros that don't have their own Docker repo — map to ubuntu
+            if [[ "$DISTRO_ID" == "linuxmint" || "$DISTRO_ID" == "pop" || "$DISTRO_ID" == "neon" ]]; then
+                docker_dist="ubuntu"
+                # KDE Neon: resolve the upstream Ubuntu codename
+                if [[ "$DISTRO_ID" == "neon" && -z "$docker_codename" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
+                    if [[ -f /etc/upstream-release/lsb-release ]]; then
+                        docker_codename=$(grep -oP '(?<=DISTRIB_CODENAME=).+' /etc/upstream-release/lsb-release)
+                    fi
+                    docker_codename="${docker_codename:-noble}"
+                fi
+            fi
+
             run_as_root "curl -fsSL https://download.docker.com/linux/${docker_dist}/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/${docker_dist} ${DISTRO_VERSION_CODENAME:-stable} stable" | \
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/${docker_dist} ${docker_codename} stable" | \
                 sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
             run_as_root "apt-get update"
             run_as_root "apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
@@ -894,8 +906,8 @@ self_update_script() {
     local after
     after=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
     if [[ "$before" != "$after" ]]; then
-        info "Script updated to $(git -C "$SCRIPT_DIR" rev-parse --short HEAD). Please re-run the script."
-        exit 0
+        info "Script updated to $(git -C "$SCRIPT_DIR" rev-parse --short HEAD). Restarting..."
+        exec bash "$SCRIPT_PATH" "$@"
     else
         info "Script is already up to date."
     fi
