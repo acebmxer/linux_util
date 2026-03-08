@@ -1338,6 +1338,7 @@ check_bitwarden() {
     command -v bitwarden &>/dev/null || \
         (has_snap && snap list bitwarden &>/dev/null) || \
         (has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden) || \
+        pkg_check_installed bitwarden-bin || \
         pkg_check_installed bitwarden
 }
 install_bitwarden() {
@@ -1381,14 +1382,14 @@ install_bitwarden() {
             ;;
         arch)
             if has_aur_helper; then
-                aur_install bitwarden
+                aur_install bitwarden-bin
             else
-                echo "No AUR helper found. Building bitwarden from AUR..."
+                echo "No AUR helper found. Building bitwarden-bin from AUR..."
                 ensure_aur_build_deps
                 local build_dir
                 build_dir=$(mktemp -d)
-                git clone https://aur.archlinux.org/bitwarden.git "$build_dir/bitwarden"
-                (cd "$build_dir/bitwarden" && makepkg -si --noconfirm)
+                git clone https://aur.archlinux.org/bitwarden-bin.git "$build_dir/bitwarden-bin"
+                (cd "$build_dir/bitwarden-bin" && makepkg -si --noconfirm)
                 rm -rf "$build_dir"
             fi
             ;;
@@ -1410,6 +1411,8 @@ uninstall_bitwarden() {
         sudo snap remove bitwarden
     elif has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden; then
         flatpak uninstall -y com.bitwarden.desktop
+    elif pkg_check_installed bitwarden-bin; then
+        pkg_remove bitwarden-bin
     elif pkg_check_installed bitwarden; then
         pkg_remove bitwarden
     else
@@ -1427,6 +1430,12 @@ update_bitwarden() {
         install_bitwarden
     elif [[ "$DISTRO_FAMILY" == "fedora" || "$DISTRO_FAMILY" == "rhel" ]]; then
         install_bitwarden
+    elif pkg_check_installed bitwarden-bin; then
+        if has_aur_helper; then
+            aur_upgrade bitwarden-bin
+        else
+            install_bitwarden
+        fi
     elif pkg_check_installed bitwarden; then
         pkg_upgrade bitwarden
     else
