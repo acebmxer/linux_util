@@ -353,6 +353,15 @@ aur_upgrade() {
     fi
 }
 
+# Ensure packages required to build AUR packages are present (Arch/Manjaro only)
+ensure_aur_build_deps() {
+    if [[ "$PKG_MGR" != "pacman" ]]; then
+        return 0
+    fi
+    echo "Ensuring AUR build dependencies (base-devel, git)..."
+    sudo pacman -S --noconfirm --needed base-devel git
+}
+
 # Detect the distro at startup
 detect_distro
 echo ""
@@ -1373,11 +1382,14 @@ install_bitwarden() {
         arch)
             if has_aur_helper; then
                 aur_install bitwarden
-            elif has_snap; then
-                sudo snap install bitwarden
             else
-                echo "Error: An AUR helper (yay/paru) or snap is required."
-                return 1
+                echo "No AUR helper found. Building bitwarden from AUR..."
+                ensure_aur_build_deps
+                local build_dir
+                build_dir=$(mktemp -d)
+                git clone https://aur.archlinux.org/bitwarden.git "$build_dir/bitwarden"
+                (cd "$build_dir/bitwarden" && makepkg -si --noconfirm)
+                rm -rf "$build_dir"
             fi
             ;;
         *)
@@ -1450,8 +1462,13 @@ install_brave() {
             if has_aur_helper; then
                 aur_install brave-bin
             else
-                echo "Error: An AUR helper (yay/paru) is required to install Brave on Arch."
-                return 1
+                echo "No AUR helper found. Building brave-bin from AUR..."
+                ensure_aur_build_deps
+                local build_dir
+                build_dir=$(mktemp -d)
+                git clone https://aur.archlinux.org/brave-bin.git "$build_dir/brave-bin"
+                (cd "$build_dir/brave-bin" && makepkg -si --noconfirm)
+                rm -rf "$build_dir"
             fi
             ;;
         suse)
@@ -1494,8 +1511,13 @@ update_brave() {
             if has_aur_helper; then
                 aur_upgrade brave-bin
             else
-                echo "Error: An AUR helper (yay/paru) is required."
-                return 1
+                echo "No AUR helper found. Rebuilding brave-bin from AUR..."
+                ensure_aur_build_deps
+                local build_dir
+                build_dir=$(mktemp -d)
+                git clone https://aur.archlinux.org/brave-bin.git "$build_dir/brave-bin"
+                (cd "$build_dir/brave-bin" && makepkg -si --noconfirm)
+                rm -rf "$build_dir"
             fi
             ;;
         *)
@@ -1585,7 +1607,9 @@ update_joplin() {
 # --- Termius SSH Client ---
 
 check_termius() {
-    command -v termius-app &>/dev/null || \
+    command -v termius &>/dev/null || \
+        command -v termius-app &>/dev/null || \
+        pkg_check_installed termius || \
         pkg_check_installed termius-app || \
         (has_snap && snap list termius-app &>/dev/null) || \
         (has_flatpak && flatpak list 2>/dev/null | grep -qi termius)
@@ -1597,6 +1621,19 @@ install_termius() {
             wget -q https://www.termius.com/download/linux/Termius.deb -O /tmp/termius.deb
             sudo apt install -y /tmp/termius.deb
             rm -f /tmp/termius.deb
+            ;;
+        arch)
+            if has_aur_helper; then
+                aur_install termius
+            else
+                echo "No AUR helper found. Building termius from AUR..."
+                ensure_aur_build_deps
+                local build_dir
+                build_dir=$(mktemp -d)
+                git clone https://aur.archlinux.org/termius.git "$build_dir/termius"
+                (cd "$build_dir/termius" && makepkg -si --noconfirm)
+                rm -rf "$build_dir"
+            fi
             ;;
         *)
             if has_snap; then
@@ -1617,7 +1654,9 @@ install_termius() {
 }
 uninstall_termius() {
     echo "Uninstalling Termius SSH Client..."
-    if pkg_check_installed termius-app; then
+    if pkg_check_installed termius; then
+        pkg_remove termius
+    elif pkg_check_installed termius-app; then
         pkg_remove termius-app
     elif has_snap && snap list termius-app &>/dev/null; then
         sudo snap remove termius-app
@@ -1635,6 +1674,19 @@ update_termius() {
             wget -q https://www.termius.com/download/linux/Termius.deb -O /tmp/termius.deb
             sudo apt install -y /tmp/termius.deb
             rm -f /tmp/termius.deb
+            ;;
+        arch)
+            if has_aur_helper; then
+                aur_upgrade termius
+            else
+                echo "No AUR helper found. Rebuilding termius from AUR..."
+                ensure_aur_build_deps
+                local build_dir
+                build_dir=$(mktemp -d)
+                git clone https://aur.archlinux.org/termius.git "$build_dir/termius"
+                (cd "$build_dir/termius" && makepkg -si --noconfirm)
+                rm -rf "$build_dir"
+            fi
             ;;
         *)
             if has_snap && snap list termius-app &>/dev/null; then
@@ -2091,8 +2143,14 @@ install_vscode() {
             if has_aur_helper; then
                 aur_install visual-studio-code-bin
             else
-                echo "Error: An AUR helper (yay/paru) is required to install VS Code on Arch."
-                return 1
+                # Install from AUR: https://aur.archlinux.org/packages/visual-studio-code-bin
+                echo "No AUR helper found. Building visual-studio-code-bin from AUR..."
+                ensure_aur_build_deps
+                local build_dir
+                build_dir=$(mktemp -d)
+                git clone https://aur.archlinux.org/visual-studio-code-bin.git "$build_dir/visual-studio-code-bin"
+                (cd "$build_dir/visual-studio-code-bin" && makepkg -si --noconfirm)
+                rm -rf "$build_dir"
             fi
             ;;
         suse)
@@ -2136,8 +2194,14 @@ update_vscode() {
             if has_aur_helper; then
                 aur_upgrade visual-studio-code-bin
             else
-                echo "Error: An AUR helper (yay/paru) is required."
-                return 1
+                # Update from AUR: https://aur.archlinux.org/packages/visual-studio-code-bin
+                echo "No AUR helper found. Rebuilding visual-studio-code-bin from AUR..."
+                ensure_aur_build_deps
+                local build_dir
+                build_dir=$(mktemp -d)
+                git clone https://aur.archlinux.org/visual-studio-code-bin.git "$build_dir/visual-studio-code-bin"
+                (cd "$build_dir/visual-studio-code-bin" && makepkg -si --noconfirm)
+                rm -rf "$build_dir"
             fi
             ;;
         *)
