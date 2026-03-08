@@ -819,16 +819,9 @@ CHECK_FUNCS["XEN Guest Utilities"]="check_always_false"
 UNINSTALL_FUNCS["XEN Guest Utilities"]="noop_function"
 UPDATE_FUNCS["XEN Guest Utilities"]="setup_xen_guest_utilities"
 
-# Self-Update Script
-UTILITIES+=("Self-Update Script")
-INSTALL_FUNCS["Self-Update Script"]="self_update_script"
-CHECK_FUNCS["Self-Update Script"]="check_always_false"
-UNINSTALL_FUNCS["Self-Update Script"]="noop_function"
-UPDATE_FUNCS["Self-Update Script"]="self_update_script"
-
 # Number of "System Task" entries at the top of the UTILITIES array.
 # *** INCREMENT THIS when adding a new System Task above this line. ***
-readonly SYSTEM_TASK_COUNT=6
+readonly SYSTEM_TASK_COUNT=5
 
 # Helper functions for system setup tasks
 check_always_false() { return 1; }
@@ -3055,9 +3048,8 @@ process_selected() {
             else
                 to_install+=("$util")
             fi
-            # Reboot required for System Tasks (except Self-Update) and Docker
-            if [[ "$util" != "Self-Update Script" ]] && \
-               { [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]]; }; then
+            # Reboot required for System Tasks and Docker
+            if [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]]; then
                 needs_reboot=true
             fi
         fi
@@ -3405,6 +3397,7 @@ EOF
 }
 
 main() {
+    self_update_script "$@"
     parse_args "$@"
     run_selection_menu
     process_selected
