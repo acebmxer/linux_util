@@ -1796,11 +1796,28 @@ install_devolutions_rdm() {
         debian)
             # Ubuntu/Debian repository setup
             echo "Setting up Cloudsmith repository for Remote Desktop Manager..."
-            curl -1sLf 'https://dl.cloudsmith.io/public/devolutions/rdm/setup.deb.sh' | sudo -E bash
-            
+
+            # KDE Neon has ID=neon which Cloudsmith's setup.deb.sh doesn't recognise.
+            # Manually add the Ubuntu-based repo using the upstream Ubuntu codename.
+            if [[ "$DISTRO_ID" == "neon" ]]; then
+                local ubuntu_codename="${DISTRO_VERSION_CODENAME}"
+                # Fallback: read from KDE Neon's upstream release file
+                if [[ -z "$ubuntu_codename" && -f /etc/upstream-release/lsb-release ]]; then
+                    ubuntu_codename=$(grep -oP '(?<=DISTRIB_CODENAME=).+' /etc/upstream-release/lsb-release)
+                fi
+                ubuntu_codename="${ubuntu_codename:-noble}"
+                echo "KDE Neon detected (Ubuntu ${ubuntu_codename} base). Configuring repository manually..."
+                curl -1sLf 'https://dl.cloudsmith.io/public/devolutions/rdm/gpg.FE7407ECB26FD2FE.key' | \
+                    sudo gpg --dearmor -o /usr/share/keyrings/devolutions-rdm.gpg
+                echo "deb [signed-by=/usr/share/keyrings/devolutions-rdm.gpg] https://dl.cloudsmith.io/public/devolutions/rdm/deb/ubuntu ${ubuntu_codename} main" | \
+                    sudo tee /etc/apt/sources.list.d/devolutions-rdm.list > /dev/null
+            else
+                curl -1sLf 'https://dl.cloudsmith.io/public/devolutions/rdm/setup.deb.sh' | sudo -E bash
+            fi
+
             # Install required packages for repository management
             sudo apt-get install -y apt-transport-https 2>/dev/null || true
-            
+
             # Update package lists and install Remote Desktop Manager
             sudo apt-get update
             sudo apt-get install -y remotedesktopmanager
