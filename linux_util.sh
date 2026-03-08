@@ -702,10 +702,10 @@ setup_install_docker() {
             ;;
             
         pacman)
-            # Arch Linux
+            # Arch/Manjaro - containerd must be running before docker starts
             run_as_root "pacman -S --noconfirm docker docker-compose docker-buildx"
-            run_as_root "systemctl start docker.service"
-            run_as_root "systemctl enable docker.service"
+            run_as_root "systemctl enable --now containerd.service"
+            run_as_root "systemctl enable --now docker.service"
             ;;
             
         *)
