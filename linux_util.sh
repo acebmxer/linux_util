@@ -570,9 +570,39 @@ setup_xen_guest_utilities() {
     
     if [[ -f "${MOUNT_POINT}/Linux/install.sh" ]]; then
         info "Running XCP-NG installer script..."
-        run_as_root "cd '${MOUNT_POINT}/Linux' && bash ./install.sh"
-        info "Waiting 15 seconds for services to initialize..."
-        sleep 15
+
+        # Ubuntu and Debian are auto-detected by the installer.
+        # All other distros require explicit -d <distro> -m <major_version> flags.
+        # See: https://docs.xcp-ng.org/vms/#install-from-the-guest-tools-iso
+        local install_flags=""
+        local major_ver="${DISTRO_VERSION_ID%%.*}"
+
+        case "$DISTRO_ID" in
+            ubuntu|debian)
+                install_flags=""
+                ;;
+            *)
+                case "$DISTRO_FAMILY" in
+                    debian)
+                        install_flags="-d debian -m ${major_ver}"
+                        ;;
+                    rhel|fedora)
+                        install_flags="-d rhel -m ${major_ver}"
+                        ;;
+                    arch|suse)
+                        warn "Xen Guest Tools installer may not officially support ${DISTRO_NAME}. Attempting without distro flags..."
+                        ;;
+                    *)
+                        warn "Unknown distro family '${DISTRO_FAMILY}'. Attempting without distro flags..."
+                        ;;
+                esac
+                ;;
+        esac
+
+        [[ -n "$install_flags" ]] && info "Using installer flags: ${install_flags}"
+        run_as_root "bash '${MOUNT_POINT}/Linux/install.sh' ${install_flags}"
+        info "Waiting 5 seconds for services to initialize..."
+        sleep 5
         run_as_root "umount '${MOUNT_POINT}'" || warn "Failed to unmount ${MOUNT_POINT}"
         info "XCP-NG Tools installation completed."
     else
