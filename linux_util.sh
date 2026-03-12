@@ -586,8 +586,11 @@ setup_xen_guest_utilities() {
                     debian)
                         install_flags="-d debian -m ${major_ver}"
                         ;;
-                    rhel|fedora)
+                    rhel)
                         install_flags="-d rhel -m ${major_ver}"
+                        ;;
+                    fedora)
+                        install_flags="-d fedora -m ${major_ver}"
                         ;;
                     arch|suse)
                         warn "Xen Guest Tools installer may not officially support ${DISTRO_NAME}. Attempting without distro flags..."
@@ -1686,6 +1689,19 @@ install_joplin() {
         echo "Error: Joplin installation script failed."
         return 1
     }
+
+    # Ubuntu 24.04+ restricts unprivileged user namespaces via AppArmor,
+    # which breaks Electron-based AppImages like Joplin (causes SIGTRAP crash).
+    if [[ "$DISTRO_ID" == "ubuntu" ]] && [[ "${DISTRO_VERSION_ID%%.*}" -ge 24 ]]; then
+        local sysctl_file="/etc/sysctl.d/99-appimage-userns.conf"
+        local sysctl_key="kernel.apparmor_restrict_unprivileged_userns"
+        if [[ "$(sysctl -n "$sysctl_key" 2>/dev/null)" == "1" ]]; then
+            echo "Configuring system to allow AppImage user namespaces (required for Joplin on Ubuntu 24.04+)..."
+            echo "${sysctl_key}=0" | sudo tee "$sysctl_file" >/dev/null
+            sudo sysctl --system >/dev/null 2>&1
+            echo "AppImage user namespace restriction disabled."
+        fi
+    fi
 }
 uninstall_joplin() {
     echo "Uninstalling Joplin Client..."
