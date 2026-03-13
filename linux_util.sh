@@ -433,7 +433,7 @@ echo ""
 # Cache sudo credentials and keep them alive in the background so the user
 # is not re-prompted mid-install when the sudo timeout expires.
 sudo -v
-( while true; do sudo -n true; sleep 50; done ) 2>/dev/null &
+( exec 9>&-; while true; do sudo -n true; sleep 50; done ) 2>/dev/null &
 SUDO_KEEPALIVE_PID=$!
 
 # ============================================================================
@@ -1017,6 +1017,8 @@ self_update_script() {
     after=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
     if [[ "$before" != "$after" ]]; then
         info "Script updated to $(git -C "$SCRIPT_DIR" rev-parse --short HEAD). Restarting..."
+        # Clean up before re-exec (EXIT trap does not fire on exec)
+        [[ -n "$SUDO_KEEPALIVE_PID" ]] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
         exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
     else
         info "Script is already up to date."
