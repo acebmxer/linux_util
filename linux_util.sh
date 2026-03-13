@@ -526,7 +526,18 @@ setup_full_update_bare_metal() {
 # --- Option 2: Install/Update XEN Guest Utilities ---
 setup_xen_guest_utilities() {
     info "Installing/Updating XEN Guest Utilities..."
-    
+
+    # Fedora / CentOS / RHEL: install from EPEL repository
+    if [[ "$DISTRO_FAMILY" == "fedora" || "$DISTRO_FAMILY" == "rhel" ]]; then
+        info "Installing xe-guest-utilities-latest via yum (EPEL)..."
+        run_as_root "yum install -y xe-guest-utilities-latest" || { error "Failed to install xe-guest-utilities-latest"; return 1; }
+        info "Enabling and starting xe-linux-distribution service..."
+        run_as_root "systemctl enable xe-linux-distribution" || warn "Failed to enable xe-linux-distribution"
+        run_as_root "systemctl start xe-linux-distribution" || warn "Failed to start xe-linux-distribution"
+        info "XEN Guest Utilities installation completed."
+        return 0
+    fi
+
     # Check for existing installations and optionally remove them
     if pkg_check_installed xe-guest-utilities; then
         ver=$(pkg_get_version xe-guest-utilities)
@@ -585,12 +596,6 @@ setup_xen_guest_utilities() {
                 case "$DISTRO_FAMILY" in
                     debian)
                         install_flags="-d debian -m ${major_ver}"
-                        ;;
-                    rhel)
-                        install_flags="-d rhel -m ${major_ver}"
-                        ;;
-                    fedora)
-                        install_flags="-d fedora -m ${major_ver}"
                         ;;
                     arch|suse)
                         warn "Xen Guest Tools installer may not officially support ${DISTRO_NAME}. Attempting without distro flags..."
