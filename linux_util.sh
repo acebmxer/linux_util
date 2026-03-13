@@ -900,7 +900,7 @@ register_utility() {
     CHECK_FUNCS["$name"]="$check_fn"
     UNINSTALL_FUNCS["$name"]="$uninstall_fn"
     UPDATE_FUNCS["$name"]="$update_fn"
-    [[ -n "$version_fn" ]] && VERSION_FUNCS["$name"]="$version_fn"
+    [[ -n "$version_fn" ]] && VERSION_FUNCS["$name"]="$version_fn" || true
 }
 
 # ============================================================================
