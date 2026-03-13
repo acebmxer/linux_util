@@ -772,12 +772,12 @@ setup_install_kde() {
                 # RHEL 9+ / AlmaLinux 9+ don't have the KDE group — install individual packages
                 info "Group install not available, installing KDE packages individually..."
                 run_as_root "$PKG_MGR install -y epel-release" 2>/dev/null || true
+                run_as_root "crb enable" 2>/dev/null || run_as_root "$PKG_MGR config-manager --set-enabled crb" 2>/dev/null || true
                 run_as_root "$PKG_MGR install -y plasma-desktop plasma-workspace sddm \
                     plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons plasma-thunderbolt \
                     bluedevil breeze-gtk kscreen kinfocenter kwrited \
                     konsole dolphin kate ark gwenview okular spectacle \
-                    kde-settings-plasma kde-gtk-config kcm_colors \
-                    NetworkManager-config-connectivity-fedora xdg-desktop-portal-kde \
+                    kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde \
                     phonon-qt5-backend-gstreamer" || {
                     error "Failed to install KDE Full Desktop Environment packages"
                     return 1
