@@ -888,16 +888,19 @@ declare -A INSTALL_FUNCS
 declare -A CHECK_FUNCS
 declare -A UNINSTALL_FUNCS
 declare -A UPDATE_FUNCS
+declare -A VERSION_FUNCS
 
 # Registration helper — reduces boilerplate when adding new utilities.
-# Usage: register_utility "Name" install_fn check_fn uninstall_fn update_fn
+# Usage: register_utility "Name" install_fn check_fn uninstall_fn update_fn [version_fn]
 register_utility() {
     local name="$1" install_fn="$2" check_fn="$3" uninstall_fn="$4" update_fn="$5"
+    local version_fn="${6:-}"
     UTILITIES+=("$name")
     INSTALL_FUNCS["$name"]="$install_fn"
     CHECK_FUNCS["$name"]="$check_fn"
     UNINSTALL_FUNCS["$name"]="$uninstall_fn"
     UPDATE_FUNCS["$name"]="$update_fn"
+    [[ -n "$version_fn" ]] && VERSION_FUNCS["$name"]="$version_fn"
 }
 
 # ============================================================================
@@ -921,7 +924,7 @@ SYSTEM_TASKS+=("System Updates")
 register_utility "System Updates" setup_system_updates check_always_false noop_function setup_system_updates
 
 SYSTEM_TASKS+=("XEN Guest Utilities")
-register_utility "XEN Guest Utilities" setup_xen_guest_utilities check_always_false noop_function setup_xen_guest_utilities
+register_utility "XEN Guest Utilities" setup_xen_guest_utilities check_xen_guest_utilities noop_function setup_xen_guest_utilities get_version_xen_guest_utilities
 
 # Computed from the SYSTEM_TASKS array — no manual increment needed.
 readonly SYSTEM_TASK_COUNT=${#SYSTEM_TASKS[@]}
@@ -930,7 +933,18 @@ readonly SYSTEM_TASK_COUNT=${#SYSTEM_TASKS[@]}
 check_always_false() { return 1; }
 noop_function() { return 0; }
 check_xen_guest_utilities() {
-    pkg_check_installed xe-guest-utilities || pkg_check_installed xen-guest-agent
+    pkg_check_installed xe-guest-utilities || pkg_check_installed xen-guest-agent || pkg_check_installed xe-guest-utilities-latest
+}
+get_version_xen_guest_utilities() {
+    local ver=""
+    if pkg_check_installed xe-guest-utilities; then
+        ver=$(pkg_get_version xe-guest-utilities)
+    elif pkg_check_installed xen-guest-agent; then
+        ver=$(pkg_get_version xen-guest-agent)
+    elif pkg_check_installed xe-guest-utilities-latest; then
+        ver=$(pkg_get_version xe-guest-utilities-latest)
+    fi
+    [[ -n "$ver" ]] && echo "$ver"
 }
 check_kde() {
     command -v plasmashell &>/dev/null || \
@@ -2564,6 +2578,8 @@ declare -a SELECTED
 declare -a INSTALLED
 # Track items queued for update (0 = no, 1 = yes; only valid for installed items)
 declare -a UPDATE_SELECTED
+# Track installed versions (empty string if unknown)
+declare -a INSTALLED_VERSIONS
 # Rows per column for utilities section
 ROWS_PER_COLUMN=6
 
@@ -2577,11 +2593,20 @@ check_installed_utilities() {
         if [[ -n "$check_func" ]] && declare -f "$check_func" > /dev/null; then
             if $check_func 2>/dev/null; then
                 INSTALLED[$i]=1
+                # Retrieve version if a version function is registered
+                local ver_func="${VERSION_FUNCS[$util]:-}"
+                if [[ -n "$ver_func" ]] && declare -f "$ver_func" > /dev/null; then
+                    INSTALLED_VERSIONS[$i]=$($ver_func 2>/dev/null)
+                else
+                    INSTALLED_VERSIONS[$i]=""
+                fi
             else
                 INSTALLED[$i]=0
+                INSTALLED_VERSIONS[$i]=""
             fi
         else
             INSTALLED[$i]=0
+            INSTALLED_VERSIONS[$i]=""
         fi
 
         # Keep all options unselected by default; selection determines action
@@ -2594,6 +2619,7 @@ for ((i=0; i<${#UTILITIES[@]}; i++)); do
     SELECTED[$i]=0
     INSTALLED[$i]=0
     UPDATE_SELECTED[$i]=0
+    INSTALLED_VERSIONS[$i]=""
 done
 
 # Current cursor position
@@ -2667,11 +2693,16 @@ draw_menu() {
                 checkbox="${GREEN}[✓]${RESET}"
             fi
             
-            # Show installed status
+            # Show installed status (with version if available)
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                status_tag=" ${MAGENTA}(installed)${RESET}"
+                local ver="${INSTALLED_VERSIONS[$i]:-}"
+                if [[ -n "$ver" ]]; then
+                    status_tag=" ${MAGENTA}(v${ver})${RESET}"
+                else
+                    status_tag=" ${MAGENTA}(installed)${RESET}"
+                fi
             fi
-            
+
             local item=""
             if [[ $i -eq $CURSOR ]]; then
                 item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
@@ -2682,7 +2713,14 @@ draw_menu() {
             # Add padding for columns using visible width (no ANSI codes)
             if [[ $col -lt $((system_num_columns - 1)) ]]; then
                 local plain_status=""
-                [[ ${INSTALLED[$i]} -eq 1 ]] && plain_status=" (installed)"
+                if [[ ${INSTALLED[$i]} -eq 1 ]]; then
+                    local pver="${INSTALLED_VERSIONS[$i]:-}"
+                    if [[ -n "$pver" ]]; then
+                        plain_status=" (v${pver})"
+                    else
+                        plain_status=" (installed)"
+                    fi
+                fi
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
                 local column_width=43
@@ -2730,11 +2768,16 @@ draw_menu() {
                 checkbox="${GREEN}[✓]${RESET}"
             fi
             
-            # Show installed status
+            # Show installed status (with version if available)
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                status_tag=" ${MAGENTA}(installed)${RESET}"
+                local ver="${INSTALLED_VERSIONS[$i]:-}"
+                if [[ -n "$ver" ]]; then
+                    status_tag=" ${MAGENTA}(v${ver})${RESET}"
+                else
+                    status_tag=" ${MAGENTA}(installed)${RESET}"
+                fi
             fi
-            
+
             local item=""
             if [[ $i -eq $CURSOR ]]; then
                 item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
@@ -2745,7 +2788,14 @@ draw_menu() {
             # Add padding for columns using visible width (no ANSI codes)
             if [[ $col -lt $((num_columns - 1)) ]]; then
                 local plain_status=""
-                [[ ${INSTALLED[$i]} -eq 1 ]] && plain_status=" (installed)"
+                if [[ ${INSTALLED[$i]} -eq 1 ]]; then
+                    local pver="${INSTALLED_VERSIONS[$i]:-}"
+                    if [[ -n "$pver" ]]; then
+                        plain_status=" (v${pver})"
+                    else
+                        plain_status=" (installed)"
+                    fi
+                fi
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
                 local column_width=42
@@ -3324,7 +3374,15 @@ EOF
                     local check_func="${CHECK_FUNCS[$util]}"
                     local status="not installed"
                     if [[ -n "$check_func" ]] && declare -f "$check_func" &>/dev/null; then
-                        $check_func 2>/dev/null && status="installed"
+                        if $check_func 2>/dev/null; then
+                            status="installed"
+                            local ver_func="${VERSION_FUNCS[$util]:-}"
+                            if [[ -n "$ver_func" ]] && declare -f "$ver_func" &>/dev/null; then
+                                local ver
+                                ver=$($ver_func 2>/dev/null)
+                                [[ -n "$ver" ]] && status="installed: v${ver}"
+                            fi
+                        fi
                     fi
                     printf "  %-35s [%s]\n" "$util" "$status"
                 done
@@ -3398,6 +3456,14 @@ EOF
                 local _util="$_RESOLVED"; shift 2
                 local _func="${CHECK_FUNCS[$_util]}"
                 if $_func 2>/dev/null; then
+                    local _ver_func="${VERSION_FUNCS[$_util]:-}"
+                    if [[ -n "$_ver_func" ]] && declare -f "$_ver_func" &>/dev/null; then
+                        local _ver
+                        _ver=$($_ver_func 2>/dev/null)
+                        if [[ -n "$_ver" ]]; then
+                            echo "${_util} is installed (v${_ver})"; exit 0
+                        fi
+                    fi
                     echo "${_util} is installed"; exit 0
                 else
                     echo "${_util} is not installed"; exit 1
