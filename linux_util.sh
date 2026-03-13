@@ -596,8 +596,8 @@ setup_full_update_bare_metal() {
 setup_xen_guest_utilities() {
     info "Installing/Updating XEN Guest Utilities..."
 
-    # Fedora / CentOS / RHEL: install from EPEL repository
-    if [[ "$DISTRO_FAMILY" == "fedora" || "$DISTRO_FAMILY" == "rhel" ]]; then
+    # CentOS / Fedora: install from EPEL repository
+    if [[ "$DISTRO_ID" == "centos" || "$DISTRO_ID" == "fedora" ]]; then
         info "Installing xe-guest-utilities-latest via yum (EPEL)..."
         run_as_root "yum install -y xe-guest-utilities-latest" || { error "Failed to install xe-guest-utilities-latest"; return 1; }
         info "Enabling and starting xe-linux-distribution service..."
@@ -651,28 +651,24 @@ setup_xen_guest_utilities() {
     if [[ -f "${MOUNT_POINT}/Linux/install.sh" ]]; then
         info "Running XCP-NG installer script..."
 
-        # Ubuntu and Debian are auto-detected by the installer.
-        # All other distros require explicit -d <distro> -m <major_version> flags.
+        # Debian-family distros (debian, ubuntu, kubuntu, kde neon, etc.) are auto-detected.
+        # RHEL derivatives (alma, rocky, etc.) need explicit -d rhel -m <major_version> flags.
         # See: https://docs.xcp-ng.org/vms/#install-from-the-guest-tools-iso
         local install_flags=""
         local major_ver="${DISTRO_VERSION_ID%%.*}"
 
-        case "$DISTRO_ID" in
-            ubuntu|debian)
+        case "$DISTRO_FAMILY" in
+            debian)
                 install_flags=""
                 ;;
+            rhel)
+                install_flags="-d rhel -m ${major_ver}"
+                ;;
+            arch|suse)
+                warn "Xen Guest Tools installer may not officially support ${DISTRO_NAME}. Attempting without distro flags..."
+                ;;
             *)
-                case "$DISTRO_FAMILY" in
-                    debian)
-                        install_flags="-d debian -m ${major_ver}"
-                        ;;
-                    arch|suse)
-                        warn "Xen Guest Tools installer may not officially support ${DISTRO_NAME}. Attempting without distro flags..."
-                        ;;
-                    *)
-                        warn "Unknown distro family '${DISTRO_FAMILY}'. Attempting without distro flags..."
-                        ;;
-                esac
+                warn "Unknown distro family '${DISTRO_FAMILY}'. Attempting without distro flags..."
                 ;;
         esac
 
