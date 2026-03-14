@@ -281,10 +281,17 @@ get_version_xen_guest_utilities() {
 setup_xen_guest_utilities() {
     info "Installing/Updating XEN Guest Utilities..."
 
-    # CentOS / Fedora: install from EPEL repository
+    # CentOS / Fedora / AlmaLinux: install from EPEL repository
     if [[ "$DISTRO_ID" == "centos" || "$DISTRO_ID" == "fedora" ]] || [[ "$DISTRO_ID" == "almalinux" ]]; then
+        # Enable EPEL repository if not already enabled
+        run_as_root "yum install -y epel-release" 2>/dev/null || true
+
         info "Installing xe-guest-utilities-latest via yum (EPEL)..."
-        run_as_root "yum install -y xe-guest-utilities-latest" || { error "Failed to install xe-guest-utilities-latest"; return 1; }
+        if ! run_as_root "yum install -y xe-guest-utilities-latest"; then
+            info "xe-guest-utilities-latest not found, trying xe-guest-utilities..."
+            run_as_root "yum install -y xe-guest-utilities" || { error "Failed to install XEN Guest Utilities"; return 1; }
+        fi
+
         info "Enabling and starting xe-linux-distribution service..."
         run_as_root "systemctl enable xe-linux-distribution" || warn "Failed to enable xe-linux-distribution"
         run_as_root "systemctl start xe-linux-distribution" || warn "Failed to start xe-linux-distribution"
