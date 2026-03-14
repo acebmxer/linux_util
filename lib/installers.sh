@@ -84,6 +84,19 @@ self_update_script() {
 #   4. Optional: add get_version_foobar_tool() to show version in menu
 #   5. Test it shows in menu in correct position with correct status
 
+# --- System Tasks (must be registered before utilities) ---
+register_utility "Full System Upgrade/Update" setup_full_update_bare_metal check_always_false noop_function setup_full_update_bare_metal
+register_utility "KDE Desktop"        install_kde             check_kde             uninstall_kde             update_kde                get_version_kde
+register_utility "NVIDIA Drivers"     install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
+register_utility "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates
+register_utility "XEN Guest Utilities" setup_xen_guest_utilities check_xen_guest_utilities noop_function setup_xen_guest_utilities get_version_xen_guest_utilities
+
+# Landscape MOTD (Ubuntu-specific)
+if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+    register_utility "Local MOTD"    setup_local_motd        check_landscape_motd  uninstall_landscape_motd  update_landscape_motd     get_version_landscape_motd
+fi
+
+# --- Utilities (alphabetical order) ---
 register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden
 register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave              get_version_brave
 register_utility "Devolutions RDM"     install_devolutions_rdm check_devolutions_rdm uninstall_devolutions_rdm update_devolutions_rdm    get_version_devolutions_rdm
@@ -100,6 +113,16 @@ register_utility "Termius SSH Client"  install_termius         check_termius    
 register_utility "Timeshift"           install_timeshift       check_timeshift       uninstall_timeshift       update_timeshift          get_version_timeshift
 register_utility "Visual Studio Code"  install_vscode          check_vscode          uninstall_vscode          update_vscode             get_version_vscode
 
+# --- Helper Functions for System Tasks ---
+noop_function() {
+    return 0
+}
+
+check_always_false() {
+    return 1
+}
+
+# --- Utility Check Functions ---
 check_dotfiles() {
     [[ -d ~/dotfiles ]] && [[ -f ~/.zshrc ]]
 }

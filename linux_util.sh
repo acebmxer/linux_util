@@ -61,6 +61,11 @@ LATEST_ERROR_LOG="${LOG_DIR}/error_latest.log"
 # (used by other installers, e.g. Steam, to install matching 32-bit libraries)
 NVIDIA_VERSION_FILE="${HOME}/.config/linux_util/nvidia_driver_version"
 
+# System Task Count (used by menu rendering to separate tasks from utilities)
+# Count: Full System Upgrade/Update, KDE Desktop, NVIDIA Drivers, System Updates, XEN Guest Utilities
+# + Local MOTD (Ubuntu only) = variable
+SYSTEM_TASK_COUNT=5
+
 # Track if any errors have occurred
 ERROR_LOG_INITIALIZED=false
 
