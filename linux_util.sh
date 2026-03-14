@@ -2852,7 +2852,7 @@ draw_menu() {
     local system_num_columns=$(( (system_tasks + system_rows_per_column - 1) / system_rows_per_column ))
 
     local sys_col_width=36
-    local util_col_width=36
+    local util_col_width=38
     
     local dry_run_label=""
     [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
