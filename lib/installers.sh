@@ -1446,7 +1446,12 @@ update_libreoffice() {
             _libreoffice_install_from_site
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y libreoffice
+            # Check if libreoffice is installed, if not install it instead of upgrading
+            if pkg_check_installed libreoffice; then
+                sudo "$PKG_MGR" upgrade -y libreoffice
+            else
+                install_libreoffice
+            fi
             ;;
         arch)
             sudo pacman -S --noconfirm libreoffice-fresh
@@ -1499,7 +1504,7 @@ install_termius() {
                     echo "Adding flathub remote..."
                     sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
                 fi
-                flatpak install -y flathub com.termius.Termius
+                sudo flatpak install -y flathub com.termius.Termius
             else
                 echo "Error: snap or flatpak is required to install Termius on ${DISTRO_NAME}."
                 return 1
@@ -2317,11 +2322,21 @@ install_pia_vpn() {
             sudo apt install -y privateinternetaccess
             ;;
         fedora|rhel)
-            # Install from official PIA repository
-            if ! sudo "$PKG_MGR" install -y https://repo.privateinternetaccess.com/fedora/privateinternetaccess-latest.rpm; then
-                echo "Error: Failed to install PIA VPN. Check network connectivity and DNS resolution."
+            # Download and install PIA VPN from official installer
+            local pia_installer
+            pia_installer=$(mktemp /tmp/pia-XXXXXX.run)
+            if ! wget -qO "$pia_installer" "https://installers.privateinternetaccess.com/download/pia-linux-3.7-08412.run"; then
+                echo "Error: Failed to download PIA VPN installer. Check network connectivity."
+                rm -f "$pia_installer"
                 return 1
             fi
+            chmod +x "$pia_installer"
+            if ! sudo "$pia_installer" --installer-headless; then
+                echo "Error: Failed to install PIA VPN."
+                rm -f "$pia_installer"
+                return 1
+            fi
+            rm -f "$pia_installer"
             ;;
         arch)
             # Install from AUR
@@ -2375,7 +2390,14 @@ update_pia_vpn() {
             sudo apt upgrade -y privateinternetaccess
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y privateinternetaccess
+            # Update PIA VPN from official installer
+            local pia_installer
+            pia_installer=$(mktemp /tmp/pia-XXXXXX.run)
+            if wget -qO "$pia_installer" "https://installers.privateinternetaccess.com/download/pia-linux-3.7-08412.run"; then
+                chmod +x "$pia_installer"
+                sudo "$pia_installer" --installer-headless
+            fi
+            rm -f "$pia_installer"
             ;;
         arch)
             sudo pacman -S --noconfirm privateinternetaccess-bin 2>/dev/null || \
