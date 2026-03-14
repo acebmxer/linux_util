@@ -555,8 +555,16 @@ update_kde() {
             sudo apt upgrade -y kde-full plasma-desktop
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" group update -y @kde-desktop-environment || \
-                sudo "$PKG_MGR" group update -y 'KDE Plasma Workspaces'
+            if ! sudo "$PKG_MGR" group update -y @kde-desktop-environment 2>/dev/null && \
+               ! sudo "$PKG_MGR" group update -y 'KDE Plasma Workspaces' 2>/dev/null; then
+                # Fallback: update individual packages if group update fails
+                echo "Group update not available, updating individual KDE packages..."
+                sudo "$PKG_MGR" upgrade -y plasma-desktop plasma-workspace sddm \
+                    plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons \
+                    bluedevil breeze-gtk kscreen kinfocenter kwrited \
+                    konsole dolphin kate ark gwenview okular spectacle \
+                    kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde
+            fi
             ;;
         arch)
             sudo pacman -Syu --noconfirm plasma-meta kde-applications-meta
@@ -581,6 +589,7 @@ setup_install_kde() {
             }
             info "Enabling display manager..."
             run_as_root "systemctl enable sddm" || warn "Failed to enable sddm"
+            run_as_root "systemctl start sddm" || warn "Failed to start sddm"
             ;;
 
         dnf|yum)
@@ -602,6 +611,7 @@ setup_install_kde() {
             fi
             info "Enabling display manager..."
             run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
+            run_as_root "systemctl start sddm" || warn "Failed to start sddm"
             ;;
 
         zypper)
@@ -612,6 +622,7 @@ setup_install_kde() {
             }
             info "Enabling display manager..."
             run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
+            run_as_root "systemctl start sddm" || warn "Failed to start sddm"
             ;;
 
         pacman)
@@ -622,6 +633,7 @@ setup_install_kde() {
             }
             info "Enabling display manager..."
             run_as_root "systemctl enable sddm"
+            run_as_root "systemctl start sddm" || warn "Failed to start sddm"
             ;;
 
         *)
