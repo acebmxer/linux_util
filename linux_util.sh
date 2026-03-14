@@ -2933,7 +2933,7 @@ draw_menu() {
                 fi
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local padding=$((sys_col_width - visible_len))
+                local padding=$((util_col_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
             fi
