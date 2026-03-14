@@ -739,9 +739,9 @@ EOF
     return 0
 }
 
-# --- Option 6: Install KDE Desktop Environment ---
+# --- Option 6: Install KDE Desktop ---
 setup_install_kde() {
-    info "Installing KDE Desktop Environment..."
+    info "Installing KDE Desktop..."
     ensure_tools
     
     case "$PKG_MGR" in
@@ -808,7 +808,7 @@ setup_install_kde() {
             ;;
     esac
     
-    info "KDE Desktop Environment installed successfully. Reboot to start using KDE."
+    info "KDE Desktop installed successfully. Reboot to start using KDE."
     info "To switch to KDE immediately, log out and select 'Plasma' from your display manager."
     
     return 0
@@ -931,8 +931,8 @@ declare -a SYSTEM_TASKS=()
 SYSTEM_TASKS+=("Full System Upgrade/Update")
 register_utility "Full System Upgrade/Update" setup_full_update_bare_metal check_always_false noop_function setup_full_update_bare_metal
 
-SYSTEM_TASKS+=("KDE Desktop Environment")
-register_utility "KDE Desktop Environment" install_kde check_kde uninstall_kde update_kde get_version_kde
+SYSTEM_TASKS+=("KDE Desktop")
+register_utility "KDE Desktop" install_kde check_kde uninstall_kde update_kde get_version_kde
 
 SYSTEM_TASKS+=("NVIDIA Drivers")
 register_utility "NVIDIA Drivers" install_nvidia_drivers check_nvidia_drivers uninstall_nvidia_drivers update_nvidia_drivers get_version_nvidia_drivers
@@ -980,7 +980,7 @@ install_kde() {
     setup_install_kde
 }
 uninstall_kde() {
-    echo "Uninstalling KDE Desktop Environment..."
+    echo "Uninstalling KDE Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt remove -y kde-full kde-plasma-desktop plasma-desktop sddm
@@ -998,10 +998,10 @@ uninstall_kde() {
             sudo zypper remove -y -t pattern kde kde_plasma
             ;;
     esac
-    echo "KDE Desktop Environment uninstalled. You may need to install another desktop environment."
+    echo "KDE Desktop uninstalled. You may need to install another desktop environment."
 }
 update_kde() {
-    echo "Updating KDE Desktop Environment..."
+    echo "Updating KDE Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
@@ -3096,8 +3096,8 @@ draw_menu() {
     local num_columns=$(( utilities_count > 0 ? 2 : 0 ))
     local system_num_columns=$(( system_tasks > 0 ? 2 : 0 ))
 
-    local sys_col_width=42
-    local util_col_width=42
+    local sys_col_width=40
+    local util_col_width=40
     
     local dry_run_label=""
     [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
