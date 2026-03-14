@@ -1062,6 +1062,7 @@ register_utility "Devolutions RDM"     install_devolutions_rdm check_devolutions
 register_utility "Docker"              setup_install_docker    check_docker          uninstall_docker          update_docker
 register_utility "Dotfiles"            setup_install_dotfiles  check_dotfiles        noop_function             setup_install_dotfiles
 register_utility "Joplin Client"       install_joplin          check_joplin          uninstall_joplin          update_joplin
+register_utility "LibreOffice"         install_libreoffice     check_libreoffice     uninstall_libreoffice     update_libreoffice        get_version_libreoffice
 register_utility "OpenSSH Server"      install_openssh_server  check_openssh_server  uninstall_openssh_server  update_openssh_server
 register_utility "Steam App"           install_steam           check_steam           uninstall_steam           update_steam
 register_utility "Syncthing"           install_syncthing       check_syncthing       uninstall_syncthing       update_syncthing
@@ -1743,6 +1744,96 @@ update_joplin() {
     echo "Updating Joplin Client..."
     detect_and_export_desktop_env
     wget -O - https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
+}
+
+# --- LibreOffice ---
+
+check_libreoffice() {
+    command -v libreoffice &>/dev/null || \
+        command -v soffice &>/dev/null || \
+        pkg_check_installed libreoffice || \
+        pkg_check_installed libreoffice-common || \
+        pkg_check_installed libreoffice-fresh || \
+        pkg_check_installed libreoffice-still || \
+        (has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice)
+}
+install_libreoffice() {
+    echo "Installing LibreOffice..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt install -y libreoffice
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" install -y libreoffice
+            ;;
+        arch)
+            sudo pacman -S --noconfirm libreoffice-fresh
+            ;;
+        suse)
+            sudo zypper install -y libreoffice
+            ;;
+        *)
+            if has_flatpak; then
+                flatpak install -y flathub org.libreoffice.LibreOffice
+            else
+                echo "Error: Unsupported distribution and flatpak is not available."
+                return 1
+            fi
+            ;;
+    esac
+}
+uninstall_libreoffice() {
+    echo "Uninstalling LibreOffice..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y libreoffice*
+            sudo apt autoremove -y
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" remove -y libreoffice*
+            sudo "$PKG_MGR" autoremove -y
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm libreoffice-fresh 2>/dev/null || \
+                sudo pacman -Rs --noconfirm libreoffice-still 2>/dev/null || true
+            ;;
+        suse)
+            sudo zypper remove -y libreoffice
+            ;;
+        *)
+            if has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice; then
+                flatpak uninstall -y org.libreoffice.LibreOffice
+            fi
+            ;;
+    esac
+    echo "LibreOffice has been uninstalled."
+}
+update_libreoffice() {
+    echo "Updating LibreOffice..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt upgrade -y libreoffice
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" upgrade -y libreoffice
+            ;;
+        arch)
+            sudo pacman -S --noconfirm libreoffice-fresh
+            ;;
+        suse)
+            sudo zypper update -y libreoffice
+            ;;
+        *)
+            if has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice; then
+                flatpak update -y org.libreoffice.LibreOffice
+            fi
+            ;;
+    esac
+}
+get_version_libreoffice() {
+    libreoffice --version 2>/dev/null | head -1 || echo ""
 }
 
 # --- Termius SSH Client ---
