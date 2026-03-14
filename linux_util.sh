@@ -921,6 +921,78 @@ register_utility() {
 }
 
 # ============================================================================
+# FORMATTING & LAYOUT RULES FOR MENU DISPLAY AND NAVIGATION
+# ============================================================================
+# READ THIS BEFORE ADDING NEW UTILITIES TO MAINTAIN CONSISTENT FORMATTING
+#
+# 1. MENU LAYOUT (2-COLUMN FORMAT - DO NOT EXCEED)
+#    ├─ System Tasks section always uses 2 columns (lines 3169-3170)
+#    ├─ Utilities section always uses 2 columns (line 3174)
+#    ├─ Layout formula: rows_per_column = ceil(total_items / 2)
+#    │  Example: 14 utilities = 7 rows per column × 2 columns
+#    └─ Items flow top-down in left column, then top-down in right column
+#
+# 2. UTILITY REGISTRATION FORMAT (line 1170+)
+#    register_utility "Display Name" install_fn check_fn uninstall_fn update_fn [version_fn]
+#    ├─ Display Name: Shown in menu exactly as typed (keep it human-readable)
+#    ├─ install_fn: Function called when user selects checkbox (install action)
+#    ├─ check_fn: Returns 0 if installed, 1 if not (used for status detection)
+#    ├─ uninstall_fn: Function called when user toggles off an installed item
+#    ├─ update_fn: Function called when user marks [U] (update-selected)
+#    └─ version_fn: Optional function that echoes version string (see below)
+#
+# 3. VERSION DISPLAY (lines 3228-3233, 3302-3307)
+#    ├─ IF version_fn returns non-empty string:
+#    │  Display format: "▸ [✓] UtilityName (vX.Y.Z)" in MAGENTA with (vX.Y.Z) suffix
+#    │  Version string should be clean: no newlines, pipes, extra text
+#    │  Examples: "3.14.159", "5.28.1", "2024.01.15"
+#    │  BEST PRACTICE: Use `pkg_get_version utility_package` to get version
+#    │  Then pipe through sed to extract just the version number
+#    │
+#    └─ IF version_fn not provided or returns empty string:
+#       Display format: "▸ [✓] UtilityName (installed)" in MAGENTA
+#       Example get_version function:
+#         get_version_utility_name() {
+#             pkg_get_version package-name | sed 's/^Version: //' || echo ""
+#         }
+#
+# 4. NAVIGATION & COLUMN STRUCTURE (lines 3379-3450)
+#    ├─ Navigation is COLUMN-AWARE (not row-aware)
+#    ├─ ↑/↓ keys: Move up/down within same column
+#    ├─ ←/→ keys: Jump to same row position in adjacent column
+#    ├─ Columns are built dynamically in build_nav_columns()
+#    ├─ System Tasks and Utilities each calculate their own column count
+#    └─ Max columns: max(system_task_columns, utility_columns)
+#       All items reflow into this layout (some columns may be shorter)
+#
+# 5. ALPHABETICAL ORDERING (CRITICAL)
+#    ├─ Keep utilities sorted A-Z by Display Name
+#    ├─ System Tasks have their own section (not alphabetical)
+#    └─ When inserting new utility, find correct position and insert block
+#       (registration + implementation functions) together
+#
+# 6. CHECKBOX & STATUS DISPLAY LOGIC
+#    ├─ [ ] = unselected, uninstalled
+#    ├─ [✓] = selected (green)
+#    ├─ [U] = update-queued (yellow)
+#    ├─ Installed items show (vX.Y.Z) or (installed) in MAGENTA
+#    │  When [✓] is selected on installed = UNINSTALL action
+#    │  When [✓] is selected on missing = INSTALL action
+#    │  When [U] is queued on installed = UPDATE action
+#    └─ Selection state tracked in SELECTED[], UPDATE_SELECTED[], INSTALLED[]
+#
+# 7. COLUMN WIDTH CALCULATION (lines 3254-3258, 3328-3332)
+#    ├─ util_col_width = 40 (default character width per column)
+#    ├─ Padding calculation: width - (prefix + checkbox + space + name + status)
+#    ├─ prefix = 2 chars (spaces or "▸ ")
+#    ├─ checkbox = 3 chars visual width ("[ ]", "[✓]", "[U]")
+#    ├─ space = 1 char between checkbox and name
+#    └─ status = length of " (vX.Y.Z)" or " (installed)" if installed
+#       DO NOT modify util_col_width—automatic padding handles alignment
+#
+# ============================================================================
+
+# ============================================================================
 # UTILITY DEFINITIONS
 # ============================================================================
 
@@ -1159,13 +1231,49 @@ self_update_script() {
 }
 
 # --- Installable Utilities ---
-# NOTE: Utilities are sorted A-Z by display name.
-# When adding a new utility, insert its registration block and its
-# implementation functions in the correct alphabetical position to
-# maintain the sorted order in the menu.
-# TIP: When adding version functions, check how similar utilities display
-# versions (e.g., look at get_version_brave, get_version_syncthing, or
-# get_version_bitwarden) to ensure consistency in version output formatting.
+# ALPHABETICAL ORDER CRITICAL: Utilities appear A-Z in menu (lines 1253+)
+#
+# WHEN ADDING A NEW UTILITY, FOLLOW THIS CHECKLIST:
+# ┌─ Step 1: Choose alphabetically correct position (between similar names)
+# ├─ Step 2: Write register_utility line with these requirements:
+# │  • register_utility "Display Name" install_fn check_fn uninstall_fn update_fn [get_version_fn]
+# │  • Display Name must be unique and human-readable
+# │  • All function names must follow pattern: {verb}_{utility_slug}
+# │    (Examples: install_brave, check_docker, get_version_qbittorrent)
+# │  • version_fn is OPTIONAL—only provide if you implement get_version_X function
+# │
+# ├─ Step 3: Implement required functions (place after System Tasks section)
+# │  REQUIRED (4 functions):
+# │    ├─ install_utility_name() — main installation logic
+# │    ├─ check_utility_name() — returns 0 if installed, 1 if missing
+# │    ├─ uninstall_utility_name() — remove utility and cleanup
+# │    └─ update_utility_name() — update to latest version
+# │
+# │  OPTIONAL (1 function):
+# │    └─ get_version_utility_name() — outputs version string only (no labels)
+# │       IF provided, register it as 6th parameter (see register_utility call)
+# │       Version function MUST output clean version string: "X.Y.Z" or timestamp
+# │       Test it by running: ./linux_util.sh; then check "(vX.Y.Z)" in menu
+# │
+# ├─ Step 4: Test menu rendering
+# │  $ ./linux_util.sh
+# │  ├─ Verify new utility appears in correct alphabetical position
+# │  ├─ If has version_fn: verify "(vX.Y.Z)" displays in menu
+# │  ├─ If no version_fn: verify "(installed)" shows when utility is present
+# │  └─ Verify checkbox selection/deselection works (SPACE key)
+# │
+# └─ Step 5: Test functionality
+#    ├─ Test with --dry-run flag (./linux_util.sh --dry-run)
+#    ├─ Select utility and press ENTER to verify install() function works
+#    ├─ Verify check_utility_name() correctly detects installed state
+#    └─ Test uninstall and update functions
+#
+# EXAMPLE: Adding "FooBar Tool" utility
+#   1. Find correct position: Between "Docker" and "Dotfiles"
+#   2. Add registration: register_utility "FooBar Tool" install_foobar_tool check_foobar_tool ...
+#   3. Implement functions: install_foobar_tool(), check_foobar_tool(), etc.
+#   4. Optional: add get_version_foobar_tool() to show version in menu
+#   5. Test it shows in menu in correct position with correct status
 
 register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden
 register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave              get_version_brave
@@ -3160,6 +3268,21 @@ cursor_start() { printf "\r"; }
 clear_line() { printf "${CSI}2K"; }
 
 # Draw the menu
+# COLUMN LAYOUT MATH (2-column format, do not modify):
+# ├─ system_rows_per_column = ceil(system_tasks / 2)
+# │  Example: 5 tasks → (5+1)/2 = 3 rows per column
+# │  Result: [left column rows 0-2, right column rows 0-2, some empty]
+# │
+# ├─ rows_per_column = ceil(utilities_count / 2)
+# │  Example: 14 utils → (14+1)/2 = 7 rows per column
+# │  Result: [left column 0-6, right column 0-6]
+# │
+# ├─ Rendering order (top-down, then next column):
+# │  LEFT column:  index 0, 1, 2, ...
+# │  RIGHT column: index rows_per_column, rows_per_column+1, ...
+# │
+# └─ Item position calculation: idx = col * rows_per_column + row
+#    LEFT (col=0):  0, 1, 2, 3...  RIGHT (col=1): 7, 8, 9...
 draw_menu() {
     local total=${#UTILITIES[@]}
     local system_tasks=$SYSTEM_TASK_COUNT
@@ -3223,6 +3346,12 @@ draw_menu() {
                 checkbox="${GREEN}[✓]${RESET}"
             fi
             
+            # VERSION DISPLAY LOGIC:
+            # ├─ If utility is installed AND has version info → "(vX.Y.Z)" in MAGENTA
+            # ├─ If utility is installed but NO version info → "(installed)" in MAGENTA
+            # └─ If utility not installed → no status tag displayed
+            # IMPORTANT: INSTALLED_VERSIONS[$i] is populated by get_version_*() functions
+            # during check_installed_utilities() (line 3220-3232)
             # Show installed status (with version if available)
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
                 local ver="${INSTALLED_VERSIONS[$i]:-}"
@@ -3240,6 +3369,12 @@ draw_menu() {
                 item="${prefix}${checkbox} ${name}${status_tag}"
             fi
 
+            # COLUMN PADDING CALCULATION (for alignment in 2-column layout):
+            # Spacing is NOT hard-coded—it's calculated based on item width.
+            # util_col_width = 40 chars max per column (line 3286)
+            # visible_len = actual width of: "  " + "[X]" + " " + name + " (vX.Y.Z)"
+            # padding = util_col_width - visible_len (minimum 2 spaces)
+            # This ensures right column aligns regardless of name/version length.
             # Add padding for columns using visible width (no ANSI codes)
             if [[ $col -lt $((system_num_columns - 1)) ]]; then
                 local plain_status=""
@@ -3267,8 +3402,12 @@ draw_menu() {
     echo "${DIM}----------------------------------------------------------------${RESET}"
     echo ""
     echo "${BOLD}${CYAN}Utilities:${RESET}"
-    
+
     # Build items for utilities in columns
+    # RENDERING LOGIC IDENTICAL TO SYSTEM TASKS SECTION ABOVE:
+    # Loop through rows (0 to rows_per_column-1), then columns (left=0, right=1)
+    # Calculate array index: utilities_start + (col * rows_per_column + row)
+    # This produces left column top-to-bottom, then right column top-to-bottom
     for ((row=0; row<rows_per_column; row++)); do
         local line=""
         for ((col=0; col<num_columns; col++)); do
