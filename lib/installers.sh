@@ -10,6 +10,101 @@ get_version_landscape_motd() {
     pkg_get_version landscape-client | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+' || echo ""
 }
 
+check_landscape_motd() {
+    pkg_check_installed landscape-client
+}
+
+setup_local_motd() {
+    info "Installing/Updating Landscape Client and configuring Local MOTD..."
+
+    run_as_root "add-apt-repository -y ppa:landscape/self-hosted-beta 2>/dev/null || true"
+    run_as_root "apt-get update && apt-get install -y --no-install-recommends landscape-client" || {
+        warn "Failed to install landscape-client"
+        return 1
+    }
+
+    local motd_code='# Display MOTD for ZSH
+if [ -f /etc/update-motd.d/00-header ]; then
+    /etc/update-motd.d/00-header
+fi
+if [ -f /etc/update-motd.d/10-help-text ]; then
+    /etc/update-motd.d/10-help-text
+fi
+if [ -f /etc/update-motd.d/50-motd-news ]; then
+    /etc/update-motd.d/50-motd-news
+fi
+if [ -f /etc/update-motd.d/85-fwupd ]; then
+    /etc/update-motd.d/85-fwupd
+fi
+if [ -f /etc/update-motd.d/90-updates-available ]; then
+    /etc/update-motd.d/90-updates-available
+fi
+if [ -f /etc/update-motd.d/91-contract-ua-esm-status ]; then
+    /etc/update-motd.d/91-contract-ua-esm-status
+fi
+if [ -f /etc/update-motd.d/91-release-upgrade ]; then
+    /etc/update-motd.d/91-release-upgrade
+fi
+if [ -f /etc/update-motd.d/95-hwe-eol ]; then
+    /etc/update-motd.d/95-hwe-eol
+fi
+if [ -f /etc/update-motd.d/98-fsck-at-reboot ]; then
+    /etc/update-motd.d/98-fsck-at-reboot
+fi
+if [ -f /etc/update-motd.d/98-reboot-required ]; then
+    /etc/update-motd.d/98-reboot-required
+fi'
+
+    if [[ -f "${HOME}/.bashrc" ]]; then
+        if ! grep -q "Display MOTD for ZSH" "${HOME}/.bashrc"; then
+            echo "" >> "${HOME}/.bashrc"
+            echo "$motd_code" >> "${HOME}/.bashrc"
+            info "Added MOTD display code to ~/.bashrc"
+            source "${HOME}/.bashrc"
+        else
+            info "MOTD code already present in ~/.bashrc"
+        fi
+    fi
+
+    if [[ -f "${HOME}/.zshrc" ]]; then
+        if ! grep -q "Display MOTD for ZSH" "${HOME}/.zshrc"; then
+            echo "" >> "${HOME}/.zshrc"
+            echo "$motd_code" >> "${HOME}/.zshrc"
+            info "Added MOTD display code to ~/.zshrc"
+            source "${HOME}/.zshrc"
+        else
+            info "MOTD code already present in ~/.zshrc"
+        fi
+    fi
+
+    info "Local MOTD configuration complete."
+}
+
+uninstall_landscape_motd() {
+    info "Uninstalling Landscape Client and removing MOTD configuration..."
+    run_as_root "apt-get remove -y landscape-client" || warn "Failed to uninstall landscape-client"
+
+    if [[ -f "${HOME}/.bashrc" ]]; then
+        sed -i '/^# Display MOTD for ZSH/,/^fi$/d' "${HOME}/.bashrc"
+        info "Removed MOTD code from ~/.bashrc"
+        source "${HOME}/.bashrc" 2>/dev/null || true
+    fi
+
+    if [[ -f "${HOME}/.zshrc" ]]; then
+        sed -i '/^# Display MOTD for ZSH/,/^fi$/d' "${HOME}/.zshrc"
+        info "Removed MOTD code from ~/.zshrc"
+        source "${HOME}/.zshrc" 2>/dev/null || true
+    fi
+
+    info "Local MOTD configuration removed."
+}
+
+update_landscape_motd() {
+    info "Updating Landscape Client..."
+    run_as_root "apt-get update && apt-get upgrade -y landscape-client" || warn "Failed to update landscape-client"
+    info "Landscape Client updated."
+}
+
 self_update_script() {
     info "Checking for script updates..."
     if ! command -v git &>/dev/null; then
@@ -125,6 +220,357 @@ check_always_false() {
 # --- Utility Check Functions ---
 check_dotfiles() {
     [[ -d ~/dotfiles ]] && [[ -f ~/.zshrc ]]
+}
+
+setup_install_dotfiles() {
+    info "Installing dotfiles..."
+
+    if [[ "$DISTRO_ID" == "fedora" || "$DISTRO_ID" == "rhel" || "$DISTRO_ID" == "centos" || "$DISTRO_ID" == "rocky" || "$DISTRO_ID" == "almalinux" ]]; then
+        warn "Dotfiles installation not supported for Fedora-based distros."
+        return 1
+    fi
+
+    info "Starting as regular user"
+    rm -rf ~/dotfiles
+    info "Previous dotfiles folder was removed."
+    git clone https://github.com/flipsidecreations/dotfiles.git ~/dotfiles || { warn "Failed to clone dotfiles"; return 1; }
+    (
+        cd ~/dotfiles || exit 1
+        ./install.sh
+    ) || { warn "Dotfiles install.sh failed"; return 1; }
+    chsh -s /bin/zsh || warn "Failed to change shell to zsh for current user."
+
+    info "Installing dotfiles for root..."
+    sudo -s <<'EOF'
+info() { printf '\e[32m[INFO]\e[0m %s\n' "$*"; }
+warn() { printf '\e[33m[WARN]\e[0m %s\n' "$*"; }
+info "Now running as root"
+rm -rf ~/dotfiles
+git clone https://github.com/flipsidecreations/dotfiles.git ~/dotfiles || exit 0
+cd ~/dotfiles || exit 0
+./install.sh
+if command -v chsh &> /dev/null; then
+    chsh -s /bin/zsh || warn "Failed to change shell to zsh for root."
+else
+    warn "chsh command not found for root. Run 'chsh -s /bin/zsh' manually after installing util-linux-user package."
+fi
+EOF
+    info "Back to regular user."
+
+    info "Dotfiles installation completed."
+    return 0
+}
+
+# --- XEN Guest Utilities ---
+check_xen_guest_utilities() {
+    pkg_check_installed xe-guest-utilities || pkg_check_installed xen-guest-agent || pkg_check_installed xe-guest-utilities-latest
+}
+
+get_version_xen_guest_utilities() {
+    local ver=""
+    if pkg_check_installed xe-guest-utilities; then
+        ver=$(pkg_get_version xe-guest-utilities)
+    elif pkg_check_installed xen-guest-agent; then
+        ver=$(pkg_get_version xen-guest-agent)
+    elif pkg_check_installed xe-guest-utilities-latest; then
+        ver=$(pkg_get_version xe-guest-utilities-latest)
+    fi
+    [[ -n "$ver" ]] && echo "$ver"
+}
+
+setup_xen_guest_utilities() {
+    info "Installing/Updating XEN Guest Utilities..."
+
+    # CentOS / Fedora: install from EPEL repository
+    if [[ "$DISTRO_ID" == "centos" || "$DISTRO_ID" == "fedora" ]] || [[ "$DISTRO_ID" == "almalinux" ]]; then
+        info "Installing xe-guest-utilities-latest via yum (EPEL)..."
+        run_as_root "yum install -y xe-guest-utilities-latest" || { error "Failed to install xe-guest-utilities-latest"; return 1; }
+        info "Enabling and starting xe-linux-distribution service..."
+        run_as_root "systemctl enable xe-linux-distribution" || warn "Failed to enable xe-linux-distribution"
+        run_as_root "systemctl start xe-linux-distribution" || warn "Failed to start xe-linux-distribution"
+        info "XEN Guest Utilities installation completed."
+        return 0
+    fi
+
+    # Check for existing installations and optionally remove them
+    if pkg_check_installed xe-guest-utilities; then
+        ver=$(pkg_get_version xe-guest-utilities)
+        info "xe-guest-utilities is installed, version $ver."
+        read -n 1 -rp "Would you like to uninstall existing xe-guest-utilities (v$ver) before installing new tools? [y/N] " ans
+        echo
+        case "$ans" in
+            y|Y)
+                info "Uninstalling existing xe-guest-utilities..."
+                pkg_remove xe-guest-utilities || warn "Failed to remove xe-guest-utilities."
+                ;;
+            *)
+                info "Keeping existing xe-guest-utilities."
+                ;;
+        esac
+    fi
+
+    if pkg_check_installed xen-guest-agent; then
+        ver=$(pkg_get_version xen-guest-agent)
+        info "xen-guest-agent is installed, version $ver."
+        read -n 1 -rp "Would you like to uninstall existing xen-guest-agent (v$ver) before installing new tools? [y/N] " ans
+        echo
+        case "$ans" in
+            y|Y)
+                info "Uninstalling existing xen-guest-agent..."
+                pkg_remove xen-guest-agent || warn "Failed to remove xen-guest-agent."
+                ;;
+            *)
+                info "Keeping existing xen-guest-agent."
+                ;;
+        esac
+    fi
+
+    # Mount ISO and install
+    MOUNT_POINT="/mnt"
+    if ! mountpoint -q "${MOUNT_POINT}"; then
+        warn "ISO not mounted. Please insert the XCP-NG ISO and press Enter to continue..."
+        read -r
+        run_as_root "mount /dev/cdrom '${MOUNT_POINT}'" || { error "Failed to mount /dev/cdrom"; return 1; }
+    fi
+
+    if [[ -f "${MOUNT_POINT}/Linux/install.sh" ]]; then
+        info "Running XCP-NG installer script..."
+
+        # Debian-family distros (debian, ubuntu, kubuntu, kde neon, etc.) are auto-detected.
+        # RHEL derivatives (alma, rocky, etc.) need explicit -d rhel -m <major_version> flags.
+        # See: https://docs.xcp-ng.org/vms/#install-from-the-guest-tools-iso
+        local install_flags=""
+        local major_ver="${DISTRO_VERSION_ID%%.*}"
+
+        case "$DISTRO_FAMILY" in
+            debian)
+                install_flags=""
+                ;;
+            rhel)
+                install_flags="-d rhel -m ${major_ver}"
+                ;;
+            arch|suse)
+                warn "Xen Guest Tools installer may not officially support ${DISTRO_NAME}. Attempting without distro flags..."
+                ;;
+            *)
+                warn "Unknown distro family '${DISTRO_FAMILY}'. Attempting without distro flags..."
+                ;;
+        esac
+
+        [[ -n "$install_flags" ]] && info "Using installer flags: ${install_flags}"
+        run_as_root "bash '${MOUNT_POINT}/Linux/install.sh' ${install_flags}"
+        info "Waiting 5 seconds for services to initialize..."
+        sleep 5
+        run_as_root "umount '${MOUNT_POINT}'" || warn "Failed to unmount ${MOUNT_POINT}"
+        info "XCP-NG Tools installation completed."
+    else
+        error "Installer script not found at ${MOUNT_POINT}/Linux/install.sh"
+        return 1
+    fi
+
+    return 0
+}
+
+# --- Full System Update (Bare Metal) ---
+setup_full_update_bare_metal() {
+    info "Starting full system update and upgrade (bare metal)..."
+
+    # Install basic tools
+    case "$PKG_MGR" in
+        apt)
+            run_as_root "apt-get update"
+            run_as_root "apt-get install -y --no-install-recommends jq tzdata git curl wget gnupg"
+            if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "linuxmint" ]] || [[ "$DISTRO_ID" == "pop" ]]; then
+                run_as_root "apt-get install -y --no-install-recommends software-properties-common"
+            fi
+            ;;
+        dnf|yum)
+            run_as_root "$PKG_MGR install -y jq git curl wget util-linux-user"
+            ;;
+        pacman)
+            run_as_root "pacman -S --noconfirm --needed jq git curl wget"
+            ;;
+        zypper)
+            run_as_root "zypper install -y jq git curl wget"
+            ;;
+        *)
+            run_as_root "$PKG_MGR install -y jq git curl wget"
+            ;;
+    esac
+
+    local keyring_dir="${HOME}/.local/share/keyrings"
+    local keyring_backup=""
+    if [[ -d "$keyring_dir" ]] && [[ -n "$(ls -A "$keyring_dir" 2>/dev/null)" ]]; then
+        keyring_backup=$(mktemp -d)
+        CLEANUP_FILES+=("$keyring_backup")
+        cp -a "$keyring_dir/." "$keyring_backup/"
+        info "Keyring backed up to ${keyring_backup}"
+    fi
+
+    pkg_full_upgrade
+    pkg_autoremove
+    pkg_clean
+
+    if [[ -n "$keyring_backup" ]]; then
+        local restored=false
+        for backed_up_file in "$keyring_backup"/*; do
+            local filename
+            filename=$(basename "$backed_up_file")
+            local live_file="${keyring_dir}/${filename}"
+            if [[ ! -f "$live_file" ]] || \
+               [[ $(stat -c%s "$backed_up_file") -gt $(stat -c%s "$live_file") ]]; then
+                mkdir -p "$keyring_dir"
+                cp -a "$backed_up_file" "$live_file"
+                restored=true
+                info "Restored keyring file: ${filename}"
+            fi
+        done
+        if [[ "$restored" == "true" ]]; then
+            info "Keyring restored. Restarting gnome-keyring daemon..."
+            pkill -u "$USER" gnome-keyring-daemon 2>/dev/null || true
+            sleep 1
+        fi
+        rm -rf "$keyring_backup"
+    fi
+
+    info "System has been fully updated and upgraded."
+    return 0
+}
+
+# --- System Updates ---
+setup_system_updates() {
+    info "Running system updates..."
+    pkg_full_upgrade
+    pkg_autoremove
+    pkg_clean
+    info "System updates completed."
+    return 0
+}
+
+# --- KDE Desktop ---
+check_kde() {
+    command -v plasmashell &>/dev/null || \
+        pkg_check_installed plasma-desktop || \
+        pkg_check_installed kde-plasma-desktop || \
+        pkg_check_installed kde-full || \
+        pkg_check_installed plasma-meta
+}
+
+get_version_kde() {
+    plasmashell --version 2>/dev/null | sed 's/plasmashell //' || echo ""
+}
+
+install_kde() {
+    setup_install_kde
+}
+
+uninstall_kde() {
+    echo "Uninstalling KDE Desktop..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y kde-full kde-plasma-desktop plasma-desktop sddm
+            sudo apt autoremove -y
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" group remove -y @kde-desktop-environment || \
+                sudo "$PKG_MGR" group remove -y 'KDE Plasma Workspaces'
+            sudo "$PKG_MGR" autoremove -y
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm plasma-meta kde-applications-meta sddm 2>/dev/null || true
+            ;;
+        suse)
+            sudo zypper remove -y -t pattern kde kde_plasma
+            ;;
+    esac
+    echo "KDE Desktop uninstalled. You may need to install another desktop environment."
+}
+
+update_kde() {
+    echo "Updating KDE Desktop..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt upgrade -y kde-full plasma-desktop
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" group update -y @kde-desktop-environment || \
+                sudo "$PKG_MGR" group update -y 'KDE Plasma Workspaces'
+            ;;
+        arch)
+            sudo pacman -Syu --noconfirm plasma-meta kde-applications-meta
+            ;;
+        suse)
+            sudo zypper update -y -t pattern kde kde_plasma
+            ;;
+    esac
+}
+
+setup_install_kde() {
+    info "Installing KDE Desktop..."
+    ensure_tools
+
+    case "$PKG_MGR" in
+        apt)
+            run_as_root "apt-get update"
+            info "Installing KDE Full Desktop Environment..."
+            run_as_root "apt-get install -y kde-full sddm" || {
+                error "Failed to install KDE Full Desktop Environment"
+                return 1
+            }
+            info "Enabling display manager..."
+            run_as_root "systemctl enable sddm" || warn "Failed to enable sddm"
+            ;;
+
+        dnf|yum)
+            info "Installing KDE Full Desktop Environment..."
+            if ! run_as_root "$PKG_MGR groupinstall -y 'KDE Plasma Workspaces'" 2>/dev/null && \
+               ! run_as_root "$PKG_MGR group install -y @kde-desktop-environment" 2>/dev/null; then
+                info "Group install not available, installing KDE packages individually..."
+                run_as_root "$PKG_MGR install -y epel-release" 2>/dev/null || true
+                run_as_root "crb enable" 2>/dev/null || run_as_root "$PKG_MGR config-manager --set-enabled crb" 2>/dev/null || true
+                run_as_root "$PKG_MGR install -y plasma-desktop plasma-workspace sddm \
+                    plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons plasma-thunderbolt \
+                    bluedevil breeze-gtk kscreen kinfocenter kwrited \
+                    konsole dolphin kate ark gwenview okular spectacle \
+                    kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde \
+                    phonon-qt5-backend-gstreamer" || {
+                    error "Failed to install KDE Full Desktop Environment packages"
+                    return 1
+                }
+            fi
+            info "Enabling display manager..."
+            run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
+            ;;
+
+        zypper)
+            info "Installing KDE Full Desktop Environment..."
+            run_as_root "zypper install -y -t pattern kde kde_plasma kde_utilities kde_imaging kde_multimedia kde_office kde_games" || {
+                error "Failed to install KDE Full Desktop Environment"
+                return 1
+            }
+            info "Enabling display manager..."
+            run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
+            ;;
+
+        pacman)
+            info "Installing KDE Full Desktop Environment..."
+            run_as_root "pacman -S --noconfirm plasma-meta kde-applications-meta sddm" || {
+                error "Failed to install KDE Full Desktop Environment"
+                return 1
+            }
+            info "Enabling display manager..."
+            run_as_root "systemctl enable sddm"
+            ;;
+
+        *)
+            error "KDE installation not fully supported for ${DISTRO_ID}"
+            return 1
+            ;;
+    esac
+
+    info "KDE Desktop installed successfully. Reboot to start using KDE."
+    return 0
 }
 
 # --- NVIDIA Drivers & Toolkit ---
@@ -1963,6 +2409,78 @@ get_version_qbittorrent() {
 }
 
 # --- Docker (utility version) ---
+setup_install_docker() {
+    info "Installing Docker..."
+    ensure_tools
+
+    case "$PKG_MGR" in
+        apt)
+            run_as_root "apt-get update"
+            run_as_root "apt-get install -y apt-transport-https ca-certificates curl gnupg"
+
+            if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "linuxmint" || "$DISTRO_ID" == "pop" || "$DISTRO_ID" == "neon" ]]; then
+                run_as_root "apt-get install -y software-properties-common"
+            fi
+
+            local docker_dist="$DISTRO_ID"
+            local docker_codename="${DISTRO_VERSION_CODENAME:-stable}"
+            if [[ "$DISTRO_ID" == "linuxmint" || "$DISTRO_ID" == "pop" || "$DISTRO_ID" == "neon" ]]; then
+                docker_dist="ubuntu"
+                if [[ "$DISTRO_ID" == "neon" && -z "$docker_codename" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
+                    if [[ -f /etc/upstream-release/lsb-release ]]; then
+                        docker_codename=$(grep -oP '(?<=DISTRIB_CODENAME=).+' /etc/upstream-release/lsb-release)
+                    fi
+                    docker_codename="${docker_codename:-noble}"
+                fi
+            fi
+
+            run_as_root "curl -fsSL https://download.docker.com/linux/${docker_dist}/gpg | gpg --yes --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/${docker_dist} ${docker_codename} stable" | \
+                sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            run_as_root "apt-get update"
+            run_as_root "apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+            ;;
+
+        dnf|yum)
+            run_as_root "$PKG_MGR install -y dnf-plugins-core 2>/dev/null || $PKG_MGR install -y yum-utils"
+
+            local docker_repo
+            [[ "$DISTRO_ID" == "fedora" ]] && docker_repo="https://download.docker.com/linux/fedora/docker-ce.repo" || docker_repo="https://download.docker.com/linux/centos/docker-ce.repo"
+
+            run_as_root "curl -fsSLo /etc/yum.repos.d/docker-ce.repo ${docker_repo}"
+            run_as_root "$PKG_MGR install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+            run_as_root "systemctl start docker"
+            run_as_root "systemctl enable docker"
+            ;;
+
+        zypper)
+            run_as_root "zypper install -y docker docker-compose"
+            run_as_root "systemctl start docker"
+            run_as_root "systemctl enable docker"
+            ;;
+
+        pacman)
+            run_as_root "pacman -S --noconfirm docker docker-compose docker-buildx"
+            run_as_root "systemctl enable --now containerd.service"
+            run_as_root "systemctl enable --now docker.service"
+            ;;
+
+        *)
+            error "Docker installation not fully supported for ${DISTRO_ID}"
+            return 1
+            ;;
+    esac
+
+    run_as_root "groupadd docker 2>/dev/null || true"
+    run_as_root "usermod -aG docker ${USER}"
+
+    info "Docker installed successfully. You may need to log out and back in for group membership to take effect."
+
+    sudo docker version &>/dev/null && info "Docker verification complete."
+
+    return 0
+}
+
 check_docker() {
     command -v docker &>/dev/null && docker --version &>/dev/null
 }
