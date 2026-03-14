@@ -1126,7 +1126,7 @@ update_landscape_motd() {
 }
 
 get_version_landscape_motd() {
-    pkg_get_version landscape-client
+    pkg_get_version landscape-client | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+' || echo ""
 }
 
 self_update_script() {
@@ -3096,8 +3096,8 @@ draw_menu() {
     local num_columns=$(( utilities_count > 0 ? 2 : 0 ))
     local system_num_columns=$(( system_tasks > 0 ? 2 : 0 ))
 
-    local sys_col_width=40
-    local util_col_width=40
+    local sys_col_width=42
+    local util_col_width=42
     
     local dry_run_label=""
     [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
