@@ -281,62 +281,7 @@ get_version_xen_guest_utilities() {
 setup_xen_guest_utilities() {
     info "Installing/Updating XEN Guest Utilities..."
 
-    # Primary method: Repository installation (per XCP-NG docs)
-    # https://docs.xcp-ng.org/vms/#linux-guest-tools
-
-    case "$DISTRO_FAMILY" in
-        debian)
-            # Ubuntu/Debian: apt install
-            info "Installing xe-guest-utilities from repository..."
-            if run_as_root "apt-get update && apt-get install -y xe-guest-utilities"; then
-                info "XEN Guest Utilities installation completed."
-                return 0
-            fi
-            ;;
-
-        fedora|rhel)
-            # CentOS/Fedora/AlmaLinux/Rocky: enable EPEL, then yum install
-            run_as_root "yum install -y epel-release" 2>/dev/null || true
-            info "Installing xe-guest-utilities from EPEL repository..."
-            if run_as_root "yum install -y xe-guest-utilities-latest" 2>/dev/null || \
-               run_as_root "yum install -y xe-guest-utilities"; then
-                info "Enabling and starting xe-linux-distribution service..."
-                run_as_root "systemctl enable xe-linux-distribution" || warn "Failed to enable xe-linux-distribution"
-                run_as_root "systemctl start xe-linux-distribution" || warn "Failed to start xe-linux-distribution"
-                info "XEN Guest Utilities installation completed."
-                return 0
-            fi
-            ;;
-
-        arch)
-            # Arch Linux
-            info "Installing xe-guest-utilities from repository..."
-            if run_as_root "pacman -S --noconfirm xe-guest-utilities"; then
-                info "XEN Guest Utilities installation completed."
-                return 0
-            fi
-            ;;
-
-        suse)
-            # openSUSE/SLES
-            info "Installing xe-guest-utilities from repository..."
-            if run_as_root "zypper install -y xe-guest-utilities"; then
-                info "XEN Guest Utilities installation completed."
-                return 0
-            fi
-            ;;
-
-        alpine)
-            # Alpine Linux
-            run_as_root "apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/community xe-guest-utilities" 2>/dev/null
-            if pkg_check_installed xe-guest-utilities; then
-                info "XEN Guest Utilities installation completed."
-                return 0
-            fi
-            ;;
-    esac
-
-    info "Repository installation unavailable or failed. Falling back to ISO installation..."
+    # Primary method: ISO installation
 
     # Check for existing installations and optionally remove them
     if pkg_check_installed xe-guest-utilities; then
@@ -376,7 +321,11 @@ setup_xen_guest_utilities() {
     if ! mountpoint -q "${MOUNT_POINT}"; then
         warn "ISO not mounted. Please insert the XCP-NG ISO and press Enter to continue..."
         read -r
-        run_as_root "mount /dev/cdrom '${MOUNT_POINT}'" || { error "Failed to mount /dev/cdrom"; return 1; }
+        if ! run_as_root "mount /dev/cdrom '${MOUNT_POINT}'" 2>/dev/null; then
+            info "Failed to mount ISO. Falling back to repository installation..."
+            _install_from_repository
+            return $?
+        fi
     fi
 
     if [[ -f "${MOUNT_POINT}/Linux/install.sh" ]]; then
@@ -404,17 +353,72 @@ setup_xen_guest_utilities() {
         esac
 
         [[ -n "$install_flags" ]] && info "Using installer flags: ${install_flags}"
-        run_as_root "bash '${MOUNT_POINT}/Linux/install.sh' ${install_flags}"
-        info "Waiting 5 seconds for services to initialize..."
-        sleep 5
-        run_as_root "umount '${MOUNT_POINT}'" || warn "Failed to unmount ${MOUNT_POINT}"
-        info "XCP-NG Tools installation completed."
+        if run_as_root "bash '${MOUNT_POINT}/Linux/install.sh' ${install_flags}"; then
+            info "Waiting 5 seconds for services to initialize..."
+            sleep 5
+            run_as_root "umount '${MOUNT_POINT}'" || warn "Failed to unmount ${MOUNT_POINT}"
+            info "XCP-NG Tools installation completed."
+            return 0
+        else
+            warn "ISO installation failed. Falling back to repository installation..."
+            run_as_root "umount '${MOUNT_POINT}'" || warn "Failed to unmount ${MOUNT_POINT}"
+            _install_from_repository
+            return $?
+        fi
     else
-        error "Installer script not found at ${MOUNT_POINT}/Linux/install.sh"
-        return 1
+        warn "Installer script not found at ${MOUNT_POINT}/Linux/install.sh. Falling back to repository installation..."
+        run_as_root "umount '${MOUNT_POINT}'" 2>/dev/null || true
+        _install_from_repository
+        return $?
     fi
+}
 
-    return 0
+# Helper function: Install XEN utilities from repository (fallback method)
+_install_from_repository() {
+    info "Attempting repository installation..."
+
+    case "$DISTRO_FAMILY" in
+        debian)
+            info "Installing xe-guest-utilities via apt..."
+            run_as_root "apt-get update && apt-get install -y xe-guest-utilities"
+            return $?
+            ;;
+
+        fedora|rhel)
+            run_as_root "yum install -y epel-release" 2>/dev/null || true
+            info "Installing xe-guest-utilities via yum..."
+            if run_as_root "yum install -y xe-guest-utilities-latest" 2>/dev/null || \
+               run_as_root "yum install -y xe-guest-utilities"; then
+                run_as_root "systemctl enable xe-linux-distribution" || warn "Failed to enable xe-linux-distribution"
+                run_as_root "systemctl start xe-linux-distribution" || warn "Failed to start xe-linux-distribution"
+                return 0
+            fi
+            return 1
+            ;;
+
+        arch)
+            info "Installing xe-guest-utilities via pacman..."
+            run_as_root "pacman -S --noconfirm xe-guest-utilities"
+            return $?
+            ;;
+
+        suse)
+            info "Installing xe-guest-utilities via zypper..."
+            run_as_root "zypper install -y xe-guest-utilities"
+            return $?
+            ;;
+
+        alpine)
+            info "Installing xe-guest-utilities via apk..."
+            run_as_root "apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/community xe-guest-utilities"
+            return $?
+            ;;
+
+        *)
+            error "Repository installation not supported for ${DISTRO_NAME}"
+            return 1
+            ;;
+    esac
 }
 
 # --- Full System Update (Bare Metal) ---
