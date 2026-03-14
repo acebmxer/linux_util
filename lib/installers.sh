@@ -2331,7 +2331,7 @@ install_pia_vpn() {
                 return 1
             fi
             chmod +x "$pia_installer"
-            if ! sudo "$pia_installer" --installer-headless; then
+            if ! sudo "$pia_installer" --accept --quiet; then
                 echo "Error: Failed to install PIA VPN."
                 rm -f "$pia_installer"
                 return 1
@@ -2395,7 +2395,7 @@ update_pia_vpn() {
             pia_installer=$(mktemp /tmp/pia-XXXXXX.run)
             if wget -qO "$pia_installer" "https://installers.privateinternetaccess.com/download/pia-linux-3.7-08412.run"; then
                 chmod +x "$pia_installer"
-                sudo "$pia_installer" --installer-headless
+                sudo "$pia_installer" --accept --quiet
             fi
             rm -f "$pia_installer"
             ;;
