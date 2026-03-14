@@ -2854,8 +2854,8 @@ draw_menu() {
     term_width=$(tput cols 2>/dev/null || echo 120)
     local sys_col_width=$(( term_width / system_num_columns ))
     local util_col_width=$(( term_width / num_columns ))
-    [[ $sys_col_width -lt 30 ]] && sys_col_width=25
-    [[ $util_col_width -lt 30 ]] && util_col_width=25
+    [[ $sys_col_width -lt 30 ]] && sys_col_width=30
+    [[ $util_col_width -lt 30 ]] && util_col_width=30
     
     local dry_run_label=""
     [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
