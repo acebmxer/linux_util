@@ -8,14 +8,21 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="${SCRIPT_DIR}/logs"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-RESET='\033[0m'
-BOLD='\033[1m'
+# Colors (unified with linux_util.sh)
+ESC=$'\e'
+CSI="${ESC}["
+RED="${CSI}31m"
+GREEN="${CSI}32m"
+YELLOW="${CSI}33m"
+BLUE="${CSI}34m"
+CYAN="${CSI}36m"
+BOLD="${CSI}1m"
+RESET="${CSI}0m"
+
+# Respect the NO_COLOR standard (https://no-color.org/) and non-interactive terminals.
+if [[ ! -t 1 || -n "${NO_COLOR:-}" ]]; then
+    RED="" GREEN="" YELLOW="" BLUE="" CYAN="" BOLD="" RESET=""
+fi
 
 show_usage() {
     echo "Usage: $0 [COMMAND] [OPTIONS]"
@@ -38,24 +45,26 @@ show_usage() {
 }
 
 list_logs() {
-    echo -e "${BOLD}${CYAN}Log files in ${LOG_DIR}:${RESET}"
+    echo "${BOLD}${CYAN}Log files in ${LOG_DIR}:${RESET}"
     echo ""
     
     if [[ ! -d "$LOG_DIR" ]]; then
-        echo -e "${RED}Log directory not found: ${LOG_DIR}${RESET}"
+        echo "${RED}Log directory not found: ${LOG_DIR}${RESET}"
         return 1
     fi
     
-    local success_logs=($(ls -t "$LOG_DIR"/success_*.log 2>/dev/null))
-    local error_logs=($(ls -t "$LOG_DIR"/error_*.log 2>/dev/null))
+    local -a success_logs=()
+    mapfile -t success_logs < <(ls -t "$LOG_DIR"/success_*.log 2>/dev/null)
+    local -a error_logs=()
+    mapfile -t error_logs < <(ls -t "$LOG_DIR"/error_*.log 2>/dev/null)
     
     if [[ ${#success_logs[@]} -eq 0 ]] && [[ ${#error_logs[@]} -eq 0 ]]; then
-        echo -e "${YELLOW}No log files found.${RESET}"
+        echo "${YELLOW}No log files found.${RESET}"
         return 0
     fi
     
     if [[ ${#success_logs[@]} -gt 0 ]]; then
-        echo -e "${BOLD}${GREEN}Success Logs:${RESET}"
+        echo "${BOLD}${GREEN}Success Logs:${RESET}"
         for log in "${success_logs[@]}"; do
             local size=$(du -h "$log" | cut -f1)
             local date=$(stat -c %y "$log" | cut -d' ' -f1,2 | cut -d'.' -f1)
@@ -65,7 +74,7 @@ list_logs() {
     fi
     
     if [[ ${#error_logs[@]} -gt 0 ]]; then
-        echo -e "${BOLD}${RED}Error Logs:${RESET}"
+        echo "${BOLD}${RED}Error Logs:${RESET}"
         for log in "${error_logs[@]}"; do
             local size=$(du -h "$log" | cut -f1)
             local date=$(stat -c %y "$log" | cut -d'.' -f1)
@@ -86,21 +95,21 @@ view_log() {
             log_file="${LOG_DIR}/error_latest.log"
             ;;
         latest)
-            echo -e "${BOLD}${GREEN}=== Success Log ===${RESET}"
+            echo "${BOLD}${GREEN}=== Success Log ===${RESET}"
             view_log success
             echo ""
-            echo -e "${BOLD}${RED}=== Error Log ===${RESET}"
+            echo "${BOLD}${RED}=== Error Log ===${RESET}"
             view_log error
             return
             ;;
         *)
-            echo -e "${RED}Invalid log type. Use: success, error, or latest${RESET}"
+            echo "${RED}Invalid log type. Use: success, error, or latest${RESET}"
             return 1
             ;;
     esac
     
     if [[ ! -f "$log_file" ]]; then
-        echo -e "${YELLOW}Log file not found: $log_file${RESET}"
+        echo "${YELLOW}Log file not found: $log_file${RESET}"
         return 1
     fi
     
@@ -123,17 +132,17 @@ tail_log() {
             log_file="${LOG_DIR}/error_latest.log"
             ;;
         *)
-            echo -e "${RED}Invalid log type. Use: success or error${RESET}"
+            echo "${RED}Invalid log type. Use: success or error${RESET}"
             return 1
             ;;
     esac
     
     if [[ ! -f "$log_file" ]]; then
-        echo -e "${YELLOW}Log file not found: $log_file${RESET}"
+        echo "${YELLOW}Log file not found: $log_file${RESET}"
         return 1
     fi
     
-    echo -e "${BOLD}Tailing ${type} log (Ctrl+C to stop)...${RESET}"
+    echo "${BOLD}Tailing ${type} log (Ctrl+C to stop)...${RESET}"
     tail -f "$log_file"
 }
 
@@ -141,11 +150,11 @@ search_logs() {
     local pattern="$1"
     
     if [[ -z "$pattern" ]]; then
-        echo -e "${RED}Error: Search pattern required${RESET}"
+        echo "${RED}Error: Search pattern required${RESET}"
         return 1
     fi
     
-    echo -e "${BOLD}${CYAN}Searching for: ${pattern}${RESET}"
+    echo "${BOLD}${CYAN}Searching for: ${pattern}${RESET}"
     echo ""
     
     local found=0
@@ -155,7 +164,7 @@ search_logs() {
         if [[ -f "$log" ]]; then
             local matches=$(grep -i "$pattern" "$log" 2>/dev/null)
             if [[ -n "$matches" ]]; then
-                echo -e "${BOLD}${GREEN}=== $(basename "$log") ===${RESET}"
+                echo "${BOLD}${GREEN}=== $(basename "$log") ===${RESET}"
                 echo "$matches"
                 echo ""
                 ((found++))
@@ -164,18 +173,18 @@ search_logs() {
     done
     
     if [[ $found -eq 0 ]]; then
-        echo -e "${YELLOW}No matches found.${RESET}"
+        echo "${YELLOW}No matches found.${RESET}"
     else
-        echo -e "${GREEN}Found matches in ${found} file(s).${RESET}"
+        echo "${GREEN}Found matches in ${found} file(s).${RESET}"
     fi
 }
 
 show_stats() {
-    echo -e "${BOLD}${CYAN}Log Statistics:${RESET}"
+    echo "${BOLD}${CYAN}Log Statistics:${RESET}"
     echo ""
     
     if [[ ! -d "$LOG_DIR" ]]; then
-        echo -e "${RED}Log directory not found.${RESET}"
+        echo "${RED}Log directory not found.${RESET}"
         return 1
     fi
     
@@ -192,7 +201,7 @@ show_stats() {
     
     # Recent executions
     if [[ -f "${LOG_DIR}/success_latest.log" ]]; then
-        echo -e "${BOLD}Last execution:${RESET}"
+        echo "${BOLD}Last execution:${RESET}"
         head -n 5 "${LOG_DIR}/success_latest.log" | tail -n 3
         echo ""
         
@@ -211,17 +220,17 @@ show_stats() {
 clean_logs() {
     local days="${1:-30}"
     
-    echo -e "${BOLD}${YELLOW}Removing logs older than ${days} days...${RESET}"
+    echo "${BOLD}${YELLOW}Removing logs older than ${days} days...${RESET}"
     
     if [[ ! -d "$LOG_DIR" ]]; then
-        echo -e "${RED}Log directory not found.${RESET}"
+        echo "${RED}Log directory not found.${RESET}"
         return 1
     fi
     
     local count=$(find "$LOG_DIR" -name "*.log" -type f -mtime +${days} 2>/dev/null | wc -l)
     
     if [[ $count -eq 0 ]]; then
-        echo -e "${GREEN}No old logs to clean.${RESET}"
+        echo "${GREEN}No old logs to clean.${RESET}"
         return 0
     fi
     
@@ -231,17 +240,17 @@ clean_logs() {
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         find "$LOG_DIR" -name "*.log" -type f -mtime +${days} -delete
-        echo -e "${GREEN}✓ Old logs removed.${RESET}"
+        echo "${GREEN}✓ Old logs removed.${RESET}"
     else
         echo "Cancelled."
     fi
 }
 
 compress_logs() {
-    echo -e "${BOLD}${CYAN}Compressing old logs (older than 7 days)...${RESET}"
+    echo "${BOLD}${CYAN}Compressing old logs (older than 7 days)...${RESET}"
     
     if [[ ! -d "$LOG_DIR" ]]; then
-        echo -e "${RED}Log directory not found.${RESET}"
+        echo "${RED}Log directory not found.${RESET}"
         return 1
     fi
     
@@ -256,9 +265,9 @@ compress_logs() {
     done < <(find "$LOG_DIR" -name "*.log" -type f -mtime +7 -print0 2>/dev/null)
     
     if [[ $compressed -eq 0 ]]; then
-        echo -e "${YELLOW}No logs to compress.${RESET}"
+        echo "${YELLOW}No logs to compress.${RESET}"
     else
-        echo -e "${GREEN}✓ Compressed ${compressed} log file(s).${RESET}"
+        echo "${GREEN}✓ Compressed ${compressed} log file(s).${RESET}"
     fi
 }
 

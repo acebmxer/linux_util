@@ -22,6 +22,17 @@ fi
 # Dry-run flag — set to true via --dry-run CLI argument
 DRY_RUN=false
 
+# Preserve original CLI arguments for self-update re-exec
+ORIGINAL_ARGS=("$@")
+
+# Prevent concurrent runs via flock
+LOCK_FILE="/tmp/linux_util_${USER}.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    echo "Error: Another instance of this script is already running."
+    exit 1
+fi
+
 # ============================================================================
 # LOGGING SETUP
 # ============================================================================
@@ -30,6 +41,9 @@ DRY_RUN=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="${SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")"
 LOG_DIR="${SCRIPT_DIR}/logs"
+
+# Restrict log file permissions (owner-only read/write)
+umask 077
 
 # Create log directory if it doesn't exist
 mkdir -p "$LOG_DIR"
@@ -113,7 +127,7 @@ log_info() {
 log_command() {
     local description="$1"
     shift
-    local cmd="$@"
+    local cmd="$*"
     
     log_info "Executing: ${description}"
     log_info "Command: ${cmd}"
@@ -141,8 +155,33 @@ log_command() {
     return $exit_code
 }
 
-# Trap errors and log them
-trap 'log_error "Script error at line $LINENO: Command \"$BASH_COMMAND\" failed with exit code $?"' ERR
+# --- Global temp-file cleanup ---
+# Functions that create temp files should append paths to this array.
+# On exit (normal or interrupted), all registered files are removed.
+declare -a CLEANUP_FILES=()
+SUDO_KEEPALIVE_PID=""
+
+cleanup_on_exit() {
+    # Kill sudo keep-alive background process
+    [[ -n "$SUDO_KEEPALIVE_PID" ]] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+    # Remove any registered temp files/dirs
+    for _f in "${CLEANUP_FILES[@]}"; do
+        rm -rf "$_f" 2>/dev/null || true
+    done
+}
+trap cleanup_on_exit EXIT
+
+# Trap errors and log them (skip intentional failures in conditionals)
+_err_handler() {
+    local _exit_code=$?
+    # Suppress logging for common intentional-failure patterns
+    case "$BASH_COMMAND" in
+        *"command -v"*|*"grep -q"*|*"2>/dev/null"*|*"|| true"*|*"|| return"*|*"|| warn"*|*"|| echo"*)
+            return 0 ;;
+    esac
+    log_error "Unexpected error at line $LINENO: Command \"$BASH_COMMAND\" failed (exit $_exit_code)"
+}
+trap '_err_handler' ERR
 
 # ============================================================================
 # DISTRO DETECTION & PACKAGE MANAGER ABSTRACTION
@@ -231,7 +270,9 @@ pkg_refresh() {
     case "$PKG_MGR" in
         apt)     sudo apt update ;;
         dnf|yum) sudo "$PKG_MGR" makecache ;;
-        pacman)  sudo pacman -Sy ;;
+        # NOTE: On Arch, -Sy without -u risks partial upgrades. We use -Syu
+        # here so that any subsequent pkg_install calls have a consistent DB+system.
+        pacman)  sudo pacman -Syu --noconfirm ;;
         zypper)  sudo zypper refresh ;;
     esac
 }
@@ -301,7 +342,7 @@ pkg_full_upgrade() {
 
 pkg_clean() {
     case "$PKG_MGR" in
-        apt)     sudo apt clean -y && sudo apt autoclean -y ;;
+        apt)     sudo apt clean && sudo apt autoclean ;;
         dnf|yum) sudo "$PKG_MGR" clean all ;;
         pacman)  sudo pacman -Sc --noconfirm ;;
         zypper)  sudo zypper clean -a ;;
@@ -372,15 +413,38 @@ ensure_aur_build_deps() {
     sudo pacman -S --noconfirm --needed base-devel git
 }
 
+# Build and install a package from AUR without a helper (yay/paru).
+# Usage: aur_build <aur-package-name>
+aur_build() {
+    local pkg_name="$1"
+    ensure_aur_build_deps
+    local build_dir
+    build_dir=$(mktemp -d)
+    CLEANUP_FILES+=("$build_dir")
+    git clone "https://aur.archlinux.org/${pkg_name}.git" "$build_dir/${pkg_name}"
+    (cd "$build_dir/${pkg_name}" && makepkg -si --noconfirm)
+    rm -rf "$build_dir"
+}
+
 # Detect the distro at startup
 detect_distro
 echo ""
+
+# Cache sudo credentials and keep them alive in the background so the user
+# is not re-prompted mid-install when the sudo timeout expires.
+sudo -v
+( exec 9>&-; while true; do sudo -n true; sleep 50; done ) 2>/dev/null &
+SUDO_KEEPALIVE_PID=$!
 
 # ============================================================================
 # SYSTEM SETUP OPTIONS (from linux_setup_script)
 # ============================================================================
 
 # Helper functions
+# NOTE: run_as_root passes its arguments as a single string to sh -c.
+# Arguments containing spaces, quotes, or special characters will be
+# subject to word-splitting by sh. For commands with complex quoting,
+# use 'sudo bash -c "..."' directly instead of this helper.
 run_as_root() { sudo -E sh -c "$*"; }
 info()  { printf '\e[32m[INFO]\e[0m %s\n' "$*"; }
 warn()  { printf '\e[33m[WARN]\e[0m %s\n' "$*"; }
@@ -427,6 +491,10 @@ check_internet() {
 
 # download_file <url> <dest> [retries=3]
 # Robust download with retries; prefers wget, falls back to curl.
+# NOTE: Checksum verification is not implemented because download URLs
+# change frequently and upstream projects do not consistently provide
+# checksum files at predictable URLs. If a utility provides a .sha256
+# file alongside its download, verify it in the individual install function.
 download_file() {
     local url="$1" dest="$2" retries="${3:-3}" attempt=1
     while (( attempt <= retries )); do
@@ -485,6 +553,7 @@ setup_full_update_bare_metal() {
     local keyring_backup=""
     if [[ -d "$keyring_dir" ]] && [[ -n "$(ls -A "$keyring_dir" 2>/dev/null)" ]]; then
         keyring_backup=$(mktemp -d)
+        CLEANUP_FILES+=("$keyring_backup")
         cp -a "$keyring_dir/." "$keyring_backup/"
         info "Keyring backed up to ${keyring_backup}"
     fi
@@ -527,8 +596,8 @@ setup_full_update_bare_metal() {
 setup_xen_guest_utilities() {
     info "Installing/Updating XEN Guest Utilities..."
 
-    # Fedora / CentOS / RHEL: install from EPEL repository
-    if [[ "$DISTRO_FAMILY" == "fedora" || "$DISTRO_FAMILY" == "rhel" ]]; then
+    # CentOS / Fedora: install from EPEL repository
+    if [[ "$DISTRO_ID" == "centos" || "$DISTRO_ID" == "fedora" ]]; then
         info "Installing xe-guest-utilities-latest via yum (EPEL)..."
         run_as_root "yum install -y xe-guest-utilities-latest" || { error "Failed to install xe-guest-utilities-latest"; return 1; }
         info "Enabling and starting xe-linux-distribution service..."
@@ -545,7 +614,7 @@ setup_xen_guest_utilities() {
         read -n 1 -rp "Would you like to uninstall existing xe-guest-utilities (v$ver) before installing new tools? [y/N] " ans
         echo
         case "$ans" in
-            y|Y|yes|Yes)
+            y|Y)
                 info "Uninstalling existing xe-guest-utilities..."
                 pkg_remove xe-guest-utilities || warn "Failed to remove xe-guest-utilities."
                 ;;
@@ -561,7 +630,7 @@ setup_xen_guest_utilities() {
         read -n 1 -rp "Would you like to uninstall existing xen-guest-agent (v$ver) before installing new tools? [y/N] " ans
         echo
         case "$ans" in
-            y|Y|yes|Yes)
+            y|Y)
                 info "Uninstalling existing xen-guest-agent..."
                 pkg_remove xen-guest-agent || warn "Failed to remove xen-guest-agent."
                 ;;
@@ -582,28 +651,24 @@ setup_xen_guest_utilities() {
     if [[ -f "${MOUNT_POINT}/Linux/install.sh" ]]; then
         info "Running XCP-NG installer script..."
 
-        # Ubuntu and Debian are auto-detected by the installer.
-        # All other distros require explicit -d <distro> -m <major_version> flags.
+        # Debian-family distros (debian, ubuntu, kubuntu, kde neon, etc.) are auto-detected.
+        # RHEL derivatives (alma, rocky, etc.) need explicit -d rhel -m <major_version> flags.
         # See: https://docs.xcp-ng.org/vms/#install-from-the-guest-tools-iso
         local install_flags=""
         local major_ver="${DISTRO_VERSION_ID%%.*}"
 
-        case "$DISTRO_ID" in
-            ubuntu|debian)
+        case "$DISTRO_FAMILY" in
+            debian)
                 install_flags=""
                 ;;
+            rhel)
+                install_flags="-d rhel -m ${major_ver}"
+                ;;
+            arch|suse)
+                warn "Xen Guest Tools installer may not officially support ${DISTRO_NAME}. Attempting without distro flags..."
+                ;;
             *)
-                case "$DISTRO_FAMILY" in
-                    debian)
-                        install_flags="-d debian -m ${major_ver}"
-                        ;;
-                    arch|suse)
-                        warn "Xen Guest Tools installer may not officially support ${DISTRO_NAME}. Attempting without distro flags..."
-                        ;;
-                    *)
-                        warn "Unknown distro family '${DISTRO_FAMILY}'. Attempting without distro flags..."
-                        ;;
-                esac
+                warn "Unknown distro family '${DISTRO_FAMILY}'. Attempting without distro flags..."
                 ;;
         esac
 
@@ -647,12 +712,14 @@ setup_install_dotfiles() {
     rm -rf ~/dotfiles
     info "Previous dotfiles folder was removed."
     git clone https://github.com/flipsidecreations/dotfiles.git ~/dotfiles || { warn "Failed to clone dotfiles"; return 1; }
-    cd ~/dotfiles || return 1
-    # Note: If you see "apt: command not found" errors below, they come from the dotfiles
-    # install.sh script and may be ignored on non-Debian systems if the script continues.
-    ./install.sh
+    # Run install.sh in a subshell to avoid changing the script's working directory
+    (
+        cd ~/dotfiles || exit 1
+        # Note: If you see "apt: command not found" errors below, they come from the dotfiles
+        # install.sh script and may be ignored on non-Debian systems if the script continues.
+        ./install.sh
+    ) || { warn "Dotfiles install.sh failed"; return 1; }
     chsh -s /bin/zsh || warn "Failed to change shell to zsh for current user."
-    cd ..
     
     # Install dotfiles for root
     info "Installing dotfiles for root..."
@@ -689,31 +756,55 @@ setup_install_kde() {
             # Debian/Ubuntu-based systems
             run_as_root "apt-get update"
             info "Installing KDE Full Desktop Environment..."
-            run_as_root "apt-get install -y kde-full sddm"
+            run_as_root "apt-get install -y kde-full sddm" || {
+                error "Failed to install KDE Full Desktop Environment"
+                return 1
+            }
             info "Enabling display manager..."
             run_as_root "systemctl enable sddm" || warn "Failed to enable sddm"
             ;;
-            
+
         dnf|yum)
             # Fedora/RHEL-based systems
-            info "Installing KDE Plasma Desktop..."
-            run_as_root "$PKG_MGR groupinstall -y 'KDE Plasma Workspaces' || $PKG_MGR group install -y @kde-desktop-environment"
+            info "Installing KDE Full Desktop Environment..."
+            if ! run_as_root "$PKG_MGR groupinstall -y 'KDE Plasma Workspaces'" 2>/dev/null && \
+               ! run_as_root "$PKG_MGR group install -y @kde-desktop-environment" 2>/dev/null; then
+                # RHEL 9+ / AlmaLinux 9+ don't have the KDE group — install individual packages
+                info "Group install not available, installing KDE packages individually..."
+                run_as_root "$PKG_MGR install -y epel-release" 2>/dev/null || true
+                run_as_root "crb enable" 2>/dev/null || run_as_root "$PKG_MGR config-manager --set-enabled crb" 2>/dev/null || true
+                run_as_root "$PKG_MGR install -y plasma-desktop plasma-workspace sddm \
+                    plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons plasma-thunderbolt \
+                    bluedevil breeze-gtk kscreen kinfocenter kwrited \
+                    konsole dolphin kate ark gwenview okular spectacle \
+                    kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde \
+                    phonon-qt5-backend-gstreamer" || {
+                    error "Failed to install KDE Full Desktop Environment packages"
+                    return 1
+                }
+            fi
             info "Enabling display manager..."
             run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
             ;;
-            
+
         zypper)
             # openSUSE/SLES
-            info "Installing KDE Plasma Desktop..."
-            run_as_root "zypper install -y -t pattern kde kde_plasma"
+            info "Installing KDE Full Desktop Environment..."
+            run_as_root "zypper install -y -t pattern kde kde_plasma kde_utilities kde_imaging kde_multimedia kde_office kde_games" || {
+                error "Failed to install KDE Full Desktop Environment"
+                return 1
+            }
             info "Enabling display manager..."
             run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
             ;;
-            
+
         pacman)
             # Arch Linux
-            info "Installing KDE Plasma Desktop..."
-            run_as_root "pacman -S --noconfirm plasma-meta kde-applications-meta sddm"
+            info "Installing KDE Full Desktop Environment..."
+            run_as_root "pacman -S --noconfirm plasma-meta kde-applications-meta sddm" || {
+                error "Failed to install KDE Full Desktop Environment"
+                return 1
+            }
             info "Enabling display manager..."
             run_as_root "systemctl enable sddm"
             ;;
@@ -821,51 +912,63 @@ declare -A INSTALL_FUNCS
 declare -A CHECK_FUNCS
 declare -A UNINSTALL_FUNCS
 declare -A UPDATE_FUNCS
+declare -A VERSION_FUNCS
+
+# Registration helper — reduces boilerplate when adding new utilities.
+# Usage: register_utility "Name" install_fn check_fn uninstall_fn update_fn [version_fn]
+register_utility() {
+    local name="$1" install_fn="$2" check_fn="$3" uninstall_fn="$4" update_fn="$5"
+    local version_fn="${6:-}"
+    UTILITIES+=("$name")
+    INSTALL_FUNCS["$name"]="$install_fn"
+    CHECK_FUNCS["$name"]="$check_fn"
+    UNINSTALL_FUNCS["$name"]="$uninstall_fn"
+    UPDATE_FUNCS["$name"]="$update_fn"
+    [[ -n "$version_fn" ]] && VERSION_FUNCS["$name"]="$version_fn" || true
+}
 
 # ============================================================================
 # UTILITY DEFINITIONS
 # ============================================================================
 
 # --- System Setup Tasks ---
-UTILITIES+=("Full System Upgrade/Update")
-INSTALL_FUNCS["Full System Upgrade/Update"]="setup_full_update_bare_metal"
-CHECK_FUNCS["Full System Upgrade/Update"]="check_always_false"
-UNINSTALL_FUNCS["Full System Upgrade/Update"]="noop_function"
-UPDATE_FUNCS["Full System Upgrade/Update"]="setup_full_update_bare_metal"
+# Tracked separately so the menu can render them in their own section.
+declare -a SYSTEM_TASKS=()
 
-UTILITIES+=("KDE Desktop Environment")
-INSTALL_FUNCS["KDE Desktop Environment"]="install_kde"
-CHECK_FUNCS["KDE Desktop Environment"]="check_kde"
-UNINSTALL_FUNCS["KDE Desktop Environment"]="uninstall_kde"
-UPDATE_FUNCS["KDE Desktop Environment"]="update_kde"
+SYSTEM_TASKS+=("Full System Upgrade/Update")
+register_utility "Full System Upgrade/Update" setup_full_update_bare_metal check_always_false noop_function setup_full_update_bare_metal
 
-UTILITIES+=("NVIDIA Drivers")
-INSTALL_FUNCS["NVIDIA Drivers"]="install_nvidia_drivers"
-CHECK_FUNCS["NVIDIA Drivers"]="check_nvidia_drivers"
-UNINSTALL_FUNCS["NVIDIA Drivers"]="uninstall_nvidia_drivers"
-UPDATE_FUNCS["NVIDIA Drivers"]="update_nvidia_drivers"
+SYSTEM_TASKS+=("KDE Desktop Environment")
+register_utility "KDE Desktop Environment" install_kde check_kde uninstall_kde update_kde get_version_kde
 
-UTILITIES+=("System Updates")
-INSTALL_FUNCS["System Updates"]="setup_system_updates"
-CHECK_FUNCS["System Updates"]="check_always_false"
-UNINSTALL_FUNCS["System Updates"]="noop_function"
-UPDATE_FUNCS["System Updates"]="setup_system_updates"
+SYSTEM_TASKS+=("NVIDIA Drivers")
+register_utility "NVIDIA Drivers" install_nvidia_drivers check_nvidia_drivers uninstall_nvidia_drivers update_nvidia_drivers get_version_nvidia_drivers
 
-UTILITIES+=("XEN Guest Utilities")
-INSTALL_FUNCS["XEN Guest Utilities"]="setup_xen_guest_utilities"
-CHECK_FUNCS["XEN Guest Utilities"]="check_always_false"
-UNINSTALL_FUNCS["XEN Guest Utilities"]="noop_function"
-UPDATE_FUNCS["XEN Guest Utilities"]="setup_xen_guest_utilities"
+SYSTEM_TASKS+=("System Updates")
+register_utility "System Updates" setup_system_updates check_always_false noop_function setup_system_updates
 
-# Number of "System Task" entries at the top of the UTILITIES array.
-# *** INCREMENT THIS when adding a new System Task above this line. ***
-readonly SYSTEM_TASK_COUNT=5
+SYSTEM_TASKS+=("XEN Guest Utilities")
+register_utility "XEN Guest Utilities" setup_xen_guest_utilities check_xen_guest_utilities noop_function setup_xen_guest_utilities get_version_xen_guest_utilities
+
+# Computed from the SYSTEM_TASKS array — no manual increment needed.
+readonly SYSTEM_TASK_COUNT=${#SYSTEM_TASKS[@]}
 
 # Helper functions for system setup tasks
 check_always_false() { return 1; }
 noop_function() { return 0; }
 check_xen_guest_utilities() {
-    pkg_check_installed xe-guest-utilities || pkg_check_installed xen-guest-agent
+    pkg_check_installed xe-guest-utilities || pkg_check_installed xen-guest-agent || pkg_check_installed xe-guest-utilities-latest
+}
+get_version_xen_guest_utilities() {
+    local ver=""
+    if pkg_check_installed xe-guest-utilities; then
+        ver=$(pkg_get_version xe-guest-utilities)
+    elif pkg_check_installed xen-guest-agent; then
+        ver=$(pkg_get_version xen-guest-agent)
+    elif pkg_check_installed xe-guest-utilities-latest; then
+        ver=$(pkg_get_version xe-guest-utilities-latest)
+    fi
+    [[ -n "$ver" ]] && echo "$ver"
 }
 check_kde() {
     command -v plasmashell &>/dev/null || \
@@ -917,6 +1020,9 @@ update_kde() {
             ;;
     esac
 }
+get_version_kde() {
+    plasmashell --version 2>/dev/null | sed 's/plasmashell //' || echo ""
+}
 
 self_update_script() {
     info "Checking for script updates..."
@@ -938,7 +1044,9 @@ self_update_script() {
     after=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
     if [[ "$before" != "$after" ]]; then
         info "Script updated to $(git -C "$SCRIPT_DIR" rev-parse --short HEAD). Restarting..."
-        exec bash "$SCRIPT_PATH" "$@"
+        # Clean up before re-exec (EXIT trap does not fire on exec)
+        [[ -n "$SUDO_KEEPALIVE_PID" ]] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+        exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
     else
         info "Script is already up to date."
     fi
@@ -951,97 +1059,30 @@ self_update_script() {
 # implementation functions in the correct alphabetical position to
 # maintain the sorted order in the menu.
 
-# Bitwarden Client
-UTILITIES+=("Bitwarden Client")
-INSTALL_FUNCS["Bitwarden Client"]="install_bitwarden"
-CHECK_FUNCS["Bitwarden Client"]="check_bitwarden"
-UNINSTALL_FUNCS["Bitwarden Client"]="uninstall_bitwarden"
-UPDATE_FUNCS["Bitwarden Client"]="update_bitwarden"
-
-# Brave Browser
-UTILITIES+=("Brave Browser")
-INSTALL_FUNCS["Brave Browser"]="install_brave"
-CHECK_FUNCS["Brave Browser"]="check_brave"
-UNINSTALL_FUNCS["Brave Browser"]="uninstall_brave"
-UPDATE_FUNCS["Brave Browser"]="update_brave"
-
-# Devolutions RDM
-UTILITIES+=("Devolutions RDM")
-INSTALL_FUNCS["Devolutions RDM"]="install_devolutions_rdm"
-CHECK_FUNCS["Devolutions RDM"]="check_devolutions_rdm"
-UNINSTALL_FUNCS["Devolutions RDM"]="uninstall_devolutions_rdm"
-UPDATE_FUNCS["Devolutions RDM"]="update_devolutions_rdm"
-
-# Docker
-UTILITIES+=("Docker")
-INSTALL_FUNCS["Docker"]="setup_install_docker"
-CHECK_FUNCS["Docker"]="check_docker"
-UNINSTALL_FUNCS["Docker"]="uninstall_docker"
-UPDATE_FUNCS["Docker"]="update_docker"
-
-# Dotfiles
-UTILITIES+=("Dotfiles")
-INSTALL_FUNCS["Dotfiles"]="setup_install_dotfiles"
-CHECK_FUNCS["Dotfiles"]="check_dotfiles"
-UNINSTALL_FUNCS["Dotfiles"]="noop_function"
-UPDATE_FUNCS["Dotfiles"]="setup_install_dotfiles"
+register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden
+register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave              get_version_brave
+register_utility "Devolutions RDM"     install_devolutions_rdm check_devolutions_rdm uninstall_devolutions_rdm update_devolutions_rdm    get_version_devolutions_rdm
+register_utility "Docker"              setup_install_docker    check_docker          uninstall_docker          update_docker             get_version_docker
+register_utility "Dotfiles"            setup_install_dotfiles  check_dotfiles        noop_function             setup_install_dotfiles
+register_utility "Joplin Client"       install_joplin          check_joplin          uninstall_joplin          update_joplin             get_version_joplin
+register_utility "LibreOffice"         install_libreoffice     check_libreoffice     uninstall_libreoffice     update_libreoffice        get_version_libreoffice
+register_utility "OpenSSH Server"      install_openssh_server  check_openssh_server  uninstall_openssh_server  update_openssh_server     get_version_openssh_server
+register_utility "Steam App"           install_steam           check_steam           uninstall_steam           update_steam              get_version_steam
+register_utility "Syncthing"           install_syncthing       check_syncthing       uninstall_syncthing       update_syncthing          get_version_syncthing
+register_utility "Termius SSH Client"  install_termius         check_termius         uninstall_termius         update_termius            get_version_termius
+register_utility "Timeshift"           install_timeshift       check_timeshift       uninstall_timeshift       update_timeshift          get_version_timeshift
+register_utility "Visual Studio Code"  install_vscode          check_vscode          uninstall_vscode          update_vscode             get_version_vscode
 
 check_dotfiles() {
     [[ -d ~/dotfiles ]] && [[ -f ~/.zshrc ]]
 }
 
-# Joplin Client
-UTILITIES+=("Joplin Client")
-INSTALL_FUNCS["Joplin Client"]="install_joplin"
-CHECK_FUNCS["Joplin Client"]="check_joplin"
-UNINSTALL_FUNCS["Joplin Client"]="uninstall_joplin"
-UPDATE_FUNCS["Joplin Client"]="update_joplin"
-
-# OpenSSH Server
-UTILITIES+=("OpenSSH Server")
-INSTALL_FUNCS["OpenSSH Server"]="install_openssh_server"
-CHECK_FUNCS["OpenSSH Server"]="check_openssh_server"
-UNINSTALL_FUNCS["OpenSSH Server"]="uninstall_openssh_server"
-UPDATE_FUNCS["OpenSSH Server"]="update_openssh_server"
-
-# Steam App
-UTILITIES+=("Steam App")
-INSTALL_FUNCS["Steam App"]="install_steam"
-CHECK_FUNCS["Steam App"]="check_steam"
-UNINSTALL_FUNCS["Steam App"]="uninstall_steam"
-UPDATE_FUNCS["Steam App"]="update_steam"
-
-# Syncthing
-UTILITIES+=("Syncthing")
-INSTALL_FUNCS["Syncthing"]="install_syncthing"
-CHECK_FUNCS["Syncthing"]="check_syncthing"
-UNINSTALL_FUNCS["Syncthing"]="uninstall_syncthing"
-UPDATE_FUNCS["Syncthing"]="update_syncthing"
-
-# Termius SSH Client
-UTILITIES+=("Termius SSH Client")
-INSTALL_FUNCS["Termius SSH Client"]="install_termius"
-CHECK_FUNCS["Termius SSH Client"]="check_termius"
-UNINSTALL_FUNCS["Termius SSH Client"]="uninstall_termius"
-UPDATE_FUNCS["Termius SSH Client"]="update_termius"
-
-# Timeshift
-UTILITIES+=("Timeshift")
-INSTALL_FUNCS["Timeshift"]="install_timeshift"
-CHECK_FUNCS["Timeshift"]="check_timeshift"
-UNINSTALL_FUNCS["Timeshift"]="uninstall_timeshift"
-UPDATE_FUNCS["Timeshift"]="update_timeshift"
-
-# Visual Studio Code
-UTILITIES+=("Visual Studio Code")
-INSTALL_FUNCS["Visual Studio Code"]="install_vscode"
-CHECK_FUNCS["Visual Studio Code"]="check_vscode"
-UNINSTALL_FUNCS["Visual Studio Code"]="uninstall_vscode"
-UPDATE_FUNCS["Visual Studio Code"]="update_vscode"
-
 # --- NVIDIA Drivers & Toolkit ---
 check_nvidia_drivers() {
     command -v nvidia-smi &>/dev/null || lsmod | grep -q "^nvidia"
+}
+get_version_nvidia_drivers() {
+    nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 || echo ""
 }
 
 install_nvtop_package() {
@@ -1465,6 +1506,7 @@ install_bitwarden() {
             ensure_tools
             local tmp_deb
             tmp_deb=$(mktemp /tmp/bitwarden-XXXXXX.deb)
+            CLEANUP_FILES+=("$tmp_deb")
             if ! wget -qO "$tmp_deb" "https://vault.bitwarden.com/download/?app=desktop&platform=linux&variant=deb"; then
                 echo "Error: Failed to download Bitwarden .deb."
                 rm -f "$tmp_deb"
@@ -1485,6 +1527,7 @@ install_bitwarden() {
             ensure_tools
             local tmp_rpm
             tmp_rpm=$(mktemp /tmp/bitwarden-XXXXXX.rpm)
+            CLEANUP_FILES+=("$tmp_rpm")
             if ! wget -qO "$tmp_rpm" "https://vault.bitwarden.com/download/?app=desktop&platform=linux&variant=rpm"; then
                 echo "Error: Failed to download Bitwarden .rpm."
                 rm -f "$tmp_rpm"
@@ -1501,13 +1544,7 @@ install_bitwarden() {
             if has_aur_helper; then
                 aur_install bitwarden-bin
             else
-                echo "No AUR helper found. Building bitwarden-bin from AUR..."
-                ensure_aur_build_deps
-                local build_dir
-                build_dir=$(mktemp -d)
-                git clone https://aur.archlinux.org/bitwarden-bin.git "$build_dir/bitwarden-bin"
-                (cd "$build_dir/bitwarden-bin" && makepkg -si --noconfirm)
-                rm -rf "$build_dir"
+                aur_build bitwarden-bin
             fi
             ;;
         *)
@@ -1560,6 +1597,19 @@ update_bitwarden() {
         return 1
     fi
 }
+get_version_bitwarden() {
+    if has_snap && snap list bitwarden &>/dev/null; then
+        snap list bitwarden 2>/dev/null | awk 'NR==2{print $2}'
+    elif has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden; then
+        flatpak list 2>/dev/null | grep -i bitwarden | awk -F'\t' '{print $3}'
+    elif pkg_check_installed bitwarden-bin; then
+        pkg_get_version bitwarden-bin
+    elif pkg_check_installed bitwarden; then
+        pkg_get_version bitwarden
+    else
+        echo ""
+    fi
+}
 
 # --- Brave Browser ---
 
@@ -1588,13 +1638,7 @@ install_brave() {
             if has_aur_helper; then
                 aur_install brave-bin
             else
-                echo "No AUR helper found. Building brave-bin from AUR..."
-                ensure_aur_build_deps
-                local build_dir
-                build_dir=$(mktemp -d)
-                git clone https://aur.archlinux.org/brave-bin.git "$build_dir/brave-bin"
-                (cd "$build_dir/brave-bin" && makepkg -si --noconfirm)
-                rm -rf "$build_dir"
+                aur_build brave-bin
             fi
             ;;
         suse)
@@ -1637,13 +1681,7 @@ update_brave() {
             if has_aur_helper; then
                 aur_upgrade brave-bin
             else
-                echo "No AUR helper found. Rebuilding brave-bin from AUR..."
-                ensure_aur_build_deps
-                local build_dir
-                build_dir=$(mktemp -d)
-                git clone https://aur.archlinux.org/brave-bin.git "$build_dir/brave-bin"
-                (cd "$build_dir/brave-bin" && makepkg -si --noconfirm)
-                rm -rf "$build_dir"
+                aur_build brave-bin
             fi
             ;;
         *)
@@ -1651,17 +1689,16 @@ update_brave() {
             ;;
     esac
 }
+get_version_brave() {
+    brave-browser --version 2>/dev/null | grep -oP 'Brave Browser \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
+}
 
 # --- Joplin Client ---
 
-check_joplin() {
-    [[ -f ~/.joplin/Joplin.AppImage ]] || command -v joplin &>/dev/null
-}
-install_joplin() {
-    echo "Installing Joplin Client..."
-    # Detect desktop environment for proper icon installation
+# Detect and export the desktop environment for AppImage installers (Joplin, etc.)
+detect_and_export_desktop_env() {
     local desktop_env=""
-    if [[ -n "$XDG_CURRENT_DESKTOP" ]]; then
+    if [[ -n "${XDG_CURRENT_DESKTOP:-}" ]]; then
         desktop_env="$XDG_CURRENT_DESKTOP"
     elif command -v plasmashell &>/dev/null; then
         desktop_env="KDE"
@@ -1672,12 +1709,18 @@ install_joplin() {
     elif command -v cinnamon &>/dev/null; then
         desktop_env="X-Cinnamon"
     fi
-    
-    # Export desktop environment variable for the installer
     if [[ -n "$desktop_env" ]]; then
         export XDG_CURRENT_DESKTOP="$desktop_env"
     fi
-    
+}
+
+check_joplin() {
+    [[ -f ~/.joplin/Joplin.AppImage ]] || command -v joplin &>/dev/null
+}
+install_joplin() {
+    echo "Installing Joplin Client..."
+    detect_and_export_desktop_env
+
     # Download and run installer script
     local install_script
     install_script=$(wget -qO- https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh) || {
@@ -1721,26 +1764,155 @@ uninstall_joplin() {
 }
 update_joplin() {
     echo "Updating Joplin Client..."
-    # Detect desktop environment for proper icon installation
-    local desktop_env=""
-    if [[ -n "$XDG_CURRENT_DESKTOP" ]]; then
-        desktop_env="$XDG_CURRENT_DESKTOP"
-    elif command -v plasmashell &>/dev/null; then
-        desktop_env="KDE"
-    elif command -v gnome-shell &>/dev/null; then
-        desktop_env="GNOME"
-    elif command -v xfce4-session &>/dev/null; then
-        desktop_env="XFCE"
-    elif command -v cinnamon &>/dev/null; then
-        desktop_env="X-Cinnamon"
-    fi
-    
-    # Export desktop environment variable for the installer
-    if [[ -n "$desktop_env" ]]; then
-        export XDG_CURRENT_DESKTOP="$desktop_env"
-    fi
-    
+    detect_and_export_desktop_env
     wget -O - https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
+}
+get_version_joplin() {
+    # NOTE: Do NOT run the AppImage with --version — it opens a GUI error dialog.
+    local pkg_json="$HOME/.config/joplin-desktop/package.json"
+    if [[ -f "$pkg_json" ]]; then
+        grep -oP '"version"\s*:\s*"\K[^"]+' "$pkg_json" 2>/dev/null || echo ""
+    else
+        echo ""
+    fi
+}
+
+# --- LibreOffice ---
+
+check_libreoffice() {
+    command -v libreoffice &>/dev/null || \
+        command -v soffice &>/dev/null || \
+        pkg_check_installed libreoffice || \
+        pkg_check_installed libreoffice-common || \
+        pkg_check_installed libreoffice-fresh || \
+        pkg_check_installed libreoffice-still || \
+        (has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice)
+}
+_libreoffice_install_from_site() {
+    # Download and install LibreOffice .deb packages directly from the official site.
+    # Usage: _libreoffice_install_from_site
+    ensure_tools
+    local lo_version arch_dir arch_file tmp_dir
+    lo_version=$(wget -qO- "https://download.documentfoundation.org/libreoffice/stable/" \
+        | grep -oP 'href="\K[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+    if [[ -z "$lo_version" ]]; then
+        echo "Error: Could not determine latest LibreOffice version."
+        return 1
+    fi
+    echo "Latest LibreOffice version: $lo_version"
+    case "$(uname -m)" in
+        x86_64)  arch_dir="x86_64"; arch_file="x86-64" ;;
+        aarch64) arch_dir="aarch64"; arch_file="aarch64" ;;
+        *)
+            echo "Error: Unsupported architecture $(uname -m) for direct download."
+            return 1
+            ;;
+    esac
+    local url="https://download.documentfoundation.org/libreoffice/stable/${lo_version}/deb/${arch_dir}/LibreOffice_${lo_version}_Linux_${arch_file}_deb.tar.gz"
+    tmp_dir=$(mktemp -d /tmp/libreoffice-install-XXXXXX)
+    CLEANUP_FILES+=("$tmp_dir")
+    echo "Downloading LibreOffice ${lo_version}..."
+    if ! wget -q --show-progress -O "$tmp_dir/libreoffice.tar.gz" "$url"; then
+        echo "Error: Failed to download LibreOffice from $url"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+    echo "Extracting..."
+    tar -xzf "$tmp_dir/libreoffice.tar.gz" -C "$tmp_dir"
+    local deb_dir
+    deb_dir=$(find "$tmp_dir" -type d -name "DEBS" | head -1)
+    if [[ -z "$deb_dir" ]]; then
+        echo "Error: Could not find DEBS directory in archive."
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+    echo "Installing .deb packages..."
+    if ! sudo dpkg -i "$deb_dir"/*.deb; then
+        sudo apt-get install -f -y || true
+        if ! sudo dpkg -i "$deb_dir"/*.deb; then
+            echo "Error: Failed to install LibreOffice .deb packages."
+            rm -rf "$tmp_dir"
+            return 1
+        fi
+    fi
+    rm -rf "$tmp_dir"
+    echo "LibreOffice ${lo_version} installed successfully."
+}
+install_libreoffice() {
+    echo "Installing LibreOffice..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            _libreoffice_install_from_site
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" install -y libreoffice
+            ;;
+        arch)
+            sudo pacman -S --noconfirm libreoffice-fresh
+            ;;
+        suse)
+            sudo zypper install -y libreoffice
+            ;;
+        *)
+            if has_flatpak; then
+                flatpak install -y flathub org.libreoffice.LibreOffice
+            else
+                echo "Error: Unsupported distribution and flatpak is not available."
+                return 1
+            fi
+            ;;
+    esac
+}
+uninstall_libreoffice() {
+    echo "Uninstalling LibreOffice..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y libreoffice*
+            sudo apt autoremove -y
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" remove -y libreoffice*
+            sudo "$PKG_MGR" autoremove -y
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm libreoffice-fresh 2>/dev/null || \
+                sudo pacman -Rs --noconfirm libreoffice-still 2>/dev/null || true
+            ;;
+        suse)
+            sudo zypper remove -y libreoffice
+            ;;
+        *)
+            if has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice; then
+                flatpak uninstall -y org.libreoffice.LibreOffice
+            fi
+            ;;
+    esac
+    echo "LibreOffice has been uninstalled."
+}
+update_libreoffice() {
+    echo "Updating LibreOffice..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            _libreoffice_install_from_site
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" upgrade -y libreoffice
+            ;;
+        arch)
+            sudo pacman -S --noconfirm libreoffice-fresh
+            ;;
+        suse)
+            sudo zypper update -y libreoffice
+            ;;
+        *)
+            if has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice; then
+                flatpak update -y org.libreoffice.LibreOffice
+            fi
+            ;;
+    esac
+}
+get_version_libreoffice() {
+    libreoffice --version 2>/dev/null | grep -oP 'LibreOffice \K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
 }
 
 # --- Termius SSH Client ---
@@ -1765,13 +1937,7 @@ install_termius() {
             if has_aur_helper; then
                 aur_install termius
             else
-                echo "No AUR helper found. Building termius from AUR..."
-                ensure_aur_build_deps
-                local build_dir
-                build_dir=$(mktemp -d)
-                git clone https://aur.archlinux.org/termius.git "$build_dir/termius"
-                (cd "$build_dir/termius" && makepkg -si --noconfirm)
-                rm -rf "$build_dir"
+                aur_build termius
             fi
             ;;
         *)
@@ -1818,13 +1984,7 @@ update_termius() {
             if has_aur_helper; then
                 aur_upgrade termius
             else
-                echo "No AUR helper found. Rebuilding termius from AUR..."
-                ensure_aur_build_deps
-                local build_dir
-                build_dir=$(mktemp -d)
-                git clone https://aur.archlinux.org/termius.git "$build_dir/termius"
-                (cd "$build_dir/termius" && makepkg -si --noconfirm)
-                rm -rf "$build_dir"
+                aur_build termius
             fi
             ;;
         *)
@@ -1838,6 +1998,19 @@ update_termius() {
             fi
             ;;
     esac
+}
+get_version_termius() {
+    if pkg_check_installed termius; then
+        pkg_get_version termius
+    elif pkg_check_installed termius-app; then
+        pkg_get_version termius-app
+    elif has_snap && snap list termius-app &>/dev/null; then
+        snap list termius-app 2>/dev/null | awk 'NR==2{print $2}'
+    elif has_flatpak && flatpak list 2>/dev/null | grep -qi termius; then
+        flatpak list 2>/dev/null | grep -i termius | awk -F'\t' '{print $3}'
+    else
+        echo ""
+    fi
 }
 
 # --- Devolutions RDM ---
@@ -1902,13 +2075,7 @@ install_devolutions_rdm() {
                 echo "Installing from AUR..."
                 aur_install remote-desktop-manager
             else
-                echo "No AUR helper found. Building remote-desktop-manager from AUR..."
-                ensure_aur_build_deps
-                local build_dir
-                build_dir=$(mktemp -d)
-                git clone https://aur.archlinux.org/remote-desktop-manager.git "$build_dir/remote-desktop-manager"
-                (cd "$build_dir/remote-desktop-manager" && makepkg -si --noconfirm)
-                rm -rf "$build_dir"
+                aur_build remote-desktop-manager
             fi
             ;;
         suse)
@@ -1997,6 +2164,19 @@ update_devolutions_rdm() {
             ;;
     esac
 }
+get_version_devolutions_rdm() {
+    if command -v remotedesktopmanager &>/dev/null; then
+        remotedesktopmanager --version 2>/dev/null | head -1 || echo ""
+    elif pkg_check_installed RemoteDesktopManager; then
+        pkg_get_version RemoteDesktopManager
+    elif pkg_check_installed remotedesktopmanager; then
+        pkg_get_version remotedesktopmanager
+    elif pkg_check_installed remote-desktop-manager; then
+        pkg_get_version remote-desktop-manager
+    else
+        echo ""
+    fi
+}
 
 # --- Steam App ---
 
@@ -2012,25 +2192,45 @@ ensure_debian_contrib() {
     if [[ "$DISTRO_FAMILY" != "debian" ]]; then
         return 0
     fi
-    
-    # Check if contrib is already enabled
-    if grep -E "^deb .*debian.* main" /etc/apt/sources.list | grep -q "contrib"; then
-        return 0
+
+    local _contrib_found=false
+
+    # Check traditional sources.list format
+    if [[ -f /etc/apt/sources.list ]] && \
+       grep -qE "^deb .*debian.* main" /etc/apt/sources.list 2>/dev/null; then
+        if grep -E "^deb .*debian.* main" /etc/apt/sources.list | grep -q "contrib"; then
+            _contrib_found=true
+        else
+            echo "Steam requires the 'contrib' component in Debian repositories."
+            echo "Enabling 'contrib' component in /etc/apt/sources.list..."
+            sudo cp /etc/apt/sources.list "/etc/apt/sources.list.backup-$(date +%Y%m%d-%H%M%S)"
+            sudo sed -i 's/^\(deb .*debian.* main\)\(.*\)/\1 contrib\2/' /etc/apt/sources.list
+            # Deduplicate 'contrib' if it appeared twice
+            sudo sed -i 's/contrib contrib/contrib/g' /etc/apt/sources.list
+            _contrib_found=true
+        fi
     fi
-    
-    echo "Steam requires the 'contrib' component in Debian repositories."
-    echo "Enabling 'contrib' component in /etc/apt/sources.list..."
-    
-    # Backup sources.list
-    sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup-$(date +%Y%m%d-%H%M%S)
-    
-    # Add contrib to main repository lines
-    sudo sed -i.tmp 's/^\(deb .*debian.* main\)$/\1 contrib/' /etc/apt/sources.list
-    sudo sed -i.tmp 's/^\(deb .*debian.* main non-free\)$/\1 contrib/' /etc/apt/sources.list
-    sudo sed -i.tmp 's/ main contrib contrib/ main contrib/' /etc/apt/sources.list  # Remove duplicates
-    
-    echo "'contrib' component enabled. Updating package lists..."
-    sudo apt update
+
+    # Check DEB822 format (.sources files, Debian 12+)
+    local _sources_file
+    for _sources_file in /etc/apt/sources.list.d/*.sources; do
+        [[ -f "$_sources_file" ]] || continue
+        if grep -qP '^Components:.*\bmain\b' "$_sources_file" 2>/dev/null; then
+            if grep -qP '^Components:.*\bcontrib\b' "$_sources_file" 2>/dev/null; then
+                _contrib_found=true
+            else
+                echo "Adding 'contrib' component to $(basename "$_sources_file")..."
+                sudo cp "$_sources_file" "${_sources_file}.backup-$(date +%Y%m%d-%H%M%S)"
+                sudo sed -i 's/^\(Components:.*main\)/\1 contrib/' "$_sources_file"
+                _contrib_found=true
+            fi
+        fi
+    done
+
+    if [[ "$_contrib_found" == "true" ]]; then
+        echo "'contrib' component enabled. Updating package lists..."
+        sudo apt update
+    fi
 }
 
 # Helper function to detect mixed repository issues
@@ -2213,6 +2413,19 @@ update_steam() {
         esac
     fi
 }
+get_version_steam() {
+    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.valvesoftware.Steam"; then
+        flatpak list 2>/dev/null | grep -i "com.valvesoftware.Steam" | awk -F'\t' '{print $3}'
+    elif pkg_check_installed steam-installer; then
+        pkg_get_version steam-installer
+    elif pkg_check_installed steam-launcher; then
+        pkg_get_version steam-launcher
+    elif pkg_check_installed steam; then
+        pkg_get_version steam
+    else
+        echo ""
+    fi
+}
 
 # --- Timeshift ---
 
@@ -2273,6 +2486,9 @@ update_timeshift() {
             ;;
     esac
 }
+get_version_timeshift() {
+    timeshift --version 2>/dev/null | grep -oP 'Timeshift \K[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
+}
 
 # --- Visual Studio Code ---
 
@@ -2302,14 +2518,7 @@ install_vscode() {
             if has_aur_helper; then
                 aur_install visual-studio-code-bin
             else
-                # Install from AUR: https://aur.archlinux.org/packages/visual-studio-code-bin
-                echo "No AUR helper found. Building visual-studio-code-bin from AUR..."
-                ensure_aur_build_deps
-                local build_dir
-                build_dir=$(mktemp -d)
-                git clone https://aur.archlinux.org/visual-studio-code-bin.git "$build_dir/visual-studio-code-bin"
-                (cd "$build_dir/visual-studio-code-bin" && makepkg -si --noconfirm)
-                rm -rf "$build_dir"
+                aur_build visual-studio-code-bin
             fi
             ;;
         suse)
@@ -2353,20 +2562,16 @@ update_vscode() {
             if has_aur_helper; then
                 aur_upgrade visual-studio-code-bin
             else
-                # Update from AUR: https://aur.archlinux.org/packages/visual-studio-code-bin
-                echo "No AUR helper found. Rebuilding visual-studio-code-bin from AUR..."
-                ensure_aur_build_deps
-                local build_dir
-                build_dir=$(mktemp -d)
-                git clone https://aur.archlinux.org/visual-studio-code-bin.git "$build_dir/visual-studio-code-bin"
-                (cd "$build_dir/visual-studio-code-bin" && makepkg -si --noconfirm)
-                rm -rf "$build_dir"
+                aur_build visual-studio-code-bin
             fi
             ;;
         *)
             pkg_upgrade code
             ;;
     esac
+}
+get_version_vscode() {
+    code --version 2>/dev/null | head -1 || echo ""
 }
 
 # --- Syncthing ---
@@ -2383,64 +2588,37 @@ install_syncthing() {
             # Add the Syncthing PGP key
             sudo mkdir -p /etc/apt/keyrings
             sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
-            
+
             # Add the Syncthing repository
             echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | \
                 sudo tee /etc/apt/sources.list.d/syncthing.list > /dev/null
-            
+
             # Update and install
             sudo apt update
             sudo apt install -y syncthing
-            
-            # Enable and start the user service
-            systemctl --user enable syncthing.service
-            systemctl --user start syncthing.service
-            
-            echo ""
-            echo "Syncthing installed successfully!"
-            echo "Service has been enabled and started."
-            echo "Access the web GUI at: http://127.0.0.1:8384"
             ;;
         fedora|rhel)
             # Install from official Fedora repos (Syncthing is included by default)
             sudo "$PKG_MGR" install -y syncthing
-            
-            # Enable and start the user service
-            systemctl --user enable syncthing.service
-            systemctl --user start syncthing.service
-            
-            echo ""
-            echo "Syncthing installed successfully!"
-            echo "Service has been enabled and started."
-            echo "Access the web GUI at: http://127.0.0.1:8384"
             ;;
         arch)
             # Syncthing is available in the community repository
             sudo pacman -S --noconfirm syncthing
-            
-            # Enable and start the user service
-            systemctl --user enable syncthing.service
-            systemctl --user start syncthing.service
-            
-            echo ""
-            echo "Syncthing installed successfully!"
-            echo "Service has been enabled and started."
-            echo "Access the web GUI at: http://127.0.0.1:8384"
             ;;
         suse)
             # Install from official repository
             sudo zypper install -y syncthing
-            
-            # Enable and start the user service
-            systemctl --user enable syncthing.service
-            systemctl --user start syncthing.service
-            
-            echo ""
-            echo "Syncthing installed successfully!"
-            echo "Service has been enabled and started."
-            echo "Access the web GUI at: http://127.0.0.1:8384"
             ;;
     esac
+
+    # Enable and start the user service (all distros)
+    systemctl --user enable syncthing.service
+    systemctl --user start syncthing.service
+
+    echo ""
+    echo "Syncthing installed successfully!"
+    echo "Service has been enabled and started."
+    echo "Access the web GUI at: http://127.0.0.1:8384"
 }
 
 uninstall_syncthing() {
@@ -2490,6 +2668,9 @@ update_syncthing() {
             sudo zypper update -y syncthing
             ;;
     esac
+}
+get_version_syncthing() {
+    syncthing --version 2>/dev/null | awk '{print $2}' | sed 's/^v//' || echo ""
 }
 
 # --- OpenSSH Server ---
@@ -2566,6 +2747,9 @@ update_openssh_server() {
             ;;
     esac
 }
+get_version_openssh_server() {
+    ssh -V 2>&1 | grep -oP 'OpenSSH_\K[^\s,]+' || echo ""
+}
 
 # --- Docker (utility version) ---
 check_docker() {
@@ -2610,6 +2794,9 @@ update_docker() {
             ;;
     esac
 }
+get_version_docker() {
+    docker --version 2>/dev/null | grep -oP 'Docker version \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
+}
 
 # ============================================================================
 # INTERACTIVE SELECTION MENU
@@ -2641,6 +2828,8 @@ declare -a SELECTED
 declare -a INSTALLED
 # Track items queued for update (0 = no, 1 = yes; only valid for installed items)
 declare -a UPDATE_SELECTED
+# Track installed versions (empty string if unknown)
+declare -a INSTALLED_VERSIONS
 # Rows per column for utilities section
 ROWS_PER_COLUMN=6
 
@@ -2654,11 +2843,20 @@ check_installed_utilities() {
         if [[ -n "$check_func" ]] && declare -f "$check_func" > /dev/null; then
             if $check_func 2>/dev/null; then
                 INSTALLED[$i]=1
+                # Retrieve version if a version function is registered
+                local ver_func="${VERSION_FUNCS[$util]:-}"
+                if [[ -n "$ver_func" ]] && declare -f "$ver_func" > /dev/null; then
+                    INSTALLED_VERSIONS[$i]=$($ver_func 2>/dev/null)
+                else
+                    INSTALLED_VERSIONS[$i]=""
+                fi
             else
                 INSTALLED[$i]=0
+                INSTALLED_VERSIONS[$i]=""
             fi
         else
             INSTALLED[$i]=0
+            INSTALLED_VERSIONS[$i]=""
         fi
 
         # Keep all options unselected by default; selection determines action
@@ -2671,6 +2869,7 @@ for ((i=0; i<${#UTILITIES[@]}; i++)); do
     SELECTED[$i]=0
     INSTALLED[$i]=0
     UPDATE_SELECTED[$i]=0
+    INSTALLED_VERSIONS[$i]=""
 done
 
 # Current cursor position
@@ -2697,10 +2896,16 @@ draw_menu() {
     local utilities_count=$((total - system_tasks))
     local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
     local system_num_columns=$(( (system_tasks + system_rows_per_column - 1) / system_rows_per_column ))
+
+    local sys_col_width=40
+    local util_col_width=40
     
+    local dry_run_label=""
+    [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
+
     echo ""
     echo "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"
-    echo "${BOLD}${CYAN}║   Linux System Setup & Utilities - Select Programs/Tasks     ║${RESET}"
+    echo "${BOLD}${CYAN}║   Linux System Setup & Utilities - Select Programs/Tasks     ║${RESET}${dry_run_label}"
     echo "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════╝${RESET}"
     echo ""
 
@@ -2741,11 +2946,16 @@ draw_menu() {
                 checkbox="${GREEN}[✓]${RESET}"
             fi
             
-            # Show installed status
+            # Show installed status (with version if available)
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                status_tag=" ${MAGENTA}(installed)${RESET}"
+                local ver="${INSTALLED_VERSIONS[$i]:-}"
+                if [[ -n "$ver" ]]; then
+                    status_tag=" ${MAGENTA}(v${ver})${RESET}"
+                else
+                    status_tag=" ${MAGENTA}(installed)${RESET}"
+                fi
             fi
-            
+
             local item=""
             if [[ $i -eq $CURSOR ]]; then
                 item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
@@ -2756,11 +2966,17 @@ draw_menu() {
             # Add padding for columns using visible width (no ANSI codes)
             if [[ $col -lt $((system_num_columns - 1)) ]]; then
                 local plain_status=""
-                [[ ${INSTALLED[$i]} -eq 1 ]] && plain_status=" (installed)"
+                if [[ ${INSTALLED[$i]} -eq 1 ]]; then
+                    local pver="${INSTALLED_VERSIONS[$i]:-}"
+                    if [[ -n "$pver" ]]; then
+                        plain_status=" (v${pver})"
+                    else
+                        plain_status=" (installed)"
+                    fi
+                fi
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local column_width=43
-                local padding=$((column_width - visible_len))
+                local padding=$((util_col_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
             fi
@@ -2804,11 +3020,16 @@ draw_menu() {
                 checkbox="${GREEN}[✓]${RESET}"
             fi
             
-            # Show installed status
+            # Show installed status (with version if available)
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                status_tag=" ${MAGENTA}(installed)${RESET}"
+                local ver="${INSTALLED_VERSIONS[$i]:-}"
+                if [[ -n "$ver" ]]; then
+                    status_tag=" ${MAGENTA}(v${ver})${RESET}"
+                else
+                    status_tag=" ${MAGENTA}(installed)${RESET}"
+                fi
             fi
-            
+
             local item=""
             if [[ $i -eq $CURSOR ]]; then
                 item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
@@ -2819,11 +3040,17 @@ draw_menu() {
             # Add padding for columns using visible width (no ANSI codes)
             if [[ $col -lt $((num_columns - 1)) ]]; then
                 local plain_status=""
-                [[ ${INSTALLED[$i]} -eq 1 ]] && plain_status=" (installed)"
+                if [[ ${INSTALLED[$i]} -eq 1 ]]; then
+                    local pver="${INSTALLED_VERSIONS[$i]:-}"
+                    if [[ -n "$pver" ]]; then
+                        plain_status=" (v${pver})"
+                    else
+                        plain_status=" (installed)"
+                    fi
+                fi
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local column_width=42
-                local padding=$((column_width - visible_len))
+                local padding=$((util_col_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
             fi
@@ -2867,34 +3094,54 @@ redraw_menu() {
     draw_menu
 }
 
-# Dynamically build the two navigational columns used by keyboard navigation.
-# Left column  = visual display-column 0 of System Tasks + display-column 0 of Utilities.
-# Right column = visual display-column 1 of System Tasks + display-column 1 of Utilities.
-# Results are stored in global arrays NAV_LEFT and NAV_RIGHT.
+# Dynamically build navigational columns used by keyboard navigation.
+# Each visual display-column (spanning both System Tasks and Utilities) becomes
+# one navigational column.  Supports any number of columns.
+# Results are stored in NAV_FLAT (packed indices), NAV_COL_START (offsets),
+# NAV_COL_SIZE (lengths), and NAV_NUM_COLS.
 build_nav_columns() {
-    NAV_LEFT=()
-    NAV_RIGHT=()
+    NAV_FLAT=()
+    NAV_COL_START=()
+    NAV_COL_SIZE=()
+    NAV_COL_SYS_SIZE=()   # system-task count per column (for section-aware LEFT/RIGHT)
+    NAV_NUM_COLS=0
     local total=${#UTILITIES[@]}
     local sys_tasks=$SYSTEM_TASK_COUNT
     local sys_rows=3              # rows per column in System Tasks section
     local util_rows=$ROWS_PER_COLUMN
+    local utilities_count=$(( total - sys_tasks ))
 
-    for (( i=0; i<sys_tasks && i<total; i++ )); do
-        if (( i / sys_rows == 0 )); then
-            NAV_LEFT+=( "$i" )
-        else
-            NAV_RIGHT+=( "$i" )
-        fi
-    done
+    local sys_cols=$(( (sys_tasks + sys_rows - 1) / sys_rows ))
+    local util_cols=$(( (utilities_count + util_rows - 1) / util_rows ))
+    local max_cols=$(( sys_cols > util_cols ? sys_cols : util_cols ))
+    NAV_NUM_COLS=$max_cols
 
-    local u=0
-    for (( i=sys_tasks; i<total; i++ )); do
-        if (( u / util_rows == 0 )); then
-            NAV_LEFT+=( "$i" )
-        else
-            NAV_RIGHT+=( "$i" )
-        fi
-        (( u++ ))
+    for (( c=0; c<max_cols; c++ )); do
+        NAV_COL_START+=( ${#NAV_FLAT[@]} )
+        local col_size=0
+        local col_sys_size=0
+
+        # Add system task items for this column
+        for (( r=0; r<sys_rows; r++ )); do
+            local idx=$(( c * sys_rows + r ))
+            if (( idx < sys_tasks )); then
+                NAV_FLAT+=( "$idx" )
+                (( col_size++ ))
+                (( col_sys_size++ ))
+            fi
+        done
+
+        # Add utility items for this column
+        for (( r=0; r<util_rows; r++ )); do
+            local u_idx=$(( c * util_rows + r ))
+            if (( u_idx < utilities_count )); then
+                NAV_FLAT+=( "$(( sys_tasks + u_idx ))" )
+                (( col_size++ ))
+            fi
+        done
+
+        NAV_COL_SIZE+=( "$col_size" )
+        NAV_COL_SYS_SIZE+=( "$col_sys_size" )
     done
 }
 
@@ -2955,8 +3202,11 @@ run_selection_menu() {
     stty -echo
     
     # Cleanup on exit
-    trap 'show_cursor; stty echo; echo ""' EXIT
-    
+    trap 'show_cursor; stty echo; echo ""; cleanup_on_exit' EXIT
+
+    # Redraw on terminal resize
+    trap 'redraw_menu' WINCH
+
     # Initial draw
     clear
     draw_menu
@@ -2964,61 +3214,93 @@ run_selection_menu() {
     while true; do
         local key=$(read_key)
 
-        # Unified two-column navigation model.
-        # The menu is displayed as two visual columns that span both the
+        # Multi-column navigation model.
+        # The menu is displayed as N visual columns that span both the
         # System Tasks section and the Utilities section.  UP/DOWN stays
         # within the same column (wrapping at the ends); LEFT/RIGHT jumps
-        # to the same row position in the other column (clamped if shorter).
+        # one column in that direction to the same row (clamped if shorter).
         # Columns are computed dynamically by build_nav_columns() (called once above).
-        local -a _nav_left=("${NAV_LEFT[@]}")
-        local -a _nav_right=("${NAV_RIGHT[@]}")
 
         # Determine which column the cursor is in and its position within it.
-        local _nav_col=-1   # 0 = left, 1 = right
-        local _nav_pos=-1   # 0-based position within the column
-        local _i
-        for _i in "${!_nav_left[@]}"; do
-            if [[ ${_nav_left[$_i]} -eq $CURSOR ]]; then _nav_col=0; _nav_pos=$_i; break; fi
-        done
-        if [[ $_nav_col -eq -1 ]]; then
-            for _i in "${!_nav_right[@]}"; do
-                if [[ ${_nav_right[$_i]} -eq $CURSOR ]]; then _nav_col=1; _nav_pos=$_i; break; fi
+        local _nav_col=-1
+        local _nav_pos=-1
+        local _c _r
+        for (( _c=0; _c<NAV_NUM_COLS; _c++ )); do
+            local _start=${NAV_COL_START[$_c]}
+            local _size=${NAV_COL_SIZE[$_c]}
+            for (( _r=0; _r<_size; _r++ )); do
+                if [[ ${NAV_FLAT[$(( _start + _r ))]} -eq $CURSOR ]]; then
+                    _nav_col=$_c
+                    _nav_pos=$_r
+                    break 2
+                fi
             done
-        fi
+        done
         # Fallback: keep cursor as-is if somehow not found
         [[ $_nav_col -eq -1 ]] && { _nav_col=0; _nav_pos=0; }
 
+        local _cur_start=${NAV_COL_START[$_nav_col]}
+        local _cur_size=${NAV_COL_SIZE[$_nav_col]}
+
         case "$key" in
             UP)
-                if [[ $_nav_col -eq 0 ]]; then
-                    local _new_pos=$(( (_nav_pos - 1 + ${#_nav_left[@]}) % ${#_nav_left[@]} ))
-                    CURSOR=${_nav_left[$_new_pos]}
-                else
-                    local _new_pos=$(( (_nav_pos - 1 + ${#_nav_right[@]}) % ${#_nav_right[@]} ))
-                    CURSOR=${_nav_right[$_new_pos]}
-                fi
+                local _new_pos=$(( (_nav_pos - 1 + _cur_size) % _cur_size ))
+                CURSOR=${NAV_FLAT[$(( _cur_start + _new_pos ))]}
                 redraw_menu
                 ;;
             DOWN)
-                if [[ $_nav_col -eq 0 ]]; then
-                    local _new_pos=$(( (_nav_pos + 1) % ${#_nav_left[@]} ))
-                    CURSOR=${_nav_left[$_new_pos]}
-                else
-                    local _new_pos=$(( (_nav_pos + 1) % ${#_nav_right[@]} ))
-                    CURSOR=${_nav_right[$_new_pos]}
-                fi
+                local _new_pos=$(( (_nav_pos + 1) % _cur_size ))
+                CURSOR=${NAV_FLAT[$(( _cur_start + _new_pos ))]}
                 redraw_menu
                 ;;
             LEFT)
-                # Jump to the same row in the left column (clamped to its size)
-                local _target_pos=$(( _nav_pos < ${#_nav_left[@]} ? _nav_pos : ${#_nav_left[@]} - 1 ))
-                CURSOR=${_nav_left[$_target_pos]}
+                if (( _nav_col > 0 )); then
+                    local _target_col=$(( _nav_col - 1 ))
+                    local _target_start=${NAV_COL_START[$_target_col]}
+                    local _target_size=${NAV_COL_SIZE[$_target_col]}
+                    local _cur_sys=${NAV_COL_SYS_SIZE[$_nav_col]}
+                    local _target_sys=${NAV_COL_SYS_SIZE[$_target_col]}
+                    local _target_pos
+                    if (( _nav_pos < _cur_sys )); then
+                        # System tasks section — map to same system-task row
+                        _target_pos=$(( _nav_pos < _target_sys ? _nav_pos : _target_sys - 1 ))
+                    else
+                        # Utilities section — map to same utility row
+                        local _util_row=$(( _nav_pos - _cur_sys ))
+                        local _target_util_size=$(( _target_size - _target_sys ))
+                        if (( _target_util_size > 0 )); then
+                            _target_pos=$(( _target_sys + (_util_row < _target_util_size ? _util_row : _target_util_size - 1) ))
+                        else
+                            _target_pos=$(( _target_size - 1 ))
+                        fi
+                    fi
+                    CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
+                fi
                 redraw_menu
                 ;;
             RIGHT)
-                # Jump to the same row in the right column (clamped to its size)
-                local _target_pos=$(( _nav_pos < ${#_nav_right[@]} ? _nav_pos : ${#_nav_right[@]} - 1 ))
-                CURSOR=${_nav_right[$_target_pos]}
+                if (( _nav_col < NAV_NUM_COLS - 1 )); then
+                    local _target_col=$(( _nav_col + 1 ))
+                    local _target_start=${NAV_COL_START[$_target_col]}
+                    local _target_size=${NAV_COL_SIZE[$_target_col]}
+                    local _cur_sys=${NAV_COL_SYS_SIZE[$_nav_col]}
+                    local _target_sys=${NAV_COL_SYS_SIZE[$_target_col]}
+                    local _target_pos
+                    if (( _nav_pos < _cur_sys )); then
+                        # System tasks section — map to same system-task row
+                        _target_pos=$(( _nav_pos < _target_sys ? _nav_pos : _target_sys - 1 ))
+                    else
+                        # Utilities section — map to same utility row
+                        local _util_row=$(( _nav_pos - _cur_sys ))
+                        local _target_util_size=$(( _target_size - _target_sys ))
+                        if (( _target_util_size > 0 )); then
+                            _target_pos=$(( _target_sys + (_util_row < _target_util_size ? _util_row : _target_util_size - 1) ))
+                        else
+                            _target_pos=$(( _target_size - 1 ))
+                        fi
+                    fi
+                    CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
+                fi
                 redraw_menu
                 ;;
             SPACE)
@@ -3061,13 +3343,13 @@ run_selection_menu() {
                 # Continue to installation
                 show_cursor
                 stty echo
-                trap - EXIT
+                trap cleanup_on_exit EXIT
                 return 0
                 ;;
             QUIT)
                 show_cursor
                 stty echo
-                trap - EXIT
+                trap cleanup_on_exit EXIT
                 echo ""
                 echo "${YELLOW}Operation cancelled.${RESET}"
                 exit 0
@@ -3168,22 +3450,23 @@ process_selected() {
     for util in "${to_uninstall[@]}"; do
         echo ""
         echo "${BOLD}${RED}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${BOLD}${RED}Uninstalling: $util${RESET}"
+        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${RED}Uninstalling: $util${RESET}"
         echo "${BOLD}${RED}────────────────────────────────────────────────────────────────${RESET}"
         echo ""
-        
+
         log_info "Starting uninstallation: $util"
-        
+        local _op_start=$SECONDS
+
         local func="${UNINSTALL_FUNCS[$util]}"
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
             if $func; then
                 echo ""
-                echo "${GREEN}✓ Successfully uninstalled: $util${RESET}"
+                echo "${GREEN}✓ Successfully uninstalled: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
                 log_success "Uninstalled: $util"
                 ((success_count++))
             else
                 echo ""
-                echo "${RED}✗ Failed to uninstall: $util${RESET}"
+                echo "${RED}✗ Failed to uninstall: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
                 log_error "Failed to uninstall: $util"
                 ((fail_count++))
                 failed_utils+=("$util (uninstall)")
@@ -3195,27 +3478,28 @@ process_selected() {
             failed_utils+=("$util (uninstall)")
         fi
     done
-    
+
     # Process installations
     for util in "${to_install[@]}"; do
         echo ""
         echo "${BOLD}${GREEN}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${BOLD}${GREEN}Installing/Running: $util${RESET}"
+        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${GREEN}Installing/Running: $util${RESET}"
         echo "${BOLD}${GREEN}────────────────────────────────────────────────────────────────${RESET}"
         echo ""
-        
+
         log_info "Starting installation: $util"
-        
+        local _op_start=$SECONDS
+
         local func="${INSTALL_FUNCS[$util]}"
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
             if $func; then
                 echo ""
-                echo "${GREEN}✓ Successfully completed: $util${RESET}"
+                echo "${GREEN}✓ Successfully completed: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
                 log_success "Installed: $util"
                 ((success_count++))
             else
                 echo ""
-                echo "${RED}✗ Failed: $util${RESET}"
+                echo "${RED}✗ Failed: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
                 log_error "Failed to install: $util"
                 ((fail_count++))
                 failed_utils+=("$util (install)")
@@ -3232,22 +3516,23 @@ process_selected() {
     for util in "${to_update[@]}"; do
         echo ""
         echo "${BOLD}${YELLOW}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${BOLD}${YELLOW}Updating: $util${RESET}"
+        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${YELLOW}Updating: $util${RESET}"
         echo "${BOLD}${YELLOW}────────────────────────────────────────────────────────────────${RESET}"
         echo ""
 
         log_info "Starting update: $util"
+        local _op_start=$SECONDS
 
         local func="${UPDATE_FUNCS[$util]}"
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
             if $func; then
                 echo ""
-                echo "${GREEN}✓ Successfully updated: $util${RESET}"
+                echo "${GREEN}✓ Successfully updated: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
                 log_success "Updated: $util"
                 ((success_count++))
             else
                 echo ""
-                echo "${RED}✗ Failed to update: $util${RESET}"
+                echo "${RED}✗ Failed to update: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
                 log_error "Failed to update: $util"
                 ((fail_count++))
                 failed_utils+=("$util (update)")
@@ -3303,7 +3588,7 @@ process_selected() {
         echo
         REBOOT_CHOICE=${REBOOT_CHOICE:-N}
         case "$REBOOT_CHOICE" in
-            y|Y|yes|YES)
+            y|Y)
                 info "Rebooting…"
                 sudo reboot
                 ;;
@@ -3320,6 +3605,49 @@ process_selected() {
 
 # Parse CLI arguments for non-interactive / scripted usage.
 # All flags are processed before the interactive menu is shown.
+# Resolve a user-supplied utility name to its canonical form.
+# Tries exact match first, then case-insensitive, then substring.
+# Sets _RESOLVED to the canonical name or "" if no unique match.
+resolve_utility_name() {
+    local input="$1"
+    _RESOLVED=""
+
+    # Exact match
+    for _candidate in "${UTILITIES[@]}"; do
+        [[ "$_candidate" == "$input" ]] && { _RESOLVED="$_candidate"; return 0; }
+    done
+
+    # Case-insensitive exact match
+    local _match_count=0
+    for _candidate in "${UTILITIES[@]}"; do
+        if [[ "${_candidate,,}" == "${input,,}" ]]; then
+            _RESOLVED="$_candidate"
+            return 0
+        fi
+    done
+
+    # Substring match (case-insensitive)
+    _match_count=0
+    for _candidate in "${UTILITIES[@]}"; do
+        if [[ "${_candidate,,}" == *"${input,,}"* ]]; then
+            _RESOLVED="$_candidate"
+            (( _match_count++ ))
+        fi
+    done
+    if [[ $_match_count -eq 1 ]]; then
+        return 0
+    elif [[ $_match_count -gt 1 ]]; then
+        echo "Error: '${input}' is ambiguous. Matches multiple utilities."
+        echo "Run --list to see exact names."
+        _RESOLVED=""
+        return 1
+    fi
+
+    echo "Error: Unknown utility '${input}'. Run --list to see available options."
+    _RESOLVED=""
+    return 1
+}
+
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -3329,6 +3657,7 @@ Usage: $(basename "$0") [OPTIONS]
 
 Options:
   --help, -h            Show this help message and exit
+  --version             Show script version (git commit)
   --list                List all available utilities with install status
   --dry-run             Preview actions without making any changes
   --install <name>      Non-interactively install a utility by name
@@ -3337,8 +3666,12 @@ Options:
   --update-all          Update every currently installed utility
   --check <name>        Exit 0 if utility is installed, 1 if not
 
-Utility names must match exactly as shown by --list (case-sensitive).
+Utility names are matched case-insensitively and support partial matches.
 EOF
+                exit 0
+                ;;
+            --version)
+                echo "linux_util $(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
                 exit 0
                 ;;
             --list)
@@ -3347,7 +3680,15 @@ EOF
                     local check_func="${CHECK_FUNCS[$util]}"
                     local status="not installed"
                     if [[ -n "$check_func" ]] && declare -f "$check_func" &>/dev/null; then
-                        $check_func 2>/dev/null && status="installed"
+                        if $check_func 2>/dev/null; then
+                            status="installed"
+                            local ver_func="${VERSION_FUNCS[$util]:-}"
+                            if [[ -n "$ver_func" ]] && declare -f "$ver_func" &>/dev/null; then
+                                local ver
+                                ver=$($ver_func 2>/dev/null)
+                                [[ -n "$ver" ]] && status="installed: v${ver}"
+                            fi
+                        fi
                     fi
                     printf "  %-35s [%s]\n" "$util" "$status"
                 done
@@ -3360,12 +3701,9 @@ EOF
                 ;;
             --install)
                 [[ -z "${2:-}" ]] && { echo "Error: --install requires a utility name."; exit 1; }
-                local _util="$2"; shift 2
-                local _func="${INSTALL_FUNCS[$_util]:-}"
-                if [[ -z "$_func" ]]; then
-                    echo "Error: Unknown utility '${_util}'. Run --list to see available options."
-                    exit 1
-                fi
+                resolve_utility_name "$2" || exit 1
+                local _util="$_RESOLVED"; shift 2
+                local _func="${INSTALL_FUNCS[$_util]}"
                 pkg_refresh
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would install: $_util"; exit 0
@@ -3374,12 +3712,9 @@ EOF
                 ;;
             --uninstall)
                 [[ -z "${2:-}" ]] && { echo "Error: --uninstall requires a utility name."; exit 1; }
-                local _util="$2"; shift 2
-                local _func="${UNINSTALL_FUNCS[$_util]:-}"
-                if [[ -z "$_func" ]]; then
-                    echo "Error: Unknown utility '${_util}'. Run --list to see available options."
-                    exit 1
-                fi
+                resolve_utility_name "$2" || exit 1
+                local _util="$_RESOLVED"; shift 2
+                local _func="${UNINSTALL_FUNCS[$_util]}"
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would uninstall: $_util"; exit 0
                 fi
@@ -3387,12 +3722,9 @@ EOF
                 ;;
             --update)
                 [[ -z "${2:-}" ]] && { echo "Error: --update requires a utility name."; exit 1; }
-                local _util="$2"; shift 2
-                local _func="${UPDATE_FUNCS[$_util]:-}"
-                if [[ -z "$_func" ]]; then
-                    echo "Error: Unknown utility '${_util}'. Run --list to see available options."
-                    exit 1
-                fi
+                resolve_utility_name "$2" || exit 1
+                local _util="$_RESOLVED"; shift 2
+                local _func="${UPDATE_FUNCS[$_util]}"
                 pkg_refresh
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would update: $_util"; exit 0
@@ -3426,13 +3758,18 @@ EOF
                 ;;
             --check)
                 [[ -z "${2:-}" ]] && { echo "Error: --check requires a utility name."; exit 1; }
-                local _util="$2"; shift 2
-                local _func="${CHECK_FUNCS[$_util]:-}"
-                if [[ -z "$_func" ]]; then
-                    echo "Error: Unknown utility '${_util}'. Run --list to see available options."
-                    exit 1
-                fi
+                resolve_utility_name "$2" || exit 1
+                local _util="$_RESOLVED"; shift 2
+                local _func="${CHECK_FUNCS[$_util]}"
                 if $_func 2>/dev/null; then
+                    local _ver_func="${VERSION_FUNCS[$_util]:-}"
+                    if [[ -n "$_ver_func" ]] && declare -f "$_ver_func" &>/dev/null; then
+                        local _ver
+                        _ver=$($_ver_func 2>/dev/null)
+                        if [[ -n "$_ver" ]]; then
+                            echo "${_util} is installed (v${_ver})"; exit 0
+                        fi
+                    fi
                     echo "${_util} is installed"; exit 0
                 else
                     echo "${_util} is not installed"; exit 1

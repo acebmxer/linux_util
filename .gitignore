@@ -1,15 +1,1 @@
-# Log files
-logs/
-*.log
-
-# Backup files
-*.bak
-*~
-
-# Temporary files
-*.tmp
-*.temp
-
-# OS-specific files
-.DS_Store
-Thumbs.db
+logs/*.log
