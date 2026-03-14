@@ -1163,6 +1163,9 @@ self_update_script() {
 # When adding a new utility, insert its registration block and its
 # implementation functions in the correct alphabetical position to
 # maintain the sorted order in the menu.
+# TIP: When adding version functions, check how similar utilities display
+# versions (e.g., look at get_version_brave, get_version_syncthing, or
+# get_version_bitwarden) to ensure consistency in version output formatting.
 
 register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden
 register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave              get_version_brave
@@ -3018,15 +3021,7 @@ update_qbittorrent() {
 }
 
 get_version_qbittorrent() {
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.qbittorrent.qBittorrent"; then
-        flatpak list 2>/dev/null | grep -i "org.qbittorrent.qBittorrent" | awk -F'\t' '{print $3}'
-    elif pkg_check_installed qbittorrent; then
-        pkg_get_version qbittorrent
-    elif command -v qbittorrent &>/dev/null; then
-        qbittorrent --version 2>/dev/null | head -n1
-    else
-        echo ""
-    fi
+    pkg_get_version qbittorrent
 }
 
 # --- Docker (utility version) ---
