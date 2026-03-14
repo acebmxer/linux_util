@@ -1,0 +1,18 @@
+════════════════════════════════════════════════════════════════
+Linux Utilities Installer - Execution Log
+Started: 2026-03-13 23:50:39
+User: nick
+Hostname: nick-z790aorusmasterx
+════════════════════════════════════════════════════════════════
+
+[2026-03-13 23:50:39] [INFO] System detected: KDE neon (family: debian, package manager: apt)
+[2026-03-13 23:51:17] [INFO] Starting update: LibreOffice
+[2026-03-13 23:52:20] [SUCCESS] Updated: LibreOffice
+[2026-03-13 23:52:20] [INFO] ════════════════════════════════════════════════════════════════
+[2026-03-13 23:52:20] [INFO] Execution Summary
+[2026-03-13 23:52:20] [INFO] ════════════════════════════════════════════════════════════════
+[2026-03-13 23:52:20] [INFO] Successful operations: 1
+[2026-03-13 23:52:20] [INFO] Failed operations: 0
+[2026-03-13 23:52:20] [INFO] Script execution completed at: 2026-03-13 23:52:20
+[2026-03-13 23:52:20] [INFO] Log files saved to: /home/nick/Github/linux_util/logs
+[2026-03-13 23:52:20] [INFO]   - Success log: success_20260313_235039.log

@@ -1792,6 +1792,7 @@ install_libreoffice() {
     echo "Installing LibreOffice..."
     case "$DISTRO_FAMILY" in
         debian)
+            sudo add-apt-repository -y ppa:libreoffice/ppa
             sudo apt update
             sudo apt install -y libreoffice
             ;;
@@ -1844,6 +1845,7 @@ update_libreoffice() {
     echo "Updating LibreOffice..."
     case "$DISTRO_FAMILY" in
         debian)
+            sudo add-apt-repository -y ppa:libreoffice/ppa
             sudo apt update
             sudo apt upgrade -y libreoffice
             ;;
@@ -2849,13 +2851,8 @@ draw_menu() {
     local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
     local system_num_columns=$(( (system_tasks + system_rows_per_column - 1) / system_rows_per_column ))
 
-    # Dynamic column width based on terminal size
-    local term_width
-    term_width=$(tput cols 2>/dev/null || echo 120)
-    local sys_col_width=$(( term_width / system_num_columns ))
-    local util_col_width=$(( term_width / num_columns ))
-    [[ $sys_col_width -lt 20 ]] && sys_col_width=20
-    [[ $util_col_width -lt 30 ]] && util_col_width=30
+    local sys_col_width=30
+    local util_col_width=30
     
     local dry_run_label=""
     [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
