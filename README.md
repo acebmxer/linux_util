@@ -66,6 +66,7 @@ Utilities:
   [x] Docker (installed)             [ ] Termius SSH Client
   [ ] Dotfiles                       [ ] Timeshift
   [ ] Joplin Client                  [x] Visual Studio Code (installed)
+  [ ] LibreOffice
 
 ────────────────────────────────────────────────────────────────
 Actions: Install: 1 | Uninstall: 1 | Update: 1
@@ -119,6 +120,7 @@ Legend: [x] select  [U] update  [ ] none  (installed) = on system
 | **Docker** | Official Docker repos; adds user to `docker` group |
 | **Dotfiles** | git clone + setup script (Debian/Ubuntu/Arch only) |
 | **Joplin Client** | AppImage via official installer script |
+| **LibreOffice** | Direct download (Debian) / native packages / flatpak |
 | **OpenSSH Server** | Native packages, enabled as a service |
 | **Steam App** | Native packages / RPM Fusion / flatpak |
 | **Syncthing** | Native packages + user service |

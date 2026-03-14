@@ -2890,12 +2890,16 @@ clear_line() { printf "${CSI}2K"; }
 draw_menu() {
     local total=${#UTILITIES[@]}
     local system_tasks=$SYSTEM_TASK_COUNT
-    local system_rows_per_column=3  # 3 rows per column for System Tasks
-    local rows_per_column=$ROWS_PER_COLUMN  # rows per column for Utilities
     local utilities_start=$system_tasks
     local utilities_count=$((total - system_tasks))
-    local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
-    local system_num_columns=$(( (system_tasks + system_rows_per_column - 1) / system_rows_per_column ))
+
+    # Force 2 columns by calculating rows needed
+    local system_rows_per_column=$(( (system_tasks + 1) / 2 ))  # ceil(system_tasks / 2) for 2 columns
+    local rows_per_column=$(( (utilities_count + 1) / 2 ))      # ceil(utilities_count / 2) for 2 columns
+
+    # Always 2 columns (unless fewer items)
+    local num_columns=$(( utilities_count > 0 ? 2 : 0 ))
+    local system_num_columns=$(( system_tasks > 0 ? 2 : 0 ))
 
     local sys_col_width=40
     local util_col_width=40
@@ -3107,12 +3111,15 @@ build_nav_columns() {
     NAV_NUM_COLS=0
     local total=${#UTILITIES[@]}
     local sys_tasks=$SYSTEM_TASK_COUNT
-    local sys_rows=3              # rows per column in System Tasks section
-    local util_rows=$ROWS_PER_COLUMN
     local utilities_count=$(( total - sys_tasks ))
 
-    local sys_cols=$(( (sys_tasks + sys_rows - 1) / sys_rows ))
-    local util_cols=$(( (utilities_count + util_rows - 1) / util_rows ))
+    # Force 2 columns by calculating rows needed
+    local sys_rows=$(( (sys_tasks + 1) / 2 ))         # ceil(sys_tasks / 2) for 2 columns
+    local util_rows=$(( (utilities_count + 1) / 2 ))  # ceil(utilities_count / 2) for 2 columns
+
+    # Always 2 columns (unless fewer items)
+    local sys_cols=$(( sys_tasks > 0 ? 2 : 0 ))
+    local util_cols=$(( utilities_count > 0 ? 2 : 0 ))
     local max_cols=$(( sys_cols > util_cols ? sys_cols : util_cols ))
     NAV_NUM_COLS=$max_cols
 
