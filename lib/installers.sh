@@ -510,7 +510,15 @@ check_kde() {
 }
 
 get_version_kde() {
-    plasmashell --version 2>/dev/null | sed 's/plasmashell //' || echo ""
+    # Try plasmashell first
+    local version
+    version=$(plasmashell --version 2>/dev/null | grep -oP 'plasmashell \K[0-9.]+' | head -1)
+    if [[ -n "$version" ]]; then
+        echo "$version"
+    else
+        # Fallback: try to get version from package manager
+        pkg_get_version plasma-desktop 2>/dev/null || pkg_get_version kde-plasma-desktop 2>/dev/null || echo ""
+    fi
 }
 
 install_kde() {
@@ -1318,12 +1326,23 @@ update_joplin() {
 }
 get_version_joplin() {
     # NOTE: Do NOT run the AppImage with --version — it opens a GUI error dialog.
-    local pkg_json="$HOME/.config/joplin-desktop/package.json"
-    if [[ -f "$pkg_json" ]]; then
-        grep -oP '"version"\s*:\s*"\K[^"]+' "$pkg_json" 2>/dev/null || echo ""
-    else
-        echo ""
+    # Try multiple config paths (Fedora may use different location)
+    local pkg_json
+    for pkg_json in "$HOME/.config/joplin-desktop/package.json" "$HOME/.config/joplin/package.json"; do
+        if [[ -f "$pkg_json" ]]; then
+            local version
+            version=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$pkg_json" 2>/dev/null)
+            [[ -n "$version" ]] && echo "$version" && return 0
+        fi
+    done
+
+    # Fallback: try to extract version from Joplin AppImage if it exists
+    if [[ -f ~/.joplin/Joplin.AppImage ]]; then
+        # Use the file modification time as a fallback (not ideal but better than nothing)
+        file ~/.joplin/Joplin.AppImage 2>/dev/null | grep -oE 'ELF' >/dev/null && echo "installed" && return 0
     fi
+
+    echo ""
 }
 
 # --- LibreOffice ---
@@ -2040,7 +2059,15 @@ update_timeshift() {
     esac
 }
 get_version_timeshift() {
-    timeshift --version 2>/dev/null | grep -oP 'Timeshift \K[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
+    # Try to extract version from timeshift --version output
+    local version
+    version=$(timeshift --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
+    if [[ -n "$version" ]]; then
+        echo "$version"
+    else
+        # Fallback: try package manager
+        pkg_get_version timeshift 2>/dev/null || echo ""
+    fi
 }
 
 # --- Visual Studio Code ---
