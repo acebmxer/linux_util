@@ -3021,7 +3021,7 @@ update_qbittorrent() {
 }
 
 get_version_qbittorrent() {
-    pkg_get_version qbittorrent
+    qbittorrent --version 2>/dev/null | grep -oP 'QBittorrent \(v\K[0-9]+:[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || echo ""
 }
 
 # --- Docker (utility version) ---
