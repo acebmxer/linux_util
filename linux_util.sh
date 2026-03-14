@@ -1173,6 +1173,7 @@ register_utility "Joplin Client"       install_joplin          check_joplin     
 register_utility "LibreOffice"         install_libreoffice     check_libreoffice     uninstall_libreoffice     update_libreoffice        get_version_libreoffice
 register_utility "OpenSSH Server"      install_openssh_server  check_openssh_server  uninstall_openssh_server  update_openssh_server     get_version_openssh_server
 register_utility "PIA VPN"             install_pia_vpn         check_pia_vpn         uninstall_pia_vpn         update_pia_vpn            get_version_pia_vpn
+register_utility "QBittorrent"         install_qbittorrent     check_qbittorrent     uninstall_qbittorrent     update_qbittorrent        get_version_qbittorrent
 register_utility "Steam App"           install_steam           check_steam           uninstall_steam           update_steam              get_version_steam
 register_utility "Syncthing"           install_syncthing       check_syncthing       uninstall_syncthing       update_syncthing          get_version_syncthing
 register_utility "Termius SSH Client"  install_termius         check_termius         uninstall_termius         update_termius            get_version_termius
@@ -2944,6 +2945,80 @@ update_pia_vpn() {
 
 get_version_pia_vpn() {
     piactl --version 2>/dev/null || echo ""
+}
+
+# --- QBittorrent ---
+check_qbittorrent() {
+    command -v qbittorrent &>/dev/null || pkg_check_installed qbittorrent
+}
+
+install_qbittorrent() {
+    echo "Installing QBittorrent..."
+    ensure_tools
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt install -y qbittorrent
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" install -y qbittorrent
+            ;;
+        arch)
+            sudo pacman -S -y qbittorrent
+            ;;
+        suse)
+            if has_flatpak; then
+                flatpak install -y flathub org.qbittorrent.qBittorrent
+            else
+                sudo zypper install -y qbittorrent
+            fi
+            ;;
+    esac
+    echo "QBittorrent installed successfully."
+}
+
+uninstall_qbittorrent() {
+    echo "Uninstalling QBittorrent..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y qbittorrent
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" remove -y qbittorrent
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm qbittorrent 2>/dev/null || true
+            ;;
+        suse)
+            flatpak uninstall -y org.qbittorrent.qBittorrent 2>/dev/null || \
+            sudo zypper remove -y qbittorrent 2>/dev/null || true
+            ;;
+    esac
+    echo "QBittorrent has been uninstalled."
+}
+
+update_qbittorrent() {
+    echo "Updating QBittorrent..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt upgrade -y qbittorrent
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" upgrade -y qbittorrent
+            ;;
+        arch)
+            sudo pacman -S --noconfirm qbittorrent
+            ;;
+        suse)
+            flatpak update -y org.qbittorrent.qBittorrent 2>/dev/null || \
+            sudo zypper update -y qbittorrent 2>/dev/null || true
+            ;;
+    esac
+}
+
+get_version_qbittorrent() {
+    qbittorrent --version 2>/dev/null | head -n1 || echo ""
 }
 
 # --- Docker (utility version) ---
