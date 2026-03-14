@@ -2755,7 +2755,7 @@ get_version_openssh_server() {
 # --- PIA VPN ---
 
 check_pia_vpn() {
-    command -v pia &>/dev/null || pkg_check_installed privateinternetaccess
+    command -v piactl &>/dev/null || pkg_check_installed privateinternetaccess
 }
 
 install_pia_vpn() {
@@ -2838,13 +2838,7 @@ update_pia_vpn() {
 }
 
 get_version_pia_vpn() {
-    if command -v pia &>/dev/null; then
-        pia --version 2>/dev/null | grep -oP 'pia \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
-    elif command -v piactl &>/dev/null; then
-        piactl --version 2>/dev/null || echo ""
-    else
-        echo ""
-    fi
+    piactl --version 2>/dev/null || echo ""
 }
 
 # --- Docker (utility version) ---
