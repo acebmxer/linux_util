@@ -129,6 +129,39 @@ Legend: [x] select  [U] update  [ ] none  (installed) = on system
 | **Timeshift** | Native packages |
 | **Visual Studio Code** | Microsoft repo (all distros) / AUR |
 
+## Project Structure
+
+The script has been modularized for easier maintenance and navigation:
+
+```
+linux_util/
+├── linux_util.sh          Main orchestrator (547 lines)
+├── lib/
+│   ├── logging.sh         Logging, error handling, cleanup (109 lines)
+│   ├── pkg_manager.sh     Package manager abstraction, distro detection (249 lines)
+│   ├── aur.sh             Arch User Repository functions (64 lines)
+│   ├── system.sh          System setup tasks, NVIDIA, desktop env (326 lines)
+│   ├── menu.sh            TUI menu with keyboard navigation (365 lines)
+│   ├── utilities.sh       Utility registry and resolution (84 lines)
+│   └── installers.sh      All utility install/uninstall/update functions (2,876 lines)
+├── logs/                  Timestamped execution logs
+├── manage_logs.sh         Log management utility
+└── README.md              This file
+```
+
+### Module Responsibilities
+
+| Module | Purpose | Edit When... |
+|--------|---------|--------------|
+| **linux_util.sh** | Main script, CLI argument parsing, initialization | Modifying menu structure, argument parsing, or main flow |
+| **lib/logging.sh** | Logging functions, error handling, cleanup | Changing log format or adding new log functions |
+| **lib/pkg_manager.sh** | Package manager abstraction, distro detection | Adding support for new distros or package managers |
+| **lib/aur.sh** | AUR/pacman-specific functions | Modifying AUR installation logic |
+| **lib/system.sh** | System tasks (full upgrade, NVIDIA drivers, KDE, etc.) | Adding or modifying system setup tasks |
+| **lib/menu.sh** | TUI rendering, keyboard navigation, 2-column layout | Changing menu appearance or navigation behavior |
+| **lib/utilities.sh** | Utility registry, name resolution, status checking | Modifying how utilities are registered or checked |
+| **lib/installers.sh** | All utility-specific install/uninstall/update/check functions | **Adding new utilities or modifying existing ones** |
+
 ## Supported Distributions
 
 | Family | Distributions | Package Manager |
@@ -163,20 +196,51 @@ chmod +x manage_logs.sh
 
 ## Adding New Utilities
 
-Insert a registration block and implementation functions in the alphabetically correct position in the `UTILITY DEFINITIONS` section. If adding a **System Task**, increment `SYSTEM_TASK_COUNT`.
+All utility install/uninstall/update/check functions are in **`lib/installers.sh`**. Add new utilities there in alphabetical order.
 
-```bash
-UTILITIES+=("My Utility")
-INSTALL_FUNCS["My Utility"]="install_my_utility"
-CHECK_FUNCS["My Utility"]="check_my_utility"
-UNINSTALL_FUNCS["My Utility"]="uninstall_my_utility"
-UPDATE_FUNCS["My Utility"]="update_my_utility"
+### Steps to Add a New Utility
 
-check_my_utility()     { command -v my-utility &>/dev/null; }
-install_my_utility()   { pkg_install my-utility; }
-uninstall_my_utility() { pkg_remove my-utility; }
-update_my_utility()    { pkg_upgrade my-utility; }
-```
+1. **Edit `lib/installers.sh`** and find the alphabetically correct position
+2. **Add a registration block** (before the utility definitions):
+   ```bash
+   UTILITIES+=("My Utility")
+   INSTALL_FUNCS["My Utility"]="install_my_utility"
+   CHECK_FUNCS["My Utility"]="check_my_utility"
+   UNINSTALL_FUNCS["My Utility"]="uninstall_my_utility"
+   UPDATE_FUNCS["My Utility"]="update_my_utility"
+   VERSION_FUNCS["My Utility"]="get_version_my_utility"  # optional
+   ```
+3. **Add implementation functions**:
+   ```bash
+   check_my_utility() {
+       command -v my-utility &>/dev/null
+   }
+
+   install_my_utility() {
+       pkg_install my-utility
+   }
+
+   uninstall_my_utility() {
+       pkg_remove my-utility
+   }
+
+   update_my_utility() {
+       pkg_upgrade my-utility
+   }
+
+   get_version_my_utility() {
+       my-utility --version 2>/dev/null | head -1
+   }
+   ```
+
+### Adding System Tasks
+
+System tasks (like NVIDIA Drivers, KDE setup) are also in **`lib/system.sh`** and **`lib/installers.sh`**:
+
+- Add task registration to the `UTILITIES` array (near the top of `lib/installers.sh`)
+- Increment `SYSTEM_TASK_COUNT` in `linux_util.sh` if needed
+- Implement the `setup_*` function in `lib/system.sh`
+- Add check/version/uninstall functions in `lib/installers.sh`
 
 ### Key Helper Functions
 
