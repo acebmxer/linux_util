@@ -1213,7 +1213,7 @@ self_update_script() {
     fi
     local before
     before=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
-    if ! git -C "$SCRIPT_DIR" pull --ff-only; then
+    if ! git -C "$SCRIPT_DIR" pull --ff-only origin main; then
         warn "git pull failed. Ensure you have network access and no local uncommitted changes."
         return 1
     fi
