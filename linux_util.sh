@@ -2383,9 +2383,7 @@ update_devolutions_rdm() {
     esac
 }
 get_version_devolutions_rdm() {
-    if command -v remotedesktopmanager &>/dev/null; then
-        remotedesktopmanager --version 2>/dev/null | head -1 || echo ""
-    elif pkg_check_installed RemoteDesktopManager; then
+    if pkg_check_installed RemoteDesktopManager; then
         pkg_get_version RemoteDesktopManager
     elif pkg_check_installed remotedesktopmanager; then
         pkg_get_version remotedesktopmanager
