@@ -1690,7 +1690,7 @@ update_brave() {
     esac
 }
 get_version_brave() {
-    brave-browser --version 2>/dev/null | sed 's/Brave Browser //' || echo ""
+    brave-browser --version 2>/dev/null | grep -oP 'Brave Browser \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
 }
 
 # --- Joplin Client ---
@@ -1768,10 +1768,10 @@ update_joplin() {
     wget -O - https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
 }
 get_version_joplin() {
-    if [[ -f ~/.joplin/Joplin.AppImage ]]; then
-        ~/.joplin/Joplin.AppImage --version 2>/dev/null | head -1 || echo ""
-    elif command -v joplin &>/dev/null; then
-        joplin --version 2>/dev/null | head -1 || echo ""
+    # NOTE: Do NOT run the AppImage with --version — it opens a GUI error dialog.
+    local pkg_json="$HOME/.config/joplin-desktop/package.json"
+    if [[ -f "$pkg_json" ]]; then
+        grep -oP '"version"\s*:\s*"\K[^"]+' "$pkg_json" 2>/dev/null || echo ""
     else
         echo ""
     fi
@@ -1864,7 +1864,7 @@ update_libreoffice() {
     esac
 }
 get_version_libreoffice() {
-    libreoffice --version 2>/dev/null | head -1 || echo ""
+    libreoffice --version 2>/dev/null | grep -oP 'LibreOffice \K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
 }
 
 # --- Termius SSH Client ---
@@ -2439,7 +2439,7 @@ update_timeshift() {
     esac
 }
 get_version_timeshift() {
-    timeshift --version 2>/dev/null | head -1 || echo ""
+    timeshift --version 2>/dev/null | grep -oP 'Timeshift \K[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
 }
 
 # --- Visual Studio Code ---
@@ -2622,7 +2622,7 @@ update_syncthing() {
     esac
 }
 get_version_syncthing() {
-    syncthing --version 2>/dev/null | awk '{print $2}' || echo ""
+    syncthing --version 2>/dev/null | awk '{print $2}' | sed 's/^v//' || echo ""
 }
 
 # --- OpenSSH Server ---
@@ -2700,7 +2700,7 @@ update_openssh_server() {
     esac
 }
 get_version_openssh_server() {
-    ssh -V 2>&1 | head -1 || echo ""
+    ssh -V 2>&1 | grep -oP 'OpenSSH_\K[^\s,]+' || echo ""
 }
 
 # --- Docker (utility version) ---
@@ -2747,7 +2747,7 @@ update_docker() {
     esac
 }
 get_version_docker() {
-    docker --version 2>/dev/null | sed 's/Docker version //' || echo ""
+    docker --version 2>/dev/null | grep -oP 'Docker version \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
 }
 
 # ============================================================================
@@ -2848,6 +2848,14 @@ draw_menu() {
     local utilities_count=$((total - system_tasks))
     local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
     local system_num_columns=$(( (system_tasks + system_rows_per_column - 1) / system_rows_per_column ))
+
+    # Dynamic column width based on terminal size
+    local term_width
+    term_width=$(tput cols 2>/dev/null || echo 120)
+    local sys_col_width=$(( term_width / system_num_columns ))
+    local util_col_width=$(( term_width / num_columns ))
+    [[ $sys_col_width -lt 30 ]] && sys_col_width=30
+    [[ $util_col_width -lt 30 ]] && util_col_width=30
     
     local dry_run_label=""
     [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
@@ -2925,8 +2933,7 @@ draw_menu() {
                 fi
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local column_width=43
-                local padding=$((column_width - visible_len))
+                local padding=$((sys_col_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
             fi
@@ -3000,8 +3007,7 @@ draw_menu() {
                 fi
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local column_width=42
-                local padding=$((column_width - visible_len))
+                local padding=$((util_col_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
             fi
@@ -3154,7 +3160,10 @@ run_selection_menu() {
     
     # Cleanup on exit
     trap 'show_cursor; stty echo; echo ""; cleanup_on_exit' EXIT
-    
+
+    # Redraw on terminal resize
+    trap 'redraw_menu' WINCH
+
     # Initial draw
     clear
     draw_menu
