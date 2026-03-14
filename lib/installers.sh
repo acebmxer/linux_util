@@ -2485,6 +2485,7 @@ setup_install_docker() {
             fi
 
             run_as_root "curl -fsSL https://download.docker.com/linux/${docker_dist}/gpg | gpg --yes --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
+            run_as_root "chmod 644 /usr/share/keyrings/docker-archive-keyring.gpg"
             echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/${docker_dist} ${docker_codename} stable" | \
                 sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
             run_as_root "apt-get update"
@@ -2542,6 +2543,7 @@ uninstall_docker() {
         debian)
             sudo apt remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             sudo rm -f /etc/apt/sources.list.d/docker.list
+            sudo rm -f /usr/share/keyrings/docker-archive-keyring.gpg
             sudo rm -f /etc/apt/keyrings/docker.gpg
             ;;
         fedora|rhel)
