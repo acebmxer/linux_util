@@ -122,6 +122,7 @@ Legend: [x] select  [U] update  [ ] none  (installed) = on system
 | **Joplin Client** | AppImage via official installer script |
 | **LibreOffice** | Direct download (Debian) / native packages / flatpak |
 | **OpenSSH Server** | Native packages, enabled as a service |
+| **PIA VPN** | Official repos (Debian/Fedora) / AUR (Arch) / Flatpak (openSUSE) |
 | **Steam App** | Native packages / RPM Fusion / flatpak |
 | **Syncthing** | Native packages + user service |
 | **Termius SSH Client** | `.deb` / AUR / snap / flatpak |

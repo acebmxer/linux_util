@@ -1067,6 +1067,7 @@ register_utility "Dotfiles"            setup_install_dotfiles  check_dotfiles   
 register_utility "Joplin Client"       install_joplin          check_joplin          uninstall_joplin          update_joplin             get_version_joplin
 register_utility "LibreOffice"         install_libreoffice     check_libreoffice     uninstall_libreoffice     update_libreoffice        get_version_libreoffice
 register_utility "OpenSSH Server"      install_openssh_server  check_openssh_server  uninstall_openssh_server  update_openssh_server     get_version_openssh_server
+register_utility "PIA VPN"             install_pia_vpn         check_pia_vpn         uninstall_pia_vpn         update_pia_vpn            get_version_pia_vpn
 register_utility "Steam App"           install_steam           check_steam           uninstall_steam           update_steam              get_version_steam
 register_utility "Syncthing"           install_syncthing       check_syncthing       uninstall_syncthing       update_syncthing          get_version_syncthing
 register_utility "Termius SSH Client"  install_termius         check_termius         uninstall_termius         update_termius            get_version_termius
@@ -2749,6 +2750,101 @@ update_openssh_server() {
 }
 get_version_openssh_server() {
     ssh -V 2>&1 | grep -oP 'OpenSSH_\K[^\s,]+' || echo ""
+}
+
+# --- PIA VPN ---
+
+check_pia_vpn() {
+    command -v pia &>/dev/null || pkg_check_installed privateinternetaccess
+}
+
+install_pia_vpn() {
+    echo "Installing PIA VPN..."
+    ensure_tools
+    case "$DISTRO_FAMILY" in
+        debian)
+            # Add PIA repository key and install
+            sudo curl -fsSL https://repo.privateinternetaccess.com/debian/key/deb.gpg.key | sudo apt-key add -
+            echo "deb https://repo.privateinternetaccess.com/debian/deb_ubuntu jammy main" | sudo tee /etc/apt/sources.list.d/pia.list
+            sudo apt update
+            sudo apt install -y privateinternetaccess
+            ;;
+        fedora|rhel)
+            # Install from official PIA repository
+            sudo "$PKG_MGR" install -y https://repo.privateinternetaccess.com/fedora/privateinternetaccess-latest.rpm
+            ;;
+        arch)
+            # Install from AUR
+            if has_aur_helper; then
+                aur_install privateinternetaccess-bin
+            else
+                echo "Installing from AUR requires an AUR helper (yay/paru). Please install one first."
+                return 1
+            fi
+            ;;
+        suse)
+            # For openSUSE, try Flatpak as primary method
+            if has_flatpak; then
+                flatpak install -y flathub com.privateinternetaccess.PIA
+            else
+                echo "PIA is not available in default openSUSE repositories."
+                echo "Please install Flatpak and use: flatpak install flathub com.privateinternetaccess.PIA"
+                return 1
+            fi
+            ;;
+    esac
+    echo "PIA VPN installed successfully."
+}
+
+uninstall_pia_vpn() {
+    echo "Uninstalling PIA VPN..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt remove -y privateinternetaccess
+            sudo rm -f /etc/apt/sources.list.d/pia.list
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" remove -y privateinternetaccess
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm privateinternetaccess-bin 2>/dev/null || \
+            sudo pacman -Rs --noconfirm privateinternetaccess 2>/dev/null || true
+            ;;
+        suse)
+            flatpak uninstall -y com.privateinternetaccess.PIA 2>/dev/null || true
+            ;;
+    esac
+    echo "PIA VPN has been uninstalled."
+}
+
+update_pia_vpn() {
+    echo "Updating PIA VPN..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt update
+            sudo apt upgrade -y privateinternetaccess
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" upgrade -y privateinternetaccess
+            ;;
+        arch)
+            sudo pacman -S --noconfirm privateinternetaccess-bin 2>/dev/null || \
+            sudo pacman -S --noconfirm privateinternetaccess 2>/dev/null || true
+            ;;
+        suse)
+            flatpak update -y com.privateinternetaccess.PIA 2>/dev/null || true
+            ;;
+    esac
+}
+
+get_version_pia_vpn() {
+    if command -v pia &>/dev/null; then
+        pia --version 2>/dev/null | grep -oP 'pia \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
+    elif command -v piactl &>/dev/null; then
+        piactl --version 2>/dev/null || echo ""
+    else
+        echo ""
+    fi
 }
 
 # --- Docker (utility version) ---
