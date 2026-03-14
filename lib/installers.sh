@@ -1394,6 +1394,7 @@ install_libreoffice() {
             _libreoffice_install_from_site
             ;;
         fedora|rhel)
+            sudo "$PKG_MGR" check-update >/dev/null 2>&1 || true
             sudo "$PKG_MGR" install -y libreoffice
             ;;
         arch)
@@ -1496,7 +1497,7 @@ install_termius() {
                 # Ensure flathub remote is properly configured
                 if ! flatpak remotes | grep -q flathub; then
                     echo "Adding flathub remote..."
-                    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+                    sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
                 fi
                 flatpak install -y flathub com.termius.Termius
             else
@@ -2317,7 +2318,10 @@ install_pia_vpn() {
             ;;
         fedora|rhel)
             # Install from official PIA repository
-            sudo "$PKG_MGR" install -y https://repo.privateinternetaccess.com/fedora/privateinternetaccess-latest.rpm
+            if ! sudo "$PKG_MGR" install -y https://repo.privateinternetaccess.com/fedora/privateinternetaccess-latest.rpm; then
+                echo "Error: Failed to install PIA VPN. Check network connectivity and DNS resolution."
+                return 1
+            fi
             ;;
         arch)
             # Install from AUR
