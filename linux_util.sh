@@ -63,7 +63,7 @@ NVIDIA_VERSION_FILE="${HOME}/.config/linux_util/nvidia_driver_version"
 
 # System Task Count (used by menu rendering to separate tasks from utilities)
 # Count: Full System Upgrade/Update, KDE Desktop, NVIDIA Drivers, System Updates, XEN Guest Utilities
-# + Local MOTD (Ubuntu only) = variable
+# + Local MOTD (Ubuntu, Kubuntu, KDE Neon) = variable
 SYSTEM_TASK_COUNT=5
 
 # Track if any errors have occurred

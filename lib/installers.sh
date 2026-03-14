@@ -186,8 +186,8 @@ register_utility "NVIDIA Drivers"     install_nvidia_drivers  check_nvidia_drive
 register_utility "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates
 register_utility "XEN Guest Utilities" setup_xen_guest_utilities check_xen_guest_utilities noop_function setup_xen_guest_utilities get_version_xen_guest_utilities
 
-# Landscape MOTD (Ubuntu-specific)
-if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+# Landscape MOTD (Ubuntu, Kubuntu, KDE Neon)
+if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
     register_utility "Local MOTD"    setup_local_motd        check_landscape_motd  uninstall_landscape_motd  update_landscape_motd     get_version_landscape_motd
 fi
 
