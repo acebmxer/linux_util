@@ -2714,6 +2714,7 @@ draw_menu() {
     if [[ "$CACHED_LOCAL_COMMIT" != "unknown" && "$CACHED_REMOTE_COMMIT" != "unknown" && "$CACHED_LOCAL_COMMIT" != "$CACHED_REMOTE_COMMIT" ]]; then
         echo "  ${BOLD}${YELLOW}Script out of date, please update.${RESET}"
     fi
+    echo "         Detected System: ${BOLD}${DISTRO_NAME}${RESET}   Version: ${BOLD}${DISTRO_VERSION_ID}${RESET}"
     echo ""
 
     # Display System Tasks section
