@@ -3021,7 +3021,7 @@ update_qbittorrent() {
 }
 
 get_version_qbittorrent() {
-    pkg_get_version qbittorrent | sed 's/^[0-9]*://; s/~.*//' | sed 's/^/v/' || echo ""
+    pkg_get_version qbittorrent | sed 's/^[0-9]*://; s/~.*//' || echo ""
 }
 
 # --- Docker (utility version) ---
