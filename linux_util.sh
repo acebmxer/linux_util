@@ -939,10 +939,10 @@ SYSTEM_TASKS+=("Full System Upgrade/Update")
 register_utility "Full System Upgrade/Update" setup_full_update_bare_metal check_always_false noop_function setup_full_update_bare_metal
 
 SYSTEM_TASKS+=("KDE Desktop Environment")
-register_utility "KDE Desktop Environment" install_kde check_kde uninstall_kde update_kde
+register_utility "KDE Desktop Environment" install_kde check_kde uninstall_kde update_kde get_version_kde
 
 SYSTEM_TASKS+=("NVIDIA Drivers")
-register_utility "NVIDIA Drivers" install_nvidia_drivers check_nvidia_drivers uninstall_nvidia_drivers update_nvidia_drivers
+register_utility "NVIDIA Drivers" install_nvidia_drivers check_nvidia_drivers uninstall_nvidia_drivers update_nvidia_drivers get_version_nvidia_drivers
 
 SYSTEM_TASKS+=("System Updates")
 register_utility "System Updates" setup_system_updates check_always_false noop_function setup_system_updates
@@ -1020,6 +1020,9 @@ update_kde() {
             ;;
     esac
 }
+get_version_kde() {
+    plasmashell --version 2>/dev/null | sed 's/plasmashell //' || echo ""
+}
 
 self_update_script() {
     info "Checking for script updates..."
@@ -1056,19 +1059,19 @@ self_update_script() {
 # implementation functions in the correct alphabetical position to
 # maintain the sorted order in the menu.
 
-register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden
-register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave
-register_utility "Devolutions RDM"     install_devolutions_rdm check_devolutions_rdm uninstall_devolutions_rdm update_devolutions_rdm
-register_utility "Docker"              setup_install_docker    check_docker          uninstall_docker          update_docker
+register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden
+register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave              get_version_brave
+register_utility "Devolutions RDM"     install_devolutions_rdm check_devolutions_rdm uninstall_devolutions_rdm update_devolutions_rdm    get_version_devolutions_rdm
+register_utility "Docker"              setup_install_docker    check_docker          uninstall_docker          update_docker             get_version_docker
 register_utility "Dotfiles"            setup_install_dotfiles  check_dotfiles        noop_function             setup_install_dotfiles
-register_utility "Joplin Client"       install_joplin          check_joplin          uninstall_joplin          update_joplin
+register_utility "Joplin Client"       install_joplin          check_joplin          uninstall_joplin          update_joplin             get_version_joplin
 register_utility "LibreOffice"         install_libreoffice     check_libreoffice     uninstall_libreoffice     update_libreoffice        get_version_libreoffice
-register_utility "OpenSSH Server"      install_openssh_server  check_openssh_server  uninstall_openssh_server  update_openssh_server
-register_utility "Steam App"           install_steam           check_steam           uninstall_steam           update_steam
-register_utility "Syncthing"           install_syncthing       check_syncthing       uninstall_syncthing       update_syncthing
-register_utility "Termius SSH Client"  install_termius         check_termius         uninstall_termius         update_termius
-register_utility "Timeshift"           install_timeshift       check_timeshift       uninstall_timeshift       update_timeshift
-register_utility "Visual Studio Code"  install_vscode          check_vscode          uninstall_vscode          update_vscode
+register_utility "OpenSSH Server"      install_openssh_server  check_openssh_server  uninstall_openssh_server  update_openssh_server     get_version_openssh_server
+register_utility "Steam App"           install_steam           check_steam           uninstall_steam           update_steam              get_version_steam
+register_utility "Syncthing"           install_syncthing       check_syncthing       uninstall_syncthing       update_syncthing          get_version_syncthing
+register_utility "Termius SSH Client"  install_termius         check_termius         uninstall_termius         update_termius            get_version_termius
+register_utility "Timeshift"           install_timeshift       check_timeshift       uninstall_timeshift       update_timeshift          get_version_timeshift
+register_utility "Visual Studio Code"  install_vscode          check_vscode          uninstall_vscode          update_vscode             get_version_vscode
 
 check_dotfiles() {
     [[ -d ~/dotfiles ]] && [[ -f ~/.zshrc ]]
@@ -1077,6 +1080,9 @@ check_dotfiles() {
 # --- NVIDIA Drivers & Toolkit ---
 check_nvidia_drivers() {
     command -v nvidia-smi &>/dev/null || lsmod | grep -q "^nvidia"
+}
+get_version_nvidia_drivers() {
+    nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 || echo ""
 }
 
 install_nvtop_package() {
@@ -1591,6 +1597,19 @@ update_bitwarden() {
         return 1
     fi
 }
+get_version_bitwarden() {
+    if has_snap && snap list bitwarden &>/dev/null; then
+        snap list bitwarden 2>/dev/null | awk 'NR==2{print $2}'
+    elif has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden; then
+        flatpak list 2>/dev/null | grep -i bitwarden | awk -F'\t' '{print $3}'
+    elif pkg_check_installed bitwarden-bin; then
+        pkg_get_version bitwarden-bin
+    elif pkg_check_installed bitwarden; then
+        pkg_get_version bitwarden
+    else
+        echo ""
+    fi
+}
 
 # --- Brave Browser ---
 
@@ -1670,6 +1689,9 @@ update_brave() {
             ;;
     esac
 }
+get_version_brave() {
+    brave-browser --version 2>/dev/null | sed 's/Brave Browser //' || echo ""
+}
 
 # --- Joplin Client ---
 
@@ -1744,6 +1766,15 @@ update_joplin() {
     echo "Updating Joplin Client..."
     detect_and_export_desktop_env
     wget -O - https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
+}
+get_version_joplin() {
+    if [[ -f ~/.joplin/Joplin.AppImage ]]; then
+        ~/.joplin/Joplin.AppImage --version 2>/dev/null | head -1 || echo ""
+    elif command -v joplin &>/dev/null; then
+        joplin --version 2>/dev/null | head -1 || echo ""
+    else
+        echo ""
+    fi
 }
 
 # --- LibreOffice ---
@@ -1920,6 +1951,19 @@ update_termius() {
             ;;
     esac
 }
+get_version_termius() {
+    if pkg_check_installed termius; then
+        pkg_get_version termius
+    elif pkg_check_installed termius-app; then
+        pkg_get_version termius-app
+    elif has_snap && snap list termius-app &>/dev/null; then
+        snap list termius-app 2>/dev/null | awk 'NR==2{print $2}'
+    elif has_flatpak && flatpak list 2>/dev/null | grep -qi termius; then
+        flatpak list 2>/dev/null | grep -i termius | awk -F'\t' '{print $3}'
+    else
+        echo ""
+    fi
+}
 
 # --- Devolutions RDM ---
 
@@ -2071,6 +2115,19 @@ update_devolutions_rdm() {
             fi
             ;;
     esac
+}
+get_version_devolutions_rdm() {
+    if command -v remotedesktopmanager &>/dev/null; then
+        remotedesktopmanager --version 2>/dev/null | head -1 || echo ""
+    elif pkg_check_installed RemoteDesktopManager; then
+        pkg_get_version RemoteDesktopManager
+    elif pkg_check_installed remotedesktopmanager; then
+        pkg_get_version remotedesktopmanager
+    elif pkg_check_installed remote-desktop-manager; then
+        pkg_get_version remote-desktop-manager
+    else
+        echo ""
+    fi
 }
 
 # --- Steam App ---
@@ -2308,6 +2365,19 @@ update_steam() {
         esac
     fi
 }
+get_version_steam() {
+    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.valvesoftware.Steam"; then
+        flatpak list 2>/dev/null | grep -i "com.valvesoftware.Steam" | awk -F'\t' '{print $3}'
+    elif pkg_check_installed steam-installer; then
+        pkg_get_version steam-installer
+    elif pkg_check_installed steam-launcher; then
+        pkg_get_version steam-launcher
+    elif pkg_check_installed steam; then
+        pkg_get_version steam
+    else
+        echo ""
+    fi
+}
 
 # --- Timeshift ---
 
@@ -2367,6 +2437,9 @@ update_timeshift() {
             pkg_upgrade timeshift
             ;;
     esac
+}
+get_version_timeshift() {
+    timeshift --version 2>/dev/null | head -1 || echo ""
 }
 
 # --- Visual Studio Code ---
@@ -2448,6 +2521,9 @@ update_vscode() {
             pkg_upgrade code
             ;;
     esac
+}
+get_version_vscode() {
+    code --version 2>/dev/null | head -1 || echo ""
 }
 
 # --- Syncthing ---
@@ -2545,6 +2621,9 @@ update_syncthing() {
             ;;
     esac
 }
+get_version_syncthing() {
+    syncthing --version 2>/dev/null | awk '{print $2}' || echo ""
+}
 
 # --- OpenSSH Server ---
 check_openssh_server() {
@@ -2620,6 +2699,9 @@ update_openssh_server() {
             ;;
     esac
 }
+get_version_openssh_server() {
+    ssh -V 2>&1 | head -1 || echo ""
+}
 
 # --- Docker (utility version) ---
 check_docker() {
@@ -2663,6 +2745,9 @@ update_docker() {
             sudo zypper update -y docker docker-compose docker-buildx
             ;;
     esac
+}
+get_version_docker() {
+    docker --version 2>/dev/null | sed 's/Docker version //' || echo ""
 }
 
 # ============================================================================
@@ -2969,6 +3054,7 @@ build_nav_columns() {
     NAV_FLAT=()
     NAV_COL_START=()
     NAV_COL_SIZE=()
+    NAV_COL_SYS_SIZE=()   # system-task count per column (for section-aware LEFT/RIGHT)
     NAV_NUM_COLS=0
     local total=${#UTILITIES[@]}
     local sys_tasks=$SYSTEM_TASK_COUNT
@@ -2984,6 +3070,7 @@ build_nav_columns() {
     for (( c=0; c<max_cols; c++ )); do
         NAV_COL_START+=( ${#NAV_FLAT[@]} )
         local col_size=0
+        local col_sys_size=0
 
         # Add system task items for this column
         for (( r=0; r<sys_rows; r++ )); do
@@ -2991,6 +3078,7 @@ build_nav_columns() {
             if (( idx < sys_tasks )); then
                 NAV_FLAT+=( "$idx" )
                 (( col_size++ ))
+                (( col_sys_size++ ))
             fi
         done
 
@@ -3004,6 +3092,7 @@ build_nav_columns() {
         done
 
         NAV_COL_SIZE+=( "$col_size" )
+        NAV_COL_SYS_SIZE+=( "$col_sys_size" )
     done
 }
 
@@ -3117,7 +3206,22 @@ run_selection_menu() {
                     local _target_col=$(( _nav_col - 1 ))
                     local _target_start=${NAV_COL_START[$_target_col]}
                     local _target_size=${NAV_COL_SIZE[$_target_col]}
-                    local _target_pos=$(( _nav_pos < _target_size ? _nav_pos : _target_size - 1 ))
+                    local _cur_sys=${NAV_COL_SYS_SIZE[$_nav_col]}
+                    local _target_sys=${NAV_COL_SYS_SIZE[$_target_col]}
+                    local _target_pos
+                    if (( _nav_pos < _cur_sys )); then
+                        # System tasks section — map to same system-task row
+                        _target_pos=$(( _nav_pos < _target_sys ? _nav_pos : _target_sys - 1 ))
+                    else
+                        # Utilities section — map to same utility row
+                        local _util_row=$(( _nav_pos - _cur_sys ))
+                        local _target_util_size=$(( _target_size - _target_sys ))
+                        if (( _target_util_size > 0 )); then
+                            _target_pos=$(( _target_sys + (_util_row < _target_util_size ? _util_row : _target_util_size - 1) ))
+                        else
+                            _target_pos=$(( _target_size - 1 ))
+                        fi
+                    fi
                     CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
                 fi
                 redraw_menu
@@ -3127,7 +3231,22 @@ run_selection_menu() {
                     local _target_col=$(( _nav_col + 1 ))
                     local _target_start=${NAV_COL_START[$_target_col]}
                     local _target_size=${NAV_COL_SIZE[$_target_col]}
-                    local _target_pos=$(( _nav_pos < _target_size ? _nav_pos : _target_size - 1 ))
+                    local _cur_sys=${NAV_COL_SYS_SIZE[$_nav_col]}
+                    local _target_sys=${NAV_COL_SYS_SIZE[$_target_col]}
+                    local _target_pos
+                    if (( _nav_pos < _cur_sys )); then
+                        # System tasks section — map to same system-task row
+                        _target_pos=$(( _nav_pos < _target_sys ? _nav_pos : _target_sys - 1 ))
+                    else
+                        # Utilities section — map to same utility row
+                        local _util_row=$(( _nav_pos - _cur_sys ))
+                        local _target_util_size=$(( _target_size - _target_sys ))
+                        if (( _target_util_size > 0 )); then
+                            _target_pos=$(( _target_sys + (_util_row < _target_util_size ? _util_row : _target_util_size - 1) ))
+                        else
+                            _target_pos=$(( _target_size - 1 ))
+                        fi
+                    fi
                     CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
                 fi
                 redraw_menu
