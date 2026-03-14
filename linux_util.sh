@@ -90,6 +90,16 @@ ln -sf "$(basename "$SUCCESS_LOG")" "$LATEST_SUCCESS_LOG" 2>/dev/null || cp "$SU
 # Source all library modules in dependency order
 source "${SCRIPT_DIR}/lib/logging.sh" || { echo "Error: Failed to source logging.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/pkg_manager.sh" || { echo "Error: Failed to source pkg_manager.sh"; exit 1; }
+
+# ============================================================================
+# SYSTEM INITIALIZATION
+# ============================================================================
+
+# Detect the distro at startup (MUST be before sourcing installers.sh for conditional registrations)
+detect_distro
+echo ""
+
+# Continue sourcing remaining library modules
 source "${SCRIPT_DIR}/lib/aur.sh" || { echo "Error: Failed to source aur.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/system.sh" || { echo "Error: Failed to source system.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/utilities.sh" || { echo "Error: Failed to source utilities.sh"; exit 1; }
@@ -99,14 +109,6 @@ source "${SCRIPT_DIR}/lib/installers.sh" || { echo "Error: Failed to source inst
 # Setup traps for cleanup and error handling
 trap cleanup_on_exit EXIT
 trap '_err_handler' ERR
-
-# ============================================================================
-# SYSTEM INITIALIZATION
-# ============================================================================
-
-# Detect the distro at startup
-detect_distro
-echo ""
 
 # Cache sudo credentials and keep them alive in the background so the user
 # is not re-prompted mid-install when the sudo timeout expires.
