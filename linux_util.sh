@@ -3018,7 +3018,15 @@ update_qbittorrent() {
 }
 
 get_version_qbittorrent() {
-    qbittorrent --version 2>/dev/null | head -n1 || echo ""
+    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.qbittorrent.qBittorrent"; then
+        flatpak list 2>/dev/null | grep -i "org.qbittorrent.qBittorrent" | awk -F'\t' '{print $3}'
+    elif pkg_check_installed qbittorrent; then
+        pkg_get_version qbittorrent
+    elif command -v qbittorrent &>/dev/null; then
+        qbittorrent --version 2>/dev/null | head -n1
+    else
+        echo ""
+    fi
 }
 
 # --- Docker (utility version) ---
