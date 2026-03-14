@@ -2960,34 +2960,50 @@ redraw_menu() {
     draw_menu
 }
 
-# Dynamically build the two navigational columns used by keyboard navigation.
-# Left column  = visual display-column 0 of System Tasks + display-column 0 of Utilities.
-# Right column = visual display-column 1 of System Tasks + display-column 1 of Utilities.
-# Results are stored in global arrays NAV_LEFT and NAV_RIGHT.
+# Dynamically build navigational columns used by keyboard navigation.
+# Each visual display-column (spanning both System Tasks and Utilities) becomes
+# one navigational column.  Supports any number of columns.
+# Results are stored in NAV_FLAT (packed indices), NAV_COL_START (offsets),
+# NAV_COL_SIZE (lengths), and NAV_NUM_COLS.
 build_nav_columns() {
-    NAV_LEFT=()
-    NAV_RIGHT=()
+    NAV_FLAT=()
+    NAV_COL_START=()
+    NAV_COL_SIZE=()
+    NAV_NUM_COLS=0
     local total=${#UTILITIES[@]}
     local sys_tasks=$SYSTEM_TASK_COUNT
     local sys_rows=3              # rows per column in System Tasks section
     local util_rows=$ROWS_PER_COLUMN
+    local utilities_count=$(( total - sys_tasks ))
 
-    for (( i=0; i<sys_tasks && i<total; i++ )); do
-        if (( i / sys_rows == 0 )); then
-            NAV_LEFT+=( "$i" )
-        else
-            NAV_RIGHT+=( "$i" )
-        fi
-    done
+    local sys_cols=$(( (sys_tasks + sys_rows - 1) / sys_rows ))
+    local util_cols=$(( (utilities_count + util_rows - 1) / util_rows ))
+    local max_cols=$(( sys_cols > util_cols ? sys_cols : util_cols ))
+    NAV_NUM_COLS=$max_cols
 
-    local u=0
-    for (( i=sys_tasks; i<total; i++ )); do
-        if (( u / util_rows == 0 )); then
-            NAV_LEFT+=( "$i" )
-        else
-            NAV_RIGHT+=( "$i" )
-        fi
-        (( u++ ))
+    for (( c=0; c<max_cols; c++ )); do
+        NAV_COL_START+=( ${#NAV_FLAT[@]} )
+        local col_size=0
+
+        # Add system task items for this column
+        for (( r=0; r<sys_rows; r++ )); do
+            local idx=$(( c * sys_rows + r ))
+            if (( idx < sys_tasks )); then
+                NAV_FLAT+=( "$idx" )
+                (( col_size++ ))
+            fi
+        done
+
+        # Add utility items for this column
+        for (( r=0; r<util_rows; r++ )); do
+            local u_idx=$(( c * util_rows + r ))
+            if (( u_idx < utilities_count )); then
+                NAV_FLAT+=( "$(( sys_tasks + u_idx ))" )
+                (( col_size++ ))
+            fi
+        done
+
+        NAV_COL_SIZE+=( "$col_size" )
     done
 }
 
@@ -3057,61 +3073,63 @@ run_selection_menu() {
     while true; do
         local key=$(read_key)
 
-        # Unified two-column navigation model.
-        # The menu is displayed as two visual columns that span both the
+        # Multi-column navigation model.
+        # The menu is displayed as N visual columns that span both the
         # System Tasks section and the Utilities section.  UP/DOWN stays
         # within the same column (wrapping at the ends); LEFT/RIGHT jumps
-        # to the same row position in the other column (clamped if shorter).
+        # one column in that direction to the same row (clamped if shorter).
         # Columns are computed dynamically by build_nav_columns() (called once above).
-        local -a _nav_left=("${NAV_LEFT[@]}")
-        local -a _nav_right=("${NAV_RIGHT[@]}")
 
         # Determine which column the cursor is in and its position within it.
-        local _nav_col=-1   # 0 = left, 1 = right
-        local _nav_pos=-1   # 0-based position within the column
-        local _i
-        for _i in "${!_nav_left[@]}"; do
-            if [[ ${_nav_left[$_i]} -eq $CURSOR ]]; then _nav_col=0; _nav_pos=$_i; break; fi
-        done
-        if [[ $_nav_col -eq -1 ]]; then
-            for _i in "${!_nav_right[@]}"; do
-                if [[ ${_nav_right[$_i]} -eq $CURSOR ]]; then _nav_col=1; _nav_pos=$_i; break; fi
+        local _nav_col=-1
+        local _nav_pos=-1
+        local _c _r
+        for (( _c=0; _c<NAV_NUM_COLS; _c++ )); do
+            local _start=${NAV_COL_START[$_c]}
+            local _size=${NAV_COL_SIZE[$_c]}
+            for (( _r=0; _r<_size; _r++ )); do
+                if [[ ${NAV_FLAT[$(( _start + _r ))]} -eq $CURSOR ]]; then
+                    _nav_col=$_c
+                    _nav_pos=$_r
+                    break 2
+                fi
             done
-        fi
+        done
         # Fallback: keep cursor as-is if somehow not found
         [[ $_nav_col -eq -1 ]] && { _nav_col=0; _nav_pos=0; }
 
+        local _cur_start=${NAV_COL_START[$_nav_col]}
+        local _cur_size=${NAV_COL_SIZE[$_nav_col]}
+
         case "$key" in
             UP)
-                if [[ $_nav_col -eq 0 ]]; then
-                    local _new_pos=$(( (_nav_pos - 1 + ${#_nav_left[@]}) % ${#_nav_left[@]} ))
-                    CURSOR=${_nav_left[$_new_pos]}
-                else
-                    local _new_pos=$(( (_nav_pos - 1 + ${#_nav_right[@]}) % ${#_nav_right[@]} ))
-                    CURSOR=${_nav_right[$_new_pos]}
-                fi
+                local _new_pos=$(( (_nav_pos - 1 + _cur_size) % _cur_size ))
+                CURSOR=${NAV_FLAT[$(( _cur_start + _new_pos ))]}
                 redraw_menu
                 ;;
             DOWN)
-                if [[ $_nav_col -eq 0 ]]; then
-                    local _new_pos=$(( (_nav_pos + 1) % ${#_nav_left[@]} ))
-                    CURSOR=${_nav_left[$_new_pos]}
-                else
-                    local _new_pos=$(( (_nav_pos + 1) % ${#_nav_right[@]} ))
-                    CURSOR=${_nav_right[$_new_pos]}
-                fi
+                local _new_pos=$(( (_nav_pos + 1) % _cur_size ))
+                CURSOR=${NAV_FLAT[$(( _cur_start + _new_pos ))]}
                 redraw_menu
                 ;;
             LEFT)
-                # Jump to the same row in the left column (clamped to its size)
-                local _target_pos=$(( _nav_pos < ${#_nav_left[@]} ? _nav_pos : ${#_nav_left[@]} - 1 ))
-                CURSOR=${_nav_left[$_target_pos]}
+                if (( _nav_col > 0 )); then
+                    local _target_col=$(( _nav_col - 1 ))
+                    local _target_start=${NAV_COL_START[$_target_col]}
+                    local _target_size=${NAV_COL_SIZE[$_target_col]}
+                    local _target_pos=$(( _nav_pos < _target_size ? _nav_pos : _target_size - 1 ))
+                    CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
+                fi
                 redraw_menu
                 ;;
             RIGHT)
-                # Jump to the same row in the right column (clamped to its size)
-                local _target_pos=$(( _nav_pos < ${#_nav_right[@]} ? _nav_pos : ${#_nav_right[@]} - 1 ))
-                CURSOR=${_nav_right[$_target_pos]}
+                if (( _nav_col < NAV_NUM_COLS - 1 )); then
+                    local _target_col=$(( _nav_col + 1 ))
+                    local _target_start=${NAV_COL_START[$_target_col]}
+                    local _target_size=${NAV_COL_SIZE[$_target_col]}
+                    local _target_pos=$(( _nav_pos < _target_size ? _nav_pos : _target_size - 1 ))
+                    CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
+                fi
                 redraw_menu
                 ;;
             SPACE)
