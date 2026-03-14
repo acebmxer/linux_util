@@ -1788,13 +1788,61 @@ check_libreoffice() {
         pkg_check_installed libreoffice-still || \
         (has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice)
 }
+_libreoffice_install_from_site() {
+    # Download and install LibreOffice .deb packages directly from the official site.
+    # Usage: _libreoffice_install_from_site
+    ensure_tools
+    local lo_version arch_dir arch_file tmp_dir
+    lo_version=$(wget -qO- "https://download.documentfoundation.org/libreoffice/stable/" \
+        | grep -oP 'href="\K[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+    if [[ -z "$lo_version" ]]; then
+        echo "Error: Could not determine latest LibreOffice version."
+        return 1
+    fi
+    echo "Latest LibreOffice version: $lo_version"
+    case "$(uname -m)" in
+        x86_64)  arch_dir="x86_64"; arch_file="x86-64" ;;
+        aarch64) arch_dir="aarch64"; arch_file="aarch64" ;;
+        *)
+            echo "Error: Unsupported architecture $(uname -m) for direct download."
+            return 1
+            ;;
+    esac
+    local url="https://download.documentfoundation.org/libreoffice/stable/${lo_version}/deb/${arch_dir}/LibreOffice_${lo_version}_Linux_${arch_file}_deb.tar.gz"
+    tmp_dir=$(mktemp -d /tmp/libreoffice-install-XXXXXX)
+    CLEANUP_FILES+=("$tmp_dir")
+    echo "Downloading LibreOffice ${lo_version}..."
+    if ! wget -q --show-progress -O "$tmp_dir/libreoffice.tar.gz" "$url"; then
+        echo "Error: Failed to download LibreOffice from $url"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+    echo "Extracting..."
+    tar -xzf "$tmp_dir/libreoffice.tar.gz" -C "$tmp_dir"
+    local deb_dir
+    deb_dir=$(find "$tmp_dir" -type d -name "DEBS" | head -1)
+    if [[ -z "$deb_dir" ]]; then
+        echo "Error: Could not find DEBS directory in archive."
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+    echo "Installing .deb packages..."
+    if ! sudo dpkg -i "$deb_dir"/*.deb; then
+        sudo apt-get install -f -y || true
+        if ! sudo dpkg -i "$deb_dir"/*.deb; then
+            echo "Error: Failed to install LibreOffice .deb packages."
+            rm -rf "$tmp_dir"
+            return 1
+        fi
+    fi
+    rm -rf "$tmp_dir"
+    echo "LibreOffice ${lo_version} installed successfully."
+}
 install_libreoffice() {
     echo "Installing LibreOffice..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo add-apt-repository -y ppa:libreoffice/ppa
-            sudo apt update
-            sudo apt install -y libreoffice
+            _libreoffice_install_from_site
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" install -y libreoffice
@@ -1845,9 +1893,7 @@ update_libreoffice() {
     echo "Updating LibreOffice..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo add-apt-repository -y ppa:libreoffice/ppa
-            sudo apt update
-            sudo apt upgrade -y libreoffice
+            _libreoffice_install_from_site
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" upgrade -y libreoffice
