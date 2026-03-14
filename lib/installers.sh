@@ -281,23 +281,62 @@ get_version_xen_guest_utilities() {
 setup_xen_guest_utilities() {
     info "Installing/Updating XEN Guest Utilities..."
 
-    # CentOS / Fedora / AlmaLinux: install from EPEL repository
-    if [[ "$DISTRO_ID" == "centos" || "$DISTRO_ID" == "fedora" ]] || [[ "$DISTRO_ID" == "almalinux" ]]; then
-        # Enable EPEL repository if not already enabled
-        run_as_root "yum install -y epel-release" 2>/dev/null || true
+    # Primary method: Repository installation (per XCP-NG docs)
+    # https://docs.xcp-ng.org/vms/#linux-guest-tools
 
-        info "Installing xe-guest-utilities-latest via yum (EPEL)..."
-        if ! run_as_root "yum install -y xe-guest-utilities-latest"; then
-            info "xe-guest-utilities-latest not found, trying xe-guest-utilities..."
-            run_as_root "yum install -y xe-guest-utilities" || { error "Failed to install XEN Guest Utilities"; return 1; }
-        fi
+    case "$DISTRO_FAMILY" in
+        debian)
+            # Ubuntu/Debian: apt install
+            info "Installing xe-guest-utilities from repository..."
+            if run_as_root "apt-get update && apt-get install -y xe-guest-utilities"; then
+                info "XEN Guest Utilities installation completed."
+                return 0
+            fi
+            ;;
 
-        info "Enabling and starting xe-linux-distribution service..."
-        run_as_root "systemctl enable xe-linux-distribution" || warn "Failed to enable xe-linux-distribution"
-        run_as_root "systemctl start xe-linux-distribution" || warn "Failed to start xe-linux-distribution"
-        info "XEN Guest Utilities installation completed."
-        return 0
-    fi
+        fedora|rhel)
+            # CentOS/Fedora/AlmaLinux/Rocky: enable EPEL, then yum install
+            run_as_root "yum install -y epel-release" 2>/dev/null || true
+            info "Installing xe-guest-utilities from EPEL repository..."
+            if run_as_root "yum install -y xe-guest-utilities-latest" 2>/dev/null || \
+               run_as_root "yum install -y xe-guest-utilities"; then
+                info "Enabling and starting xe-linux-distribution service..."
+                run_as_root "systemctl enable xe-linux-distribution" || warn "Failed to enable xe-linux-distribution"
+                run_as_root "systemctl start xe-linux-distribution" || warn "Failed to start xe-linux-distribution"
+                info "XEN Guest Utilities installation completed."
+                return 0
+            fi
+            ;;
+
+        arch)
+            # Arch Linux
+            info "Installing xe-guest-utilities from repository..."
+            if run_as_root "pacman -S --noconfirm xe-guest-utilities"; then
+                info "XEN Guest Utilities installation completed."
+                return 0
+            fi
+            ;;
+
+        suse)
+            # openSUSE/SLES
+            info "Installing xe-guest-utilities from repository..."
+            if run_as_root "zypper install -y xe-guest-utilities"; then
+                info "XEN Guest Utilities installation completed."
+                return 0
+            fi
+            ;;
+
+        alpine)
+            # Alpine Linux
+            run_as_root "apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/community xe-guest-utilities" 2>/dev/null
+            if pkg_check_installed xe-guest-utilities; then
+                info "XEN Guest Utilities installation completed."
+                return 0
+            fi
+            ;;
+    esac
+
+    info "Repository installation unavailable or failed. Falling back to ISO installation..."
 
     # Check for existing installations and optionally remove them
     if pkg_check_installed xe-guest-utilities; then
