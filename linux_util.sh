@@ -2851,7 +2851,7 @@ draw_menu() {
     local num_columns=$(( (utilities_count + rows_per_column - 1) / rows_per_column ))
     local system_num_columns=$(( (system_tasks + system_rows_per_column - 1) / system_rows_per_column ))
 
-    local sys_col_width=40
+    local sys_col_width=36
     local util_col_width=36
     
     local dry_run_label=""
