@@ -113,12 +113,6 @@ draw_menu() {
                 checkbox="${GREEN}[✓]${RESET}"
             fi
 
-            # VERSION DISPLAY LOGIC:
-            # ├─ If utility is installed AND has version info → "(vX.Y.Z)" in MAGENTA
-            # ├─ If utility is installed but NO version info → "(installed)" in MAGENTA
-            # └─ If utility not installed → no status tag displayed
-            # IMPORTANT: INSTALLED_VERSIONS[$i] is populated by get_version_*() functions
-            # during check_installed_utilities() (line 3220-3232)
             # Show installed status (with version if available)
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
                 local ver="${INSTALLED_VERSIONS[$i]:-}"
@@ -136,12 +130,6 @@ draw_menu() {
                 item="${prefix}${checkbox} ${name}${status_tag}"
             fi
 
-            # COLUMN PADDING CALCULATION (for alignment in 2-column layout):
-            # Spacing is NOT hard-coded—it's calculated based on item width.
-            # util_col_width = 40 chars max per column (line 3286)
-            # visible_len = actual width of: "  " + "[X]" + " " + name + " (vX.Y.Z)"
-            # padding = util_col_width - visible_len (minimum 2 spaces)
-            # This ensures right column aligns regardless of name/version length.
             # Add padding for columns using visible width (no ANSI codes)
             if [[ $col -lt $((system_num_columns - 1)) ]]; then
                 local plain_status=""
