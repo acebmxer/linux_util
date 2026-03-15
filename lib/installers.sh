@@ -1510,10 +1510,12 @@ get_version_joplin() {
 check_libreoffice() {
     command -v libreoffice &>/dev/null || \
         command -v soffice &>/dev/null || \
+        compgen -G "/opt/libreoffice*/program/soffice" &>/dev/null || \
         pkg_check_installed libreoffice || \
         pkg_check_installed libreoffice-common || \
         pkg_check_installed libreoffice-fresh || \
         pkg_check_installed libreoffice-still || \
+        dpkg -l 'libreoffice[0-9]*' 2>/dev/null | grep -q "^ii" || \
         (has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice)
 }
 _libreoffice_install_from_site() {
@@ -1646,7 +1648,10 @@ update_libreoffice() {
     esac
 }
 get_version_libreoffice() {
-    libreoffice --version 2>/dev/null | grep -oP 'LibreOffice \K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
+    local lo_bin
+    lo_bin=$(command -v libreoffice 2>/dev/null || command -v soffice 2>/dev/null || \
+        compgen -G "/opt/libreoffice*/program/soffice" 2>/dev/null | sort -V | tail -1)
+    [[ -n "$lo_bin" ]] && "$lo_bin" --version 2>/dev/null | grep -oP 'LibreOffice \K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
 }
 
 # --- Termius SSH Client ---
@@ -2510,28 +2515,7 @@ install_pia_vpn() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            # Try apt repo first, fall back to .run installer if repo is unreachable
-            local _pia_apt_ok=true
-            if ! curl -fsSL https://repo.privateinternetaccess.com/debian/key/deb.gpg.key | \
-                sudo gpg --yes --dearmor -o /usr/share/keyrings/pia-archive-keyring.gpg 2>/dev/null; then
-                warn "Failed to fetch PIA repository key, falling back to .run installer."
-                _pia_apt_ok=false
-            fi
-            if $_pia_apt_ok; then
-                echo "deb [signed-by=/usr/share/keyrings/pia-archive-keyring.gpg] https://repo.privateinternetaccess.com/debian/deb_ubuntu jammy main" | \
-                    sudo tee /etc/apt/sources.list.d/pia.list > /dev/null
-                sudo apt update
-                if ! sudo apt install -y privateinternetaccess; then
-                    warn "apt install failed, falling back to .run installer."
-                    _pia_apt_ok=false
-                    # Clean up broken repo config
-                    sudo rm -f /etc/apt/sources.list.d/pia.list
-                    sudo rm -f /usr/share/keyrings/pia-archive-keyring.gpg
-                fi
-            fi
-            if ! $_pia_apt_ok; then
-                _pia_install_via_run || return 1
-            fi
+            _pia_install_via_run || return 1
             ;;
         fedora|rhel)
             _pia_install_via_run || return 1
@@ -2559,12 +2543,20 @@ install_pia_vpn() {
     echo "PIA VPN installed successfully."
 }
 
-# Download and install PIA VPN from the official .run installer.
+# Download and install PIA VPN from the official website.
 _pia_install_via_run() {
-    local pia_installer
+    local pia_installer pia_url
     pia_installer=$(mktemp /tmp/pia-XXXXXX.run)
     CLEANUP_FILES+=("$pia_installer")
-    if ! wget -qO "$pia_installer" "https://installers.privateinternetaccess.com/download/pia-linux-x64.run"; then
+    # Scrape the current x64 .run download URL from the PIA website
+    pia_url=$(curl -fsSL "https://www.privateinternetaccess.com/download/linux-vpn" | \
+        grep -oE 'https://[^"]+pia-linux-[0-9][^"]*\.run' | head -1)
+    if [[ -z "$pia_url" ]]; then
+        echo "Error: Failed to get PIA VPN download URL from website."
+        rm -f "$pia_installer"
+        return 1
+    fi
+    if ! wget -qO "$pia_installer" "$pia_url"; then
         echo "Error: Failed to download PIA VPN installer. Check network connectivity."
         rm -f "$pia_installer"
         return 1
@@ -2603,20 +2595,8 @@ uninstall_pia_vpn() {
 update_pia_vpn() {
     echo "Updating PIA VPN..."
     case "$DISTRO_FAMILY" in
-        debian)
-            sudo apt update
-            sudo apt upgrade -y privateinternetaccess
-            ;;
-        fedora|rhel)
-            # Update PIA VPN from official installer
-            local pia_installer
-            pia_installer=$(mktemp /tmp/pia-XXXXXX.run)
-            CLEANUP_FILES+=("$pia_installer")
-            if wget -qO "$pia_installer" "https://installers.privateinternetaccess.com/download/pia-linux-x64.run"; then
-                chmod +x "$pia_installer"
-                "$pia_installer" --accept --quiet
-            fi
-            rm -f "$pia_installer"
+        debian|fedora|rhel)
+            _pia_install_via_run || return 1
             ;;
         arch)
             sudo pacman -S --noconfirm privateinternetaccess-bin 2>/dev/null || \
