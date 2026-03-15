@@ -19,6 +19,9 @@ if (( BASH_VERSINFO[0] < 4 )); then
     exit 1
 fi
 
+# Catch pipeline failures (e.g. cmd | grep where cmd fails)
+set -o pipefail
+
 # Dry-run flag — set to true via --dry-run CLI argument
 DRY_RUN=false
 
@@ -43,6 +46,7 @@ SCRIPT_PATH="${SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")"
 LOG_DIR="${SCRIPT_DIR}/logs"
 
 # Restrict log file permissions (owner-only read/write)
+ORIG_UMASK=$(umask)
 umask 077
 
 # Create log directory if it doesn't exist
@@ -82,6 +86,9 @@ ERROR_LOG_INITIALIZED=false
 
 # Create/update latest success log symlink
 ln -sf "$(basename "$SUCCESS_LOG")" "$LATEST_SUCCESS_LOG" 2>/dev/null || cp "$SUCCESS_LOG" "$LATEST_SUCCESS_LOG"
+
+# Restore original umask so installers create files with normal permissions
+umask "$ORIG_UMASK"
 
 # ============================================================================
 # SOURCE LIBRARY MODULES
@@ -379,30 +386,6 @@ process_selected() {
 # ============================================================================
 # COMMAND-LINE ARGUMENT PARSING
 # ============================================================================
-
-resolve_utility_name() {
-    local input="$1"
-    local input_lower=$(echo "$input" | tr '[:upper:]' '[:lower:]')
-
-    # First try exact match (case-insensitive)
-    for util in "${UTILITIES[@]}"; do
-        if [[ "$(echo "$util" | tr '[:upper:]' '[:lower:]')" == "$input_lower" ]]; then
-            _RESOLVED="$util"
-            return 0
-        fi
-    done
-
-    # Then try partial match
-    for util in "${UTILITIES[@]}"; do
-        if [[ "$(echo "$util" | tr '[:upper:]' '[:lower:]')" == *"$input_lower"* ]]; then
-            _RESOLVED="$util"
-            return 0
-        fi
-    done
-
-    echo "Error: Utility '$input' not found."
-    return 1
-}
 
 parse_args() {
     while [[ $# -gt 0 ]]; do

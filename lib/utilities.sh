@@ -54,6 +54,7 @@ resolve_utility_name() {
 
 # Check which utilities are already installed (populates INSTALLED[] and INSTALLED_VERSIONS[])
 check_installed_utilities() {
+    echo "Checking installed utilities..."
     local total=${#UTILITIES[@]}
     for ((i=0; i<total; i++)); do
         local util="${UTILITIES[$i]}"

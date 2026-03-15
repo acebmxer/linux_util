@@ -25,10 +25,14 @@ _err_handler() {
     local _exit_code=$?
     # Suppress logging for common intentional-failure patterns
     case "$BASH_COMMAND" in
-        *"command -v"*|*"grep -q"*|*"2>/dev/null"*|*"|| true"*|*"|| return"*|*"|| warn"*|*"|| echo"*)
+        *"command -v"*|*"grep -q"*|*"2>/dev/null"*|*"&>/dev/null"*|*"|| true"*|*"|| return"*|*"|| warn"*|*"|| echo"*)
             return 0 ;;
     esac
-    log_error "Unexpected error at line $LINENO: Command \"$BASH_COMMAND\" failed (exit $_exit_code)"
+    # check_* functions return 1 to indicate "not installed", not an error
+    if [[ "${FUNCNAME[1]:-}" == check_* ]]; then
+        return 0
+    fi
+    log_error "Unexpected error at line ${BASH_LINENO[0]:-$LINENO}: Command \"$BASH_COMMAND\" failed (exit $_exit_code)"
 }
 
 # Function to initialize error log on first error
