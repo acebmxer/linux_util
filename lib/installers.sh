@@ -467,41 +467,29 @@ _install_from_iso_tgz() {
     return 0
 }
 
-# Verify that XEN guest services are running after installation.
-# Checks for known service names and reports status.
+# Verify that the xe-linux-distribution service is running after installation.
 _verify_xen_services() {
-    local services=("xe-linux-distribution" "xe-daemon" "xen-guest-agent")
-    local found=false
+    local svc="xe-linux-distribution"
     local max_attempts=6
     local wait_seconds=5
 
-    for svc in "${services[@]}"; do
-        if systemctl list-unit-files "${svc}.service" &>/dev/null && \
-           systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "${svc}"; then
-            found=true
-            info "Waiting for ${svc} service to start..."
-            local attempt=0
-            while (( attempt < max_attempts )); do
-                if systemctl is-active --quiet "${svc}"; then
-                    info "${svc} service is running."
-                    return 0
-                fi
-                (( attempt++ ))
-                if (( attempt < max_attempts )); then
-                    sleep "$wait_seconds"
-                fi
-            done
-            warn "${svc} service failed to start within $(( max_attempts * wait_seconds )) seconds."
-            warn "Service status:"
-            systemctl status "${svc}" --no-pager 2>&1 | head -20
-            return 1
+    info "Verifying ${svc} service started..."
+    local attempt=0
+    while (( attempt < max_attempts )); do
+        if systemctl is-active --quiet "${svc}"; then
+            info "${svc} service is running."
+            return 0
+        fi
+        (( attempt++ ))
+        if (( attempt < max_attempts )); then
+            sleep "$wait_seconds"
         fi
     done
 
-    if ! $found; then
-        warn "No known XEN guest service units found. Service may need manual configuration."
-        return 1
-    fi
+    warn "${svc} service failed to start within $(( max_attempts * wait_seconds )) seconds."
+    warn "Service status:"
+    systemctl status "${svc}" --no-pager 2>&1 | head -20
+    return 1
 }
 
 # Helper function: Install XEN utilities from repository (fallback method)
