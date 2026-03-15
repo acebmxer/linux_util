@@ -25,10 +25,14 @@ _err_handler() {
     local _exit_code=$?
     # Suppress logging for common intentional-failure patterns
     case "$BASH_COMMAND" in
-        *"command -v"*|*"grep -q"*|*"2>/dev/null"*|*"|| true"*|*"|| return"*|*"|| warn"*|*"|| echo"*)
+        *"command -v"*|*"grep -q"*|*"2>/dev/null"*|*"&>/dev/null"*|*"|| true"*|*"|| return"*|*"|| warn"*|*"|| echo"*)
             return 0 ;;
     esac
-    log_error "Unexpected error at line $LINENO: Command \"$BASH_COMMAND\" failed (exit $_exit_code)"
+    # check_* functions return 1 to indicate "not installed", not an error
+    if [[ "${FUNCNAME[1]:-}" == check_* ]]; then
+        return 0
+    fi
+    log_error "Unexpected error at line ${BASH_LINENO[0]:-$LINENO}: Command \"$BASH_COMMAND\" failed (exit $_exit_code)"
 }
 
 # Function to initialize error log on first error
@@ -106,4 +110,59 @@ log_command() {
     fi
 
     return $exit_code
+}
+
+# ============================================================================
+# Performance Metrics
+# Tracks per-operation timing and saves to a persistent metrics log.
+# ============================================================================
+
+# Script-level start time (epoch seconds)
+SCRIPT_START_TIME=""
+
+# Metrics log file (append-only, one line per operation)
+METRICS_LOG=""
+
+# Initialize the metrics system. Call once at script start.
+metrics_init() {
+    SCRIPT_START_TIME=$(date +%s)
+    METRICS_LOG="${LOG_DIR}/metrics.log"
+
+    # Write header if file is new
+    if [[ ! -f "$METRICS_LOG" ]]; then
+        echo "# linux_util performance metrics" > "$METRICS_LOG"
+        echo "# Format: timestamp | operation | utility | duration_seconds | status" >> "$METRICS_LOG"
+    fi
+}
+
+# Record a single operation's metrics.
+# Usage: metrics_record "install" "Docker" 42 "success"
+metrics_record() {
+    local operation="$1"
+    local utility="$2"
+    local duration="$3"
+    local status="$4"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    [[ -z "$METRICS_LOG" ]] && return 0
+
+    echo "${timestamp} | ${operation} | ${utility} | ${duration}s | ${status}" >> "$METRICS_LOG"
+}
+
+# Print a metrics summary for the current run.
+# Shows total execution time and per-operation stats.
+metrics_summary() {
+    [[ -z "$SCRIPT_START_TIME" ]] && return 0
+
+    local end_time
+    end_time=$(date +%s)
+    local total_duration=$(( end_time - SCRIPT_START_TIME ))
+    local minutes=$(( total_duration / 60 ))
+    local seconds=$(( total_duration % 60 ))
+
+    echo ""
+    echo "Total execution time: ${minutes}m ${seconds}s"
+    log_info "Total execution time: ${minutes}m ${seconds}s"
+    metrics_record "session" "total" "$total_duration" "complete"
 }

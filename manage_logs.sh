@@ -190,8 +190,12 @@ show_stats() {
     
     local total_logs=$(find "$LOG_DIR" -name "*.log" 2>/dev/null | wc -l)
     local total_size=$(du -sh "$LOG_DIR" 2>/dev/null | cut -f1)
-    local success_count=$(ls "$LOG_DIR"/success_*.log 2>/dev/null | wc -l)
-    local error_count=$(ls "$LOG_DIR"/error_*.log 2>/dev/null | wc -l)
+    local -a _s_logs=("$LOG_DIR"/success_*.log)
+    [[ -e "${_s_logs[0]}" ]] || _s_logs=()
+    local success_count=${#_s_logs[@]}
+    local -a _e_logs=("$LOG_DIR"/error_*.log)
+    [[ -e "${_e_logs[0]}" ]] || _e_logs=()
+    local error_count=${#_e_logs[@]}
     
     echo "Total log files: ${total_logs}"
     echo "Total size: ${total_size}"

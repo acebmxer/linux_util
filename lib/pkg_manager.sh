@@ -21,7 +21,7 @@ detect_distro() {
 
     # Determine distro family
     case "$DISTRO_ID" in
-        ubuntu|debian|linuxmint|pop|elementary|zorin|kali|neon)
+        ubuntu|kubuntu|debian|linuxmint|pop|elementary|zorin|kali|neon)
             DISTRO_FAMILY="debian"
             PKG_MGR="apt"
             ;;

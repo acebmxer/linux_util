@@ -17,6 +17,11 @@ BLUE="${CSI}34m"
 MAGENTA="${CSI}35m"
 CYAN="${CSI}36m"
 
+# Respect the NO_COLOR standard (https://no-color.org/) and non-interactive terminals.
+if [[ ! -t 1 || -n "${NO_COLOR:-}" ]]; then
+    BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN=""
+fi
+
 # Hide cursor
 hide_cursor() { printf "${CSI}?25l"; }
 # Show cursor
@@ -108,12 +113,6 @@ draw_menu() {
                 checkbox="${GREEN}[✓]${RESET}"
             fi
 
-            # VERSION DISPLAY LOGIC:
-            # ├─ If utility is installed AND has version info → "(vX.Y.Z)" in MAGENTA
-            # ├─ If utility is installed but NO version info → "(installed)" in MAGENTA
-            # └─ If utility not installed → no status tag displayed
-            # IMPORTANT: INSTALLED_VERSIONS[$i] is populated by get_version_*() functions
-            # during check_installed_utilities() (line 3220-3232)
             # Show installed status (with version if available)
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
                 local ver="${INSTALLED_VERSIONS[$i]:-}"
@@ -131,12 +130,6 @@ draw_menu() {
                 item="${prefix}${checkbox} ${name}${status_tag}"
             fi
 
-            # COLUMN PADDING CALCULATION (for alignment in 2-column layout):
-            # Spacing is NOT hard-coded—it's calculated based on item width.
-            # util_col_width = 40 chars max per column (line 3286)
-            # visible_len = actual width of: "  " + "[X]" + " " + name + " (vX.Y.Z)"
-            # padding = util_col_width - visible_len (minimum 2 spaces)
-            # This ensures right column aligns regardless of name/version length.
             # Add padding for columns using visible width (no ANSI codes)
             if [[ $col -lt $((system_num_columns - 1)) ]]; then
                 local plain_status=""
@@ -261,6 +254,9 @@ draw_menu() {
     echo ""
     echo "${YELLOW}↑/↓/←/→ navigate  SPACE select  U update installed  A select-all  D deselect-all  ENTER confirm  Q quit${RESET}"
     echo ""
+    echo "${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} select  ${YELLOW}[U]${RESET}${DIM} update  ${RESET}${DIM}[ ]${RESET}${DIM} none  ${MAGENTA}(installed)${RESET}${DIM} = on system${RESET}"
+    echo "${DIM}[✓] on installed = uninstall; [✓] on missing = install; [U] on installed = update.${RESET}"
+    echo ""
 }
 
 # Redraw the menu (clear and redraw for reliability)
@@ -364,3 +360,185 @@ NAV_NUM_COLS=0
 
 # Escape key for terminal input
 ESC=$'\x1b'
+
+# Main selection loop
+run_selection_menu() {
+    local total=${#UTILITIES[@]}
+
+    # Check which utilities are already installed
+    check_installed_utilities
+
+    # Fetch commit info once to avoid network call on every redraw
+    CACHED_LOCAL_COMMIT=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    local _remote_full
+    _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin HEAD 2>/dev/null | awk '{print $1}')
+    if [[ -n "$_remote_full" ]]; then
+        CACHED_REMOTE_COMMIT="${_remote_full:0:7}"
+    else
+        CACHED_REMOTE_COMMIT="unknown"
+    fi
+
+    # Build navigation column layout once (dynamic — adapts to UTILITIES count)
+    build_nav_columns
+
+    # Setup terminal
+    hide_cursor
+    stty -echo
+
+    # Cleanup on exit
+    trap 'show_cursor; stty echo; echo ""; cleanup_on_exit' EXIT
+
+    # Redraw on terminal resize
+    trap 'redraw_menu' WINCH
+
+    # Initial draw
+    clear
+    draw_menu
+
+    while true; do
+        local key=$(read_key)
+
+        # Multi-column navigation model.
+        # UP/DOWN stays within the same column (wrapping at the ends);
+        # LEFT/RIGHT jumps one column in that direction to the same row.
+
+        # Determine which column the cursor is in and its position within it.
+        local _nav_col=-1
+        local _nav_pos=-1
+        local _c _r
+        for (( _c=0; _c<NAV_NUM_COLS; _c++ )); do
+            local _start=${NAV_COL_START[$_c]}
+            local _size=${NAV_COL_SIZE[$_c]}
+            for (( _r=0; _r<_size; _r++ )); do
+                if [[ ${NAV_FLAT[$(( _start + _r ))]} -eq $CURSOR ]]; then
+                    _nav_col=$_c
+                    _nav_pos=$_r
+                    break 2
+                fi
+            done
+        done
+        # Fallback: keep cursor as-is if somehow not found
+        [[ $_nav_col -eq -1 ]] && { _nav_col=0; _nav_pos=0; }
+
+        local _cur_start=${NAV_COL_START[$_nav_col]}
+        local _cur_size=${NAV_COL_SIZE[$_nav_col]}
+
+        case "$key" in
+            UP)
+                local _new_pos=$(( (_nav_pos - 1 + _cur_size) % _cur_size ))
+                CURSOR=${NAV_FLAT[$(( _cur_start + _new_pos ))]}
+                redraw_menu
+                ;;
+            DOWN)
+                local _new_pos=$(( (_nav_pos + 1) % _cur_size ))
+                CURSOR=${NAV_FLAT[$(( _cur_start + _new_pos ))]}
+                redraw_menu
+                ;;
+            LEFT)
+                if (( _nav_col > 0 )); then
+                    local _target_col=$(( _nav_col - 1 ))
+                    local _target_start=${NAV_COL_START[$_target_col]}
+                    local _target_size=${NAV_COL_SIZE[$_target_col]}
+                    local _cur_sys=${NAV_COL_SYS_SIZE[$_nav_col]}
+                    local _target_sys=${NAV_COL_SYS_SIZE[$_target_col]}
+                    local _target_pos
+                    if (( _nav_pos < _cur_sys )); then
+                        _target_pos=$(( _nav_pos < _target_sys ? _nav_pos : _target_sys - 1 ))
+                    else
+                        local _util_row=$(( _nav_pos - _cur_sys ))
+                        local _target_util_size=$(( _target_size - _target_sys ))
+                        if (( _target_util_size > 0 )); then
+                            _target_pos=$(( _target_sys + (_util_row < _target_util_size ? _util_row : _target_util_size - 1) ))
+                        else
+                            _target_pos=$(( _target_size - 1 ))
+                        fi
+                    fi
+                    CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
+                fi
+                redraw_menu
+                ;;
+            RIGHT)
+                if (( _nav_col < NAV_NUM_COLS - 1 )); then
+                    local _target_col=$(( _nav_col + 1 ))
+                    local _target_start=${NAV_COL_START[$_target_col]}
+                    local _target_size=${NAV_COL_SIZE[$_target_col]}
+                    local _cur_sys=${NAV_COL_SYS_SIZE[$_nav_col]}
+                    local _target_sys=${NAV_COL_SYS_SIZE[$_target_col]}
+                    local _target_pos
+                    if (( _nav_pos < _cur_sys )); then
+                        _target_pos=$(( _nav_pos < _target_sys ? _nav_pos : _target_sys - 1 ))
+                    else
+                        local _util_row=$(( _nav_pos - _cur_sys ))
+                        local _target_util_size=$(( _target_size - _target_sys ))
+                        if (( _target_util_size > 0 )); then
+                            _target_pos=$(( _target_sys + (_util_row < _target_util_size ? _util_row : _target_util_size - 1) ))
+                        else
+                            _target_pos=$(( _target_size - 1 ))
+                        fi
+                    fi
+                    CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
+                fi
+                redraw_menu
+                ;;
+            SPACE)
+                # Cycle through states: [ ] → [✓] → [U] (if installed) → [ ]
+                if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 1 ]]; then
+                    # [U] → [ ]
+                    UPDATE_SELECTED[$CURSOR]=0
+                    SELECTED[$CURSOR]=0
+                elif [[ ${SELECTED[$CURSOR]} -eq 1 ]]; then
+                    # [✓] → [U] if installed, otherwise [✓] → [ ]
+                    SELECTED[$CURSOR]=0
+                    if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                        UPDATE_SELECTED[$CURSOR]=1
+                    fi
+                else
+                    # [ ] → [✓]
+                    SELECTED[$CURSOR]=1
+                fi
+                redraw_menu
+                ;;
+            UPDATE)
+                # Toggle update mode for installed items only
+                if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                    SELECTED[$CURSOR]=0   # clear install/uninstall selection
+                    if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 0 ]]; then
+                        UPDATE_SELECTED[$CURSOR]=1
+                    else
+                        UPDATE_SELECTED[$CURSOR]=0
+                    fi
+                    redraw_menu
+                fi
+                ;;
+            SELECT_ALL)
+                for ((i=0; i<${#UTILITIES[@]}; i++)); do
+                    SELECTED[$i]=1
+                    UPDATE_SELECTED[$i]=0
+                done
+                redraw_menu
+                ;;
+            DESELECT_ALL)
+                for ((i=0; i<${#UTILITIES[@]}; i++)); do
+                    SELECTED[$i]=0
+                    UPDATE_SELECTED[$i]=0
+                done
+                redraw_menu
+                ;;
+            ENTER)
+                # Continue to installation
+                show_cursor
+                stty echo
+                trap cleanup_on_exit EXIT
+                return 0
+                ;;
+            QUIT)
+                show_cursor
+                stty echo
+                trap cleanup_on_exit EXIT
+                echo ""
+                echo "${YELLOW}Operation cancelled.${RESET}"
+                exit 0
+                ;;
+        esac
+    done
+}

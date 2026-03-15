@@ -19,6 +19,9 @@ if (( BASH_VERSINFO[0] < 4 )); then
     exit 1
 fi
 
+# Catch pipeline failures (e.g. cmd | grep where cmd fails)
+set -o pipefail
+
 # Dry-run flag — set to true via --dry-run CLI argument
 DRY_RUN=false
 
@@ -43,6 +46,7 @@ SCRIPT_PATH="${SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")"
 LOG_DIR="${SCRIPT_DIR}/logs"
 
 # Restrict log file permissions (owner-only read/write)
+ORIG_UMASK=$(umask)
 umask 077
 
 # Create log directory if it doesn't exist
@@ -83,13 +87,25 @@ ERROR_LOG_INITIALIZED=false
 # Create/update latest success log symlink
 ln -sf "$(basename "$SUCCESS_LOG")" "$LATEST_SUCCESS_LOG" 2>/dev/null || cp "$SUCCESS_LOG" "$LATEST_SUCCESS_LOG"
 
+# Restore original umask so installers create files with normal permissions
+umask "$ORIG_UMASK"
+
 # ============================================================================
 # SOURCE LIBRARY MODULES
 # ============================================================================
 
-# Source all library modules in dependency order
+# Source config module first (provides debug/verbose helpers used by all modules)
+source "${SCRIPT_DIR}/lib/config.sh" || { echo "Error: Failed to source config.sh"; exit 1; }
+
+# Load user configuration (overrides defaults set in config.sh)
+load_config
+
+# Source remaining library modules in dependency order
 source "${SCRIPT_DIR}/lib/logging.sh" || { echo "Error: Failed to source logging.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/pkg_manager.sh" || { echo "Error: Failed to source pkg_manager.sh"; exit 1; }
+
+# Initialize performance metrics tracking
+metrics_init
 
 # ============================================================================
 # SYSTEM INITIALIZATION
@@ -105,6 +121,10 @@ source "${SCRIPT_DIR}/lib/system.sh" || { echo "Error: Failed to source system.s
 source "${SCRIPT_DIR}/lib/utilities.sh" || { echo "Error: Failed to source utilities.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/menu.sh" || { echo "Error: Failed to source menu.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/installers.sh" || { echo "Error: Failed to source installers.sh"; exit 1; }
+
+# Initialize dependency map and health checks (must be after installers.sh registers utilities)
+_init_deps_map
+_init_health_checks
 
 # Setup traps for cleanup and error handling
 trap cleanup_on_exit EXIT
@@ -210,8 +230,15 @@ process_selected() {
         exit 0
     fi
 
-    # Check internet before any downloads
-    check_internet || true
+    # Run pre-flight checks before proceeding
+    if ! preflight_checks; then
+        read -n 1 -rp "Pre-flight checks failed. Continue anyway? (y/N) " _pf_ans
+        echo
+        if [[ ! "$_pf_ans" =~ ^[Yy]$ ]]; then
+            echo "${YELLOW}Aborted.${RESET}"
+            exit 1
+        fi
+    fi
 
     # Update package lists first
     echo "${CYAN}Updating package lists...${RESET}"
@@ -223,103 +250,97 @@ process_selected() {
     local fail_count=0
     declare -a failed_utils
 
-    # Process uninstallations first
-    for util in "${to_uninstall[@]}"; do
+    # --- Helper: run a single operation (install/uninstall/update) ---
+    _run_operation() {
+        local op_type="$1"   # install, uninstall, update
+        local util="$2"
+        local func="$3"
+        local color="$4"
+        local label="$5"
+
         echo ""
-        echo "${BOLD}${RED}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${RED}Uninstalling: $util${RESET}"
-        echo "${BOLD}${RED}────────────────────────────────────────────────────────────────${RESET}"
+        echo "${BOLD}${color}────────────────────────────────────────────────────────────────${RESET}"
+        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${color}${label}: $util${RESET}"
+        echo "${BOLD}${color}────────────────────────────────────────────────────────────────${RESET}"
         echo ""
 
-        log_info "Starting uninstallation: $util"
+        log_info "Starting ${op_type}: $util"
+
+        # Resolve dependencies before install/update
+        if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
+            resolve_dependencies "$util" || verbose "Dependency resolution skipped for ${util}"
+        fi
+
         local _op_start=$SECONDS
+        local _op_status="success"
 
-        local func="${UNINSTALL_FUNCS[$util]}"
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
             if $func; then
+                local _duration=$(( SECONDS - _op_start ))
                 echo ""
-                echo "${GREEN}✓ Successfully uninstalled: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_success "Uninstalled: $util"
+                echo "${GREEN}✓ Successfully ${op_type}ed: $util${RESET} ${DIM}(${_duration}s)${RESET}"
+                log_success "${label}: $util"
+                metrics_record "$op_type" "$util" "$_duration" "success"
+
+                # Run health check after install/update
+                if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
+                    health_check "$util" || true
+                fi
+
                 ((success_count++))
             else
+                local _duration=$(( SECONDS - _op_start ))
                 echo ""
-                echo "${RED}✗ Failed to uninstall: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_error "Failed to uninstall: $util"
+                echo "${RED}✗ Failed to ${op_type}: $util${RESET} ${DIM}(${_duration}s)${RESET}"
+                log_error "Failed to ${op_type}: $util"
+                metrics_record "$op_type" "$util" "$_duration" "failed"
+
+                # Retry logic
+                if [[ "$CFG_RETRY_FAILED" == "true" && "$op_type" != "uninstall" ]]; then
+                    local _attempt=1
+                    while (( _attempt < CFG_RETRY_ATTEMPTS )); do
+                        ((_attempt++))
+                        echo "${YELLOW}Retrying ${op_type} for ${util} (attempt ${_attempt}/${CFG_RETRY_ATTEMPTS})...${RESET}"
+                        local _retry_start=$SECONDS
+                        if $func; then
+                            local _retry_dur=$(( SECONDS - _retry_start ))
+                            echo "${GREEN}✓ Retry succeeded: $util${RESET} ${DIM}(${_retry_dur}s)${RESET}"
+                            log_success "Retry ${op_type} succeeded: $util (attempt ${_attempt})"
+                            metrics_record "${op_type}_retry" "$util" "$_retry_dur" "success"
+                            _op_status="success"
+                            ((success_count++))
+                            if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
+                                health_check "$util" || true
+                            fi
+                            return 0
+                        fi
+                    done
+                fi
+
                 ((fail_count++))
-                failed_utils+=("$util (uninstall)")
+                failed_utils+=("$util (${op_type})")
             fi
         else
-            echo "${RED}✗ No uninstall function found for: $util${RESET}"
-            log_error "No uninstall function found for: $util"
+            echo "${RED}✗ No ${op_type} function found for: $util${RESET}"
+            log_error "No ${op_type} function found for: $util"
             ((fail_count++))
-            failed_utils+=("$util (uninstall)")
+            failed_utils+=("$util (${op_type})")
         fi
+    }
+
+    # Process uninstallations first
+    for util in "${to_uninstall[@]}"; do
+        _run_operation "uninstall" "$util" "${UNINSTALL_FUNCS[$util]}" "$RED" "Uninstalling"
     done
 
     # Process installations
     for util in "${to_install[@]}"; do
-        echo ""
-        echo "${BOLD}${GREEN}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${GREEN}Installing/Running: $util${RESET}"
-        echo "${BOLD}${GREEN}────────────────────────────────────────────────────────────────${RESET}"
-        echo ""
-
-        log_info "Starting installation: $util"
-        local _op_start=$SECONDS
-
-        local func="${INSTALL_FUNCS[$util]}"
-        if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
-            if $func; then
-                echo ""
-                echo "${GREEN}✓ Successfully completed: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_success "Installed: $util"
-                ((success_count++))
-            else
-                echo ""
-                echo "${RED}✗ Failed: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_error "Failed to install: $util"
-                ((fail_count++))
-                failed_utils+=("$util (install)")
-            fi
-        else
-            echo "${RED}✗ No installation function found for: $util${RESET}"
-            log_error "No installation function found for: $util"
-            ((fail_count++))
-            failed_utils+=("$util (install)")
-        fi
+        _run_operation "install" "$util" "${INSTALL_FUNCS[$util]}" "$GREEN" "Installing/Running"
     done
 
     # Process updates
     for util in "${to_update[@]}"; do
-        echo ""
-        echo "${BOLD}${YELLOW}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${YELLOW}Updating: $util${RESET}"
-        echo "${BOLD}${YELLOW}────────────────────────────────────────────────────────────────${RESET}"
-        echo ""
-
-        log_info "Starting update: $util"
-        local _op_start=$SECONDS
-
-        local func="${UPDATE_FUNCS[$util]}"
-        if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
-            if $func; then
-                echo ""
-                echo "${GREEN}✓ Successfully updated: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_success "Updated: $util"
-                ((success_count++))
-            else
-                echo ""
-                echo "${RED}✗ Failed to update: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_error "Failed to update: $util"
-                ((fail_count++))
-                failed_utils+=("$util (update)")
-            fi
-        else
-            echo "${RED}✗ No update function found for: $util${RESET}"
-            log_error "No update function found for: $util"
-            ((fail_count++))
-            failed_utils+=("$util (update)")
-        fi
+        _run_operation "update" "$util" "${UPDATE_FUNCS[$util]}" "$YELLOW" "Updating"
     done
 
     # Summary
@@ -348,6 +369,9 @@ process_selected() {
         done
     fi
     echo ""
+
+    # Performance metrics summary
+    metrics_summary
 
     log_info "Script execution completed at: $(date '+%Y-%m-%d %H:%M:%S')"
     log_info "Log files saved to: ${LOG_DIR}"
@@ -380,30 +404,6 @@ process_selected() {
 # COMMAND-LINE ARGUMENT PARSING
 # ============================================================================
 
-resolve_utility_name() {
-    local input="$1"
-    local input_lower=$(echo "$input" | tr '[:upper:]' '[:lower:]')
-
-    # First try exact match (case-insensitive)
-    for util in "${UTILITIES[@]}"; do
-        if [[ "$(echo "$util" | tr '[:upper:]' '[:lower:]')" == "$input_lower" ]]; then
-            _RESOLVED="$util"
-            return 0
-        fi
-    done
-
-    # Then try partial match
-    for util in "${UTILITIES[@]}"; do
-        if [[ "$(echo "$util" | tr '[:upper:]' '[:lower:]')" == *"$input_lower"* ]]; then
-            _RESOLVED="$util"
-            return 0
-        fi
-    done
-
-    echo "Error: Utility '$input' not found."
-    return 1
-}
-
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -416,12 +416,16 @@ Options:
   --version             Show script version (git commit)
   --list                List all available utilities with install status
   --dry-run             Preview actions without making any changes
+  --verbose             Enable verbose output (extra status messages)
+  --debug               Enable debug output (internal state details)
   --install <name>      Non-interactively install a utility by name
   --uninstall <name>    Non-interactively uninstall a utility by name
   --update <name>       Non-interactively update a utility by name
   --update-all          Update every currently installed utility
   --check <name>        Exit 0 if utility is installed, 1 if not
+  --setup-logrotate     Install logrotate config for linux_util logs
 
+Configuration: Copy linux_util.conf.example to linux_util.conf to customize.
 Utility names are matched case-insensitively and support partial matches.
 EOF
                 exit 0
@@ -454,6 +458,19 @@ EOF
                 DRY_RUN=true
                 echo "${YELLOW}[DRY RUN] No changes will be made.${RESET}"
                 shift
+                ;;
+            --verbose)
+                VERBOSE=true
+                shift
+                ;;
+            --debug)
+                DEBUG=true
+                VERBOSE=true   # debug implies verbose
+                shift
+                ;;
+            --setup-logrotate)
+                setup_logrotate
+                exit $?
                 ;;
             --install)
                 [[ -z "${2:-}" ]] && { echo "Error: --install requires a utility name."; exit 1; }

@@ -25,14 +25,18 @@ The script supports non-interactive use for scripting and automation:
 
 | Flag | Description |
 |------|-------------|
-| `--help` | Show usage information |
+| `--help`, `-h` | Show usage information |
+| `--version` | Show script version (git commit) |
 | `--list` | List all utilities with current install status |
 | `--dry-run` | Preview actions without making any changes |
+| `--verbose` | Enable verbose output |
+| `--debug` | Enable debug output |
 | `--install <name>` | Install a utility by name |
 | `--uninstall <name>` | Uninstall a utility by name |
 | `--update <name>` | Update a utility by name |
 | `--update-all` | Update every currently installed utility |
 | `--check <name>` | Exit 0 if installed, 1 if not |
+| `--setup-logrotate` | Install logrotate config for linux\_util logs |
 
 Utility names must match exactly as shown by `--list`. `--dry-run` can be combined with any flag.
 
@@ -53,9 +57,9 @@ Utility names must match exactly as shown by `--list`. `--dry-run` can be combin
 Script commit: abc1234  |  Latest commit: abc1234
 
 System Tasks:
-  [ ] Full System Upgrade/Update     [ ] KDE Desktop Environment
-  [ ] NVIDIA Drivers                 [ ] System Updates
-  [ ] XEN Guest Utilities            [ ] Self-Update Script
+  [ ] Full System Upgrade/Update     [ ] Local MOTD
+  [ ] KDE Desktop                    [ ] NVIDIA Drivers
+  [ ] System Updates                 [ ] XEN Guest Utilities
 
 ────────────────────────────────────────────────────────────────
 
@@ -66,7 +70,7 @@ Utilities:
   [x] Docker (installed)             [ ] Termius SSH Client
   [ ] Dotfiles                       [ ] Timeshift
   [ ] Joplin Client                  [x] Visual Studio Code (installed)
-  [ ] LibreOffice
+  [ ] LibreOffice                    [ ] QBittorrent
 
 ────────────────────────────────────────────────────────────────
 Actions: Install: 1 | Uninstall: 1 | Update: 1
@@ -104,11 +108,11 @@ Legend: [x] select  [U] update  [ ] none  (installed) = on system
 | Task | Description |
 |------|-------------|
 | **Full System Upgrade/Update** | Full system upgrade, essential tools, Landscape Client (Ubuntu), and package cache cleanup |
-| **KDE Desktop Environment** | Installs KDE Plasma with SDDM |
+| **KDE Desktop** | Installs KDE Plasma with SDDM |
+| **Local MOTD** | Installs Landscape Client and configures local MOTD (Ubuntu/Kubuntu/Neon only) |
 | **NVIDIA Drivers** | Detects available drivers, lets you choose a version, installs 32-bit libs, nvtop, and NVIDIA Container Toolkit if Docker is present |
 | **System Updates** | Package list refresh, full upgrade, autoremove, and cache clean |
 | **XEN Guest Utilities** | Mounts XCP-NG ISO and runs the tools installer |
-| **Self-Update Script** | `git pull --ff-only` the repo; exits and prompts a re-run if updated |
 
 ### Utilities
 
@@ -123,6 +127,7 @@ Legend: [x] select  [U] update  [ ] none  (installed) = on system
 | **LibreOffice** | Direct download (Debian) / native packages / flatpak |
 | **OpenSSH Server** | Native packages, enabled as a service |
 | **PIA VPN** | Official repos (Debian/Fedora) / AUR (Arch) / Flatpak (openSUSE) |
+| **QBittorrent** | Native packages / flatpak (openSUSE) |
 | **Steam App** | Native packages / RPM Fusion / flatpak |
 | **Syncthing** | Native packages + user service |
 | **Termius SSH Client** | `.deb` / AUR / snap / flatpak |
@@ -135,17 +140,18 @@ The script has been modularized for easier maintenance and navigation:
 
 ```
 linux_util/
-├── linux_util.sh          Main orchestrator (547 lines)
+├── linux_util.sh          Main orchestrator (571 lines)
 ├── lib/
-│   ├── logging.sh         Logging, error handling, cleanup (109 lines)
+│   ├── logging.sh         Logging, error handling, cleanup (168 lines)
 │   ├── pkg_manager.sh     Package manager abstraction, distro detection (249 lines)
 │   ├── aur.sh             Arch User Repository functions (64 lines)
-│   ├── system.sh          System setup tasks, NVIDIA, desktop env (326 lines)
-│   ├── menu.sh            TUI menu with keyboard navigation (365 lines)
-│   ├── utilities.sh       Utility registry and resolution (84 lines)
-│   └── installers.sh      All utility install/uninstall/update functions (2,876 lines)
+│   ├── config.sh          Configuration file parsing, verbose/debug helpers (93 lines)
+│   ├── system.sh          System setup tasks, NVIDIA, desktop env (153 lines)
+│   ├── menu.sh            TUI menu with keyboard navigation (556 lines)
+│   ├── utilities.sh       Utility registry and resolution (218 lines)
+│   └── installers.sh      All utility install/uninstall/update functions (2,845 lines)
 ├── logs/                  Timestamped execution logs
-├── manage_logs.sh         Log management utility
+├── manage_logs.sh         Log management utility (304 lines)
 └── README.md              This file
 ```
 
@@ -157,6 +163,7 @@ linux_util/
 | **lib/logging.sh** | Logging functions, error handling, cleanup | Changing log format or adding new log functions |
 | **lib/pkg_manager.sh** | Package manager abstraction, distro detection | Adding support for new distros or package managers |
 | **lib/aur.sh** | AUR/pacman-specific functions | Modifying AUR installation logic |
+| **lib/config.sh** | Configuration file parsing, verbose/debug output helpers | Changing default settings or adding new config options |
 | **lib/system.sh** | System tasks (full upgrade, NVIDIA drivers, KDE, etc.) | Adding or modifying system setup tasks |
 | **lib/menu.sh** | TUI rendering, keyboard navigation, 2-column layout | Changing menu appearance or navigation behavior |
 | **lib/utilities.sh** | Utility registry, name resolution, status checking | Modifying how utilities are registered or checked |
@@ -188,6 +195,7 @@ Use the included `manage_logs.sh` for common log operations:
 chmod +x manage_logs.sh
 ./manage_logs.sh list             # list all log files
 ./manage_logs.sh view latest      # view latest logs
+./manage_logs.sh tail success     # follow a log in real time
 ./manage_logs.sh search "Docker"  # search logs
 ./manage_logs.sh stats            # show statistics
 ./manage_logs.sh clean 30         # remove logs older than 30 days
