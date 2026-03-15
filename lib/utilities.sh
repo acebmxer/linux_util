@@ -186,6 +186,11 @@ health_check() {
     if [[ -z "$check_cmd" ]]; then
         # No health check registered; use the utility's own check function
         local check_func="${CHECK_FUNCS[$util_name]:-}"
+        # Skip health check for tasks with no meaningful installed state
+        if [[ "$check_func" == "check_always_false" ]]; then
+            verbose "Skipping health check for ${util_name} (always-run task)"
+            return 0
+        fi
         if [[ -n "$check_func" ]] && declare -f "$check_func" &>/dev/null; then
             if $check_func 2>/dev/null; then
                 verbose "Health check passed for ${util_name} (via check function)"
