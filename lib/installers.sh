@@ -1496,27 +1496,45 @@ update_joplin() {
 }
 get_version_joplin() {
     # NOTE: Do NOT run the AppImage with --version — it opens a GUI error dialog.
-    # Try multiple config paths (Fedora may use different location)
+    local version=""
+    local config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+    # 1. Try config file paths (created after Joplin's first launch)
+    #    Use awk instead of grep -oP for portability (no PCRE/libpcre2 dependency)
     local pkg_json
-    for pkg_json in "$HOME/.config/joplin-desktop/package.json" "$HOME/.config/joplin/package.json"; do
+    for pkg_json in "$config_home/joplin-desktop/package.json" "$config_home/joplin/package.json"; do
         if [[ -f "$pkg_json" ]]; then
-            local version
-            version=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$pkg_json" 2>/dev/null)
+            version=$(awk -F'"' '/"version"/{print $4; exit}' "$pkg_json" 2>/dev/null)
             [[ -n "$version" ]] && echo "$version" && return 0
         fi
     done
 
-    # Fallback: extract version directly from the AppImage (works even before first launch)
+    # 2. Extract version from the AppImage's embedded metadata
     local appimage="$HOME/.joplin/Joplin.AppImage"
     if [[ -f "$appimage" ]]; then
         local tmpdir
         tmpdir=$(mktemp -d)
+
+        # Try resources/app/package.json (Electron apps without asar packaging)
         if (cd "$tmpdir" && timeout 10 "$appimage" --appimage-extract "resources/app/package.json") &>/dev/null; then
-            local version
-            version=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$tmpdir/squashfs-root/resources/app/package.json" 2>/dev/null)
-            rm -rf "$tmpdir"
-            [[ -n "$version" ]] && echo "$version" && return 0
+            version=$(awk -F'"' '/"version"/{print $4; exit}' "$tmpdir/squashfs-root/resources/app/package.json" 2>/dev/null)
+            if [[ -n "$version" ]]; then
+                rm -rf "$tmpdir"
+                echo "$version"
+                return 0
+            fi
         fi
+
+        # Try the embedded .desktop file for X-AppImage-Version (works with asar-packed apps)
+        if (cd "$tmpdir" && timeout 10 "$appimage" --appimage-extract "*.desktop") &>/dev/null; then
+            version=$(grep -h 'X-AppImage-Version=' "$tmpdir"/squashfs-root/*.desktop 2>/dev/null | head -1 | cut -d= -f2)
+            if [[ -n "$version" ]]; then
+                rm -rf "$tmpdir"
+                echo "$version"
+                return 0
+            fi
+        fi
+
         rm -rf "$tmpdir"
     fi
 
