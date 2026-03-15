@@ -384,9 +384,13 @@ setup_xen_guest_utilities() {
 
         # Run the installer (per docs: bash /mnt/Linux/install.sh)
         if sudo bash "${MOUNT_POINT}/Linux/install.sh" ${install_flags}; then
-            info "XCP-NG Guest Tools installation completed."
             # Per XCP-NG docs: no reboot needed (old message from kernel module era)
             sudo umount /dev/cdrom 2>/dev/null || warn "Failed to unmount ${MOUNT_POINT}"
+            if _verify_xen_services; then
+                info "XCP-NG Guest Tools installed and services are running."
+            else
+                warn "XCP-NG Guest Tools installed but services may not be running correctly."
+            fi
             return 0
         else
             warn "ISO installer failed. Attempting manual extraction..."
@@ -447,15 +451,57 @@ _install_from_iso_tgz() {
         sudo systemctl daemon-reload
         sudo systemctl enable xe-linux-distribution || warn "Failed to enable xe-linux-distribution"
         sudo systemctl start xe-linux-distribution || warn "Failed to start xe-linux-distribution"
-        info "XEN Guest Utilities installed via manual extraction."
+        if _verify_xen_services; then
+            info "XEN Guest Utilities installed via manual extraction and services are running."
+        else
+            warn "XEN Guest Utilities installed via manual extraction but services may not be running correctly."
+        fi
     elif [[ -f /etc/init.d/xe-linux-distribution ]]; then
         sudo /etc/init.d/xe-linux-distribution start || warn "Failed to start xe-linux-distribution"
         info "XEN Guest Utilities installed via manual extraction (init.d)."
+        warn "Cannot verify init.d service status automatically."
     else
         warn "No systemd unit or init script found. Service may need manual configuration."
     fi
 
     return 0
+}
+
+# Verify that XEN guest services are running after installation.
+# Checks for known service names and reports status.
+_verify_xen_services() {
+    local services=("xe-linux-distribution" "xe-daemon" "xen-guest-agent")
+    local found=false
+    local max_attempts=6
+    local wait_seconds=5
+
+    for svc in "${services[@]}"; do
+        if systemctl list-unit-files "${svc}.service" &>/dev/null && \
+           systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "${svc}"; then
+            found=true
+            info "Waiting for ${svc} service to start..."
+            local attempt=0
+            while (( attempt < max_attempts )); do
+                if systemctl is-active --quiet "${svc}"; then
+                    info "${svc} service is running."
+                    return 0
+                fi
+                (( attempt++ ))
+                if (( attempt < max_attempts )); then
+                    sleep "$wait_seconds"
+                fi
+            done
+            warn "${svc} service failed to start within $(( max_attempts * wait_seconds )) seconds."
+            warn "Service status:"
+            systemctl status "${svc}" --no-pager 2>&1 | head -20
+            return 1
+        fi
+    done
+
+    if ! $found; then
+        warn "No known XEN guest service units found. Service may need manual configuration."
+        return 1
+    fi
 }
 
 # Helper function: Install XEN utilities from repository (fallback method)
@@ -465,8 +511,15 @@ _install_from_repository() {
     case "$DISTRO_FAMILY" in
         debian)
             info "Installing xe-guest-utilities via apt..."
-            run_as_root "apt-get update && apt-get install -y xe-guest-utilities"
-            return $?
+            if run_as_root "apt-get update && apt-get install -y xe-guest-utilities"; then
+                if _verify_xen_services; then
+                    info "XEN Guest Utilities installed and services are running."
+                else
+                    warn "XEN Guest Utilities installed but services may not be running correctly."
+                fi
+                return 0
+            fi
+            return 1
             ;;
 
         fedora|rhel)
@@ -476,6 +529,11 @@ _install_from_repository() {
                run_as_root "yum install -y xe-guest-utilities"; then
                 run_as_root "systemctl enable xe-linux-distribution" || warn "Failed to enable xe-linux-distribution"
                 run_as_root "systemctl start xe-linux-distribution" || warn "Failed to start xe-linux-distribution"
+                if _verify_xen_services; then
+                    info "XEN Guest Utilities installed and services are running."
+                else
+                    warn "XEN Guest Utilities installed but services may not be running correctly."
+                fi
                 return 0
             fi
             return 1
@@ -483,20 +541,41 @@ _install_from_repository() {
 
         arch)
             info "Installing xe-guest-utilities via pacman..."
-            run_as_root "pacman -S --noconfirm xe-guest-utilities"
-            return $?
+            if run_as_root "pacman -S --noconfirm xe-guest-utilities"; then
+                if _verify_xen_services; then
+                    info "XEN Guest Utilities installed and services are running."
+                else
+                    warn "XEN Guest Utilities installed but services may not be running correctly."
+                fi
+                return 0
+            fi
+            return 1
             ;;
 
         suse)
             info "Installing xe-guest-utilities via zypper..."
-            run_as_root "zypper install -y xe-guest-utilities"
-            return $?
+            if run_as_root "zypper install -y xe-guest-utilities"; then
+                if _verify_xen_services; then
+                    info "XEN Guest Utilities installed and services are running."
+                else
+                    warn "XEN Guest Utilities installed but services may not be running correctly."
+                fi
+                return 0
+            fi
+            return 1
             ;;
 
         alpine)
             info "Installing xe-guest-utilities via apk..."
-            run_as_root "apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/community xe-guest-utilities"
-            return $?
+            if run_as_root "apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/community xe-guest-utilities"; then
+                if _verify_xen_services; then
+                    info "XEN Guest Utilities installed and services are running."
+                else
+                    warn "XEN Guest Utilities installed but services may not be running correctly."
+                fi
+                return 0
+            fi
+            return 1
             ;;
 
         *)
