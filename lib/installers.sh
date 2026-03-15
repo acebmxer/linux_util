@@ -280,10 +280,12 @@ get_version_xen_guest_utilities() {
 setup_xen_guest_utilities() {
     info "Installing/Updating XEN Guest Utilities..."
 
-    # Primary method: ISO installation
+    # Primary method: ISO installation (per XCP-NG docs)
+    # https://docs.xcp-ng.org/vms/#linux-guest-tools
 
     # Check for existing installations and optionally remove them
     if pkg_check_installed xe-guest-utilities; then
+        local ver
         ver=$(pkg_get_version xe-guest-utilities)
         info "xe-guest-utilities is installed, version $ver."
         read -n 1 -rp "Would you like to uninstall existing xe-guest-utilities (v$ver) before installing new tools? [y/N] " ans
@@ -300,6 +302,7 @@ setup_xen_guest_utilities() {
     fi
 
     if pkg_check_installed xen-guest-agent; then
+        local ver
         ver=$(pkg_get_version xen-guest-agent)
         info "xen-guest-agent is installed, version $ver."
         read -n 1 -rp "Would you like to uninstall existing xen-guest-agent (v$ver) before installing new tools? [y/N] " ans
@@ -315,61 +318,134 @@ setup_xen_guest_utilities() {
         esac
     fi
 
-    # Mount ISO and install
-    MOUNT_POINT="/mnt"
+    # Mount the guest tools ISO (per XCP-NG docs: mount /dev/cdrom /mnt)
+    local MOUNT_POINT="/mnt"
     if ! mountpoint -q "${MOUNT_POINT}"; then
-        warn "ISO not mounted. Please insert the XCP-NG ISO and press Enter to continue..."
-        read -r
-        if ! run_as_root "mount /dev/cdrom '${MOUNT_POINT}'" 2>/dev/null; then
-            info "Failed to mount ISO. Falling back to repository installation..."
-            _install_from_repository
-            return $?
+        info "Attempting to mount guest tools ISO..."
+        if ! sudo mount /dev/cdrom "${MOUNT_POINT}"; then
+            warn "Could not mount /dev/cdrom to ${MOUNT_POINT}."
+            warn "Please ensure the XCP-NG guest tools ISO is inserted in the VM's CD drive."
+            echo ""
+            read -n 1 -rp "Would you like to retry mounting? [y/N] " retry_ans
+            echo
+            if [[ "$retry_ans" =~ ^[Yy]$ ]]; then
+                if ! sudo mount /dev/cdrom "${MOUNT_POINT}"; then
+                    warn "Mount failed again. Falling back to repository installation..."
+                    _install_from_repository
+                    return $?
+                fi
+            else
+                info "Falling back to repository installation..."
+                _install_from_repository
+                return $?
+            fi
         fi
     fi
 
     if [[ -f "${MOUNT_POINT}/Linux/install.sh" ]]; then
-        info "Running XCP-NG installer script..."
+        info "Running XCP-NG installer script from ISO..."
 
-        # Debian-family distros (debian, ubuntu, kubuntu, kde neon, etc.) are auto-detected.
-        # RHEL derivatives (alma, rocky, etc.) need explicit -d rhel -m <major_version> flags.
-        # See: https://docs.xcp-ng.org/vms/#install-from-the-guest-tools-iso
+        # The install.sh script auto-detects Debian, CentOS, RHEL, SLES, and Ubuntu.
+        # For derived distros, force detection with: -d $DISTRO -m $MAJOR_VERSION
+        # See: https://docs.xcp-ng.org/vms/#linux-guest-tools
         local install_flags=""
         local major_ver="${DISTRO_VERSION_ID%%.*}"
 
         case "$DISTRO_FAMILY" in
             debian)
+                # Debian/Ubuntu are auto-detected by install.sh
                 install_flags=""
                 ;;
             rhel)
+                # RHEL derivatives need explicit distro flags
                 install_flags="-d rhel -m ${major_ver}"
                 ;;
-            arch|suse)
-                warn "Xen Guest Tools installer may not officially support ${DISTRO_NAME}. Attempting without distro flags..."
+            fedora)
+                install_flags="-d fedora -m ${major_ver}"
                 ;;
             *)
-                warn "Unknown distro family '${DISTRO_FAMILY}'. Attempting without distro flags..."
+                # For unsupported distros, try without flags first
+                warn "Distro '${DISTRO_NAME}' may not be recognized by the ISO installer."
+                warn "Attempting install without distro flags. If it fails, manual extraction may be needed."
                 ;;
         esac
 
         [[ -n "$install_flags" ]] && info "Using installer flags: ${install_flags}"
-        if run_as_root "bash '${MOUNT_POINT}/Linux/install.sh' ${install_flags}"; then
-            info "Waiting 5 seconds for services to initialize..."
-            sleep 5
-            run_as_root "umount '${MOUNT_POINT}'" || warn "Failed to unmount ${MOUNT_POINT}"
-            info "XCP-NG Tools installation completed."
+
+        # Run the installer (per docs: bash /mnt/Linux/install.sh)
+        if sudo bash "${MOUNT_POINT}/Linux/install.sh" ${install_flags}; then
+            info "XCP-NG Guest Tools installation completed."
+            # Per XCP-NG docs: no reboot needed (old message from kernel module era)
+            sudo umount /dev/cdrom 2>/dev/null || warn "Failed to unmount ${MOUNT_POINT}"
             return 0
         else
-            warn "ISO installation failed. Falling back to repository installation..."
-            run_as_root "umount '${MOUNT_POINT}'" || warn "Failed to unmount ${MOUNT_POINT}"
-            _install_from_repository
-            return $?
+            warn "ISO installer failed. Attempting manual extraction..."
+            # For unsupported distros: extract xe-guest-utilities tgz from ISO
+            _install_from_iso_tgz "${MOUNT_POINT}"
+            local result=$?
+            sudo umount /dev/cdrom 2>/dev/null || warn "Failed to unmount ${MOUNT_POINT}"
+            if [[ $result -ne 0 ]]; then
+                warn "Manual extraction failed. Falling back to repository installation..."
+                _install_from_repository
+                return $?
+            fi
+            return 0
         fi
     else
-        warn "Installer script not found at ${MOUNT_POINT}/Linux/install.sh. Falling back to repository installation..."
-        run_as_root "umount '${MOUNT_POINT}'" 2>/dev/null || true
+        warn "Installer script not found at ${MOUNT_POINT}/Linux/install.sh."
+        sudo umount /dev/cdrom 2>/dev/null || true
+        info "Falling back to repository installation..."
         _install_from_repository
         return $?
     fi
+}
+
+# Extract xe-guest-utilities tgz from the ISO for unsupported distros.
+# Per XCP-NG docs: extract the xe-guest-utilities_*_all.tgz archive,
+# copy contents to /etc and /usr, and use the included systemd unit file.
+_install_from_iso_tgz() {
+    local mount_point="$1"
+    local tgz_file
+    tgz_file=$(find "${mount_point}/Linux/" -name 'xe-guest-utilities_*_all.tgz' 2>/dev/null | head -1)
+
+    if [[ -z "$tgz_file" ]]; then
+        warn "No xe-guest-utilities tgz archive found on ISO."
+        return 1
+    fi
+
+    info "Extracting ${tgz_file}..."
+    local tmp_dir
+    tmp_dir=$(mktemp -d /tmp/xen-guest-tools-XXXXXX)
+    CLEANUP_FILES+=("$tmp_dir")
+
+    if ! tar -xzf "$tgz_file" -C "$tmp_dir"; then
+        warn "Failed to extract tgz archive."
+        return 1
+    fi
+
+    # Copy extracted files to system directories
+    if [[ -d "${tmp_dir}/etc" ]]; then
+        sudo cp -a "${tmp_dir}/etc/." /etc/ || warn "Failed to copy /etc files"
+    fi
+    if [[ -d "${tmp_dir}/usr" ]]; then
+        sudo cp -a "${tmp_dir}/usr/." /usr/ || warn "Failed to copy /usr files"
+    fi
+
+    # Enable and start the service
+    if [[ -f /etc/systemd/system/xe-linux-distribution.service ]] || \
+       [[ -f /usr/lib/systemd/system/xe-linux-distribution.service ]]; then
+        sudo systemctl daemon-reload
+        sudo systemctl enable xe-linux-distribution || warn "Failed to enable xe-linux-distribution"
+        sudo systemctl start xe-linux-distribution || warn "Failed to start xe-linux-distribution"
+        info "XEN Guest Utilities installed via manual extraction."
+    elif [[ -f /etc/init.d/xe-linux-distribution ]]; then
+        sudo /etc/init.d/xe-linux-distribution start || warn "Failed to start xe-linux-distribution"
+        info "XEN Guest Utilities installed via manual extraction (init.d)."
+    else
+        warn "No systemd unit or init script found. Service may need manual configuration."
+    fi
+
+    return 0
 }
 
 # Helper function: Install XEN utilities from repository (fallback method)

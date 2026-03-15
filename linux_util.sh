@@ -94,9 +94,18 @@ umask "$ORIG_UMASK"
 # SOURCE LIBRARY MODULES
 # ============================================================================
 
-# Source all library modules in dependency order
+# Source config module first (provides debug/verbose helpers used by all modules)
+source "${SCRIPT_DIR}/lib/config.sh" || { echo "Error: Failed to source config.sh"; exit 1; }
+
+# Load user configuration (overrides defaults set in config.sh)
+load_config
+
+# Source remaining library modules in dependency order
 source "${SCRIPT_DIR}/lib/logging.sh" || { echo "Error: Failed to source logging.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/pkg_manager.sh" || { echo "Error: Failed to source pkg_manager.sh"; exit 1; }
+
+# Initialize performance metrics tracking
+metrics_init
 
 # ============================================================================
 # SYSTEM INITIALIZATION
@@ -112,6 +121,10 @@ source "${SCRIPT_DIR}/lib/system.sh" || { echo "Error: Failed to source system.s
 source "${SCRIPT_DIR}/lib/utilities.sh" || { echo "Error: Failed to source utilities.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/menu.sh" || { echo "Error: Failed to source menu.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/installers.sh" || { echo "Error: Failed to source installers.sh"; exit 1; }
+
+# Initialize dependency map and health checks (must be after installers.sh registers utilities)
+_init_deps_map
+_init_health_checks
 
 # Setup traps for cleanup and error handling
 trap cleanup_on_exit EXIT
@@ -217,8 +230,15 @@ process_selected() {
         exit 0
     fi
 
-    # Check internet before any downloads
-    check_internet || true
+    # Run pre-flight checks before proceeding
+    if ! preflight_checks; then
+        read -n 1 -rp "Pre-flight checks failed. Continue anyway? (y/N) " _pf_ans
+        echo
+        if [[ ! "$_pf_ans" =~ ^[Yy]$ ]]; then
+            echo "${YELLOW}Aborted.${RESET}"
+            exit 1
+        fi
+    fi
 
     # Update package lists first
     echo "${CYAN}Updating package lists...${RESET}"
@@ -230,103 +250,163 @@ process_selected() {
     local fail_count=0
     declare -a failed_utils
 
+    # --- Helper: run a single operation (install/uninstall/update) ---
+    _run_operation() {
+        local op_type="$1"   # install, uninstall, update
+        local util="$2"
+        local func="$3"
+        local color="$4"
+        local label="$5"
+
+        echo ""
+        echo "${BOLD}${color}────────────────────────────────────────────────────────────────${RESET}"
+        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${color}${label}: $util${RESET}"
+        echo "${BOLD}${color}────────────────────────────────────────────────────────────────${RESET}"
+        echo ""
+
+        log_info "Starting ${op_type}: $util"
+
+        # Resolve dependencies before install/update
+        if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
+            resolve_dependencies "$util" || verbose "Dependency resolution skipped for ${util}"
+        fi
+
+        local _op_start=$SECONDS
+        local _op_status="success"
+
+        if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
+            if $func; then
+                local _duration=$(( SECONDS - _op_start ))
+                echo ""
+                echo "${GREEN}✓ Successfully ${op_type}ed: $util${RESET} ${DIM}(${_duration}s)${RESET}"
+                log_success "${label}: $util"
+                metrics_record "$op_type" "$util" "$_duration" "success"
+
+                # Run health check after install/update
+                if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
+                    health_check "$util" || true
+                fi
+
+                ((success_count++))
+            else
+                local _duration=$(( SECONDS - _op_start ))
+                echo ""
+                echo "${RED}✗ Failed to ${op_type}: $util${RESET} ${DIM}(${_duration}s)${RESET}"
+                log_error "Failed to ${op_type}: $util"
+                metrics_record "$op_type" "$util" "$_duration" "failed"
+
+                # Retry logic
+                if [[ "$CFG_RETRY_FAILED" == "true" && "$op_type" != "uninstall" ]]; then
+                    local _attempt=1
+                    while (( _attempt < CFG_RETRY_ATTEMPTS )); do
+                        ((_attempt++))
+                        echo "${YELLOW}Retrying ${op_type} for ${util} (attempt ${_attempt}/${CFG_RETRY_ATTEMPTS})...${RESET}"
+                        local _retry_start=$SECONDS
+                        if $func; then
+                            local _retry_dur=$(( SECONDS - _retry_start ))
+                            echo "${GREEN}✓ Retry succeeded: $util${RESET} ${DIM}(${_retry_dur}s)${RESET}"
+                            log_success "Retry ${op_type} succeeded: $util (attempt ${_attempt})"
+                            metrics_record "${op_type}_retry" "$util" "$_retry_dur" "success"
+                            _op_status="success"
+                            ((success_count++))
+                            if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
+                                health_check "$util" || true
+                            fi
+                            return 0
+                        fi
+                    done
+                fi
+
+                ((fail_count++))
+                failed_utils+=("$util (${op_type})")
+            fi
+        else
+            echo "${RED}✗ No ${op_type} function found for: $util${RESET}"
+            log_error "No ${op_type} function found for: $util"
+            ((fail_count++))
+            failed_utils+=("$util (${op_type})")
+        fi
+    }
+
     # Process uninstallations first
     for util in "${to_uninstall[@]}"; do
-        echo ""
-        echo "${BOLD}${RED}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${RED}Uninstalling: $util${RESET}"
-        echo "${BOLD}${RED}────────────────────────────────────────────────────────────────${RESET}"
-        echo ""
-
-        log_info "Starting uninstallation: $util"
-        local _op_start=$SECONDS
-
-        local func="${UNINSTALL_FUNCS[$util]}"
-        if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
-            if $func; then
-                echo ""
-                echo "${GREEN}✓ Successfully uninstalled: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_success "Uninstalled: $util"
-                ((success_count++))
-            else
-                echo ""
-                echo "${RED}✗ Failed to uninstall: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_error "Failed to uninstall: $util"
-                ((fail_count++))
-                failed_utils+=("$util (uninstall)")
-            fi
-        else
-            echo "${RED}✗ No uninstall function found for: $util${RESET}"
-            log_error "No uninstall function found for: $util"
-            ((fail_count++))
-            failed_utils+=("$util (uninstall)")
-        fi
+        _run_operation "uninstall" "$util" "${UNINSTALL_FUNCS[$util]}" "$RED" "Uninstalling"
     done
 
-    # Process installations
-    for util in "${to_install[@]}"; do
+    # Process installations (with optional parallelism)
+    if [[ "$CFG_PARALLEL_INSTALLS" == "true" ]] && [[ ${#to_install[@]} -gt 1 ]]; then
         echo ""
-        echo "${BOLD}${GREEN}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${GREEN}Installing/Running: $util${RESET}"
-        echo "${BOLD}${GREEN}────────────────────────────────────────────────────────────────${RESET}"
-        echo ""
+        echo "${CYAN}Parallel installation enabled (max ${CFG_MAX_PARALLEL} concurrent)...${RESET}"
+        local _parallel_count=0
+        declare -a _parallel_pids=()
+        declare -a _parallel_utils=()
+        declare -a _parallel_logs=()
 
-        log_info "Starting installation: $util"
-        local _op_start=$SECONDS
+        for util in "${to_install[@]}"; do
+            local func="${INSTALL_FUNCS[$util]}"
+            local _par_log
+            _par_log=$(mktemp /tmp/linux_util_parallel_XXXXXX.log)
+            CLEANUP_FILES+=("$_par_log")
 
-        local func="${INSTALL_FUNCS[$util]}"
-        if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
-            if $func; then
-                echo ""
-                echo "${GREEN}✓ Successfully completed: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_success "Installed: $util"
+            (
+                resolve_dependencies "$util" 2>&1 || true
+                local _op_start=$SECONDS
+                if [[ -n "$func" ]] && declare -f "$func" > /dev/null && $func; then
+                    echo "SUCCESS|$util|$(( SECONDS - _op_start ))"
+                else
+                    echo "FAILED|$util|$(( SECONDS - _op_start ))"
+                fi
+            ) > "$_par_log" 2>&1 &
+
+            _parallel_pids+=($!)
+            _parallel_utils+=("$util")
+            _parallel_logs+=("$_par_log")
+            ((_parallel_count++))
+
+            # Wait for a slot if at max parallel
+            if (( _parallel_count >= CFG_MAX_PARALLEL )); then
+                wait -n 2>/dev/null || wait "${_parallel_pids[0]}"
+                ((_parallel_count--))
+            fi
+        done
+
+        # Wait for all remaining jobs
+        wait
+
+        # Collect results
+        for idx in "${!_parallel_pids[@]}"; do
+            local _putil="${_parallel_utils[$idx]}"
+            local _plog="${_parallel_logs[$idx]}"
+            local _result_line
+            _result_line=$(tail -1 "$_plog" 2>/dev/null)
+            local _pstatus="${_result_line%%|*}"
+            local _pduration="${_result_line##*|}"
+
+            echo ""
+            if [[ "$_pstatus" == "SUCCESS" ]]; then
+                echo "${GREEN}✓ Successfully installed: ${_putil}${RESET} ${DIM}(${_pduration}s)${RESET}"
+                log_success "Installed (parallel): ${_putil}"
+                metrics_record "install" "$_putil" "$_pduration" "success"
+                health_check "$_putil" || true
                 ((success_count++))
             else
-                echo ""
-                echo "${RED}✗ Failed: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_error "Failed to install: $util"
+                echo "${RED}✗ Failed to install: ${_putil}${RESET}"
+                log_error "Failed to install (parallel): ${_putil}"
+                metrics_record "install" "$_putil" "${_pduration:-0}" "failed"
                 ((fail_count++))
-                failed_utils+=("$util (install)")
+                failed_utils+=("${_putil} (install)")
             fi
-        else
-            echo "${RED}✗ No installation function found for: $util${RESET}"
-            log_error "No installation function found for: $util"
-            ((fail_count++))
-            failed_utils+=("$util (install)")
-        fi
-    done
+        done
+    else
+        # Sequential installation
+        for util in "${to_install[@]}"; do
+            _run_operation "install" "$util" "${INSTALL_FUNCS[$util]}" "$GREEN" "Installing/Running"
+        done
+    fi
 
     # Process updates
     for util in "${to_update[@]}"; do
-        echo ""
-        echo "${BOLD}${YELLOW}────────────────────────────────────────────────────────────────${RESET}"
-        echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${YELLOW}Updating: $util${RESET}"
-        echo "${BOLD}${YELLOW}────────────────────────────────────────────────────────────────${RESET}"
-        echo ""
-
-        log_info "Starting update: $util"
-        local _op_start=$SECONDS
-
-        local func="${UPDATE_FUNCS[$util]}"
-        if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
-            if $func; then
-                echo ""
-                echo "${GREEN}✓ Successfully updated: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_success "Updated: $util"
-                ((success_count++))
-            else
-                echo ""
-                echo "${RED}✗ Failed to update: $util${RESET} ${DIM}($(( SECONDS - _op_start ))s)${RESET}"
-                log_error "Failed to update: $util"
-                ((fail_count++))
-                failed_utils+=("$util (update)")
-            fi
-        else
-            echo "${RED}✗ No update function found for: $util${RESET}"
-            log_error "No update function found for: $util"
-            ((fail_count++))
-            failed_utils+=("$util (update)")
-        fi
+        _run_operation "update" "$util" "${UPDATE_FUNCS[$util]}" "$YELLOW" "Updating"
     done
 
     # Summary
@@ -355,6 +435,9 @@ process_selected() {
         done
     fi
     echo ""
+
+    # Performance metrics summary
+    metrics_summary
 
     log_info "Script execution completed at: $(date '+%Y-%m-%d %H:%M:%S')"
     log_info "Log files saved to: ${LOG_DIR}"
@@ -399,12 +482,16 @@ Options:
   --version             Show script version (git commit)
   --list                List all available utilities with install status
   --dry-run             Preview actions without making any changes
+  --verbose             Enable verbose output (extra status messages)
+  --debug               Enable debug output (internal state details)
   --install <name>      Non-interactively install a utility by name
   --uninstall <name>    Non-interactively uninstall a utility by name
   --update <name>       Non-interactively update a utility by name
   --update-all          Update every currently installed utility
   --check <name>        Exit 0 if utility is installed, 1 if not
+  --setup-logrotate     Install logrotate config for linux_util logs
 
+Configuration: Copy linux_util.conf.example to linux_util.conf to customize.
 Utility names are matched case-insensitively and support partial matches.
 EOF
                 exit 0
@@ -437,6 +524,19 @@ EOF
                 DRY_RUN=true
                 echo "${YELLOW}[DRY RUN] No changes will be made.${RESET}"
                 shift
+                ;;
+            --verbose)
+                VERBOSE=true
+                shift
+                ;;
+            --debug)
+                DEBUG=true
+                VERBOSE=true   # debug implies verbose
+                shift
+                ;;
+            --setup-logrotate)
+                setup_logrotate
+                exit $?
                 ;;
             --install)
                 [[ -z "${2:-}" ]] && { echo "Error: --install requires a utility name."; exit 1; }

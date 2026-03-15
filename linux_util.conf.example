@@ -1,0 +1,42 @@
+# ============================================================================
+# Linux Utilities - Configuration File
+# Copy this file to linux_util.conf and customize as needed.
+# Lines starting with # are comments. Blank lines are ignored.
+# ============================================================================
+
+# --- Logging ---
+log_retention_days=30
+max_log_size_mb=50
+compress_old_logs=true
+# Log level: DEBUG, INFO, WARNING, ERROR
+log_level=INFO
+
+# --- Installation ---
+# Skip confirmation prompts (not recommended)
+auto_confirm=false
+# Run independent installs in parallel (experimental, off by default)
+parallel_installs=false
+# Maximum parallel install jobs (only used when parallel_installs=true)
+max_parallel=3
+# Retry failed installations
+retry_failed=true
+retry_attempts=3
+
+# --- Network ---
+dns_check_enabled=true
+dns_timeout_seconds=10
+
+# --- Pre-flight ---
+# Minimum free disk space in MB before allowing installs
+disk_min_mb=1024
+
+# --- Behavior ---
+auto_cleanup=true
+create_backups=true
+backup_dir=./backups
+
+# --- Output ---
+# Enable verbose output (extra status messages)
+verbose=false
+# Enable debug output (internal state, parsed values)
+debug=false

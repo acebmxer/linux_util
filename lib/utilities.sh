@@ -83,3 +83,128 @@ check_installed_utilities() {
         SELECTED[$i]=0
     done
 }
+
+# ============================================================================
+# Dependency Resolution
+# Maps utilities to required system commands/packages and installs missing ones.
+# ============================================================================
+declare -A DEPS_MAP
+
+# Register dependencies for utilities that need specific tools pre-installed.
+# Format: DEPS_MAP["Utility Name"]="cmd1:pkg1 cmd2:pkg2"
+#   cmd = command to check (via command -v)
+#   pkg = package to install if cmd is missing
+_init_deps_map() {
+    DEPS_MAP["Docker"]="curl:curl ca-certificates:ca-certificates"
+    DEPS_MAP["Brave Browser"]="curl:curl gpg:gnupg"
+    DEPS_MAP["Visual Studio Code"]="curl:curl gpg:gnupg wget:wget"
+    DEPS_MAP["Syncthing"]="curl:curl"
+    DEPS_MAP["PIA VPN"]="curl:curl wget:wget"
+    DEPS_MAP["Bitwarden Client"]="wget:wget"
+    DEPS_MAP["Devolutions RDM"]="curl:curl gpg:gnupg"
+    DEPS_MAP["Steam App"]="wget:wget"
+    DEPS_MAP["LibreOffice"]="wget:wget"
+    DEPS_MAP["Termius SSH Client"]="wget:wget"
+    DEPS_MAP["NVIDIA Drivers"]="curl:curl gpg:gnupg"
+}
+
+# Check and install missing dependencies for a utility.
+# Usage: resolve_dependencies "Utility Name"
+resolve_dependencies() {
+    local util_name="$1"
+    local deps="${DEPS_MAP[$util_name]:-}"
+
+    [[ -z "$deps" ]] && return 0
+
+    local missing=()
+    for dep_entry in $deps; do
+        local cmd="${dep_entry%%:*}"
+        local pkg="${dep_entry##*:}"
+        if ! command -v "$cmd" &>/dev/null; then
+            missing+=("$pkg")
+            verbose "Dependency missing for ${util_name}: ${cmd} (package: ${pkg})"
+        fi
+    done
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        # Deduplicate
+        local -A seen
+        local -a unique_pkgs=()
+        for pkg in "${missing[@]}"; do
+            if [[ -z "${seen[$pkg]:-}" ]]; then
+                seen["$pkg"]=1
+                unique_pkgs+=("$pkg")
+            fi
+        done
+
+        info "Installing dependencies for ${util_name}: ${unique_pkgs[*]}"
+        log_info "Installing dependencies for ${util_name}: ${unique_pkgs[*]}"
+        pkg_install "${unique_pkgs[@]}" || {
+            warn "Failed to install some dependencies for ${util_name}"
+            return 1
+        }
+    fi
+
+    return 0
+}
+
+# ============================================================================
+# Health Checks — Post-Installation Verification
+# Verifies that a utility was installed correctly and is functional.
+# ============================================================================
+declare -A HEALTH_CHECK_CMDS
+
+# Register health check commands for utilities.
+# Format: HEALTH_CHECK_CMDS["Utility Name"]="command_to_verify"
+_init_health_checks() {
+    HEALTH_CHECK_CMDS["Docker"]="docker --version"
+    HEALTH_CHECK_CMDS["Brave Browser"]="brave-browser --version"
+    HEALTH_CHECK_CMDS["Visual Studio Code"]="code --version"
+    HEALTH_CHECK_CMDS["Syncthing"]="syncthing --version"
+    HEALTH_CHECK_CMDS["PIA VPN"]="piactl --version"
+    HEALTH_CHECK_CMDS["Bitwarden Client"]="command -v bitwarden"
+    HEALTH_CHECK_CMDS["QBittorrent"]="command -v qbittorrent"
+    HEALTH_CHECK_CMDS["OpenSSH Server"]="systemctl is-active ssh 2>/dev/null || systemctl is-active sshd 2>/dev/null"
+    HEALTH_CHECK_CMDS["Timeshift"]="timeshift --version"
+    HEALTH_CHECK_CMDS["LibreOffice"]="libreoffice --version"
+    HEALTH_CHECK_CMDS["Termius SSH Client"]="command -v termius || command -v termius-app"
+    HEALTH_CHECK_CMDS["NVIDIA Drivers"]="nvidia-smi"
+    HEALTH_CHECK_CMDS["KDE Desktop"]="command -v plasmashell"
+    HEALTH_CHECK_CMDS["XEN Guest Utilities"]="command -v xe-daemon || systemctl is-active xe-linux-distribution 2>/dev/null"
+}
+
+# Run a health check for a utility after install/update.
+# Usage: health_check "Utility Name"
+# Returns 0 on pass, 1 on fail. Logs result.
+health_check() {
+    local util_name="$1"
+    local check_cmd="${HEALTH_CHECK_CMDS[$util_name]:-}"
+
+    if [[ -z "$check_cmd" ]]; then
+        # No health check registered; use the utility's own check function
+        local check_func="${CHECK_FUNCS[$util_name]:-}"
+        if [[ -n "$check_func" ]] && declare -f "$check_func" &>/dev/null; then
+            if $check_func 2>/dev/null; then
+                verbose "Health check passed for ${util_name} (via check function)"
+                log_success "Health check passed: ${util_name}"
+                return 0
+            else
+                warn "Health check failed for ${util_name}"
+                log_warning "Health check failed: ${util_name}"
+                return 1
+            fi
+        fi
+        verbose "No health check available for ${util_name}"
+        return 0
+    fi
+
+    if eval "$check_cmd" &>/dev/null; then
+        verbose "Health check passed for ${util_name}"
+        log_success "Health check passed: ${util_name}"
+        return 0
+    else
+        warn "Health check failed for ${util_name}"
+        log_warning "Health check failed: ${util_name}"
+        return 1
+    fi
+}
