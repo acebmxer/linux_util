@@ -659,9 +659,15 @@ check_kde() {
 }
 
 get_version_kde() {
-    # Try plasmashell first
-    local version
-    version=$(QT_QPA_PLATFORM=offscreen plasmashell --version 2>/dev/null | grep -oP 'plasmashell \K[0-9.]+' | head -1)
+    # NOTE: Do NOT run 'plasmashell --version' here — even with QT_QPA_PLATFORM=offscreen,
+    # it can crash the running plasmashell instance via D-Bus singleton conflicts (Plasma 6).
+    local version=""
+    # Try kf6-config (Plasma 6) or kf5-config (Plasma 5)
+    if command -v kf6-config &>/dev/null; then
+        version=$(kf6-config --version 2>/dev/null | grep -oP 'KDE Frameworks: \K[0-9.]+' | head -1)
+    elif command -v kf5-config &>/dev/null; then
+        version=$(kf5-config --version 2>/dev/null | grep -oP 'KDE Frameworks: \K[0-9.]+' | head -1)
+    fi
     if [[ -n "$version" ]]; then
         echo "$version"
     else
