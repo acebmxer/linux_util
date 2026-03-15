@@ -333,76 +333,10 @@ process_selected() {
         _run_operation "uninstall" "$util" "${UNINSTALL_FUNCS[$util]}" "$RED" "Uninstalling"
     done
 
-    # Process installations (with optional parallelism)
-    if [[ "$CFG_PARALLEL_INSTALLS" == "true" ]] && [[ ${#to_install[@]} -gt 1 ]]; then
-        echo ""
-        echo "${CYAN}Parallel installation enabled (max ${CFG_MAX_PARALLEL} concurrent)...${RESET}"
-        local _parallel_count=0
-        declare -a _parallel_pids=()
-        declare -a _parallel_utils=()
-        declare -a _parallel_logs=()
-
-        for util in "${to_install[@]}"; do
-            local func="${INSTALL_FUNCS[$util]}"
-            local _par_log
-            _par_log=$(mktemp /tmp/linux_util_parallel_XXXXXX.log)
-            CLEANUP_FILES+=("$_par_log")
-
-            (
-                resolve_dependencies "$util" 2>&1 || true
-                local _op_start=$SECONDS
-                if [[ -n "$func" ]] && declare -f "$func" > /dev/null && $func; then
-                    echo "SUCCESS|$util|$(( SECONDS - _op_start ))"
-                else
-                    echo "FAILED|$util|$(( SECONDS - _op_start ))"
-                fi
-            ) > "$_par_log" 2>&1 &
-
-            _parallel_pids+=($!)
-            _parallel_utils+=("$util")
-            _parallel_logs+=("$_par_log")
-            ((_parallel_count++))
-
-            # Wait for a slot if at max parallel
-            if (( _parallel_count >= CFG_MAX_PARALLEL )); then
-                wait -n 2>/dev/null || wait "${_parallel_pids[0]}"
-                ((_parallel_count--))
-            fi
-        done
-
-        # Wait for all remaining jobs
-        wait
-
-        # Collect results
-        for idx in "${!_parallel_pids[@]}"; do
-            local _putil="${_parallel_utils[$idx]}"
-            local _plog="${_parallel_logs[$idx]}"
-            local _result_line
-            _result_line=$(tail -1 "$_plog" 2>/dev/null)
-            local _pstatus="${_result_line%%|*}"
-            local _pduration="${_result_line##*|}"
-
-            echo ""
-            if [[ "$_pstatus" == "SUCCESS" ]]; then
-                echo "${GREEN}✓ Successfully installed: ${_putil}${RESET} ${DIM}(${_pduration}s)${RESET}"
-                log_success "Installed (parallel): ${_putil}"
-                metrics_record "install" "$_putil" "$_pduration" "success"
-                health_check "$_putil" || true
-                ((success_count++))
-            else
-                echo "${RED}✗ Failed to install: ${_putil}${RESET}"
-                log_error "Failed to install (parallel): ${_putil}"
-                metrics_record "install" "$_putil" "${_pduration:-0}" "failed"
-                ((fail_count++))
-                failed_utils+=("${_putil} (install)")
-            fi
-        done
-    else
-        # Sequential installation
-        for util in "${to_install[@]}"; do
-            _run_operation "install" "$util" "${INSTALL_FUNCS[$util]}" "$GREEN" "Installing/Running"
-        done
-    fi
+    # Process installations
+    for util in "${to_install[@]}"; do
+        _run_operation "install" "$util" "${INSTALL_FUNCS[$util]}" "$GREEN" "Installing/Running"
+    done
 
     # Process updates
     for util in "${to_update[@]}"; do

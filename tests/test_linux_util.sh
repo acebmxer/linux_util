@@ -119,8 +119,6 @@ echo "=== Config Module Tests ==="
 
 test_config_defaults() {
     assert_eq "30" "$CFG_LOG_RETENTION_DAYS" "Default log_retention_days is 30"
-    assert_eq "false" "$CFG_PARALLEL_INSTALLS" "Default parallel_installs is false"
-    assert_eq "3" "$CFG_MAX_PARALLEL" "Default max_parallel is 3"
     assert_eq "1024" "$CFG_DISK_MIN_MB" "Default disk_min_mb is 1024"
     assert_eq "INFO" "$CFG_LOG_LEVEL" "Default log_level is INFO"
 }
@@ -141,10 +139,6 @@ test_config_load_from_file() {
 log_retention_days=7
 max_log_size_mb=100
 
-[Installation]
-parallel_installs=true
-max_parallel=5
-
 # Comment line
 verbose=true
 CONF
@@ -152,15 +146,11 @@ CONF
     load_config "$tmp_conf"
     assert_eq "7" "$CFG_LOG_RETENTION_DAYS" "Config overrides log_retention_days"
     assert_eq "100" "$CFG_MAX_LOG_SIZE_MB" "Config overrides max_log_size_mb"
-    assert_eq "true" "$CFG_PARALLEL_INSTALLS" "Config overrides parallel_installs"
-    assert_eq "5" "$CFG_MAX_PARALLEL" "Config overrides max_parallel"
     assert_eq "true" "$VERBOSE" "Config overrides verbose"
 
     # Reset defaults
     CFG_LOG_RETENTION_DAYS=30
     CFG_MAX_LOG_SIZE_MB=50
-    CFG_PARALLEL_INSTALLS=false
-    CFG_MAX_PARALLEL=3
     VERBOSE=false
 
     rm -f "$tmp_conf"

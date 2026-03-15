@@ -13,8 +13,6 @@ CFG_COMPRESS_OLD_LOGS=true
 CFG_LOG_LEVEL="INFO"      # DEBUG, INFO, WARNING, ERROR
 
 CFG_AUTO_CONFIRM=false
-CFG_PARALLEL_INSTALLS=false
-CFG_MAX_PARALLEL=3
 CFG_RETRY_FAILED=true
 CFG_RETRY_ATTEMPTS=3
 
@@ -74,8 +72,6 @@ load_config() {
             compress_old_logs)      CFG_COMPRESS_OLD_LOGS="$value" ;;
             log_level)              CFG_LOG_LEVEL="$value" ;;
             auto_confirm)           CFG_AUTO_CONFIRM="$value" ;;
-            parallel_installs)      CFG_PARALLEL_INSTALLS="$value" ;;
-            max_parallel)           CFG_MAX_PARALLEL="$value" ;;
             retry_failed)           CFG_RETRY_FAILED="$value" ;;
             retry_attempts)         CFG_RETRY_ATTEMPTS="$value" ;;
             dns_check_enabled)      CFG_DNS_CHECK_ENABLED="$value" ;;

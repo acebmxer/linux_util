@@ -14,10 +14,6 @@ log_level=INFO
 # --- Installation ---
 # Skip confirmation prompts (not recommended)
 auto_confirm=false
-# Run independent installs in parallel (experimental, off by default)
-parallel_installs=false
-# Maximum parallel install jobs (only used when parallel_installs=true)
-max_parallel=3
 # Retry failed installations
 retry_failed=true
 retry_attempts=3
