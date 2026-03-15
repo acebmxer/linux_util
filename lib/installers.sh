@@ -274,7 +274,8 @@ get_version_xen_guest_utilities() {
     elif pkg_check_installed xe-guest-utilities-latest; then
         ver=$(pkg_get_version xe-guest-utilities-latest)
     fi
-    [[ -n "$ver" ]] && echo "$ver"
+    # Strip epoch and distro suffix
+    [[ -n "$ver" ]] && echo "$ver" | sed 's/^[0-9]*://; s/-.*//'
 }
 
 setup_xen_guest_utilities() {
@@ -598,7 +599,10 @@ get_version_kde() {
         echo "$version"
     else
         # Fallback: try to get version from package manager
-        pkg_get_version plasma-desktop 2>/dev/null || pkg_get_version kde-plasma-desktop 2>/dev/null || echo ""
+        # Strip epoch (e.g. "4:") and distro suffix (e.g. "-0zneon+24.04+...")
+        local pkg_ver
+        pkg_ver=$(pkg_get_version plasma-desktop 2>/dev/null || pkg_get_version kde-plasma-desktop 2>/dev/null || echo "")
+        echo "$pkg_ver" | sed 's/^[0-9]*://; s/-.*//'
     fi
 }
 
@@ -1253,9 +1257,9 @@ get_version_bitwarden() {
     elif has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden; then
         flatpak list 2>/dev/null | grep -i bitwarden | awk -F'\t' '{print $3}'
     elif pkg_check_installed bitwarden-bin; then
-        pkg_get_version bitwarden-bin
+        pkg_get_version bitwarden-bin | sed 's/^[0-9]*://; s/-.*//'
     elif pkg_check_installed bitwarden; then
-        pkg_get_version bitwarden
+        pkg_get_version bitwarden | sed 's/^[0-9]*://; s/-.*//'
     else
         echo ""
     fi
@@ -1674,9 +1678,9 @@ update_termius() {
 }
 get_version_termius() {
     if pkg_check_installed termius; then
-        pkg_get_version termius
+        pkg_get_version termius | sed 's/^[0-9]*://; s/-.*//'
     elif pkg_check_installed termius-app; then
-        pkg_get_version termius-app
+        pkg_get_version termius-app | sed 's/^[0-9]*://; s/-.*//'
     elif has_snap && snap list termius-app &>/dev/null; then
         snap list termius-app 2>/dev/null | awk 'NR==2{print $2}'
     elif has_flatpak && flatpak list 2>/dev/null | grep -qi termius; then
@@ -1839,11 +1843,11 @@ update_devolutions_rdm() {
 }
 get_version_devolutions_rdm() {
     if pkg_check_installed RemoteDesktopManager; then
-        pkg_get_version RemoteDesktopManager
+        pkg_get_version RemoteDesktopManager | sed 's/^[0-9]*://; s/-.*//'
     elif pkg_check_installed remotedesktopmanager; then
-        pkg_get_version remotedesktopmanager
+        pkg_get_version remotedesktopmanager | sed 's/^[0-9]*://; s/-.*//'
     elif pkg_check_installed remote-desktop-manager; then
-        pkg_get_version remote-desktop-manager
+        pkg_get_version remote-desktop-manager | sed 's/^[0-9]*://; s/-.*//'
     else
         echo ""
     fi
@@ -2088,11 +2092,11 @@ get_version_steam() {
     if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.valvesoftware.Steam"; then
         flatpak list 2>/dev/null | grep -i "com.valvesoftware.Steam" | awk -F'\t' '{print $3}'
     elif pkg_check_installed steam-installer; then
-        pkg_get_version steam-installer
+        pkg_get_version steam-installer | sed 's/^[0-9]*://; s/-.*//'
     elif pkg_check_installed steam-launcher; then
-        pkg_get_version steam-launcher
+        pkg_get_version steam-launcher | sed 's/^[0-9]*://; s/-.*//'
     elif pkg_check_installed steam; then
-        pkg_get_version steam
+        pkg_get_version steam | sed 's/^[0-9]*://; s/-.*//'
     else
         echo ""
     fi
@@ -2165,7 +2169,7 @@ get_version_timeshift() {
         echo "$version"
     else
         # Fallback: try package manager
-        pkg_get_version timeshift 2>/dev/null || echo ""
+        pkg_get_version timeshift 2>/dev/null | sed 's/^[0-9]*://; s/-.*//' || echo ""
     fi
 }
 
@@ -2615,7 +2619,7 @@ update_qbittorrent() {
 }
 
 get_version_qbittorrent() {
-    pkg_get_version qbittorrent | sed 's/^[0-9]*://; s/~.*//' || echo ""
+    pkg_get_version qbittorrent | sed 's/^[0-9]*://; s/-.*//' || echo ""
 }
 
 # --- Docker (utility version) ---
