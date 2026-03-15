@@ -493,12 +493,20 @@ run_selection_menu() {
                 redraw_menu
                 ;;
             SPACE)
-                # Toggle selection; clear any pending update for this item
-                UPDATE_SELECTED[$CURSOR]=0
-                if [[ ${SELECTED[$CURSOR]} -eq 0 ]]; then
-                    SELECTED[$CURSOR]=1
-                else
+                # Cycle through states: [ ] → [✓] → [U] (if installed) → [ ]
+                if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 1 ]]; then
+                    # [U] → [ ]
+                    UPDATE_SELECTED[$CURSOR]=0
                     SELECTED[$CURSOR]=0
+                elif [[ ${SELECTED[$CURSOR]} -eq 1 ]]; then
+                    # [✓] → [U] if installed, otherwise [✓] → [ ]
+                    SELECTED[$CURSOR]=0
+                    if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                        UPDATE_SELECTED[$CURSOR]=1
+                    fi
+                else
+                    # [ ] → [✓]
+                    SELECTED[$CURSOR]=1
                 fi
                 redraw_menu
                 ;;
