@@ -1500,12 +1500,8 @@ get_version_joplin() {
         fi
     done
 
-    # Fallback: try to extract version from Joplin AppImage if it exists
-    if [[ -f ~/.joplin/Joplin.AppImage ]]; then
-        # Use the file modification time as a fallback (not ideal but better than nothing)
-        file ~/.joplin/Joplin.AppImage 2>/dev/null | grep -oE 'ELF' >/dev/null && echo "installed" && return 0
-    fi
-
+    # Fallback: AppImage exists but no config with version info — return empty
+    # so the menu displays "(installed)" rather than "(vinstalled)"
     echo ""
 }
 
@@ -2504,7 +2500,9 @@ get_version_openssh_server() {
 # --- PIA VPN ---
 
 check_pia_vpn() {
-    command -v piactl &>/dev/null || pkg_check_installed privateinternetaccess
+    command -v piactl &>/dev/null || \
+        [[ -x /opt/piavpn/bin/piactl ]] || \
+        pkg_check_installed privateinternetaccess
 }
 
 install_pia_vpn() {
@@ -2512,31 +2510,31 @@ install_pia_vpn() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            # Add PIA repository key and install (modern signed-by method)
-            curl -fsSL https://repo.privateinternetaccess.com/debian/key/deb.gpg.key | \
-                sudo gpg --dearmor -o /usr/share/keyrings/pia-archive-keyring.gpg
-            echo "deb [signed-by=/usr/share/keyrings/pia-archive-keyring.gpg] https://repo.privateinternetaccess.com/debian/deb_ubuntu jammy main" | \
-                sudo tee /etc/apt/sources.list.d/pia.list > /dev/null
-            sudo apt update
-            sudo apt install -y privateinternetaccess
+            # Try apt repo first, fall back to .run installer if repo is unreachable
+            local _pia_apt_ok=true
+            if ! curl -fsSL https://repo.privateinternetaccess.com/debian/key/deb.gpg.key | \
+                sudo gpg --yes --dearmor -o /usr/share/keyrings/pia-archive-keyring.gpg 2>/dev/null; then
+                warn "Failed to fetch PIA repository key, falling back to .run installer."
+                _pia_apt_ok=false
+            fi
+            if $_pia_apt_ok; then
+                echo "deb [signed-by=/usr/share/keyrings/pia-archive-keyring.gpg] https://repo.privateinternetaccess.com/debian/deb_ubuntu jammy main" | \
+                    sudo tee /etc/apt/sources.list.d/pia.list > /dev/null
+                sudo apt update
+                if ! sudo apt install -y privateinternetaccess; then
+                    warn "apt install failed, falling back to .run installer."
+                    _pia_apt_ok=false
+                    # Clean up broken repo config
+                    sudo rm -f /etc/apt/sources.list.d/pia.list
+                    sudo rm -f /usr/share/keyrings/pia-archive-keyring.gpg
+                fi
+            fi
+            if ! $_pia_apt_ok; then
+                _pia_install_via_run || return 1
+            fi
             ;;
         fedora|rhel)
-            # Download and install PIA VPN from official installer
-            local pia_installer
-            pia_installer=$(mktemp /tmp/pia-XXXXXX.run)
-            CLEANUP_FILES+=("$pia_installer")
-            if ! wget -qO "$pia_installer" "https://installers.privateinternetaccess.com/download/pia-linux-x64.run"; then
-                echo "Error: Failed to download PIA VPN installer. Check network connectivity."
-                rm -f "$pia_installer"
-                return 1
-            fi
-            chmod +x "$pia_installer"
-            if ! "$pia_installer" --accept --quiet; then
-                echo "Error: Failed to install PIA VPN."
-                rm -f "$pia_installer"
-                return 1
-            fi
-            rm -f "$pia_installer"
+            _pia_install_via_run || return 1
             ;;
         arch)
             # Install from AUR
@@ -2559,6 +2557,25 @@ install_pia_vpn() {
             ;;
     esac
     echo "PIA VPN installed successfully."
+}
+
+# Download and install PIA VPN from the official .run installer.
+_pia_install_via_run() {
+    local pia_installer
+    pia_installer=$(mktemp /tmp/pia-XXXXXX.run)
+    CLEANUP_FILES+=("$pia_installer")
+    if ! wget -qO "$pia_installer" "https://installers.privateinternetaccess.com/download/pia-linux-x64.run"; then
+        echo "Error: Failed to download PIA VPN installer. Check network connectivity."
+        rm -f "$pia_installer"
+        return 1
+    fi
+    chmod +x "$pia_installer"
+    if ! "$pia_installer" --accept --quiet; then
+        echo "Error: Failed to install PIA VPN."
+        rm -f "$pia_installer"
+        return 1
+    fi
+    rm -f "$pia_installer"
 }
 
 uninstall_pia_vpn() {

@@ -161,12 +161,12 @@ _init_health_checks() {
     HEALTH_CHECK_CMDS["Brave Browser"]="brave-browser --version"
     HEALTH_CHECK_CMDS["Visual Studio Code"]="code --version"
     HEALTH_CHECK_CMDS["Syncthing"]="syncthing --version"
-    HEALTH_CHECK_CMDS["PIA VPN"]="piactl --version"
+    HEALTH_CHECK_CMDS["PIA VPN"]="piactl --version 2>/dev/null || /opt/piavpn/bin/piactl --version 2>/dev/null"
     HEALTH_CHECK_CMDS["Bitwarden Client"]="command -v bitwarden"
     HEALTH_CHECK_CMDS["QBittorrent"]="command -v qbittorrent"
     HEALTH_CHECK_CMDS["OpenSSH Server"]="systemctl is-active ssh 2>/dev/null || systemctl is-active sshd 2>/dev/null"
     HEALTH_CHECK_CMDS["Timeshift"]="timeshift --version"
-    HEALTH_CHECK_CMDS["LibreOffice"]="libreoffice --version"
+    HEALTH_CHECK_CMDS["LibreOffice"]="libreoffice --version 2>/dev/null || soffice --version 2>/dev/null"
     HEALTH_CHECK_CMDS["Termius SSH Client"]="command -v termius || command -v termius-app"
     HEALTH_CHECK_CMDS["NVIDIA Drivers"]="nvidia-smi"
     HEALTH_CHECK_CMDS["KDE Desktop"]="command -v plasmashell"
@@ -179,6 +179,9 @@ _init_health_checks() {
 health_check() {
     local util_name="$1"
     local check_cmd="${HEALTH_CHECK_CMDS[$util_name]:-}"
+
+    # Refresh shell command hash table so newly installed binaries are found
+    hash -r 2>/dev/null
 
     if [[ -z "$check_cmd" ]]; then
         # No health check registered; use the utility's own check function
