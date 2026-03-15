@@ -1506,8 +1506,20 @@ get_version_joplin() {
         fi
     done
 
-    # Fallback: AppImage exists but no config with version info — return empty
-    # so the menu displays "(installed)" rather than "(vinstalled)"
+    # Fallback: extract version directly from the AppImage (works even before first launch)
+    local appimage="$HOME/.joplin/Joplin.AppImage"
+    if [[ -f "$appimage" ]]; then
+        local tmpdir
+        tmpdir=$(mktemp -d)
+        if (cd "$tmpdir" && timeout 10 "$appimage" --appimage-extract "resources/app/package.json") &>/dev/null; then
+            local version
+            version=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$tmpdir/squashfs-root/resources/app/package.json" 2>/dev/null)
+            rm -rf "$tmpdir"
+            [[ -n "$version" ]] && echo "$version" && return 0
+        fi
+        rm -rf "$tmpdir"
+    fi
+
     echo ""
 }
 
