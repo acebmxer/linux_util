@@ -661,7 +661,7 @@ check_kde() {
 get_version_kde() {
     # Try plasmashell first
     local version
-    version=$(plasmashell --version 2>/dev/null | grep -oP 'plasmashell \K[0-9.]+' | head -1)
+    version=$(QT_QPA_PLATFORM=offscreen plasmashell --version 2>/dev/null | grep -oP 'plasmashell \K[0-9.]+' | head -1)
     if [[ -n "$version" ]]; then
         echo "$version"
     else
