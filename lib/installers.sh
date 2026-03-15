@@ -353,8 +353,17 @@ setup_xen_guest_utilities() {
 
         case "$DISTRO_FAMILY" in
             debian)
-                # Debian/Ubuntu are auto-detected by install.sh
-                install_flags=""
+                # The ISO installer only recognises "ubuntu" and "debian" by name.
+                # Ubuntu derivatives (KDE Neon, Kubuntu, etc.) must be forced to
+                # install as ubuntu so the installer doesn't reject them.
+                case "$DISTRO_ID" in
+                    ubuntu|debian)
+                        install_flags=""
+                        ;;
+                    *)
+                        install_flags="-d ubuntu -m ${major_ver}"
+                        ;;
+                esac
                 ;;
             rhel)
                 # RHEL derivatives need explicit distro flags
