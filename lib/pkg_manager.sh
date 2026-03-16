@@ -562,7 +562,29 @@ pkg_check_upgrade_available() {
             return 1
             ;;
         zorin)
-            # Handled in next step
+            # Zorin is based on Ubuntu LTS. Check UBUNTU_CODENAME from os-release.
+            local zorin_ubuntu_codename=""
+            if [[ -f /etc/os-release ]]; then
+                zorin_ubuntu_codename=$(grep -oP '^UBUNTU_CODENAME=\K.*' /etc/os-release 2>/dev/null || true)
+            fi
+
+            # Check if underlying Ubuntu has a newer LTS
+            local zorin_current_major
+            zorin_current_major=$(echo "$DISTRO_VERSION_ID" | cut -d. -f1)
+            local zorin_next_major=$(( zorin_current_major + 1 ))
+
+            if [[ -n "$zorin_ubuntu_codename" ]]; then
+                local zorin_ubuntu_meta
+                zorin_ubuntu_meta=$(curl -sf --max-time 10 "http://changelogs.ubuntu.com/meta-release-lts" 2>/dev/null) || true
+                if [[ -n "$zorin_ubuntu_meta" ]]; then
+                    local zorin_latest_lts
+                    zorin_latest_lts=$(echo "$zorin_ubuntu_meta" | grep -oP '^Dist: \K\S+' | tail -1)
+                    if [[ -n "$zorin_latest_lts" && "$zorin_latest_lts" != "$zorin_ubuntu_codename" ]]; then
+                        echo "$zorin_next_major"
+                        return 0
+                    fi
+                fi
+            fi
             return 1
             ;;
         *)
@@ -826,6 +848,59 @@ pkg_distro_upgrade() {
                         "packages.elementary.io" || warn "Elementary repo codename update failed — may need manual update."
                 else
                     warn "Could not determine new Elementary codename. Elementary-specific repos may need manual updating."
+                fi
+            fi
+            return 0
+            ;;
+        zorin)
+            # Read underlying Ubuntu codename
+            local zorin_old_ubuntu_codename=""
+            if [[ -f /etc/os-release ]]; then
+                zorin_old_ubuntu_codename=$(grep -oP '^UBUNTU_CODENAME=\K.*' /etc/os-release 2>/dev/null || true)
+            fi
+            if [[ -z "$zorin_old_ubuntu_codename" ]]; then
+                error "Could not determine underlying Ubuntu codename for Zorin OS."
+                return 1
+            fi
+
+            # Read Zorin's own codename (VERSION_CODENAME in os-release)
+            local zorin_old_codename="$DISTRO_VERSION_CODENAME"
+
+            # Determine new Ubuntu codename from meta-release-lts
+            local zorin_new_ubuntu_codename=""
+            local zorin_meta
+            zorin_meta=$(curl -sf --max-time 10 "http://changelogs.ubuntu.com/meta-release-lts" 2>/dev/null) || true
+            if [[ -n "$zorin_meta" ]]; then
+                zorin_new_ubuntu_codename=$(echo "$zorin_meta" | grep -oP '^Dist: \K\S+' | tail -1)
+            fi
+            if [[ -z "$zorin_new_ubuntu_codename" ]]; then
+                error "Could not determine target Ubuntu codename for Zorin OS upgrade."
+                return 1
+            fi
+
+            info "Upgrading Zorin OS to ${target_version}..."
+            info "Underlying Ubuntu: ${zorin_old_ubuntu_codename} -> ${zorin_new_ubuntu_codename}"
+
+            # Step 1: Swap Ubuntu codenames in Ubuntu repos
+            _apt_codename_upgrade "$zorin_old_ubuntu_codename" "$zorin_new_ubuntu_codename" \
+                "archive.ubuntu.com security.ubuntu.com" || return 1
+
+            # Step 2: Swap Zorin codename in Zorin repos
+            # Zorin repos may use their own codename distinct from Ubuntu's.
+            if [[ -n "$zorin_old_codename" && "$zorin_old_codename" != "$zorin_old_ubuntu_codename" ]]; then
+                # Zorin uses a different codename — try to discover the new one
+                local zorin_new_codename=""
+                local zorin_repo_info
+                zorin_repo_info=$(curl -sf --max-time 10 "https://packages.zorinos.com/dists/" 2>/dev/null) || true
+                if [[ -n "$zorin_repo_info" ]]; then
+                    zorin_new_codename=$(echo "$zorin_repo_info" | grep -oP 'href="\K[a-z]+(?=/")' | grep -v "$zorin_old_codename" | tail -1)
+                fi
+                if [[ -n "$zorin_new_codename" && "$zorin_new_codename" != "$zorin_old_codename" ]]; then
+                    info "Updating Zorin codename: ${zorin_old_codename} -> ${zorin_new_codename}"
+                    _apt_codename_upgrade "$zorin_old_codename" "$zorin_new_codename" \
+                        "packages.zorinos.com" || warn "Zorin repo codename update failed — may need manual update."
+                else
+                    warn "Could not determine new Zorin codename. Zorin-specific repos may need manual updating."
                 fi
             fi
             return 0
