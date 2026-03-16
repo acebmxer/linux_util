@@ -484,8 +484,27 @@ pkg_check_upgrade_available() {
             fi
             return 1
             ;;
-        debian|linuxmint|elementary|zorin)
-            # Debian stable and derivatives: version upgrades require manual sources.list editing
+        debian)
+            # Query Debian's stable release codename and compare with current
+            local stable_release_info
+            stable_release_info=$(curl -sf --max-time 10 "https://deb.debian.org/debian/dists/stable/Release" 2>/dev/null) || {
+                warn "Could not fetch Debian stable release info"
+                return 1
+            }
+            local stable_codename
+            stable_codename=$(echo "$stable_release_info" | grep -oP '^Codename:\s*\K\S+')
+            if [[ -z "$stable_codename" ]]; then
+                warn "Could not parse Debian stable codename"
+                return 1
+            fi
+            if [[ "$stable_codename" != "$DISTRO_VERSION_CODENAME" ]]; then
+                echo "$stable_codename"
+                return 0
+            fi
+            return 1
+            ;;
+        linuxmint|elementary|zorin)
+            # Handled in subsequent tasks
             return 1
             ;;
         *)
