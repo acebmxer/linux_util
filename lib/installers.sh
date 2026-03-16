@@ -597,6 +597,10 @@ setup_full_update() {
         echo "  Target:  ${target_version}"
         echo ""
         echo "  This is a major operation and may take some time."
+        # Extra note for RHEL family — leapp preupgrade will run first
+        if [[ "$DISTRO_FAMILY" == "rhel" ]]; then
+            echo "  A leapp preupgrade check will run first to identify any blockers."
+        fi
         echo ""
         local confirm=""
         read -rp "Continue with distribution upgrade? (y/N): " confirm
