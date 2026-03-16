@@ -245,6 +245,83 @@ pkg_cleanup_thorough() {
     info "System cleanup completed."
 }
 
+# Check if a distribution version upgrade is available.
+# Returns 0 if available (outputs target version to stdout), 1 if not.
+# Dispatches on DISTRO_ID since upgrade paths are distro-specific.
+pkg_check_upgrade_available() {
+    case "$DISTRO_ID" in
+        ubuntu|kubuntu|pop|neon)
+            # Ensure do-release-upgrade is available
+            if ! command -v do-release-upgrade &>/dev/null; then
+                info "Installing update-manager-core for upgrade checks..."
+                sudo apt-get install -y update-manager-core 2>/dev/null || {
+                    warn "Could not install update-manager-core"
+                    return 1
+                }
+            fi
+            # Check for available upgrade
+            local check_output
+            check_output=$(do-release-upgrade -c 2>&1) || true
+            if echo "$check_output" | grep -qi "new release"; then
+                # Extract target version from output like "New release '24.04 LTS' available."
+                local target
+                target=$(echo "$check_output" | grep -oP "New release '\K[^']+")
+                if [[ -n "$target" ]]; then
+                    echo "$target"
+                    return 0
+                fi
+            fi
+            return 1
+            ;;
+        fedora)
+            # Try next release version — use repoquery to check if the next version's repos exist
+            # without downloading any packages
+            local next_ver=$(( DISTRO_VERSION_ID + 1 ))
+            if sudo dnf --releasever="$next_ver" --repo=fedora repoquery --latest-limit=1 fedora-release &>/dev/null; then
+                echo "$next_ver"
+                return 0
+            fi
+            return 1
+            ;;
+        opensuse-leap)
+            # Check for newer Leap version by querying product info
+            local current_ver="$DISTRO_VERSION_ID"
+            # Try incrementing minor version first (e.g., 15.5 -> 15.6), then major
+            local major minor next_minor next_major
+            major=$(echo "$current_ver" | cut -d. -f1)
+            minor=$(echo "$current_ver" | cut -d. -f2)
+            next_minor="${major}.$(( minor + 1 ))"
+            next_major="$(( major + 1 )).0"
+
+            # Check if next minor version repos exist
+            if curl -sf --head "https://download.opensuse.org/distribution/leap/${next_minor}/repo/oss/" &>/dev/null; then
+                echo "$next_minor"
+                return 0
+            elif curl -sf --head "https://download.opensuse.org/distribution/leap/${next_major}/repo/oss/" &>/dev/null; then
+                echo "$next_major"
+                return 0
+            fi
+            return 1
+            ;;
+        opensuse-tumbleweed|arch|manjaro|endeavouros|garuda|artix)
+            # Rolling release — no discrete version upgrades
+            return 1
+            ;;
+        rhel|centos|rocky|alma|ol|almalinux)
+            # RHEL family: major version upgrades managed externally
+            return 1
+            ;;
+        debian|linuxmint|elementary|zorin|kali)
+            # Debian stable and derivatives: version upgrades require manual sources.list editing
+            return 1
+            ;;
+        *)
+            # Unknown distro — no upgrade path
+            return 1
+            ;;
+    esac
+}
+
 pkg_get_version() {
     local pkg="$1"
     case "$PKG_MGR" in
