@@ -456,7 +456,32 @@ pkg_check_upgrade_available() {
             return 1
             ;;
         rhel|centos|rocky|alma|ol|almalinux)
-            # RHEL family: major version upgrades managed externally
+            # CentOS Stream is rolling — no discrete version upgrades
+            if [[ -f /etc/centos-release ]] && grep -qi "stream" /etc/centos-release 2>/dev/null; then
+                return 1
+            fi
+
+            # Install leapp if not present
+            if ! command -v leapp &>/dev/null; then
+                info "Installing leapp for upgrade checks..."
+                sudo "$PKG_MGR" install -y leapp leapp-upgrade 2>/dev/null || {
+                    warn "Could not install leapp"
+                    return 1
+                }
+            fi
+
+            # Target is next major version
+            local current_major
+            current_major=$(echo "$DISTRO_VERSION_ID" | cut -d. -f1)
+            local target_major=$(( current_major + 1 ))
+
+            # Lightweight check only — full preupgrade is deferred to
+            # pkg_distro_upgrade since it takes 10-30 minutes.
+            # Just verify leapp is installed and the target is a reasonable version.
+            if command -v leapp &>/dev/null && (( target_major >= 8 && target_major <= 11 )); then
+                echo "$target_major"
+                return 0
+            fi
             return 1
             ;;
         debian|linuxmint|elementary|zorin)
