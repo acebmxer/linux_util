@@ -192,7 +192,7 @@ pkg_cleanup_thorough() {
                 local total
                 total=$(echo "$installed_kernels" | wc -l)
                 if (( total > keep_count )); then
-                    kernels_to_remove=$(echo "$installed_kernels" | head -n -${keep_count} | grep -v "$current_kernel" || true)
+                    kernels_to_remove=$(echo "$installed_kernels" | head -n -${keep_count} | grep -Fv "$current_kernel" || true)
                 fi
             fi
             if [[ -n "$kernels_to_remove" ]]; then
