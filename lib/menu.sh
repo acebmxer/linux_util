@@ -259,9 +259,9 @@ draw_menu() {
     echo ""
 }
 
-# Redraw the menu (clear and redraw for reliability)
+# Redraw the menu in-place (overwrite without clearing to prevent flicker)
 redraw_menu() {
-    clear
+    printf '\033[H'
     draw_menu
 }
 
