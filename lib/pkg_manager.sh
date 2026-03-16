@@ -245,6 +245,154 @@ pkg_cleanup_thorough() {
     info "System cleanup completed."
 }
 
+# Shared helper for Debian-family distro upgrades via codename swap.
+# Backs up sources, swaps old codename for new in official repos,
+# runs apt update + full-upgrade, restores on failure.
+# Arguments: $1 = old codename, $2 = new codename
+# Optional:  $3 = space-separated list of official mirror URL patterns to scope
+#            replacements (defaults to common Debian/Ubuntu patterns).
+# Returns 0 on success, 1 on failure (with sources restored).
+_apt_codename_upgrade() {
+    local old_codename="$1"
+    local new_codename="$2"
+    # Default official mirror patterns — caller can override for derivatives
+    local mirror_patterns="${3:-deb.debian.org archive.ubuntu.com security.debian.org security.ubuntu.com}"
+
+    if [[ -z "$old_codename" || -z "$new_codename" ]]; then
+        error "_apt_codename_upgrade: old and new codename arguments are required."
+        return 1
+    fi
+
+    # Step 1: Create persistent backup directory
+    local backup_dir="/var/backups/linux_util/sources_backup_$(date +%Y%m%d_%H%M%S)"
+    sudo mkdir -p "$backup_dir"
+
+    info "Backing up sources to ${backup_dir}..."
+    if [[ -f /etc/apt/sources.list ]]; then
+        sudo cp /etc/apt/sources.list "$backup_dir/"
+    fi
+    if ls /etc/apt/sources.list.d/*.list &>/dev/null; then
+        sudo cp /etc/apt/sources.list.d/*.list "$backup_dir/"
+    fi
+    if ls /etc/apt/sources.list.d/*.sources &>/dev/null; then
+        sudo cp /etc/apt/sources.list.d/*.sources "$backup_dir/"
+    fi
+
+    # Step 2: Check for held packages
+    local held_packages
+    held_packages=$(apt-mark showhold 2>/dev/null)
+    if [[ -n "$held_packages" ]]; then
+        warn "The following packages are held and may block the upgrade:"
+        echo "$held_packages"
+        echo ""
+        local hold_confirm=""
+        read -rp "Continue with held packages? (y/N): " hold_confirm
+        if [[ ! "$hold_confirm" =~ ^[Yy]$ ]]; then
+            info "Upgrade aborted due to held packages."
+            sudo rm -rf "$backup_dir"
+            return 1
+        fi
+    fi
+
+    # Step 3: Build a grep pattern to match official mirror URLs
+    local mirror_grep_pattern=""
+    local pattern
+    for pattern in $mirror_patterns; do
+        if [[ -n "$mirror_grep_pattern" ]]; then
+            mirror_grep_pattern="${mirror_grep_pattern}|${pattern}"
+        else
+            mirror_grep_pattern="$pattern"
+        fi
+    done
+
+    # Build escaped mirror pattern for sed (pipe-delimited -> backslash-escaped)
+    local mirror_sed_pattern="${mirror_grep_pattern//|/\\|}"
+
+    # Step 4: Swap codenames in traditional .list files
+    # Only replace on deb/deb-src lines that ALSO contain an official mirror URL.
+    # This prevents modifying third-party repo lines in the same file.
+    local sources_file
+    local skipped_repos=false
+    if [[ -f /etc/apt/sources.list ]]; then
+        info "Updating codename in /etc/apt/sources.list..."
+        sudo sed -i "/^[[:space:]]*deb\(-src\)\?[[:space:]].*\(${mirror_sed_pattern}\)/s/\b${old_codename}\b/${new_codename}/g" /etc/apt/sources.list
+    fi
+    for sources_file in /etc/apt/sources.list.d/*.list; do
+        [[ -f "$sources_file" ]] || continue
+        if grep -qE "(${mirror_grep_pattern})" "$sources_file" 2>/dev/null; then
+            info "Updating codename in $(basename "$sources_file")..."
+            sudo sed -i "/^[[:space:]]*deb\(-src\)\?[[:space:]].*\(${mirror_sed_pattern}\)/s/\b${old_codename}\b/${new_codename}/g" "$sources_file"
+        else
+            verbose "Skipping third-party repo: $(basename "$sources_file")"
+            skipped_repos=true
+        fi
+    done
+
+    # Step 5: Swap codenames in DEB822 .sources files (Suites: lines only)
+    # DEB822 files group URIs and Suites in the same stanza, so we check
+    # if the file contains an official mirror and only then swap Suites.
+    for sources_file in /etc/apt/sources.list.d/*.sources; do
+        [[ -f "$sources_file" ]] || continue
+        if grep -qE "(${mirror_grep_pattern})" "$sources_file" 2>/dev/null; then
+            info "Updating codename in $(basename "$sources_file") (DEB822)..."
+            sudo sed -i "/^Suites:/s/\b${old_codename}\b/${new_codename}/g" "$sources_file"
+        else
+            verbose "Skipping third-party repo: $(basename "$sources_file")"
+            skipped_repos=true
+        fi
+    done
+
+    if [[ "$skipped_repos" == "true" ]]; then
+        warn "Third-party repositories were not modified. They may need manual updating for the new release."
+    fi
+
+    # Step 6: Run apt-get update (apt-get is more stable for scripted use)
+    info "Refreshing package lists for ${new_codename}..."
+    if ! sudo apt-get update; then
+        error "apt-get update failed after codename swap. Restoring sources..."
+        _apt_codename_upgrade_restore "$backup_dir"
+        return 1
+    fi
+
+    # Step 7: Run apt-get dist-upgrade (standard for major version upgrades)
+    # Note: cleanup (autoremove, etc.) is the caller's responsibility
+    info "Running full upgrade to ${new_codename}..."
+    if ! sudo apt-get dist-upgrade -y; then
+        error "apt-get dist-upgrade failed. Restoring sources..."
+        _apt_codename_upgrade_restore "$backup_dir"
+        # Re-sync package database to old release
+        warn "Re-syncing package database to previous release..."
+        sudo apt-get update || true
+        warn "Some packages may have been partially upgraded. Manual intervention may be needed."
+        return 1
+    fi
+
+    info "Codename upgrade from ${old_codename} to ${new_codename} completed successfully."
+    info "Source backup preserved at: ${backup_dir}"
+    return 0
+}
+
+# Restore sources from backup directory.
+# Argument: $1 = backup directory path
+_apt_codename_upgrade_restore() {
+    local backup_dir="$1"
+    if [[ ! -d "$backup_dir" ]]; then
+        error "Backup directory not found: ${backup_dir}"
+        return 1
+    fi
+
+    if [[ -f "$backup_dir/sources.list" ]]; then
+        sudo cp "$backup_dir/sources.list" /etc/apt/sources.list
+    fi
+    if ls "$backup_dir"/*.list &>/dev/null; then
+        sudo cp "$backup_dir"/*.list /etc/apt/sources.list.d/
+    fi
+    if ls "$backup_dir"/*.sources &>/dev/null; then
+        sudo cp "$backup_dir"/*.sources /etc/apt/sources.list.d/
+    fi
+    info "Sources restored from backup: ${backup_dir}"
+}
+
 # Check if a distribution version upgrade is available.
 # Returns 0 if available (outputs target version to stdout), 1 if not.
 # Dispatches on DISTRO_ID since upgrade paths are distro-specific.
