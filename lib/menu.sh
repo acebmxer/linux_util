@@ -73,8 +73,9 @@ draw_menu() {
     # This eliminates SSH flicker caused by many individual write() syscalls.
     local _buf=""
 
-    # Cursor home for in-place redraw (harmless on initial draw after clear)
-    _buf+=$'\033[H'
+    # Clear screen + cursor home. Arrives in the same write as all menu content,
+    # so there is no blank-screen flash even over SSH.
+    _buf+=$'\033[2J\033[H'
 
     _buf+=$'\n'
     _buf+="${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"$'\n'
