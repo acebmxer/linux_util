@@ -168,6 +168,83 @@ pkg_clean() {
     esac
 }
 
+# Thorough cleanup: autoremove, old kernels, purge configs, clean cache
+pkg_cleanup_thorough() {
+    info "Running thorough system cleanup..."
+
+    # Step 1: Remove orphaned dependencies
+    pkg_autoremove
+
+    # Step 2: Remove old kernels (keep current + one previous)
+    local current_kernel
+    current_kernel=$(uname -r)
+    info "Current kernel: ${current_kernel} (will be preserved)"
+
+    case "$PKG_MGR" in
+        apt)
+            # List installed kernels, exclude current and latest, purge the rest
+            local kernels_to_remove=""
+            local installed_kernels
+            installed_kernels=$(dpkg -l 'linux-image-*' 2>/dev/null | awk '/^ii.*linux-image-[0-9]/ {print $2}' | sort -V)
+            if [[ -n "$installed_kernels" ]]; then
+                # Keep the two newest and the currently running kernel
+                local keep_count=2
+                local total
+                total=$(echo "$installed_kernels" | wc -l)
+                if (( total > keep_count )); then
+                    kernels_to_remove=$(echo "$installed_kernels" | head -n -${keep_count} | grep -v "$current_kernel" || true)
+                fi
+            fi
+            if [[ -n "$kernels_to_remove" ]]; then
+                info "Removing old kernels: $(echo "$kernels_to_remove" | tr '\n' ' ')"
+                # Also remove matching headers
+                local headers_to_remove=""
+                for kern in $kernels_to_remove; do
+                    local ver
+                    ver=$(echo "$kern" | sed 's/linux-image-\(unsigned-\)\?//')
+                    if dpkg -l "linux-headers-${ver}" 2>/dev/null | grep -q "^ii"; then
+                        headers_to_remove+="linux-headers-${ver} "
+                    fi
+                done
+                # shellcheck disable=SC2086
+                sudo apt-get purge -y $kernels_to_remove $headers_to_remove 2>/dev/null || true
+            else
+                info "No old kernels to remove."
+            fi
+            ;;
+        dnf|yum)
+            sudo "$PKG_MGR" remove -y --oldinstallonly --setopt installonly_limit=2 2>/dev/null || true
+            ;;
+        pacman)
+            # Arch doesn't accumulate old kernels the same way; skip
+            ;;
+        zypper)
+            sudo zypper purge-kernels --keep 2 2>/dev/null || true
+            ;;
+    esac
+
+    # Step 3: Purge removed package configs (Debian family only)
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        local rc_packages
+        rc_packages=$(dpkg -l 2>/dev/null | awk '/^rc/ {print $2}')
+        if [[ -n "$rc_packages" ]]; then
+            info "Purging removed package configs..."
+            # shellcheck disable=SC2086
+            sudo dpkg --purge $rc_packages 2>/dev/null || true
+        fi
+    fi
+
+    # Step 4: Clean package cache
+    pkg_clean
+
+    # Step 5: Clean apt lists partial files (Debian family only)
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        sudo rm -f /var/lib/apt/lists/partial/* 2>/dev/null || true
+    fi
+
+    info "System cleanup completed."
+}
+
 pkg_get_version() {
     local pkg="$1"
     case "$PKG_MGR" in
