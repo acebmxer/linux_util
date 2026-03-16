@@ -616,9 +616,9 @@ pkg_distro_upgrade() {
                 original_prompt=$(grep -oP '^Prompt=\K.*' "$release_config" 2>/dev/null || echo "")
 
                 # Check if current version is LTS (Ubuntu LTS versions: XX.04 where XX is even)
-                # Only check for ubuntu proper — kubuntu/pop/neon may not follow same LTS scheme
+                # Check for ubuntu and kubuntu — both follow the same LTS release scheme
                 local is_lts=false
-                if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+                if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ]]; then
                     local year month
                     year=$(echo "$DISTRO_VERSION_ID" | cut -d. -f1)
                     month=$(echo "$DISTRO_VERSION_ID" | cut -d. -f2)
