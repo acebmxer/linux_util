@@ -328,6 +328,12 @@ pkg_check_upgrade_available() {
 pkg_distro_upgrade() {
     local target_version="$1"
 
+    # I-3: Validate target_version argument
+    if [[ -z "$target_version" ]]; then
+        error "pkg_distro_upgrade: target_version argument is required."
+        return 1
+    fi
+
     case "$DISTRO_ID" in
         ubuntu|kubuntu|pop|neon)
             # LTS awareness: check if current release is LTS
@@ -338,6 +344,7 @@ pkg_distro_upgrade() {
                 original_prompt=$(grep -oP '^Prompt=\K.*' "$release_config" 2>/dev/null || echo "")
 
                 # Check if current version is LTS (Ubuntu LTS versions: XX.04 where XX is even)
+                # Only check for ubuntu proper — kubuntu/pop/neon may not follow same LTS scheme
                 local is_lts=false
                 if [[ "$DISTRO_ID" == "ubuntu" ]]; then
                     local year month
@@ -368,20 +375,21 @@ pkg_distro_upgrade() {
                 fi
             fi
 
+            # I-4: Run upgrade and always restore prompt setting afterward
             info "Starting distribution upgrade to ${target_version}..."
-            if sudo do-release-upgrade -f DistUpgradeViewNonInteractive; then
+            local rc=0
+            sudo do-release-upgrade -f DistUpgradeViewNonInteractive || rc=$?
+
+            # Always restore original prompt setting
+            if [[ -n "$original_prompt" && -f "$release_config" ]]; then
+                sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
+            fi
+
+            if (( rc == 0 )); then
                 info "Distribution upgrade to ${target_version} completed successfully."
-                # Restore original prompt setting
-                if [[ -n "$original_prompt" && -f "$release_config" ]]; then
-                    sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
-                fi
                 return 0
             else
                 error "Distribution upgrade to ${target_version} failed."
-                # Restore original prompt setting
-                if [[ -n "$original_prompt" && -f "$release_config" ]]; then
-                    sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
-                fi
                 return 1
             fi
             ;;
@@ -398,21 +406,35 @@ pkg_distro_upgrade() {
             ;;
         opensuse-leap)
             info "Upgrading openSUSE Leap to ${target_version}..."
-            # Update repo URLs to target version
+            # I-1: Escape dots in version for sed regex and scope to baseurl/mirrorlist lines
+            # I-2: Back up repo files for rollback on failure
             local current_ver="$DISTRO_VERSION_ID"
-            sudo sed -i "s/${current_ver}/${target_version}/g" /etc/zypp/repos.d/*.repo 2>/dev/null || {
+            local escaped_current
+            escaped_current=$(printf '%s\n' "$current_ver" | sed 's/[.]/\\./g')
+
+            local repo_backup
+            repo_backup=$(mktemp -d)
+            cp /etc/zypp/repos.d/*.repo "$repo_backup/" 2>/dev/null
+
+            sudo sed -i "/^\(baseurl\|mirrorlist\)/s/${escaped_current}/${target_version}/g" /etc/zypp/repos.d/*.repo 2>/dev/null || {
                 error "Failed to update repository URLs."
+                rm -rf "$repo_backup"
                 return 1
             }
             sudo zypper ref || {
-                error "Failed to refresh repositories after URL update."
+                error "Failed to refresh repositories after URL update. Restoring repo files."
+                sudo cp "$repo_backup"/*.repo /etc/zypp/repos.d/
+                rm -rf "$repo_backup"
                 return 1
             }
             if sudo zypper dup --allow-vendor-change -y; then
                 info "openSUSE Leap upgrade to ${target_version} completed."
+                rm -rf "$repo_backup"
                 return 0
             else
-                error "openSUSE Leap upgrade to ${target_version} failed."
+                error "openSUSE Leap upgrade to ${target_version} failed. Restoring repository files."
+                sudo cp "$repo_backup"/*.repo /etc/zypp/repos.d/
+                rm -rf "$repo_backup"
                 return 1
             fi
             ;;
