@@ -264,10 +264,17 @@ _apt_codename_upgrade() {
     fi
 
     # Step 1: Install all pending updates for the current release first.
-    # dist-upgrade / do-release-upgrade may fail if the system is not fully up-to-date.
+    # Use dist-upgrade so new kernel packages etc. are included.
     info "Installing all pending updates before codename upgrade..."
-    if ! sudo apt-get upgrade -y; then
+    if ! sudo apt-get dist-upgrade -y; then
         error "Failed to install pending updates. Cannot proceed with codename upgrade."
+        return 1
+    fi
+
+    # A reboot may be required after kernel updates before proceeding
+    if [[ -f /var/run/reboot-required ]]; then
+        warn "A reboot is required before the codename upgrade can proceed."
+        warn "Please reboot the system and re-run this script to continue the upgrade."
         return 1
     fi
 
@@ -656,8 +663,9 @@ pkg_distro_upgrade() {
             fi
 
             # do-release-upgrade requires all pending updates to be installed first
+            # Use dist-upgrade (not upgrade) so new kernel packages etc. are included
             info "Installing all pending updates before distribution upgrade..."
-            sudo apt-get upgrade -y || {
+            sudo apt-get dist-upgrade -y || {
                 error "Failed to install pending updates. Cannot proceed with distribution upgrade."
                 # Restore prompt setting before returning
                 if [[ -n "$original_prompt" && -f "$release_config" ]]; then
@@ -665,6 +673,17 @@ pkg_distro_upgrade() {
                 fi
                 return 1
             }
+
+            # do-release-upgrade also requires a reboot if the kernel was updated
+            if [[ -f /var/run/reboot-required ]]; then
+                warn "A reboot is required before the distribution upgrade can proceed."
+                warn "Please reboot the system and re-run this script to continue the upgrade to ${target_version}."
+                # Restore prompt setting before returning
+                if [[ -n "$original_prompt" && -f "$release_config" ]]; then
+                    sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
+                fi
+                return 1
+            fi
 
             # I-4: Run upgrade and always restore prompt setting afterward
             info "Starting distribution upgrade to ${target_version}..."
@@ -691,6 +710,13 @@ pkg_distro_upgrade() {
                 error "Failed to install pending updates. Cannot proceed with Fedora upgrade."
                 return 1
             }
+
+            # Check if a reboot is needed before proceeding
+            if command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+                warn "A reboot is required before the Fedora upgrade can proceed."
+                warn "Please reboot the system and re-run this script to continue the upgrade to Fedora ${target_version}."
+                return 1
+            fi
 
             info "Downloading upgrade packages for Fedora ${target_version}..."
             if sudo dnf system-upgrade download --releasever="$target_version" -y; then
@@ -743,6 +769,13 @@ pkg_distro_upgrade() {
                 error "Failed to install pending updates. Cannot proceed with upgrade."
                 return 1
             }
+
+            # Check if a reboot is needed before proceeding
+            if command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+                warn "A reboot is required before the RHEL-family upgrade can proceed."
+                warn "Please reboot the system and re-run this script to continue the upgrade to version ${target_version}."
+                return 1
+            fi
 
             # Install leapp if not present
             if ! command -v leapp &>/dev/null; then

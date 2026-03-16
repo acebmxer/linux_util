@@ -610,9 +610,23 @@ setup_full_update() {
                 pkg_cleanup_thorough
                 info "Full system upgrade completed."
                 return 0
-            else
-                warn "Distribution upgrade failed. Falling back to package updates..."
             fi
+
+            # If a reboot is required (updates were applied but system needs restart),
+            # don't fall through to redundant package updates — just exit cleanly.
+            local reboot_needed=false
+            if [[ -f /var/run/reboot-required ]]; then
+                reboot_needed=true
+            elif command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+                reboot_needed=true
+            fi
+
+            if [[ "$reboot_needed" == "true" ]]; then
+                info "System updates were applied. Please reboot and re-run to continue the distribution upgrade."
+                return 0
+            fi
+
+            warn "Distribution upgrade failed. Falling back to package updates..."
         else
             info "Distribution upgrade skipped by user."
         fi
