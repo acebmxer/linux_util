@@ -525,8 +525,44 @@ pkg_check_upgrade_available() {
             fi
             return 1
             ;;
-        elementary|zorin)
-            # Handled in subsequent steps
+        elementary)
+            # Elementary is based on Ubuntu LTS. Check UBUNTU_CODENAME from os-release
+            # and query the Elementary repo for a newer release.
+            local elem_ubuntu_codename=""
+            if [[ -f /etc/os-release ]]; then
+                elem_ubuntu_codename=$(grep -oP '^UBUNTU_CODENAME=\K.*' /etc/os-release 2>/dev/null || true)
+            fi
+
+            # Check Elementary's repo for dists newer than current
+            local elem_current_ver="$DISTRO_VERSION_ID"
+            local elem_major
+            elem_major=$(echo "$elem_current_ver" | cut -d. -f1)
+            local elem_next_major=$(( elem_major + 1 ))
+
+            # Query packages.elementary.io for next major version
+            if curl -sf --max-time 10 --head "https://packages.elementary.io/appcenter/${elem_next_major}/dists/" &>/dev/null || \
+               curl -sf --max-time 10 --head "https://packages.elementary.io/stable/${elem_next_major}/dists/" &>/dev/null; then
+                echo "$elem_next_major"
+                return 0
+            fi
+
+            # Fallback: check if underlying Ubuntu has a newer LTS
+            if [[ -n "$elem_ubuntu_codename" ]]; then
+                local ubuntu_stable_info
+                ubuntu_stable_info=$(curl -sf --max-time 10 "http://changelogs.ubuntu.com/meta-release-lts" 2>/dev/null) || true
+                if [[ -n "$ubuntu_stable_info" ]]; then
+                    local latest_lts_codename
+                    latest_lts_codename=$(echo "$ubuntu_stable_info" | grep -oP '^Dist: \K\S+' | tail -1)
+                    if [[ -n "$latest_lts_codename" && "$latest_lts_codename" != "$elem_ubuntu_codename" ]]; then
+                        echo "$elem_next_major"
+                        return 0
+                    fi
+                fi
+            fi
+            return 1
+            ;;
+        zorin)
+            # Handled in next step
             return 1
             ;;
         *)
@@ -737,6 +773,62 @@ pkg_distro_upgrade() {
                 error "Linux Mint upgrade to ${target_version} failed."
                 return 1
             fi
+            ;;
+        elementary)
+            # Read underlying Ubuntu codename
+            local elem_old_ubuntu_codename=""
+            if [[ -f /etc/os-release ]]; then
+                elem_old_ubuntu_codename=$(grep -oP '^UBUNTU_CODENAME=\K.*' /etc/os-release 2>/dev/null || true)
+            fi
+            if [[ -z "$elem_old_ubuntu_codename" ]]; then
+                error "Could not determine underlying Ubuntu codename for Elementary OS."
+                return 1
+            fi
+
+            # Read Elementary's own codename (VERSION_CODENAME in os-release)
+            local elem_old_codename="$DISTRO_VERSION_CODENAME"
+
+            # Determine new Ubuntu codename from meta-release-lts
+            local elem_new_ubuntu_codename=""
+            local ubuntu_meta
+            ubuntu_meta=$(curl -sf --max-time 10 "http://changelogs.ubuntu.com/meta-release-lts" 2>/dev/null) || true
+            if [[ -n "$ubuntu_meta" ]]; then
+                elem_new_ubuntu_codename=$(echo "$ubuntu_meta" | grep -oP '^Dist: \K\S+' | tail -1)
+            fi
+            if [[ -z "$elem_new_ubuntu_codename" ]]; then
+                error "Could not determine target Ubuntu codename for Elementary OS upgrade."
+                return 1
+            fi
+
+            info "Upgrading Elementary OS to ${target_version}..."
+            info "Underlying Ubuntu: ${elem_old_ubuntu_codename} -> ${elem_new_ubuntu_codename}"
+
+            # Step 1: Swap Ubuntu codenames in Ubuntu repos
+            _apt_codename_upgrade "$elem_old_ubuntu_codename" "$elem_new_ubuntu_codename" \
+                "archive.ubuntu.com security.ubuntu.com" || return 1
+
+            # Step 2: Swap Elementary codename in Elementary repos
+            # Elementary repos use their own codename (e.g., "horus", "jolnir")
+            # which differs from the Ubuntu codename. We need to update these too.
+            # If the Elementary codename is unknown for the new version, warn and skip.
+            if [[ -n "$elem_old_codename" ]]; then
+                local elem_new_codename=""
+                # Try to discover new Elementary codename from repo metadata
+                local elem_repo_info
+                elem_repo_info=$(curl -sf --max-time 10 "https://packages.elementary.io/appcenter/dists/" 2>/dev/null) || true
+                if [[ -n "$elem_repo_info" ]]; then
+                    # Look for a codename that isn't the current one
+                    elem_new_codename=$(echo "$elem_repo_info" | grep -oP 'href="\K[a-z]+(?=/")' | grep -v "$elem_old_codename" | tail -1)
+                fi
+                if [[ -n "$elem_new_codename" && "$elem_new_codename" != "$elem_old_codename" ]]; then
+                    info "Updating Elementary codename: ${elem_old_codename} -> ${elem_new_codename}"
+                    _apt_codename_upgrade "$elem_old_codename" "$elem_new_codename" \
+                        "packages.elementary.io" || warn "Elementary repo codename update failed — may need manual update."
+                else
+                    warn "Could not determine new Elementary codename. Elementary-specific repos may need manual updating."
+                fi
+            fi
+            return 0
             ;;
         *)
             # Should never be reached (guarded by pkg_check_upgrade_available)
