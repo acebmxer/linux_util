@@ -503,8 +503,30 @@ pkg_check_upgrade_available() {
             fi
             return 1
             ;;
-        linuxmint|elementary|zorin)
-            # Handled in subsequent tasks
+        linuxmint)
+            # Install mintupgrade if not present
+            if ! command -v mintupgrade &>/dev/null; then
+                info "Installing mintupgrade for upgrade checks..."
+                sudo apt-get install -y mintupgrade 2>/dev/null || {
+                    warn "Could not install mintupgrade"
+                    return 1
+                }
+            fi
+            # Check for available upgrade
+            local mint_check_output
+            mint_check_output=$(mintupgrade check 2>&1) || true
+            if echo "$mint_check_output" | grep -qi "new version\|upgrade available\|ready to upgrade"; then
+                local mint_target
+                mint_target=$(echo "$mint_check_output" | grep -oP 'Linux Mint \K[0-9.]+' | tail -1)
+                if [[ -n "$mint_target" ]]; then
+                    echo "$mint_target"
+                    return 0
+                fi
+            fi
+            return 1
+            ;;
+        elementary|zorin)
+            # Handled in subsequent steps
             return 1
             ;;
         *)
@@ -696,6 +718,25 @@ pkg_distro_upgrade() {
             _apt_codename_upgrade "$DISTRO_VERSION_CODENAME" "$target_version" \
                 "deb.debian.org security.debian.org" || return 1
             return 0
+            ;;
+        linuxmint)
+            # Install mintupgrade if not present
+            if ! command -v mintupgrade &>/dev/null; then
+                info "Installing mintupgrade..."
+                sudo apt-get install -y mintupgrade 2>/dev/null || {
+                    error "Failed to install mintupgrade."
+                    return 1
+                }
+            fi
+
+            info "Starting Linux Mint upgrade to ${target_version} via mintupgrade..."
+            if sudo mintupgrade upgrade; then
+                info "Linux Mint upgrade to ${target_version} completed."
+                return 0
+            else
+                error "Linux Mint upgrade to ${target_version} failed."
+                return 1
+            fi
             ;;
         *)
             # Should never be reached (guarded by pkg_check_upgrade_available)
