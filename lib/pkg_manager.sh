@@ -152,7 +152,7 @@ pkg_autoremove() {
 
 pkg_full_upgrade() {
     case "$PKG_MGR" in
-        apt)     sudo apt update && sudo apt full-upgrade -y ;;
+        apt)     sudo apt full-upgrade -y ;;
         dnf|yum) sudo "$PKG_MGR" upgrade -y ;;
         pacman)  sudo pacman -Syu --noconfirm ;;
         zypper)  sudo zypper update -y ;;
