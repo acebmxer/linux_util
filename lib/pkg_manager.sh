@@ -322,6 +322,108 @@ pkg_check_upgrade_available() {
     esac
 }
 
+# Perform a distribution version upgrade.
+# Argument: $1 = target version (from pkg_check_upgrade_available output)
+# Returns 0 on success, 1 on failure.
+pkg_distro_upgrade() {
+    local target_version="$1"
+
+    case "$DISTRO_ID" in
+        ubuntu|kubuntu|pop|neon)
+            # LTS awareness: check if current release is LTS
+            local release_config="/etc/update-manager/release-upgrades"
+            local original_prompt=""
+
+            if [[ -f "$release_config" ]]; then
+                original_prompt=$(grep -oP '^Prompt=\K.*' "$release_config" 2>/dev/null || echo "")
+
+                # Check if current version is LTS (Ubuntu LTS versions: XX.04 where XX is even)
+                local is_lts=false
+                if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+                    local year month
+                    year=$(echo "$DISTRO_VERSION_ID" | cut -d. -f1)
+                    month=$(echo "$DISTRO_VERSION_ID" | cut -d. -f2)
+                    if (( month == 4 && year % 2 == 0 )); then
+                        is_lts=true
+                    fi
+                fi
+
+                if [[ "$is_lts" == "true" ]]; then
+                    echo ""
+                    echo "You are currently on an LTS release (${DISTRO_NAME} ${DISTRO_VERSION_ID})."
+                    echo ""
+                    echo "  1) Stay on LTS track (upgrade only to next LTS release)"
+                    echo "  2) Upgrade to latest release (including non-LTS)"
+                    echo ""
+                    local lts_choice=""
+                    while [[ "$lts_choice" != "1" && "$lts_choice" != "2" ]]; do
+                        read -rp "Choose [1/2]: " lts_choice
+                    done
+
+                    if [[ "$lts_choice" == "1" ]]; then
+                        sudo sed -i "s/^Prompt=.*/Prompt=lts/" "$release_config"
+                    else
+                        sudo sed -i "s/^Prompt=.*/Prompt=normal/" "$release_config"
+                    fi
+                fi
+            fi
+
+            info "Starting distribution upgrade to ${target_version}..."
+            if sudo do-release-upgrade -f DistUpgradeViewNonInteractive; then
+                info "Distribution upgrade to ${target_version} completed successfully."
+                # Restore original prompt setting
+                if [[ -n "$original_prompt" && -f "$release_config" ]]; then
+                    sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
+                fi
+                return 0
+            else
+                error "Distribution upgrade to ${target_version} failed."
+                # Restore original prompt setting
+                if [[ -n "$original_prompt" && -f "$release_config" ]]; then
+                    sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
+                fi
+                return 1
+            fi
+            ;;
+        fedora)
+            info "Downloading upgrade packages for Fedora ${target_version}..."
+            if sudo dnf system-upgrade download --releasever="$target_version" -y; then
+                info "Upgrade packages downloaded for Fedora ${target_version}."
+                warn "A reboot is required to apply the upgrade. The system will prompt for reboot after cleanup."
+                return 0
+            else
+                error "Failed to download upgrade packages for Fedora ${target_version}."
+                return 1
+            fi
+            ;;
+        opensuse-leap)
+            info "Upgrading openSUSE Leap to ${target_version}..."
+            # Update repo URLs to target version
+            local current_ver="$DISTRO_VERSION_ID"
+            sudo sed -i "s/${current_ver}/${target_version}/g" /etc/zypp/repos.d/*.repo 2>/dev/null || {
+                error "Failed to update repository URLs."
+                return 1
+            }
+            sudo zypper ref || {
+                error "Failed to refresh repositories after URL update."
+                return 1
+            }
+            if sudo zypper dup --allow-vendor-change -y; then
+                info "openSUSE Leap upgrade to ${target_version} completed."
+                return 0
+            else
+                error "openSUSE Leap upgrade to ${target_version} failed."
+                return 1
+            fi
+            ;;
+        *)
+            # Should never be reached (guarded by pkg_check_upgrade_available)
+            error "Distribution upgrade not supported for ${DISTRO_ID}."
+            return 1
+            ;;
+    esac
+}
+
 pkg_get_version() {
     local pkg="$1"
     case "$PKG_MGR" in
