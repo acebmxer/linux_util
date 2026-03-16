@@ -303,7 +303,7 @@ pkg_check_upgrade_available() {
             fi
             return 1
             ;;
-        opensuse-tumbleweed|arch|manjaro|endeavouros|garuda|artix)
+        opensuse-tumbleweed|arch|manjaro|endeavouros|garuda|artix|kali)
             # Rolling release — no discrete version upgrades
             return 1
             ;;
@@ -311,7 +311,7 @@ pkg_check_upgrade_available() {
             # RHEL family: major version upgrades managed externally
             return 1
             ;;
-        debian|linuxmint|elementary|zorin|kali)
+        debian|linuxmint|elementary|zorin)
             # Debian stable and derivatives: version upgrades require manual sources.list editing
             return 1
             ;;
