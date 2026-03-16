@@ -434,6 +434,61 @@ pkg_check_upgrade_available() {
                     return 0
                 fi
             fi
+
+            # Fallback: query meta-release directly.
+            # do-release-upgrade -c may miss upgrades when the Prompt is set to
+            # "lts" and no new LTS exists yet, but a non-LTS release is available.
+            # Also handles cases where intermediate releases have reached EOL.
+            local release_config="/etc/update-manager/release-upgrades"
+            local prompt="lts"
+            if [[ -f "$release_config" ]]; then
+                prompt=$(grep -oP '^Prompt=\K.*' "$release_config" 2>/dev/null || echo "lts")
+            fi
+
+            # Determine which meta-release file(s) to check
+            local meta_urls=()
+            if [[ "$prompt" == "normal" ]]; then
+                meta_urls=("http://changelogs.ubuntu.com/meta-release")
+            else
+                # On LTS: check both LTS and normal channels so the user can
+                # be offered the LTS-vs-normal choice in pkg_distro_upgrade()
+                meta_urls=(
+                    "http://changelogs.ubuntu.com/meta-release-lts"
+                    "http://changelogs.ubuntu.com/meta-release"
+                )
+            fi
+
+            for meta_url in "${meta_urls[@]}"; do
+                local meta_content
+                meta_content=$(curl -sf --max-time 10 "$meta_url" 2>/dev/null | tr -d '\r') || continue
+
+                # Parse meta-release blocks for the latest supported version
+                # newer than the current one
+                local latest_supported="" block_version="" block_supported=""
+                while IFS= read -r line; do
+                    case "$line" in
+                        Version:\ *)
+                            block_version="${line#Version: }"
+                            ;;
+                        Supported:\ *)
+                            block_supported="${line#Supported: }"
+                            if [[ "$block_supported" == "1" && -n "$block_version" ]]; then
+                                if dpkg --compare-versions "$block_version" gt "$DISTRO_VERSION_ID" 2>/dev/null; then
+                                    latest_supported="$block_version"
+                                fi
+                            fi
+                            block_version=""
+                            block_supported=""
+                            ;;
+                    esac
+                done <<< "$meta_content"
+
+                if [[ -n "$latest_supported" ]]; then
+                    echo "$latest_supported"
+                    return 0
+                fi
+            done
+
             return 1
             ;;
         fedora)
