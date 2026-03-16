@@ -611,6 +611,67 @@ pkg_distro_upgrade() {
                 return 1
             fi
             ;;
+        rhel|centos|rocky|alma|ol|almalinux)
+            # Install leapp if not present
+            if ! command -v leapp &>/dev/null; then
+                info "Installing leapp and leapp-upgrade..."
+                sudo "$PKG_MGR" install -y leapp leapp-upgrade 2>/dev/null || {
+                    error "Failed to install leapp. Cannot proceed with upgrade."
+                    return 1
+                }
+            fi
+
+            # Run full preupgrade analysis (this is the expensive check, done once)
+            info "Running leapp preupgrade analysis for version ${target_version}..."
+            info "This may take 10-30 minutes..."
+            local preupgrade_output
+            local preupgrade_rc=0
+            preupgrade_output=$(sudo leapp preupgrade --target "$target_version" 2>&1) || preupgrade_rc=$?
+
+            # Check for critical inhibitors via the structured report
+            if [[ -f /var/log/leapp/leapp-report.json ]]; then
+                local inhibitor_count
+                inhibitor_count=$(grep -c '"risk factor": "high"' /var/log/leapp/leapp-report.json 2>/dev/null || echo "0")
+                if (( inhibitor_count > 0 )); then
+                    error "Leapp preupgrade found ${inhibitor_count} high-risk inhibitor(s)."
+                    echo ""
+                    # Show summary from text report
+                    grep -B1 -A3 "Risk Factor: high" /var/log/leapp/leapp-report.txt 2>/dev/null || \
+                        echo "$preupgrade_output" | grep -A2 -i "inhibitor"
+                    echo ""
+                    error "Resolve the above inhibitors before attempting the upgrade."
+                    error "Full report: /var/log/leapp/leapp-report.txt"
+                    return 1
+                fi
+            elif echo "$preupgrade_output" | grep -qi "inhibitor"; then
+                # Fallback if structured report not available
+                error "Leapp preupgrade found inhibitors:"
+                echo ""
+                echo "$preupgrade_output" | grep -A2 -i "inhibitor"
+                echo ""
+                error "Full report: /var/log/leapp/leapp-report.txt"
+                return 1
+            fi
+
+            if (( preupgrade_rc != 0 )); then
+                error "Leapp preupgrade failed (exit code: ${preupgrade_rc})."
+                error "Check /var/log/leapp/leapp-report.txt for details."
+                return 1
+            fi
+
+            # Run the actual upgrade
+            info "Starting distribution upgrade to version ${target_version}..."
+            if sudo leapp upgrade --target "$target_version"; then
+                info "Leapp upgrade to version ${target_version} completed."
+                warn "The upgrade will finalize on the next reboot."
+                warn "The system will reboot into a special upgrade environment."
+                return 0
+            else
+                error "Leapp upgrade to version ${target_version} failed."
+                error "Check /var/log/leapp/leapp-report.txt for details."
+                return 1
+            fi
+            ;;
         *)
             # Should never be reached (guarded by pkg_check_upgrade_available)
             error "Distribution upgrade not supported for ${DISTRO_ID}."
