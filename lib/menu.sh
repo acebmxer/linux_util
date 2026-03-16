@@ -260,9 +260,11 @@ draw_menu() {
 }
 
 # Redraw the menu in-place (overwrite without clearing to prevent flicker)
+# Buffer entire output and write at once to minimize SSH flicker
 redraw_menu() {
-    printf '\033[H'
-    draw_menu
+    local buf
+    buf=$(printf '\033[H'; draw_menu)
+    printf '%s\n' "$buf"
 }
 
 # Dynamically build navigational columns used by keyboard navigation.
