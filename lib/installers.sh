@@ -573,69 +573,54 @@ _install_from_repository() {
     esac
 }
 
-# --- Full System Update (Bare Metal) ---
-setup_full_update_bare_metal() {
-    info "Starting full system update and upgrade (bare metal)..."
+# --- Full System Upgrade/Update ---
+setup_full_update() {
+    info "Starting full system upgrade/update..."
 
-    # Install basic tools
-    case "$PKG_MGR" in
-        apt)
-            run_as_root "apt-get update"
-            run_as_root "apt-get install -y --no-install-recommends jq tzdata git curl wget gnupg"
-            if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "linuxmint" ]] || [[ "$DISTRO_ID" == "pop" ]]; then
-                run_as_root "apt-get install -y --no-install-recommends software-properties-common"
-            fi
-            ;;
-        dnf|yum)
-            run_as_root "$PKG_MGR install -y jq git curl wget util-linux-user"
-            ;;
-        pacman)
-            run_as_root "pacman -S --noconfirm --needed jq git curl wget"
-            ;;
-        zypper)
-            run_as_root "zypper install -y jq git curl wget"
-            ;;
-        *)
-            run_as_root "$PKG_MGR install -y jq git curl wget"
-            ;;
-    esac
+    # Step 1: Refresh repos
+    pkg_refresh
 
-    local keyring_dir="${HOME}/.local/share/keyrings"
-    local keyring_backup=""
-    if [[ -d "$keyring_dir" ]] && [[ -n "$(ls -A "$keyring_dir" 2>/dev/null)" ]]; then
-        keyring_backup=$(mktemp -d)
-        CLEANUP_FILES+=("$keyring_backup")
-        cp -a "$keyring_dir/." "$keyring_backup/"
-        info "Keyring backed up to ${keyring_backup}"
+    # Step 2: Check for distro version upgrade
+    local target_version=""
+    local upgrade_available=1
+    if target_version=$(pkg_check_upgrade_available); then
+        upgrade_available=0
     fi
 
-    pkg_full_upgrade
-    pkg_autoremove
-    pkg_clean
-
-    if [[ -n "$keyring_backup" ]]; then
-        local restored=false
-        for backed_up_file in "$keyring_backup"/*; do
-            local filename
-            filename=$(basename "$backed_up_file")
-            local live_file="${keyring_dir}/${filename}"
-            if [[ ! -f "$live_file" ]] || \
-               [[ $(stat -c%s "$backed_up_file") -gt $(stat -c%s "$live_file") ]]; then
-                mkdir -p "$keyring_dir"
-                cp -a "$backed_up_file" "$live_file"
-                restored=true
-                info "Restored keyring file: ${filename}"
+    if [[ $upgrade_available -eq 0 && -n "$target_version" ]]; then
+        # Display confirmation prompt
+        echo ""
+        echo ""
+        echo "  *** A distribution upgrade is available ***"
+        echo ""
+        echo "  Current: ${DISTRO_NAME} ${DISTRO_VERSION_ID}"
+        echo "  Target:  ${target_version}"
+        echo ""
+        echo "  This is a major operation and may take some time."
+        echo ""
+        local confirm=""
+        read -rp "Continue with distribution upgrade? (y/N): " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            if pkg_distro_upgrade "$target_version"; then
+                info "Distribution upgrade completed. Running cleanup..."
+                pkg_cleanup_thorough
+                info "Full system upgrade completed."
+                return 0
+            else
+                warn "Distribution upgrade failed. Falling back to package updates..."
             fi
-        done
-        if [[ "$restored" == "true" ]]; then
-            info "Keyring restored. Restarting gnome-keyring daemon..."
-            pkill -u "$USER" gnome-keyring-daemon 2>/dev/null || true
-            sleep 1
+        else
+            info "Distribution upgrade skipped by user."
         fi
-        rm -rf "$keyring_backup"
+    else
+        info "No distribution version upgrade available."
     fi
 
-    info "System has been fully updated and upgraded."
+    # Fallback: standard package update
+    info "Performing package updates..."
+    pkg_full_upgrade
+    pkg_cleanup_thorough
+    info "System update completed."
     return 0
 }
 
