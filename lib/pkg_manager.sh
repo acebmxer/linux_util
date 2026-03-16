@@ -263,7 +263,15 @@ _apt_codename_upgrade() {
         return 1
     fi
 
-    # Step 1: Create persistent backup directory
+    # Step 1: Install all pending updates for the current release first.
+    # dist-upgrade / do-release-upgrade may fail if the system is not fully up-to-date.
+    info "Installing all pending updates before codename upgrade..."
+    if ! sudo apt-get upgrade -y; then
+        error "Failed to install pending updates. Cannot proceed with codename upgrade."
+        return 1
+    fi
+
+    # Step 2: Create persistent backup directory
     local backup_dir="/var/backups/linux_util/sources_backup_$(date +%Y%m%d_%H%M%S)"
     sudo mkdir -p "$backup_dir"
 
@@ -278,7 +286,7 @@ _apt_codename_upgrade() {
         sudo cp /etc/apt/sources.list.d/*.sources "$backup_dir/"
     fi
 
-    # Step 2: Check for held packages
+    # Step 3: Check for held packages
     local held_packages
     held_packages=$(apt-mark showhold 2>/dev/null)
     if [[ -n "$held_packages" ]]; then
@@ -294,7 +302,7 @@ _apt_codename_upgrade() {
         fi
     fi
 
-    # Step 3: Build a grep pattern to match official mirror URLs
+    # Step 4: Build a grep pattern to match official mirror URLs
     local mirror_grep_pattern=""
     local pattern
     for pattern in $mirror_patterns; do
@@ -308,7 +316,7 @@ _apt_codename_upgrade() {
     # Build escaped mirror pattern for sed (pipe-delimited -> backslash-escaped)
     local mirror_sed_pattern="${mirror_grep_pattern//|/\\|}"
 
-    # Step 4: Swap codenames in traditional .list files
+    # Step 5: Swap codenames in traditional .list files
     # Only replace on deb/deb-src lines that ALSO contain an official mirror URL.
     # This prevents modifying third-party repo lines in the same file.
     local sources_file
@@ -328,7 +336,7 @@ _apt_codename_upgrade() {
         fi
     done
 
-    # Step 5: Swap codenames in DEB822 .sources files (Suites: lines only)
+    # Step 6: Swap codenames in DEB822 .sources files (Suites: lines only)
     # DEB822 files group URIs and Suites in the same stanza, so we check
     # if the file contains an official mirror and only then swap Suites.
     for sources_file in /etc/apt/sources.list.d/*.sources; do
@@ -346,7 +354,7 @@ _apt_codename_upgrade() {
         warn "Third-party repositories were not modified. They may need manual updating for the new release."
     fi
 
-    # Step 6: Run apt-get update (apt-get is more stable for scripted use)
+    # Step 7: Run apt-get update (apt-get is more stable for scripted use)
     info "Refreshing package lists for ${new_codename}..."
     if ! sudo apt-get update; then
         error "apt-get update failed after codename swap. Restoring sources..."
@@ -354,7 +362,7 @@ _apt_codename_upgrade() {
         return 1
     fi
 
-    # Step 7: Run apt-get dist-upgrade (standard for major version upgrades)
+    # Step 8: Run apt-get dist-upgrade (standard for major version upgrades)
     # Note: cleanup (autoremove, etc.) is the caller's responsibility
     info "Running full upgrade to ${new_codename}..."
     if ! sudo apt-get dist-upgrade -y; then
@@ -647,6 +655,17 @@ pkg_distro_upgrade() {
                 fi
             fi
 
+            # do-release-upgrade requires all pending updates to be installed first
+            info "Installing all pending updates before distribution upgrade..."
+            sudo apt-get upgrade -y || {
+                error "Failed to install pending updates. Cannot proceed with distribution upgrade."
+                # Restore prompt setting before returning
+                if [[ -n "$original_prompt" && -f "$release_config" ]]; then
+                    sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
+                fi
+                return 1
+            }
+
             # I-4: Run upgrade and always restore prompt setting afterward
             info "Starting distribution upgrade to ${target_version}..."
             local rc=0
@@ -666,6 +685,13 @@ pkg_distro_upgrade() {
             fi
             ;;
         fedora)
+            # Install all pending updates first — required before system-upgrade
+            info "Installing all pending updates before Fedora upgrade..."
+            sudo dnf upgrade --refresh -y || {
+                error "Failed to install pending updates. Cannot proceed with Fedora upgrade."
+                return 1
+            }
+
             info "Downloading upgrade packages for Fedora ${target_version}..."
             if sudo dnf system-upgrade download --releasever="$target_version" -y; then
                 info "Upgrade packages downloaded for Fedora ${target_version}."
@@ -711,6 +737,13 @@ pkg_distro_upgrade() {
             fi
             ;;
         rhel|centos|rocky|alma|ol|almalinux)
+            # Install all pending updates first — leapp requires a fully updated system
+            info "Installing all pending updates before RHEL-family upgrade..."
+            sudo "$PKG_MGR" upgrade -y || {
+                error "Failed to install pending updates. Cannot proceed with upgrade."
+                return 1
+            }
+
             # Install leapp if not present
             if ! command -v leapp &>/dev/null; then
                 info "Installing leapp and leapp-upgrade..."
