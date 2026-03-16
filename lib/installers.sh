@@ -588,13 +588,39 @@ setup_full_update() {
     fi
 
     if [[ $upgrade_available -eq 0 && -n "$target_version" ]]; then
+        # Determine LTS/normal labels for current and target versions
+        # Ubuntu/Kubuntu LTS: XX.04 where XX is even
+        local current_label="" target_label=""
+        if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ]]; then
+            local cur_year cur_month
+            cur_year=$(echo "$DISTRO_VERSION_ID" | cut -d. -f1)
+            cur_month=$(echo "$DISTRO_VERSION_ID" | cut -d. -f2)
+            if (( cur_month == 4 && cur_year % 2 == 0 )); then
+                current_label=" (LTS)"
+            fi
+            # Target version may include text like "24.04 LTS" from do-release-upgrade
+            # or just "25.10" from meta-release fallback
+            local tgt_ver_num="${target_version%% *}"  # strip any trailing text
+            local tgt_year tgt_month
+            tgt_year=$(echo "$tgt_ver_num" | cut -d. -f1)
+            tgt_month=$(echo "$tgt_ver_num" | cut -d. -f2)
+            if [[ -n "$tgt_year" && -n "$tgt_month" ]] && (( tgt_month == 4 && tgt_year % 2 == 0 )); then
+                # Only add LTS label if not already present in the string
+                if [[ "$target_version" != *"LTS"* ]]; then
+                    target_label=" (LTS)"
+                fi
+            else
+                target_label=" (non-LTS)"
+            fi
+        fi
+
         # Display confirmation prompt
         echo ""
         echo ""
         echo "  *** A distribution upgrade is available ***"
         echo ""
-        echo "  Current: ${DISTRO_NAME} ${DISTRO_VERSION_ID}"
-        echo "  Target:  ${target_version}"
+        echo "  Current: ${DISTRO_NAME} ${DISTRO_VERSION_ID}${current_label}"
+        echo "  Target:  ${target_version}${target_label}"
         echo ""
         echo "  This is a major operation and may take some time."
         # Extra note for RHEL family — leapp preupgrade will run first
