@@ -691,6 +691,12 @@ pkg_distro_upgrade() {
                 return 1
             fi
             ;;
+        debian)
+            info "Upgrading Debian to ${target_version}..."
+            _apt_codename_upgrade "$DISTRO_VERSION_CODENAME" "$target_version" \
+                "deb.debian.org security.debian.org" || return 1
+            return 0
+            ;;
         *)
             # Should never be reached (guarded by pkg_check_upgrade_available)
             error "Distribution upgrade not supported for ${DISTRO_ID}."
