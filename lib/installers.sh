@@ -176,7 +176,7 @@ self_update_script() {
 #   5. Test it shows in menu in correct position with correct status
 
 # --- System Tasks (must be registered before utilities) ---
-register_utility "Full System Upgrade/Update" setup_full_update_bare_metal check_always_false noop_function setup_full_update_bare_metal
+register_utility "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update
 register_utility "KDE Desktop"        install_kde             check_kde             uninstall_kde             update_kde                get_version_kde
 register_utility "NVIDIA Drivers"     install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_utility "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates
