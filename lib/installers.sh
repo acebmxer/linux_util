@@ -642,9 +642,9 @@ setup_full_update_bare_metal() {
 # --- System Updates ---
 setup_system_updates() {
     info "Running system updates..."
+    pkg_refresh
     pkg_full_upgrade
-    pkg_autoremove
-    pkg_clean
+    pkg_cleanup_thorough
     info "System updates completed."
     return 0
 }
