@@ -69,22 +69,30 @@ draw_menu() {
     local dry_run_label=""
     [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
 
-    echo ""
-    echo "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"
-    echo "${BOLD}${CYAN}║   Linux System Setup & Utilities - Select Programs/Tasks     ║${RESET}${dry_run_label}"
-    echo "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════╝${RESET}"
-    echo ""
+    # Build entire menu into a single buffer and flush at once.
+    # This eliminates SSH flicker caused by many individual write() syscalls.
+    local _buf=""
+
+    # Clear screen + cursor home. Arrives in the same write as all menu content,
+    # so there is no blank-screen flash even over SSH.
+    _buf+=$'\033[2J\033[H'
+
+    _buf+=$'\n'
+    _buf+="${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"$'\n'
+    _buf+="${BOLD}${CYAN}║   Linux System Setup & Utilities - Select Programs/Tasks     ║${RESET}${dry_run_label}"$'\n'
+    _buf+="${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════╝${RESET}"$'\n'
+    _buf+=$'\n'
 
     # Display commit version info (values pre-fetched once in run_selection_menu)
-    echo "       Script commit: ${BOLD}${CACHED_LOCAL_COMMIT}${RESET}  |  Latest commit: ${BOLD}${CACHED_REMOTE_COMMIT}${RESET}"
+    _buf+="       Script commit: ${BOLD}${CACHED_LOCAL_COMMIT}${RESET}  |  Latest commit: ${BOLD}${CACHED_REMOTE_COMMIT}${RESET}"$'\n'
     if [[ "$CACHED_LOCAL_COMMIT" != "unknown" && "$CACHED_REMOTE_COMMIT" != "unknown" && "$CACHED_LOCAL_COMMIT" != "$CACHED_REMOTE_COMMIT" ]]; then
-        echo "  ${BOLD}${YELLOW}Script out of date, please update.${RESET}"
+        _buf+="  ${BOLD}${YELLOW}Script out of date, please update.${RESET}"$'\n'
     fi
-    echo "         Detected System: ${BOLD}${DISTRO_NAME}${RESET}   Version: ${BOLD}${DISTRO_VERSION_ID}${RESET}"
-    echo ""
+    _buf+="         Detected System: ${BOLD}${DISTRO_NAME}${RESET}   Version: ${BOLD}${DISTRO_VERSION_ID}${RESET}"$'\n'
+    _buf+=$'\n'
 
     # Display System Tasks section
-    echo "${BOLD}${CYAN}System Tasks:${RESET}"
+    _buf+="${BOLD}${CYAN}System Tasks:${RESET}"$'\n'
     for ((row=0; row<system_rows_per_column; row++)); do
         local line=""
         for ((col=0; col<system_num_columns; col++)); do
@@ -150,13 +158,13 @@ draw_menu() {
 
             line="${line}${item}"
         done
-        echo "$line"
+        _buf+="$line"$'\n'
     done
 
-    echo ""
-    echo "${DIM}----------------------------------------------------------------${RESET}"
-    echo ""
-    echo "${BOLD}${CYAN}Utilities:${RESET}"
+    _buf+=$'\n'
+    _buf+="${DIM}----------------------------------------------------------------${RESET}"$'\n'
+    _buf+=$'\n'
+    _buf+="${BOLD}${CYAN}Utilities:${RESET}"$'\n'
 
     # Build items for utilities in columns
     # RENDERING LOGIC IDENTICAL TO SYSTEM TASKS SECTION ABOVE:
@@ -228,11 +236,11 @@ draw_menu() {
 
             line="${line}${item}"
         done
-        echo "$line"
+        _buf+="$line"$'\n'
     done
 
-    echo ""
-    echo "----------------------------------------------------------------"
+    _buf+=$'\n'
+    _buf+="----------------------------------------------------------------"$'\n'
 
     # Count selected items and categorize actions
     local install_count=0
@@ -250,18 +258,21 @@ draw_menu() {
         fi
     done
 
-    echo "${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET} | ${YELLOW}Update: ${update_count}${RESET}"
-    echo ""
-    echo "${YELLOW}↑/↓/←/→ navigate  SPACE select  U update installed  A select-all  D deselect-all  ENTER confirm  Q quit${RESET}"
-    echo ""
-    echo "${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} select  ${YELLOW}[U]${RESET}${DIM} update  ${RESET}${DIM}[ ]${RESET}${DIM} none  ${MAGENTA}(installed)${RESET}${DIM} = on system${RESET}"
-    echo "${DIM}[✓] on installed = uninstall; [✓] on missing = install; [U] on installed = update.${RESET}"
-    echo ""
+    _buf+="${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET} | ${YELLOW}Update: ${update_count}${RESET}"$'\n'
+    _buf+=$'\n'
+    _buf+="${YELLOW}↑/↓/←/→ navigate  SPACE select  U update installed  A select-all  D deselect-all  ENTER confirm  Q quit${RESET}"$'\n'
+    _buf+=$'\n'
+    _buf+="${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} select  ${YELLOW}[U]${RESET}${DIM} update  ${RESET}${DIM}[ ]${RESET}${DIM} none  ${MAGENTA}(installed)${RESET}${DIM} = on system${RESET}"$'\n'
+    _buf+="${DIM}[✓] on installed = uninstall; [✓] on missing = install; [U] on installed = update.${RESET}"$'\n'
+    _buf+=$'\n'
+
+    # Single write flushes entire menu — eliminates per-line SSH flicker
+    printf '%s' "$_buf"
 }
 
-# Redraw the menu (clear and redraw for reliability)
+# Redraw the menu in-place — cursor home is embedded in draw_menu's buffer
+# so the entire position-move + repaint is a single atomic write.
 redraw_menu() {
-    clear
     draw_menu
 }
 

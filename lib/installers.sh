@@ -176,7 +176,7 @@ self_update_script() {
 #   5. Test it shows in menu in correct position with correct status
 
 # --- System Tasks (must be registered before utilities) ---
-register_utility "Full System Upgrade/Update" setup_full_update_bare_metal check_always_false noop_function setup_full_update_bare_metal
+register_utility "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update
 register_utility "KDE Desktop"        install_kde             check_kde             uninstall_kde             update_kde                get_version_kde
 register_utility "NVIDIA Drivers"     install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_utility "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates
@@ -573,78 +573,152 @@ _install_from_repository() {
     esac
 }
 
-# --- Full System Update (Bare Metal) ---
-setup_full_update_bare_metal() {
-    info "Starting full system update and upgrade (bare metal)..."
+# --- Full System Upgrade/Update ---
+setup_full_update() {
+    info "Starting full system upgrade/update..."
 
-    # Install basic tools
-    case "$PKG_MGR" in
-        apt)
-            run_as_root "apt-get update"
-            run_as_root "apt-get install -y --no-install-recommends jq tzdata git curl wget gnupg"
-            if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "linuxmint" ]] || [[ "$DISTRO_ID" == "pop" ]]; then
-                run_as_root "apt-get install -y --no-install-recommends software-properties-common"
-            fi
-            ;;
-        dnf|yum)
-            run_as_root "$PKG_MGR install -y jq git curl wget util-linux-user"
-            ;;
-        pacman)
-            run_as_root "pacman -S --noconfirm --needed jq git curl wget"
-            ;;
-        zypper)
-            run_as_root "zypper install -y jq git curl wget"
-            ;;
-        *)
-            run_as_root "$PKG_MGR install -y jq git curl wget"
-            ;;
-    esac
+    # Step 1: Refresh repos
+    pkg_refresh
 
-    local keyring_dir="${HOME}/.local/share/keyrings"
-    local keyring_backup=""
-    if [[ -d "$keyring_dir" ]] && [[ -n "$(ls -A "$keyring_dir" 2>/dev/null)" ]]; then
-        keyring_backup=$(mktemp -d)
-        CLEANUP_FILES+=("$keyring_backup")
-        cp -a "$keyring_dir/." "$keyring_backup/"
-        info "Keyring backed up to ${keyring_backup}"
+    # Step 2: Check for distro version upgrade
+    local target_version=""
+    local upgrade_available=1
+    if target_version=$(pkg_check_upgrade_available); then
+        upgrade_available=0
     fi
 
-    pkg_full_upgrade
-    pkg_autoremove
-    pkg_clean
-
-    if [[ -n "$keyring_backup" ]]; then
-        local restored=false
-        for backed_up_file in "$keyring_backup"/*; do
-            local filename
-            filename=$(basename "$backed_up_file")
-            local live_file="${keyring_dir}/${filename}"
-            if [[ ! -f "$live_file" ]] || \
-               [[ $(stat -c%s "$backed_up_file") -gt $(stat -c%s "$live_file") ]]; then
-                mkdir -p "$keyring_dir"
-                cp -a "$backed_up_file" "$live_file"
-                restored=true
-                info "Restored keyring file: ${filename}"
+    if [[ $upgrade_available -eq 0 && -n "$target_version" ]]; then
+        # Determine LTS/normal labels for current and target versions
+        # Ubuntu/Kubuntu LTS: XX.04 where XX is even
+        local current_label="" target_label=""
+        local upgrade_path=""
+        if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ]]; then
+            local cur_year cur_month
+            cur_year=$(echo "$DISTRO_VERSION_ID" | cut -d. -f1)
+            cur_month=$(echo "$DISTRO_VERSION_ID" | cut -d. -f2)
+            if (( cur_month == 4 && cur_year % 2 == 0 )); then
+                current_label=" (LTS)"
             fi
-        done
-        if [[ "$restored" == "true" ]]; then
-            info "Keyring restored. Restarting gnome-keyring daemon..."
-            pkill -u "$USER" gnome-keyring-daemon 2>/dev/null || true
-            sleep 1
+            # Target version may include text like "24.04 LTS" from do-release-upgrade
+            # or just "25.10" from meta-release fallback
+            local tgt_ver_num="${target_version%% *}"  # strip any trailing text
+            local tgt_year tgt_month
+            tgt_year=$(echo "$tgt_ver_num" | cut -d. -f1)
+            tgt_month=$(echo "$tgt_ver_num" | cut -d. -f2)
+            if [[ -n "$tgt_year" && -n "$tgt_month" ]] && (( tgt_month == 4 && tgt_year % 2 == 0 )); then
+                # Only add LTS label if not already present in the string
+                if [[ "$target_version" != *"LTS"* ]]; then
+                    target_label=" (LTS)"
+                fi
+            else
+                target_label=" (non-LTS)"
+            fi
+
+            # Build sequential upgrade path for non-LTS targets
+            # Ubuntu upgrades one release at a time: XX.04 → XX.10 → (XX+1).04 → ...
+            if [[ -n "$tgt_year" && -n "$tgt_month" && "$tgt_ver_num" != "$DISTRO_VERSION_ID" ]]; then
+                local path_steps=()
+                local step_year="$cur_year" step_month="$cur_month"
+                while true; do
+                    # Compute next version: .04 → .10, .10 → (year+1).04
+                    if (( step_month == 4 )); then
+                        step_month=10
+                    else
+                        step_year=$(( step_year + 1 ))
+                        step_month=4
+                    fi
+                    local next_ver
+                    next_ver=$(printf "%d.%02d" "$step_year" "$step_month")
+                    # Label each step
+                    local step_label=""
+                    if (( step_month == 4 && step_year % 2 == 0 )); then
+                        step_label=" (LTS)"
+                    fi
+                    path_steps+=("${next_ver}${step_label}")
+                    if [[ "$next_ver" == "$tgt_ver_num" ]]; then
+                        break
+                    fi
+                    # Safety: stop after 20 steps to avoid infinite loop
+                    if (( ${#path_steps[@]} >= 20 )); then
+                        break
+                    fi
+                done
+                # Only show path if there are intermediate steps (more than 1 step)
+                if (( ${#path_steps[@]} > 1 )); then
+                    upgrade_path="${DISTRO_VERSION_ID}${current_label}"
+                    for step in "${path_steps[@]}"; do
+                        upgrade_path+=" → ${step}"
+                    done
+                fi
+            fi
         fi
-        rm -rf "$keyring_backup"
+
+        # Display confirmation prompt
+        echo ""
+        echo ""
+        echo "  *** A distribution upgrade is available ***"
+        echo ""
+        echo "  Current: ${DISTRO_NAME} ${DISTRO_VERSION_ID}${current_label}"
+        echo "  Target:  ${target_version}${target_label}"
+        if [[ -n "$upgrade_path" ]]; then
+            echo ""
+            echo "  Upgrade path: ${upgrade_path}"
+            echo "  Each step requires a reboot. Re-run this script after each reboot"
+            echo "  to continue to the next version."
+        fi
+        echo ""
+        echo "  This is a major operation and may take some time."
+        # Extra note for RHEL family — leapp preupgrade will run first
+        if [[ "$DISTRO_FAMILY" == "rhel" ]]; then
+            echo "  A leapp preupgrade check will run first to identify any blockers."
+        fi
+        echo ""
+        local confirm=""
+        read -rp "Continue with distribution upgrade? (y/N): " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            if pkg_distro_upgrade "$target_version"; then
+                info "Distribution upgrade completed. Running cleanup..."
+                pkg_cleanup_thorough
+                info "Full system upgrade completed."
+                return 0
+            fi
+
+            # If a reboot is required (updates were applied but system needs restart),
+            # don't fall through to redundant package updates — just exit cleanly.
+            local reboot_needed=false
+            if [[ -f /var/run/reboot-required ]]; then
+                reboot_needed=true
+            elif command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+                reboot_needed=true
+            fi
+
+            if [[ "$reboot_needed" == "true" ]]; then
+                info "System updates were applied. Please reboot and re-run to continue the distribution upgrade."
+                return 0
+            fi
+
+            warn "Distribution upgrade failed. Falling back to package updates..."
+        else
+            info "Distribution upgrade skipped by user."
+        fi
+    else
+        info "No distribution version upgrade available."
     fi
 
-    info "System has been fully updated and upgraded."
+    # Fallback: standard package update
+    info "Performing package updates..."
+    pkg_full_upgrade
+    pkg_cleanup_thorough
+    info "System update completed."
     return 0
 }
 
 # --- System Updates ---
 setup_system_updates() {
     info "Running system updates..."
+    pkg_refresh
     pkg_full_upgrade
-    pkg_autoremove
-    pkg_clean
+    pkg_cleanup_thorough
     info "System updates completed."
     return 0
 }
