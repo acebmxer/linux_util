@@ -1491,7 +1491,13 @@ update_brave() {
     esac
 }
 get_version_brave() {
-    brave-browser --version 2>/dev/null | grep -oP 'Brave Browser \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
+    local cmd
+    for cmd in brave-browser brave; do
+        local out
+        out=$("$cmd" --version 2>/dev/null) && \
+            grep -oP 'Brave Browser \K[0-9]+\.[0-9]+\.[0-9]+' <<< "$out" && return
+    done
+    echo ""
 }
 
 # --- Joplin Client ---
@@ -1521,6 +1527,41 @@ check_joplin() {
 install_joplin() {
     echo "Installing Joplin Client..."
     detect_and_export_desktop_env
+
+    # Joplin ships as an AppImage which requires FUSE2. The package name differs
+    # by distro family. Install it pre-emptively so the upstream installer doesn't
+    # abort with "Can't get libfuse2 on system".
+    case "$DISTRO_FAMILY" in
+        arch)
+            if ! pkg_check_installed fuse2; then
+                echo "Installing fuse2 (required for AppImage support)..."
+                pkg_install fuse2
+            fi
+            ;;
+        debian)
+            # Ubuntu 22.04 uses libfuse2; Ubuntu 24.04+ renamed it libfuse2t64
+            local fuse2_pkg="libfuse2"
+            if [[ "$DISTRO_ID" == "ubuntu" ]] && [[ "${DISTRO_VERSION_ID%%.*}" -ge 24 ]]; then
+                fuse2_pkg="libfuse2t64"
+            fi
+            if ! pkg_check_installed "$fuse2_pkg"; then
+                echo "Installing ${fuse2_pkg} (required for AppImage support)..."
+                pkg_install "$fuse2_pkg"
+            fi
+            ;;
+        fedora|rhel)
+            if ! pkg_check_installed fuse; then
+                echo "Installing fuse (required for AppImage support)..."
+                pkg_install fuse
+            fi
+            ;;
+        suse)
+            if ! pkg_check_installed fuse; then
+                echo "Installing fuse (required for AppImage support)..."
+                pkg_install fuse
+            fi
+            ;;
+    esac
 
     # Download and run installer script
     local install_script
@@ -2289,17 +2330,26 @@ check_timeshift() {
 install_timeshift() {
     echo "Installing Timeshift..."
     case "$DISTRO_FAMILY" in
+        arch)
+            # On CachyOS, cachyos-snapper-support conflicts with timeshift.
+            # Inform the user rather than silently failing or auto-removing it.
+            if pkg_check_installed cachyos-snapper-support; then
+                warn "Cannot install Timeshift: conflicts with 'cachyos-snapper-support'."
+                warn "CachyOS ships snapper-based snapshots as its default backup solution."
+                warn "To install Timeshift, first remove cachyos-snapper-support:"
+                warn "  sudo pacman -Rs cachyos-snapper-support"
+                return 1
+            fi
+            pkg_install timeshift || return 1
+            ;;
         debian)
-            sudo apt install timeshift -y
+            sudo apt install timeshift -y || return 1
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y timeshift
-            ;;
-        arch)
-            sudo pacman -S --noconfirm timeshift
+            sudo "$PKG_MGR" install -y timeshift || return 1
             ;;
         suse)
-            sudo zypper install -y timeshift
+            sudo zypper install -y timeshift || return 1
             ;;
         *)
             warn "Timeshift installation not implemented for ${DISTRO_NAME}."

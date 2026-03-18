@@ -34,7 +34,7 @@ detect_distro() {
             PKG_MGR="dnf"
             command -v dnf &>/dev/null || PKG_MGR="yum"
             ;;
-        arch|manjaro|endeavouros|garuda|artix)
+        arch|manjaro|endeavouros|garuda|artix|cachyos)
             DISTRO_FAMILY="arch"
             PKG_MGR="pacman"
             ;;
