@@ -154,7 +154,13 @@ pkg_full_upgrade() {
     case "$PKG_MGR" in
         apt)     sudo apt full-upgrade -y ;;
         dnf|yum) sudo "$PKG_MGR" upgrade -y ;;
-        pacman)  sudo pacman -Syu --noconfirm ;;
+        pacman)  if command -v yay &>/dev/null; then
+                     yay -Syu --noconfirm
+                 elif command -v paru &>/dev/null; then
+                     paru -Syu --noconfirm
+                 else
+                     sudo pacman -Syu --noconfirm
+                 fi ;;
         zypper)  sudo zypper update -y ;;
     esac
 }

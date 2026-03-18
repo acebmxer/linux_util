@@ -2331,14 +2331,23 @@ install_timeshift() {
     echo "Installing Timeshift..."
     case "$DISTRO_FAMILY" in
         arch)
-            # On CachyOS, cachyos-snapper-support conflicts with timeshift.
-            # Inform the user rather than silently failing or auto-removing it.
-            if pkg_check_installed cachyos-snapper-support; then
-                warn "Cannot install Timeshift: conflicts with 'cachyos-snapper-support'."
-                warn "CachyOS ships snapper-based snapshots as its default backup solution."
-                warn "To install Timeshift, first remove cachyos-snapper-support:"
-                warn "  sudo pacman -Rs cachyos-snapper-support"
-                return 1
+            # On CachyOS, snapper and cachyos-snapper-support conflict with timeshift.
+            # Prompt the user to remove them before proceeding.
+            if pkg_check_installed snapper || pkg_check_installed cachyos-snapper-support; then
+                warn "Snapper is installed and is not compatible with TimeShift."
+                warn "CachyOS ships Snapper as its default snapshot solution."
+                echo ""
+                read -n 1 -rp "Would you like to remove Snapper to install TimeShift? [y/N] " snapper_ans
+                echo ""
+                if [[ "$snapper_ans" =~ ^[Yy]$ ]]; then
+                    echo "Removing Snapper..."
+                    sudo pacman -R --noconfirm snapper || true
+                    sudo pacman -Rsn --noconfirm cachyos-snapper-support btrfs-assistant 2>/dev/null || true
+                    echo "Snapper successfully uninstalled. Now installing TimeShift..."
+                else
+                    warn "Skipping TimeShift installation. Snapper was not removed."
+                    return 1
+                fi
             fi
             pkg_install timeshift || return 1
             ;;
