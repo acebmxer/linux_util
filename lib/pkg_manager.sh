@@ -163,7 +163,8 @@ pkg_clean() {
     case "$PKG_MGR" in
         apt)     sudo apt clean && sudo apt autoclean ;;
         dnf|yum) sudo "$PKG_MGR" clean all ;;
-        pacman)  sudo pacman -Sc --noconfirm ;;
+        pacman)  sudo find /var/cache/pacman/pkg -maxdepth 1 -name 'download-*' -delete 2>/dev/null
+                 sudo pacman -Sc --noconfirm 2> >(grep -v 'could not open file.*download-' >&2) ;;
         zypper)  sudo zypper clean -a ;;
     esac
 }
