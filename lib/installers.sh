@@ -2341,6 +2341,10 @@ install_timeshift() {
                 echo ""
                 if [[ "$snapper_ans" =~ ^[Yy]$ ]]; then
                     echo "Removing Snapper..."
+                    # Stop and disable snapper timers/services before removal to prevent
+                    # stale snapper command errors from btrfs-assistant or running timers.
+                    sudo systemctl stop snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
+                    sudo systemctl disable snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
                     sudo pacman -R --noconfirm snapper || true
                     sudo pacman -Rsn --noconfirm cachyos-snapper-support btrfs-assistant 2>/dev/null || true
                     echo "Snapper successfully uninstalled. Now installing TimeShift..."
