@@ -139,12 +139,10 @@ _timeshift_setup_device() {
         echo ""
 
         if [[ ! "$_ts_choice" =~ ^[Nn]$ ]]; then
-            # Configure Timeshift to use the boot device
-            sudo timeshift --snapshot-device "$root_uuid" --scripted 2>/dev/null || \
-            sudo timeshift --snapshot-device "$root_dev" --scripted 2>/dev/null || {
-                # Fallback: write to config directly
-                _timeshift_write_device_config "$root_uuid"
-            }
+            # Write config directly — timeshift --snapshot-device always defaults
+            # to RSYNC mode, ignoring the filesystem type.  By writing the config
+            # ourselves we ensure btrfs_mode is set correctly on btrfs systems.
+            _timeshift_write_device_config "$root_uuid"
             echo "${GREEN}Timeshift configured to use: ${root_dev}${RESET}"
             log_info "Timeshift: Configured backup device ${root_dev} (UUID: ${root_uuid})"
             return 0
@@ -186,18 +184,20 @@ _timeshift_setup_device() {
     fi
 
     if [[ -n "$manual_uuid" ]]; then
-        sudo timeshift --snapshot-device "$manual_uuid" --scripted 2>/dev/null || \
-        sudo timeshift --snapshot-device "$_ts_manual_dev" --scripted 2>/dev/null || {
-            _timeshift_write_device_config "$manual_uuid"
-        }
+        _timeshift_write_device_config "$manual_uuid"
         echo "${GREEN}Timeshift configured to use: ${_ts_manual_dev}${RESET}"
         log_info "Timeshift: Configured backup device ${_ts_manual_dev} (UUID: ${manual_uuid:-unknown})"
     else
+        # No UUID resolved — try timeshift's own device setup as a last resort
         sudo timeshift --snapshot-device "$_ts_manual_dev" --scripted 2>/dev/null || {
             warn "Failed to configure Timeshift device. Snapshots may not work."
             TIMESHIFT_AVAILABLE=false
             return 1
         }
+        # Ensure btrfs_mode is correct even when timeshift wrote the config
+        if _is_btrfs_root && [[ -f /etc/timeshift/timeshift.json ]]; then
+            sudo sed -i 's/"btrfs_mode" *: *"false"/"btrfs_mode" : "true"/' /etc/timeshift/timeshift.json
+        fi
         echo "${GREEN}Timeshift configured to use: ${_ts_manual_dev}${RESET}"
         log_info "Timeshift: Configured backup device ${_ts_manual_dev}"
     fi
@@ -667,10 +667,21 @@ _timeshift_rsync_restore() {
         return 1
     fi
 
+    # Mount the backup device. If already mounted (e.g. as / on a root device),
+    # check whether the snapshot directory is accessible. If not, mount it at
+    # our own path — timeshift may store snapshots in a subvolume only visible
+    # from a dedicated mount.
     local mount_point=""
+    local _did_mount=false
+
     mount_point=$(findmnt -n -o TARGET "$backup_dev" 2>/dev/null | head -1)
 
-    local _did_mount=false
+    # Verify the snapshot directory is actually reachable at this mount point
+    if [[ -n "$mount_point" ]] && [[ ! -d "${mount_point}/timeshift/snapshots/${snapshot_name}" ]]; then
+        # Existing mount (often /) doesn't expose the snapshot dir — remount
+        mount_point=""
+    fi
+
     if [[ -z "$mount_point" ]]; then
         mount_point="/run/timeshift/rsync-restore"
         sudo mkdir -p "$mount_point"
