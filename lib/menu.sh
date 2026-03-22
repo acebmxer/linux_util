@@ -397,13 +397,34 @@ read_key() {
     IFS= read -rsn1 key
 
     # Check for escape sequence (arrow keys)
+    # Read byte-by-byte with a generous timeout to handle SSH latency
+    # where escape sequence bytes may arrive with delays between them
     if [[ $key == $ESC ]]; then
-        read -rsn2 -t 0.1 key
-        case "$key" in
-            '[A') echo "UP" ;;
-            '[B') echo "DOWN" ;;
-            '[C') echo "RIGHT" ;;
-            '[D') echo "LEFT" ;;
+        local seq
+        IFS= read -rsn1 -t 0.5 seq
+        case "$seq" in
+            '[')
+                # CSI sequence (standard: ESC [ A/B/C/D)
+                IFS= read -rsn1 -t 0.5 seq
+                case "$seq" in
+                    A) echo "UP" ;;
+                    B) echo "DOWN" ;;
+                    C) echo "RIGHT" ;;
+                    D) echo "LEFT" ;;
+                    *) echo "OTHER" ;;
+                esac
+                ;;
+            O)
+                # SS3 sequence (application cursor mode: ESC O A/B/C/D)
+                IFS= read -rsn1 -t 0.5 seq
+                case "$seq" in
+                    A) echo "UP" ;;
+                    B) echo "DOWN" ;;
+                    C) echo "RIGHT" ;;
+                    D) echo "LEFT" ;;
+                    *) echo "OTHER" ;;
+                esac
+                ;;
             *) echo "OTHER" ;;
         esac
     elif [[ $key == "" ]]; then
