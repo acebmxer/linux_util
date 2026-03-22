@@ -105,16 +105,32 @@ _timeshift_setup_device() {
     echo ""
 
     # Get the current root (boot) device
+    # Strip btrfs subvolume suffix (e.g. /dev/xvda3[/root] → /dev/xvda3)
     local root_dev root_uuid
-    root_dev=$(findmnt -n -o SOURCE / 2>/dev/null | head -1)
+    root_dev=$(findmnt -n -o SOURCE / 2>/dev/null | head -1 | sed 's/\[.*\]$//')
     root_uuid=$(blkid -s UUID -o value "$root_dev" 2>/dev/null)
 
-    # List devices via timeshift
+    # List devices via timeshift and parse the numbered device table
     local devices_output
     devices_output=$(sudo timeshift --list-devices 2>&1) || true
 
     echo "$devices_output"
     echo ""
+
+    # Build arrays of device paths and UUIDs from the numbered list
+    # Format: "0    >  /dev/xvda2    2.1 GB   ext4"
+    local -a _ts_dev_paths=()
+    local -a _ts_dev_uuids=()
+    while IFS= read -r _line; do
+        local _dev_path
+        _dev_path=$(echo "$_line" | grep -oP '/dev/\S+')
+        if [[ -n "$_dev_path" ]]; then
+            _ts_dev_paths+=("$_dev_path")
+            local _dev_uuid
+            _dev_uuid=$(blkid -s UUID -o value "$_dev_path" 2>/dev/null)
+            _ts_dev_uuids+=("${_dev_uuid:-}")
+        fi
+    done < <(echo "$devices_output" | grep -E '^\s*[0-9]+\s')
 
     if [[ -n "$root_dev" && -n "$root_uuid" ]]; then
         echo "Current boot device detected: ${BOLD}${root_dev}${RESET} (UUID: ${root_uuid})"
@@ -138,8 +154,8 @@ _timeshift_setup_device() {
         echo ""
     fi
 
-    # Manual device selection
-    echo "Please enter the device path (e.g., /dev/sda1) or UUID for Timeshift snapshots:"
+    # Manual device selection — accept a number from the list, device path, or UUID
+    echo "Please enter a device number from the list above, a device path (e.g., /dev/sda1), or UUID:"
     read -rp "> " _ts_manual_dev
 
     if [[ -z "$_ts_manual_dev" ]]; then
@@ -148,12 +164,25 @@ _timeshift_setup_device() {
         return 1
     fi
 
-    # If user entered a UUID, use it directly; otherwise get UUID from device path
-    if [[ "$_ts_manual_dev" =~ ^[0-9a-fA-F-]+$ ]]; then
+    # If the user entered a number, resolve it from the device list
+    if [[ "$_ts_manual_dev" =~ ^[0-9]+$ ]] && (( _ts_manual_dev < ${#_ts_dev_paths[@]} )); then
+        local _selected_dev="${_ts_dev_paths[$_ts_manual_dev]}"
+        local _selected_uuid="${_ts_dev_uuids[$_ts_manual_dev]}"
+        echo "Selected device: ${BOLD}${_selected_dev}${RESET}"
+        local manual_uuid="${_selected_uuid}"
+        _ts_manual_dev="$_selected_dev"
+    elif [[ "$_ts_manual_dev" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+        # Standard UUID format
         local manual_uuid="$_ts_manual_dev"
-    else
+    elif [[ "$_ts_manual_dev" == /dev/* ]]; then
+        # Device path — resolve UUID
         local manual_uuid
         manual_uuid=$(blkid -s UUID -o value "$_ts_manual_dev" 2>/dev/null)
+    else
+        echo "${YELLOW}Invalid selection: ${_ts_manual_dev}${RESET}"
+        warn "No valid device selected. Timeshift snapshots will not be available."
+        TIMESHIFT_AVAILABLE=false
+        return 1
     fi
 
     if [[ -n "$manual_uuid" ]]; then
