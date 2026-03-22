@@ -108,7 +108,7 @@ _timeshift_setup_device() {
     # Strip btrfs subvolume suffix (e.g. /dev/xvda3[/root] → /dev/xvda3)
     local root_dev root_uuid
     root_dev=$(findmnt -n -o SOURCE / 2>/dev/null | head -1 | sed 's/\[.*\]$//')
-    root_uuid=$(blkid -s UUID -o value "$root_dev" 2>/dev/null)
+    root_uuid=$(sudo blkid -s UUID -o value "$root_dev" 2>/dev/null)
 
     # List devices via timeshift and parse the numbered device table
     local devices_output
@@ -127,7 +127,7 @@ _timeshift_setup_device() {
         if [[ -n "$_dev_path" ]]; then
             _ts_dev_paths+=("$_dev_path")
             local _dev_uuid
-            _dev_uuid=$(blkid -s UUID -o value "$_dev_path" 2>/dev/null)
+            _dev_uuid=$(sudo blkid -s UUID -o value "$_dev_path" 2>/dev/null)
             _ts_dev_uuids+=("${_dev_uuid:-}")
         fi
     done < <(echo "$devices_output" | grep -E '^\s*[0-9]+\s')
@@ -177,7 +177,7 @@ _timeshift_setup_device() {
     elif [[ "$_ts_manual_dev" == /dev/* ]]; then
         # Device path — resolve UUID
         local manual_uuid
-        manual_uuid=$(blkid -s UUID -o value "$_ts_manual_dev" 2>/dev/null)
+        manual_uuid=$(sudo blkid -s UUID -o value "$_ts_manual_dev" 2>/dev/null)
     else
         echo "${YELLOW}Invalid selection: ${_ts_manual_dev}${RESET}"
         warn "No valid device selected. Timeshift snapshots will not be available."
@@ -449,7 +449,7 @@ _timeshift_btrfs_restore() {
     fi
 
     local backup_dev
-    backup_dev=$(blkid -U "$backup_uuid" 2>/dev/null)
+    backup_dev=$(sudo blkid -U "$backup_uuid" 2>/dev/null)
     if [[ -z "$backup_dev" ]]; then
         echo "${RED}✗ Backup device with UUID ${backup_uuid} not found${RESET}"
         return 1
@@ -661,7 +661,7 @@ _timeshift_rsync_restore() {
 
     # Mount the backup device if not already mounted
     local backup_dev
-    backup_dev=$(blkid -U "$backup_uuid" 2>/dev/null)
+    backup_dev=$(sudo blkid -U "$backup_uuid" 2>/dev/null)
     if [[ -z "$backup_dev" ]]; then
         echo "${RED}✗ Backup device with UUID ${backup_uuid} not found${RESET}"
         return 1
