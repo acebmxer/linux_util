@@ -574,9 +574,10 @@ _timeshift_restore_snapshot() {
     echo ""
 
     # Auto-detect the GRUB device (the whole disk containing the root partition).
+    # Strip btrfs subvolume suffix (e.g. /dev/xvda3[/root] → /dev/xvda3)
     local grub_device=""
     local root_part
-    root_part=$(findmnt -n -o SOURCE / 2>/dev/null | head -1)
+    root_part=$(findmnt -n -o SOURCE / 2>/dev/null | head -1 | sed 's/\[.*\]$//')
     if [[ -n "$root_part" ]]; then
         # Strip partition number/suffix to get the parent disk
         # Handles: /dev/sda1→sda, /dev/nvme0n1p2→nvme0n1, /dev/xvda1→xvda
@@ -593,14 +594,20 @@ _timeshift_restore_snapshot() {
         echo "${YELLOW}Could not auto-detect GRUB device — GRUB reinstall will be skipped${RESET}"
     fi
 
-    # Route to the appropriate restore method based on filesystem type
-    if _is_btrfs_root; then
-        echo "${DIM}Filesystem: btrfs — using subvolume restore${RESET}"
+    # Route to the appropriate restore method based on Timeshift's configured mode,
+    # not the filesystem type. A btrfs filesystem may still use RSYNC mode.
+    local ts_mode="RSYNC"
+    if grep -q '"btrfs_mode" *: *"true"' /etc/timeshift/timeshift.json 2>/dev/null; then
+        ts_mode="BTRFS"
+    fi
+
+    if [[ "$ts_mode" == "BTRFS" ]]; then
+        echo "${DIM}Timeshift mode: BTRFS — using subvolume restore${RESET}"
         if ! _timeshift_btrfs_restore "$snapshot_name"; then
             return 1
         fi
     else
-        echo "${DIM}Filesystem: $(findmnt -n -o FSTYPE /) — using rsync restore${RESET}"
+        echo "${DIM}Timeshift mode: RSYNC — using rsync restore${RESET}"
         if ! _timeshift_rsync_restore "$snapshot_name"; then
             return 1
         fi
