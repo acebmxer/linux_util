@@ -51,47 +51,51 @@ Utility names are matched case-insensitively and support partial matches. `--dry
 ## Interactive Menu
 
 ```
-╔══════════════════════════════════════════════════════════════╗
-║   Linux System Setup & Utilities - Select Programs/Tasks     ║
-╚══════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════╗
+║        Linux System Setup & Utilities - Select Programs/Tasks        ║
+╚══════════════════════════════════════════════════════════════════════╝
 
-Script commit: abc1234  |  Latest commit: abc1234
+  Script commit: abc1234  |  Latest commit: def5678
+                    Script out of date, please update.
+              Detected System: Ubuntu   Version: 24.04.4
+  Last Timeshift Snapshot: 2026-03-22_12-30-16 [0] - linux_util: ...
 
 System Tasks:
-  [ ] Full System Upgrade/Update     [ ] Local MOTD
-  [ ] System Updates                 [ ] Create Snapshot
-  [ ] KDE Desktop                    [ ] Restore Snapshot
-  [ ] NVIDIA Drivers
-  [ ] XEN Guest Utilities
+  [ ] Full System Upgrade/Update       [ ] XEN Guest Utilities (v7.30.0)
+  [ ] System Updates                   [ ] Local MOTD
+  [ ] KDE Desktop                      [ ] Create Snapshot
+  [ ] NVIDIA Drivers                   [ ] Restore Snapshot
 
-────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────
 
 Utilities:
-  [ ] Bitwarden Client               [ ] OpenSSH Server
-  [ ] Brave Browser                  [x] Steam App
-  [x] Devolutions RDM (installed)    [U] Syncthing (installed)
-  [x] Docker (installed)             [ ] Termius SSH Client
-  [ ] Dotfiles                       [ ] Timeshift
-  [ ] Joplin Client                  [x] Visual Studio Code (installed)
-  [ ] LibreOffice                    [ ] QBittorrent
+  [ ] Bitwarden Client                 [ ] PIA VPN
+  [ ] Brave Browser                    [ ] QBittorrent
+  [ ] Devolutions RDM                  [ ] Steam App
+  [ ] Docker                           [ ] Syncthing
+  [ ] Dotfiles                         [ ] Termius SSH Client
+  [ ] Joplin Client                    [ ] Timeshift (v24.01.1)
+  [ ] LibreOffice                      [ ] Visual Studio Code
+  [ ] OpenSSH Server (v9.6p1)
 
-────────────────────────────────────────────────────────────────
-Actions: Install: 1 | Uninstall: 1 | Update: 1
+────────────────────────────────────────────────────────────────────────
+Actions: Install: 0 | Uninstall: 0 | Update: 0
 
-↑/↓/←/→ navigate  SPACE select  U update installed  A select-all  D deselect-all  ENTER confirm  Q quit
-Legend: [x] select  [U] update  [ ] none  (installed) = on system
+↑↓←→ move  SPACE select  U update  A all  D none  ENTER confirm  Q quit
+
+Legend: [✓] select  [U] update  [ ] none  (installed) = on system
+[✓] on installed = uninstall; [✓] on missing = install; [U] on installed = update.
 ```
 
 ### Menu Controls
 
 | Key | Action |
 |-----|--------|
-| ↑ / ↓ | Move up/down within column |
-| ← / → | Switch columns |
-| `Space` | Toggle install/uninstall |
+| ↑ / ↓ / ← / → | Move between items |
+| `Space` | Toggle select |
 | `U` | Queue an installed item for update (`[U]`) |
 | `A` | Select all |
-| `D` | Deselect all |
+| `D` | Deselect none (clear all) |
 | `Enter` | Confirm and proceed |
 | `Q` | Quit without changes |
 
@@ -99,8 +103,8 @@ Legend: [x] select  [U] update  [ ] none  (installed) = on system
 
 | Checkbox | Installed? | Action |
 |----------|------------|--------|
-| `[x]` | No | **Install** |
-| `[x]` | Yes | **Uninstall** |
+| `[✓]` | No | **Install** |
+| `[✓]` | Yes | **Uninstall** |
 | `[U]` | Yes | **Update** |
 | `[ ]` | Either | Skip |
 
