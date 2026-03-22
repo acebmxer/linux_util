@@ -395,8 +395,10 @@ _timeshift_restore_snapshot() {
 
     # Stream output directly so the user sees real-time progress.
     # --skip-grub prevents an interactive GRUB prompt that hangs remote sessions.
-    sudo timeshift --restore --snapshot "$snapshot_name" --skip-grub --scripted --yes 2>&1
-    local rc=$?
+    # Pipe 'yes' to auto-accept any remaining interactive prompts (e.g.
+    # "Press ENTER to continue") that --scripted/--yes fail to suppress.
+    yes "" | sudo timeshift --restore --snapshot "$snapshot_name" --skip-grub --scripted --yes 2>&1
+    local rc=${PIPESTATUS[1]}
 
     echo ""
     if [[ $rc -eq 0 ]]; then

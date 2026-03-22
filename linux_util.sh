@@ -295,13 +295,24 @@ process_selected() {
         local color="$4"
         local label="$5"
 
+        # Use friendlier verbs for system tasks (they are "run", not "installed")
+        local _is_system_task=false
+        for _st in "${SYSTEM_TASKS[@]}"; do
+            [[ "$_st" == "$util" ]] && _is_system_task=true && break
+        done
+        local _verb="$op_type" _past="${op_type}ed"
+        if [[ "$_is_system_task" == "true" && "$op_type" == "install" ]]; then
+            _verb="run"
+            _past="completed"
+        fi
+
         echo ""
         echo "${BOLD}${color}────────────────────────────────────────────────────────────────${RESET}"
         echo "${DIM}[$(date '+%H:%M:%S')]${RESET} ${BOLD}${color}${label}: $util${RESET}"
         echo "${BOLD}${color}────────────────────────────────────────────────────────────────${RESET}"
         echo ""
 
-        log_info "Starting ${op_type}: $util"
+        log_info "Starting ${_verb}: $util"
 
         # Resolve dependencies before install/update
         if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
@@ -315,9 +326,9 @@ process_selected() {
             if $func; then
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
-                echo "${GREEN}✓ Successfully ${op_type}ed: $util${RESET} ${DIM}(${_duration}s)${RESET}"
+                echo "${GREEN}✓ Successfully ${_past}: $util${RESET} ${DIM}(${_duration}s)${RESET}"
                 log_success "${label}: $util"
-                metrics_record "$op_type" "$util" "$_duration" "success"
+                metrics_record "$_verb" "$util" "$_duration" "success"
 
                 # Run health check after install/update
                 if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
@@ -328,22 +339,22 @@ process_selected() {
             else
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
-                echo "${RED}✗ Failed to ${op_type}: $util${RESET} ${DIM}(${_duration}s)${RESET}"
-                log_error "Failed to ${op_type}: $util"
-                metrics_record "$op_type" "$util" "$_duration" "failed"
+                echo "${RED}✗ Failed to ${_verb}: $util${RESET} ${DIM}(${_duration}s)${RESET}"
+                log_error "Failed to ${_verb}: $util"
+                metrics_record "$_verb" "$util" "$_duration" "failed"
 
                 # Retry logic
                 if [[ "$CFG_RETRY_FAILED" == "true" && "$op_type" != "uninstall" && -z "${NO_RETRY[$util]:-}" ]]; then
                     local _attempt=1
                     while (( _attempt < CFG_RETRY_ATTEMPTS )); do
                         ((_attempt++))
-                        echo "${YELLOW}Retrying ${op_type} for ${util} (attempt ${_attempt}/${CFG_RETRY_ATTEMPTS})...${RESET}"
+                        echo "${YELLOW}Retrying ${_verb} for ${util} (attempt ${_attempt}/${CFG_RETRY_ATTEMPTS})...${RESET}"
                         local _retry_start=$SECONDS
                         if $func; then
                             local _retry_dur=$(( SECONDS - _retry_start ))
                             echo "${GREEN}✓ Retry succeeded: $util${RESET} ${DIM}(${_retry_dur}s)${RESET}"
-                            log_success "Retry ${op_type} succeeded: $util (attempt ${_attempt})"
-                            metrics_record "${op_type}_retry" "$util" "$_retry_dur" "success"
+                            log_success "Retry ${_verb} succeeded: $util (attempt ${_attempt})"
+                            metrics_record "${_verb}_retry" "$util" "$_retry_dur" "success"
                             _op_status="success"
                             ((success_count++))
                             if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
@@ -355,13 +366,21 @@ process_selected() {
                 fi
 
                 ((fail_count++))
-                failed_utils+=("$util (${op_type})")
+                if [[ "$_is_system_task" == "true" ]]; then
+                    failed_utils+=("$util")
+                else
+                    failed_utils+=("$util (${op_type})")
+                fi
             fi
         else
-            echo "${RED}✗ No ${op_type} function found for: $util${RESET}"
-            log_error "No ${op_type} function found for: $util"
+            echo "${RED}✗ No ${_verb} function found for: $util${RESET}"
+            log_error "No ${_verb} function found for: $util"
             ((fail_count++))
-            failed_utils+=("$util (${op_type})")
+            if [[ "$_is_system_task" == "true" ]]; then
+                failed_utils+=("$util")
+            else
+                failed_utils+=("$util (${op_type})")
+            fi
         fi
     }
 
