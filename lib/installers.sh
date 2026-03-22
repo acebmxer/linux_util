@@ -55,6 +55,7 @@ fi
 # Snapshot tasks (Create / Restore) — runtime checks for available backend
 register_system_task "Create Snapshot"   setup_create_snapshot   check_always_false    noop_function             setup_create_snapshot
 register_system_task "Restore Snapshot"  setup_restore_snapshot  check_always_false    noop_function             setup_restore_snapshot
+NO_RETRY["Restore Snapshot"]=1
 
 # --- Utilities (alphabetical order) ---
 register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden

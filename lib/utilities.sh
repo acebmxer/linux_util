@@ -13,6 +13,7 @@ declare -A CHECK_FUNCS
 declare -A UNINSTALL_FUNCS
 declare -A UPDATE_FUNCS
 declare -A VERSION_FUNCS
+declare -A NO_RETRY
 
 # Internal helper — shared registration logic for both system tasks and utilities.
 _register_entry() {

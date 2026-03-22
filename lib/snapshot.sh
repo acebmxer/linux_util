@@ -393,16 +393,19 @@ _timeshift_restore_snapshot() {
     echo "${YELLOW}WARNING: This will restore your system to the selected snapshot.${RESET}"
     echo ""
 
-    local ts_output
-    if ts_output=$(sudo timeshift --restore --snapshot "$snapshot_name" --scripted --yes 2>&1); then
+    # Stream output directly so the user sees real-time progress.
+    # --skip-grub prevents an interactive GRUB prompt that hangs remote sessions.
+    sudo timeshift --restore --snapshot "$snapshot_name" --skip-grub --scripted --yes 2>&1
+    local rc=$?
+
+    echo ""
+    if [[ $rc -eq 0 ]]; then
         echo "${GREEN}✓ Timeshift restore completed successfully${RESET}"
         log_success "Timeshift restore completed: ${snapshot_name}"
-        verbose "Timeshift output: ${ts_output}"
         return 0
     else
         echo "${RED}✗ Timeshift restore failed${RESET}"
-        log_error "Timeshift restore failed: ${ts_output}"
-        verbose "Timeshift error output: ${ts_output}"
+        log_error "Timeshift restore failed for snapshot: ${snapshot_name}"
         return 1
     fi
 }

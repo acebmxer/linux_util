@@ -333,7 +333,7 @@ process_selected() {
                 metrics_record "$op_type" "$util" "$_duration" "failed"
 
                 # Retry logic
-                if [[ "$CFG_RETRY_FAILED" == "true" && "$op_type" != "uninstall" ]]; then
+                if [[ "$CFG_RETRY_FAILED" == "true" && "$op_type" != "uninstall" && -z "${NO_RETRY[$util]:-}" ]]; then
                     local _attempt=1
                     while (( _attempt < CFG_RETRY_ATTEMPTS )); do
                         ((_attempt++))
