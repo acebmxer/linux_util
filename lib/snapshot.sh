@@ -423,15 +423,12 @@ _timeshift_restore_snapshot() {
 
     # Run timeshift restore, streaming output in real-time via tee while also
     # capturing it to a temp file so we can check for silent failures.
-    # NOTE: We intentionally omit --scripted --yes here. The --scripted flag
-    # causes Timeshift to auto-reboot after restore without prompting the user.
-    # Without it, Timeshift runs interactively (user confirms GRUB prompts)
-    # and does NOT auto-reboot, letting our script handle the reboot prompt.
+    # --scripted --yes should run non-interactively per the timeshift docs.
     local restore_log
     restore_log=$(mktemp /tmp/timeshift-restore.XXXXXX)
 
     sudo timeshift --restore --snapshot "$snapshot_name" \
-        "${grub_args[@]}" 2>&1 | tee "$restore_log"
+        --scripted --yes "${grub_args[@]}" 2>&1 | tee "$restore_log"
     local rc=${PIPESTATUS[0]}
 
     echo ""
