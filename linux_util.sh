@@ -250,8 +250,15 @@ process_selected() {
         exit 0
     fi
 
-    # Create a Timeshift snapshot before making any changes
-    if [[ "$TIMESHIFT_AVAILABLE" == "true" ]]; then
+    # Create a Timeshift snapshot before making any changes.
+    # Skip if the user explicitly selected Create Snapshot or Restore Snapshot
+    # (those tasks manage their own snapshots — avoids creating duplicates).
+    local _skip_auto_snapshot=false
+    for _chk in "${to_install[@]}"; do
+        [[ "$_chk" == "Create Snapshot" || "$_chk" == "Restore Snapshot" ]] && _skip_auto_snapshot=true
+    done
+
+    if [[ "$TIMESHIFT_AVAILABLE" == "true" && "$_skip_auto_snapshot" == "false" ]]; then
         local _ts_comment="linux_util:"
         [[ ${#to_install[@]} -gt 0 ]] && _ts_comment+=" Install ${to_install[*]},"
         [[ ${#to_uninstall[@]} -gt 0 ]] && _ts_comment+=" Uninstall ${to_uninstall[*]},"

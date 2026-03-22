@@ -42,15 +42,19 @@ check_always_false() {
 
 # --- System Tasks (must be registered before utilities) ---
 register_system_task "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update
+register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates
 register_system_task "KDE Desktop"        install_kde             check_kde             uninstall_kde             update_kde                get_version_kde
 register_system_task "NVIDIA Drivers"     install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
-register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates
 register_system_task "XEN Guest Utilities" setup_xen_guest_utilities check_xen_guest_utilities noop_function setup_xen_guest_utilities get_version_xen_guest_utilities
 
 # Landscape MOTD (Ubuntu, Kubuntu, KDE Neon)
 if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
     register_system_task "Local MOTD"    setup_local_motd        check_landscape_motd  uninstall_landscape_motd  update_landscape_motd     get_version_landscape_motd
 fi
+
+# Snapshot tasks (Create / Restore) — runtime checks for available backend
+register_system_task "Create Snapshot"   setup_create_snapshot   check_always_false    noop_function             setup_create_snapshot
+register_system_task "Restore Snapshot"  setup_restore_snapshot  check_always_false    noop_function             setup_restore_snapshot
 
 # --- Utilities (alphabetical order) ---
 register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden

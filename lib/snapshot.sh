@@ -321,6 +321,133 @@ _snapper_create_snapshot() {
 }
 
 # ============================================================================
+# Snapshot Listing
+# ============================================================================
+
+# List all available Timeshift snapshots (interactive display).
+# Prints the list and populates SNAPSHOT_NAMES[] with selectable snapshot IDs.
+# Returns 0 if snapshots exist, 1 if none found.
+declare -a SNAPSHOT_NAMES=()
+
+_timeshift_list_snapshots() {
+    SNAPSHOT_NAMES=()
+    local list_output
+    list_output=$(sudo timeshift --list 2>&1) || true
+
+    echo "$list_output"
+    echo ""
+
+    # Parse snapshot names (timestamps) from timeshift --list output
+    while IFS= read -r line; do
+        local snap_name
+        snap_name=$(echo "$line" | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}/) {print $i; exit}}')
+        [[ -n "$snap_name" ]] && SNAPSHOT_NAMES+=("$snap_name")
+    done < <(echo "$list_output" | grep -E '^\s*[0-9]+\s+>?\s+[0-9]{4}-[0-9]{2}-[0-9]{2}')
+
+    [[ ${#SNAPSHOT_NAMES[@]} -gt 0 ]] && return 0 || return 1
+}
+
+_snapper_list_snapshots() {
+    SNAPSHOT_NAMES=()
+    local list_output
+    list_output=$(sudo snapper -c root list 2>&1) || true
+
+    echo "$list_output"
+    echo ""
+
+    # Parse snapshot numbers from snapper list output (skip snapshot 0 = current)
+    while IFS= read -r line; do
+        local snap_num
+        snap_num=$(echo "$line" | awk -F'|' '{gsub(/^ +| +$/,"",$1); print $1}')
+        [[ -n "$snap_num" && "$snap_num" != "0" ]] && SNAPSHOT_NAMES+=("$snap_num")
+    done < <(echo "$list_output" | grep -E '^\s*[0-9]+\s*\|' | grep -v '^\s*0\s*\|')
+
+    [[ ${#SNAPSHOT_NAMES[@]} -gt 0 ]] && return 0 || return 1
+}
+
+# List snapshots using the active backend.
+# Populates SNAPSHOT_NAMES[] and returns 0 if snapshots exist.
+timeshift_list_snapshots() {
+    [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 1
+
+    if [[ "$SNAPSHOT_BACKEND" == "snapper" ]]; then
+        _snapper_list_snapshots
+    else
+        _timeshift_list_snapshots
+    fi
+}
+
+# ============================================================================
+# Snapshot Restore
+# ============================================================================
+
+# Restore a Timeshift snapshot by name.
+# Arguments:
+#   $1 - Snapshot name/timestamp to restore
+# Returns 0 on success, 1 on failure.
+_timeshift_restore_snapshot() {
+    local snapshot_name="$1"
+
+    echo ""
+    echo "${BOLD}${CYAN}Restoring Timeshift snapshot: ${snapshot_name}${RESET}"
+    echo "${YELLOW}WARNING: This will restore your system to the selected snapshot.${RESET}"
+    echo ""
+
+    local ts_output
+    if ts_output=$(sudo timeshift --restore --snapshot "$snapshot_name" --scripted --yes 2>&1); then
+        echo "${GREEN}✓ Timeshift restore completed successfully${RESET}"
+        log_success "Timeshift restore completed: ${snapshot_name}"
+        verbose "Timeshift output: ${ts_output}"
+        return 0
+    else
+        echo "${RED}✗ Timeshift restore failed${RESET}"
+        log_error "Timeshift restore failed: ${ts_output}"
+        verbose "Timeshift error output: ${ts_output}"
+        return 1
+    fi
+}
+
+# Restore a Snapper snapshot by number.
+# Arguments:
+#   $1 - Snapshot number to rollback to
+# Returns 0 on success, 1 on failure.
+_snapper_restore_snapshot() {
+    local snapshot_num="$1"
+
+    echo ""
+    echo "${BOLD}${CYAN}Rolling back to Snapper snapshot #${snapshot_num}${RESET}"
+    echo "${YELLOW}WARNING: This will rollback your system to the selected snapshot.${RESET}"
+    echo ""
+
+    local snap_output
+    if snap_output=$(sudo snapper rollback "$snapshot_num" 2>&1); then
+        echo "${GREEN}✓ Snapper rollback completed successfully${RESET}"
+        log_success "Snapper rollback completed: snapshot #${snapshot_num}"
+        verbose "Snapper output: ${snap_output}"
+        return 0
+    else
+        echo "${RED}✗ Snapper rollback failed${RESET}"
+        log_error "Snapper rollback failed: ${snap_output}"
+        verbose "Snapper error output: ${snap_output}"
+        return 1
+    fi
+}
+
+# Restore a snapshot using the active backend.
+# Arguments:
+#   $1 - Snapshot identifier (name for Timeshift, number for Snapper)
+# Returns 0 on success, 1 on failure.
+timeshift_restore_snapshot() {
+    [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 1
+
+    if [[ "$SNAPSHOT_BACKEND" == "snapper" ]]; then
+        _snapper_restore_snapshot "$@"
+    else
+        _timeshift_restore_snapshot "$@"
+    fi
+}
+
+# ============================================================================
 # Snapshot Creation
 # ============================================================================
 
