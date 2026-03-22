@@ -393,15 +393,54 @@ _timeshift_restore_snapshot() {
     echo "${YELLOW}WARNING: This will restore your system to the selected snapshot.${RESET}"
     echo ""
 
-    # Stream output directly so the user sees real-time progress.
+    # Auto-detect the GRUB device (the whole disk containing the root partition).
+    # Without --grub-device, timeshift CLI interactively asks the user to pick a
+    # GRUB device. When running non-interactively (piped input), this prompt
+    # rejects empty/blank input and aborts after 3 attempts.
+    local grub_device=""
+    local grub_args=()
+    local root_part
+    root_part=$(findmnt -n -o SOURCE / 2>/dev/null | head -1)
+    if [[ -n "$root_part" ]]; then
+        # Strip partition number/suffix to get the parent disk
+        # Handles: /dev/sda1→sda, /dev/nvme0n1p2→nvme0n1, /dev/xvda1→xvda
+        local disk_name
+        disk_name=$(lsblk -no PKNAME "$root_part" 2>/dev/null | head -1)
+        if [[ -n "$disk_name" ]]; then
+            grub_device="/dev/${disk_name}"
+        fi
+    fi
+
+    if [[ -n "$grub_device" && -b "$grub_device" ]]; then
+        echo "${DIM}GRUB device detected: ${grub_device}${RESET}"
+        grub_args=(--grub-device "$grub_device")
+    else
+        # Cannot detect GRUB device — skip GRUB reinstall rather than letting
+        # timeshift prompt interactively (which fails in non-interactive mode).
+        echo "${YELLOW}Could not auto-detect GRUB device — skipping GRUB reinstall${RESET}"
+        grub_args=(--skip-grub)
+    fi
+
+    # Stream output and capture it so we can check for silent failures.
     # --scripted --yes should run non-interactively per the timeshift docs.
     # Pipe 'yes' as a safety net for buggy timeshift versions that still show
-    # "Press ENTER to continue" despite --scripted. Empty lines act as ENTER
-    # for all prompts (matching timeshift's own default-options guidance).
-    yes "" | sudo timeshift --restore --snapshot "$snapshot_name" --scripted --yes 2>&1
+    # "Press ENTER to continue" despite --scripted.
+    local restore_output
+    restore_output=$(yes "" | sudo timeshift --restore --snapshot "$snapshot_name" \
+        --scripted --yes "${grub_args[@]}" 2>&1)
     local rc=${PIPESTATUS[1]}
 
+    echo "$restore_output"
     echo ""
+
+    # Timeshift may exit 0 even when the restore was aborted (e.g. GRUB device
+    # prompt failure). Check the output for signs of a silent abort.
+    if [[ $rc -eq 0 ]] && echo "$restore_output" | grep -qiE 'Aborted|E: Failed to get input'; then
+        echo "${RED}✗ Timeshift restore was aborted (GRUB device prompt failure)${RESET}"
+        log_error "Timeshift restore aborted during GRUB device selection: ${snapshot_name}"
+        rc=1
+    fi
+
     if [[ $rc -eq 0 ]]; then
         echo "${GREEN}✓ Timeshift restore completed successfully${RESET}"
         log_success "Timeshift restore completed: ${snapshot_name}"
@@ -413,7 +452,7 @@ _timeshift_restore_snapshot() {
         echo "${RED}✗ Timeshift crashed (segmentation fault) during restore${RESET}"
         echo "${YELLOW}  This is a known bug in some timeshift versions (e.g. Ubuntu 24.04).${RESET}"
         log_error "Timeshift segfaulted during restore of snapshot: ${snapshot_name}"
-    else
+    elif [[ $rc -ne 1 ]]; then
         echo "${RED}✗ Timeshift restore failed (exit code: ${rc})${RESET}"
         log_error "Timeshift restore failed for snapshot: ${snapshot_name} (exit code: ${rc})"
     fi
