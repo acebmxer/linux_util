@@ -181,6 +181,16 @@ linux_util/
 
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then by auto-detecting the available package manager.
 
+## Timeshift Snapshots
+
+On Debian/Ubuntu-based systems, the script automatically creates a Timeshift snapshot before every install, uninstall, or update operation. This provides an easy rollback point if anything goes wrong.
+
+- Requires Timeshift to be installed on the system
+- Only runs on Debian-family distributions
+- Auto-detects and configures the backup device on first use
+- Each snapshot is tagged with a description of the operation (e.g., `linux_util: Install Docker`)
+- Non-blocking — if snapshot creation fails, the operation continues normally
+
 ## Logging
 
 Every run creates timestamped log files in `logs/`:
