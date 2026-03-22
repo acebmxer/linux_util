@@ -428,7 +428,7 @@ _timeshift_restore_snapshot() {
     restore_log=$(mktemp /tmp/timeshift-restore.XXXXXX)
 
     sudo timeshift --restore --snapshot "$snapshot_name" \
-        --scripted --yes "${grub_args[@]}" 2>&1 | tee "$restore_log"
+        --scripted "${grub_args[@]}" 2>&1 | tee "$restore_log"
     local rc=${PIPESTATUS[0]}
 
     echo ""
