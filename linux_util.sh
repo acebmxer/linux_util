@@ -187,6 +187,9 @@ process_selected() {
     declare -a to_update
     local needs_reboot=false
 
+    # Snapshot tasks never require a reboot on their own
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1)
+
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do
         local util="${UTILITIES[$i]}"
@@ -198,9 +201,14 @@ process_selected() {
             else
                 to_install+=("$util")
             fi
-            # Reboot required for System Tasks and Docker
-            if [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]]; then
-                needs_reboot=true
+        fi
+
+        # Reboot required for System Tasks (except snapshots) and Docker
+        if [[ ${SELECTED[$i]} -eq 1 || ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
+            if [[ -z "${NO_REBOOT[$util]:-}" ]]; then
+                if [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]]; then
+                    needs_reboot=true
+                fi
             fi
         fi
     done

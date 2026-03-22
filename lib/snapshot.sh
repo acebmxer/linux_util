@@ -421,25 +421,35 @@ _timeshift_restore_snapshot() {
         grub_args=(--skip-grub)
     fi
 
-    # Stream output and capture it so we can check for silent failures.
+    # Run timeshift restore, streaming output in real-time via tee while also
+    # capturing it to a temp file so we can check for silent failures.
     # --scripted --yes should run non-interactively per the timeshift docs.
-    # Pipe 'yes' as a safety net for buggy timeshift versions that still show
-    # "Press ENTER to continue" despite --scripted.
-    local restore_output
-    restore_output=$(yes "" | sudo timeshift --restore --snapshot "$snapshot_name" \
-        --scripted --yes "${grub_args[@]}" 2>&1)
-    local rc=${PIPESTATUS[1]}
+    local restore_log
+    restore_log=$(mktemp /tmp/timeshift-restore.XXXXXX)
 
-    echo "$restore_output"
+    sudo timeshift --restore --snapshot "$snapshot_name" \
+        --scripted --yes "${grub_args[@]}" 2>&1 | tee "$restore_log"
+    local rc=${PIPESTATUS[0]}
+
     echo ""
 
     # Timeshift may exit 0 even when the restore was aborted (e.g. GRUB device
     # prompt failure). Check the output for signs of a silent abort.
-    if [[ $rc -eq 0 ]] && echo "$restore_output" | grep -qiE 'Aborted|E: Failed to get input'; then
+    if [[ $rc -eq 0 ]] && grep -qiE 'Aborted|E: Failed to get input' "$restore_log"; then
         echo "${RED}✗ Timeshift restore was aborted (GRUB device prompt failure)${RESET}"
         log_error "Timeshift restore aborted during GRUB device selection: ${snapshot_name}"
         rc=1
     fi
+
+    # Verify that rsync actually ran — if timeshift reported success but never
+    # synced any files, the restore didn't actually happen.
+    if [[ $rc -eq 0 ]] && ! grep -qE 'Syncing files|rsync|Deleting|First run mode' "$restore_log"; then
+        echo "${RED}✗ Timeshift reported success but no file sync occurred${RESET}"
+        log_error "Timeshift restore produced no sync output: ${snapshot_name}"
+        rc=1
+    fi
+
+    rm -f "$restore_log"
 
     if [[ $rc -eq 0 ]]; then
         echo "${GREEN}✓ Timeshift restore completed successfully${RESET}"
@@ -460,6 +470,7 @@ _timeshift_restore_snapshot() {
     echo ""
     echo "${CYAN}Attempting rsync-based fallback restore...${RESET}"
     _timeshift_rsync_restore "$snapshot_name"
+    return $?
 }
 
 # Fallback: restore a Timeshift RSYNC snapshot directly using rsync.
