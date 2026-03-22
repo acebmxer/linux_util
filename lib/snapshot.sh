@@ -20,6 +20,17 @@ _is_btrfs_root() {
     [[ "$fstype" == "btrfs" ]]
 }
 
+# Check if the btrfs subvolume layout is compatible with Timeshift BTRFS mode.
+# Timeshift requires the root subvolume to be named "@" and optionally "@home".
+# Distros like Fedora use "root"/"home" instead, which is incompatible.
+# Returns 0 if compatible, 1 otherwise.
+_is_timeshift_btrfs_compatible() {
+    _is_btrfs_root || return 1
+    local root_subvol
+    root_subvol=$(findmnt -n -o OPTIONS / 2>/dev/null | grep -oP 'subvol=\K[^,]+')
+    [[ "$root_subvol" == "/@" || "$root_subvol" == "@" ]]
+}
+
 # ============================================================================
 # Timeshift Detection & Initialization
 # ============================================================================
@@ -191,9 +202,9 @@ _timeshift_setup_device() {
     # --- Snapshot type selection ---
     local snapshot_type="rsync"
 
-    if _is_btrfs_root; then
+    if _is_timeshift_btrfs_compatible; then
         echo ""
-        echo "${BOLD}Btrfs filesystem detected.${RESET} Select snapshot type:"
+        echo "${BOLD}Btrfs filesystem detected (@ subvolume layout).${RESET} Select snapshot type:"
         echo ""
         echo "  1) ${BOLD}BTRFS${RESET}  — Native btrfs snapshots (fast, low disk usage)"
         echo "  2) RSYNC — File-level copy (slower, works across filesystems)"
@@ -208,6 +219,11 @@ _timeshift_setup_device() {
             snapshot_type="btrfs"
             echo "Snapshot type: BTRFS"
         fi
+    elif _is_btrfs_root; then
+        echo ""
+        echo "${YELLOW}Btrfs filesystem detected, but subvolume layout is not compatible"
+        echo "with Timeshift BTRFS mode (requires '@' subvolume, e.g. Ubuntu/Arch).${RESET}"
+        echo "Using RSYNC mode for snapshots."
     fi
 
     # --- Write config ---
@@ -236,9 +252,11 @@ _timeshift_write_device_config() {
         fi
     fi
 
-    if [[ ! -f "$config_file" ]]; then
-        sudo mkdir -p /etc/timeshift
-        sudo tee "$config_file" > /dev/null <<TSCFG
+    # Always write the full config — timeshift --list-devices may have created
+    # an incomplete config as a side effect (e.g. missing btrfs_mode field),
+    # so patching with sed is unreliable. Overwrite with our known-good config.
+    sudo mkdir -p /etc/timeshift
+    sudo tee "$config_file" > /dev/null <<TSCFG
 {
   "backup_device_uuid" : "${uuid}",
   "parent_device_uuid" : "",
@@ -263,11 +281,6 @@ _timeshift_write_device_config() {
   "exclude-apps" : []
 }
 TSCFG
-    else
-        # Update existing config — replace the backup_device_uuid and btrfs_mode values
-        sudo sed -i "s|\"backup_device_uuid\" *: *\"[^\"]*\"|\"backup_device_uuid\" : \"${uuid}\"|" "$config_file"
-        sudo sed -i "s|\"btrfs_mode\" *: *\"[^\"]*\"|\"btrfs_mode\" : \"${btrfs_mode}\"|" "$config_file"
-    fi
 
     verbose "Timeshift: Wrote device UUID ${uuid} to ${config_file}"
 }
@@ -701,7 +714,14 @@ _timeshift_rsync_restore() {
     if [[ -z "$mount_point" ]]; then
         mount_point="/run/timeshift/rsync-restore"
         sudo mkdir -p "$mount_point"
-        if ! sudo mount "$backup_dev" "$mount_point"; then
+        # On btrfs, mount the top-level subvolume (subvolid=5) so that the
+        # timeshift snapshot directory is visible — a default mount would only
+        # show the root subvolume (e.g. Fedora's "root" subvol).
+        local mount_opts=""
+        if _is_btrfs_root; then
+            mount_opts="-o subvolid=5"
+        fi
+        if ! sudo mount $mount_opts "$backup_dev" "$mount_point"; then
             echo "${RED}✗ Failed to mount backup device ${backup_dev}${RESET}"
             return 1
         fi
