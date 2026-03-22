@@ -12,6 +12,14 @@ TIMESHIFT_AVAILABLE=false
 TIMESHIFT_LAST_SNAPSHOT=""
 SNAPSHOT_BACKEND=""  # "timeshift" or "snapper"
 
+# Check if the root filesystem is btrfs.
+# Returns 0 if btrfs, 1 otherwise.
+_is_btrfs_root() {
+    local fstype
+    fstype=$(findmnt -n -o FSTYPE / 2>/dev/null)
+    [[ "$fstype" == "btrfs" ]]
+}
+
 # ============================================================================
 # Timeshift Detection & Initialization
 # ============================================================================
@@ -173,6 +181,17 @@ _timeshift_write_device_config() {
     local uuid="$1"
     local config_file="/etc/timeshift/timeshift.json"
 
+    # Detect filesystem type so timeshift uses the correct snapshot mode
+    local btrfs_mode="false"
+    local btrfs_home="false"
+    if _is_btrfs_root; then
+        btrfs_mode="true"
+        # Include @home in snapshots if the subvolume exists
+        if findmnt -n /home 2>/dev/null | grep -q 'subvol=.*@home'; then
+            btrfs_home="true"
+        fi
+    fi
+
     if [[ ! -f "$config_file" ]]; then
         sudo mkdir -p /etc/timeshift
         sudo tee "$config_file" > /dev/null <<TSCFG
@@ -180,9 +199,9 @@ _timeshift_write_device_config() {
   "backup_device_uuid" : "${uuid}",
   "parent_device_uuid" : "",
   "do_first_run" : "false",
-  "btrfs_mode" : "false",
-  "include_btrfs_home_for_backup" : "false",
-  "include_btrfs_home_for_restore" : "false",
+  "btrfs_mode" : "${btrfs_mode}",
+  "include_btrfs_home_for_backup" : "${btrfs_home}",
+  "include_btrfs_home_for_restore" : "${btrfs_home}",
   "stop_cron_emails" : "true",
   "schedule_monthly" : "false",
   "schedule_weekly" : "false",
@@ -381,7 +400,139 @@ timeshift_list_snapshots() {
 # Snapshot Restore
 # ============================================================================
 
+# Restore a Timeshift BTRFS snapshot by replacing the active @ subvolume
+# with a writable snapshot from the selected snapshot. The current @ (and
+# optionally @home) subvolumes are renamed as backups before the swap.
+# Arguments:
+#   $1 - Snapshot name/timestamp to restore
+# Returns 0 on success, 1 on failure.
+_timeshift_btrfs_restore() {
+    local snapshot_name="$1"
+
+    # Get the backup device from timeshift config
+    local backup_uuid
+    backup_uuid=$(grep -o '"backup_device_uuid" *: *"[^"]*"' /etc/timeshift/timeshift.json 2>/dev/null \
+        | grep -o '"[^"]*"$' | tr -d '"')
+
+    if [[ -z "$backup_uuid" ]]; then
+        echo "${RED}✗ Cannot determine Timeshift backup device from config${RESET}"
+        return 1
+    fi
+
+    local backup_dev
+    backup_dev=$(blkid -U "$backup_uuid" 2>/dev/null)
+    if [[ -z "$backup_dev" ]]; then
+        echo "${RED}✗ Backup device with UUID ${backup_uuid} not found${RESET}"
+        return 1
+    fi
+
+    # Mount the btrfs volume at subvolid=5 (top-level) to access all subvolumes
+    local mount_point=""
+    local _did_mount=false
+
+    # Check if already mounted with access to the snapshot directory
+    mount_point=$(findmnt -n -o TARGET "$backup_dev" 2>/dev/null | head -1)
+
+    if [[ -z "$mount_point" ]] || [[ ! -d "${mount_point}/timeshift-btrfs/snapshots" ]]; then
+        mount_point="/run/timeshift/btrfs-restore"
+        sudo mkdir -p "$mount_point"
+        if ! sudo mount -o subvolid=5 "$backup_dev" "$mount_point"; then
+            echo "${RED}✗ Failed to mount btrfs volume ${backup_dev} at subvolid=5${RESET}"
+            return 1
+        fi
+        _did_mount=true
+    fi
+
+    # Locate the snapshot subvolume
+    local snap_root="${mount_point}/timeshift-btrfs/snapshots/${snapshot_name}/@"
+    if [[ ! -d "$snap_root" ]]; then
+        echo "${RED}✗ Snapshot subvolume not found: ${snap_root}${RESET}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 1
+    fi
+
+    echo ""
+    echo "${BOLD}Snapshot found: ${snap_root}${RESET}"
+
+    # Check if @home is also in the snapshot
+    local snap_home="${mount_point}/timeshift-btrfs/snapshots/${snapshot_name}/@home"
+    local has_home=false
+    [[ -d "$snap_home" ]] && has_home=true
+
+    echo "  Root subvolume (@): yes"
+    echo "  Home subvolume (@home): ${has_home}"
+    echo ""
+
+    local _confirm
+    read -n 1 -rp "${YELLOW}Proceed with btrfs subvolume restore? (y/N) ${RESET}" _confirm < /dev/tty
+    echo ""
+    if [[ ! "$_confirm" =~ ^[Yy]$ ]]; then
+        echo "${YELLOW}Restore cancelled.${RESET}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 0
+    fi
+
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
+
+    # Rename current @ subvolume to a backup
+    local current_root="${mount_point}/@"
+    local backup_name="@_backup_${timestamp}"
+
+    echo ""
+    echo "${CYAN}Backing up current root subvolume: @ → ${backup_name}${RESET}"
+    if ! sudo mv "$current_root" "${mount_point}/${backup_name}"; then
+        echo "${RED}✗ Failed to rename current @ subvolume${RESET}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 1
+    fi
+
+    # Create a writable snapshot from the selected snapshot's @
+    echo "${CYAN}Creating writable snapshot from ${snapshot_name}/@...${RESET}"
+    if ! sudo btrfs subvolume snapshot "$snap_root" "$current_root"; then
+        echo "${RED}✗ Failed to create root snapshot — rolling back${RESET}"
+        sudo mv "${mount_point}/${backup_name}" "$current_root"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 1
+    fi
+    echo "${GREEN}✓ Root subvolume restored${RESET}"
+
+    # Restore @home if present in the snapshot
+    if [[ "$has_home" == "true" ]]; then
+        local current_home="${mount_point}/@home"
+        if [[ -d "$current_home" ]]; then
+            local home_backup="@home_backup_${timestamp}"
+            echo "${CYAN}Backing up current home subvolume: @home → ${home_backup}${RESET}"
+            if sudo mv "$current_home" "${mount_point}/${home_backup}"; then
+                echo "${CYAN}Restoring @home from snapshot...${RESET}"
+                if sudo btrfs subvolume snapshot "$snap_home" "$current_home"; then
+                    echo "${GREEN}✓ Home subvolume restored${RESET}"
+                else
+                    echo "${YELLOW}⚠ Failed to restore @home — restoring backup${RESET}"
+                    sudo mv "${mount_point}/${home_backup}" "$current_home"
+                    log_warning "Failed to restore @home subvolume"
+                fi
+            else
+                echo "${YELLOW}⚠ Failed to back up @home — skipping home restore${RESET}"
+                log_warning "Failed to rename @home for backup"
+            fi
+        fi
+    fi
+
+    sudo sync
+
+    echo ""
+    echo "${GREEN}✓ Btrfs subvolume restore completed successfully${RESET}"
+    log_success "Btrfs subvolume restore completed: ${snapshot_name}"
+    [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+    return 0
+}
+
 # Restore a Timeshift snapshot by name.
+# Uses rsync or btrfs subvolume swap directly instead of `timeshift --restore`
+# because the native restore command always triggers an automatic reboot that
+# cannot be suppressed, which breaks SSH sessions. By handling the restore
+# ourselves, the script retains control and can offer a clean reboot prompt.
 # Arguments:
 #   $1 - Snapshot name/timestamp to restore
 # Returns 0 on success, 1 on failure.
@@ -394,11 +545,7 @@ _timeshift_restore_snapshot() {
     echo ""
 
     # Auto-detect the GRUB device (the whole disk containing the root partition).
-    # Without --grub-device, timeshift CLI interactively asks the user to pick a
-    # GRUB device. When running non-interactively (piped input), this prompt
-    # rejects empty/blank input and aborts after 3 attempts.
     local grub_device=""
-    local grub_args=()
     local root_part
     root_part=$(findmnt -n -o SOURCE / 2>/dev/null | head -1)
     if [[ -n "$root_part" ]]; then
@@ -413,64 +560,47 @@ _timeshift_restore_snapshot() {
 
     if [[ -n "$grub_device" && -b "$grub_device" ]]; then
         echo "${DIM}GRUB device detected: ${grub_device}${RESET}"
-        grub_args=(--grub-device "$grub_device")
     else
-        # Cannot detect GRUB device — skip GRUB reinstall rather than letting
-        # timeshift prompt interactively (which fails in non-interactive mode).
-        echo "${YELLOW}Could not auto-detect GRUB device — skipping GRUB reinstall${RESET}"
-        grub_args=(--skip-grub)
+        echo "${YELLOW}Could not auto-detect GRUB device — GRUB reinstall will be skipped${RESET}"
     fi
 
-    # Run timeshift restore, streaming output in real-time via tee while also
-    # capturing it to a temp file so we can check for silent failures.
-    # --scripted --yes should run non-interactively per the timeshift docs.
-    local restore_log
-    restore_log=$(mktemp /tmp/timeshift-restore.XXXXXX)
-
-    sudo timeshift --restore --snapshot "$snapshot_name" \
-        --scripted "${grub_args[@]}" 2>&1 | tee "$restore_log"
-    local rc=${PIPESTATUS[0]}
-
-    echo ""
-
-    # Timeshift may exit 0 even when the restore was aborted (e.g. GRUB device
-    # prompt failure). Check the output for signs of a silent abort.
-    if [[ $rc -eq 0 ]] && grep -qiE 'Aborted|E: Failed to get input' "$restore_log"; then
-        echo "${RED}✗ Timeshift restore was aborted (GRUB device prompt failure)${RESET}"
-        log_error "Timeshift restore aborted during GRUB device selection: ${snapshot_name}"
-        rc=1
+    # Route to the appropriate restore method based on filesystem type
+    if _is_btrfs_root; then
+        echo "${DIM}Filesystem: btrfs — using subvolume restore${RESET}"
+        if ! _timeshift_btrfs_restore "$snapshot_name"; then
+            return 1
+        fi
+    else
+        echo "${DIM}Filesystem: $(findmnt -n -o FSTYPE /) — using rsync restore${RESET}"
+        if ! _timeshift_rsync_restore "$snapshot_name"; then
+            return 1
+        fi
     fi
 
-    # Verify that rsync actually ran — if timeshift reported success but never
-    # synced any files, the restore didn't actually happen.
-    if [[ $rc -eq 0 ]] && ! grep -qE 'Syncing files|rsync|Deleting|First run mode' "$restore_log"; then
-        echo "${RED}✗ Timeshift reported success but no file sync occurred${RESET}"
-        log_error "Timeshift restore produced no sync output: ${snapshot_name}"
-        rc=1
-    fi
+    # Reinstall GRUB bootloader (same as timeshift would do after restore)
+    if [[ -n "$grub_device" && -b "$grub_device" ]]; then
+        echo ""
+        echo "${CYAN}Re-installing GRUB2 bootloader...${RESET}"
+        if sudo grub-install "$grub_device" 2>&1; then
+            echo "${GREEN}✓ GRUB installed to ${grub_device}${RESET}"
+        else
+            echo "${YELLOW}⚠ grub-install failed — boot may require manual repair${RESET}"
+            log_warning "grub-install failed for device: ${grub_device}"
+        fi
 
-    rm -f "$restore_log"
-
-    if [[ $rc -eq 0 ]]; then
-        echo "${GREEN}✓ Timeshift restore completed successfully${RESET}"
-        log_success "Timeshift restore completed: ${snapshot_name}"
-        return 0
-    fi
-
-    # Timeshift native restore failed — offer rsync fallback
-    if [[ $rc -eq 139 ]] || [[ $rc -eq $((128 + 11)) ]]; then
-        echo "${RED}✗ Timeshift crashed (segmentation fault) during restore${RESET}"
-        echo "${YELLOW}  This is a known bug in some timeshift versions (e.g. Ubuntu 24.04).${RESET}"
-        log_error "Timeshift segfaulted during restore of snapshot: ${snapshot_name}"
-    elif [[ $rc -ne 1 ]]; then
-        echo "${RED}✗ Timeshift restore failed (exit code: ${rc})${RESET}"
-        log_error "Timeshift restore failed for snapshot: ${snapshot_name} (exit code: ${rc})"
+        echo "${CYAN}Updating GRUB menu...${RESET}"
+        if sudo update-grub 2>&1; then
+            echo "${GREEN}✓ GRUB menu updated${RESET}"
+        else
+            echo "${YELLOW}⚠ update-grub failed${RESET}"
+            log_warning "update-grub failed after restore"
+        fi
     fi
 
     echo ""
-    echo "${CYAN}Attempting rsync-based fallback restore...${RESET}"
-    _timeshift_rsync_restore "$snapshot_name"
-    return $?
+    echo "${GREEN}✓ Restore completed — a reboot is required to apply changes${RESET}"
+    log_success "Timeshift restore completed: ${snapshot_name}"
+    return 0
 }
 
 # Fallback: restore a Timeshift RSYNC snapshot directly using rsync.
