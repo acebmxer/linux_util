@@ -7,15 +7,15 @@
 
 # Utility registry (initialized in main script)
 declare -a UTILITIES
+declare -a SYSTEM_TASKS
 declare -A INSTALL_FUNCS
 declare -A CHECK_FUNCS
 declare -A UNINSTALL_FUNCS
 declare -A UPDATE_FUNCS
 declare -A VERSION_FUNCS
 
-# Registration helper — reduces boilerplate when adding new utilities.
-# Usage: register_utility "Name" install_fn check_fn uninstall_fn update_fn [version_fn]
-register_utility() {
+# Internal helper — shared registration logic for both system tasks and utilities.
+_register_entry() {
     local name="$1" install_fn="$2" check_fn="$3" uninstall_fn="$4" update_fn="$5"
     local version_fn="${6:-}"
     UTILITIES+=("$name")
@@ -26,16 +26,32 @@ register_utility() {
     [[ -n "$version_fn" ]] && VERSION_FUNCS["$name"]="$version_fn" || true
 }
 
+# Register a system task (appears in the System Tasks section of the menu).
+# Must be called BEFORE any register_utility calls.
+# Usage: register_system_task "Name" install_fn check_fn uninstall_fn update_fn [version_fn]
+register_system_task() {
+    SYSTEM_TASKS+=("$1")
+    _register_entry "$@"
+}
+
+# Register a utility (appears in the Utilities section of the menu).
+# Usage: register_utility "Name" install_fn check_fn uninstall_fn update_fn [version_fn]
+register_utility() {
+    _register_entry "$@"
+}
+
 # Resolve a utility name (case-insensitive, partial match support).
-# Sets _RESOLVED to the canonical name if found, returns 0; otherwise returns 1.
+# Prints the canonical name to stdout if found and returns 0; otherwise prints
+# an error to stderr and returns 1.
 resolve_utility_name() {
     local input="$1"
-    local input_lower=$(echo "$input" | tr '[:upper:]' '[:lower:]')
+    local input_lower
+    input_lower=$(echo "$input" | tr '[:upper:]' '[:lower:]')
 
     # First try exact match (case-insensitive)
     for util in "${UTILITIES[@]}"; do
         if [[ "$(echo "$util" | tr '[:upper:]' '[:lower:]')" == "$input_lower" ]]; then
-            _RESOLVED="$util"
+            echo "$util"
             return 0
         fi
     done
@@ -43,12 +59,12 @@ resolve_utility_name() {
     # Then try partial match
     for util in "${UTILITIES[@]}"; do
         if [[ "$(echo "$util" | tr '[:upper:]' '[:lower:]')" == *"$input_lower"* ]]; then
-            _RESOLVED="$util"
+            echo "$util"
             return 0
         fi
     done
 
-    echo "Error: Utility '$input' not found."
+    echo "Error: Utility '$input' not found." >&2
     return 1
 }
 

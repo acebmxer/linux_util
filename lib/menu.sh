@@ -17,8 +17,9 @@ BLUE="${CSI}34m"
 MAGENTA="${CSI}35m"
 CYAN="${CSI}36m"
 
-# Respect the NO_COLOR standard (https://no-color.org/) and non-interactive terminals.
-if [[ ! -t 1 || -n "${NO_COLOR:-}" ]]; then
+# Respect the NO_COLOR standard (https://no-color.org/), non-interactive terminals,
+# and the --no-color CLI flag.
+if [[ ! -t 1 || -n "${NO_COLOR:-}" || "${NO_COLOR_FLAG:-false}" == "true" ]]; then
     BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN=""
 fi
 
@@ -51,7 +52,7 @@ clear_line() { printf "${CSI}2K"; }
 #    LEFT (col=0):  0, 1, 2, 3...  RIGHT (col=1): 7, 8, 9...
 draw_menu() {
     local total=${#UTILITIES[@]}
-    local system_tasks=$SYSTEM_TASK_COUNT
+    local system_tasks=${#SYSTEM_TASKS[@]}
     local utilities_start=$system_tasks
     local utilities_count=$((total - system_tasks))
 
@@ -348,7 +349,7 @@ build_nav_columns() {
     NAV_COL_SYS_SIZE=()   # system-task count per column (for section-aware LEFT/RIGHT)
     NAV_NUM_COLS=0
     local total=${#UTILITIES[@]}
-    local sys_tasks=$SYSTEM_TASK_COUNT
+    local sys_tasks=${#SYSTEM_TASKS[@]}
     local utilities_count=$(( total - sys_tasks ))
 
     # Force 2 columns by calculating rows needed

@@ -25,11 +25,14 @@ set -o pipefail
 # Dry-run flag — set to true via --dry-run CLI argument
 DRY_RUN=false
 
+# No-color flag — set to true via --no-color CLI argument
+NO_COLOR_FLAG=false
+
 # Preserve original CLI arguments for self-update re-exec
 ORIGINAL_ARGS=("$@")
 
 # Prevent concurrent runs via flock
-LOCK_FILE="/tmp/linux_util_${USER}.lock"
+LOCK_FILE="/tmp/linux_util_${USER:-$UID}.lock"
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
     echo "Error: Another instance of this script is already running."
@@ -65,10 +68,8 @@ LATEST_ERROR_LOG="${LOG_DIR}/error_latest.log"
 # (used by other installers, e.g. Steam, to install matching 32-bit libraries)
 NVIDIA_VERSION_FILE="${HOME}/.config/linux_util/nvidia_driver_version"
 
-# System Task Count (used by menu rendering to separate tasks from utilities)
-# Count: Full System Upgrade/Update, KDE Desktop, NVIDIA Drivers, System Updates, XEN Guest Utilities
-# + Local MOTD (Ubuntu, Kubuntu, KDE Neon) = variable
-SYSTEM_TASK_COUNT=5
+# SYSTEM_TASKS array is declared in utilities.sh and populated by register_system_task
+# calls in installers.sh. The count is derived as ${#SYSTEM_TASKS[@]}.
 
 # Track if any errors have occurred
 ERROR_LOG_INITIALIZED=false
@@ -89,6 +90,10 @@ ln -sf "$(basename "$SUCCESS_LOG")" "$LATEST_SUCCESS_LOG" 2>/dev/null || cp "$SU
 
 # Restore original umask so installers create files with normal permissions
 umask "$ORIG_UMASK"
+
+# Lock down constants that should not be modified after initialization
+readonly SCRIPT_DIR SCRIPT_PATH LOG_DIR TIMESTAMP SUCCESS_LOG ERROR_LOG
+readonly LATEST_SUCCESS_LOG LATEST_ERROR_LOG LOCK_FILE NVIDIA_VERSION_FILE
 
 # ============================================================================
 # SOURCE LIBRARY MODULES
@@ -129,13 +134,24 @@ _init_health_checks
 
 # Setup traps for cleanup and error handling
 trap cleanup_on_exit EXIT
-trap '_err_handler' ERR
+trap 'echo ""; echo "Interrupted."; exit 130' INT TERM
+
+# Clean up any orphaned sudo keep-alive from a previous killed run
+SUDO_PID_FILE="${LOCK_FILE}.pid"
+if [[ -f "$SUDO_PID_FILE" ]]; then
+    _orphan_pid=$(<"$SUDO_PID_FILE")
+    if [[ -n "$_orphan_pid" ]] && kill -0 "$_orphan_pid" 2>/dev/null; then
+        kill "$_orphan_pid" 2>/dev/null || true
+    fi
+    rm -f "$SUDO_PID_FILE"
+fi
 
 # Cache sudo credentials and keep them alive in the background so the user
 # is not re-prompted mid-install when the sudo timeout expires.
 sudo -v
 ( exec 9>&-; while true; do sudo -n true; sleep 50; done ) 2>/dev/null &
 SUDO_KEEPALIVE_PID=$!
+echo "$SUDO_KEEPALIVE_PID" > "$SUDO_PID_FILE"
 
 # Initialize Timeshift integration (Debian/Ubuntu only — silent no-op otherwise)
 timeshift_init
@@ -165,7 +181,7 @@ CACHED_REMOTE_COMMIT="unknown"
 
 process_selected() {
     local total=${#UTILITIES[@]}
-    local system_tasks=$SYSTEM_TASK_COUNT
+    local system_tasks=${#SYSTEM_TASKS[@]}
     declare -a to_install
     declare -a to_uninstall
     declare -a to_update
@@ -226,7 +242,7 @@ process_selected() {
         echo ""
     fi
 
-    read -p "Press ENTER to continue or Ctrl+C to cancel..."
+    read -p "Press ENTER to continue or Ctrl+C to cancel..." < /dev/tty
     echo ""
 
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -246,7 +262,7 @@ process_selected() {
 
     # Run pre-flight checks before proceeding
     if ! preflight_checks; then
-        read -n 1 -rp "Pre-flight checks failed. Continue anyway? (y/N) " _pf_ans
+        read -n 1 -rp "Pre-flight checks failed. Continue anyway? (y/N) " _pf_ans < /dev/tty
         echo
         if [[ ! "$_pf_ans" =~ ^[Yy]$ ]]; then
             echo "${YELLOW}Aborted.${RESET}"
@@ -399,7 +415,7 @@ process_selected() {
 
     # Offer reboot (only for System Tasks and Docker)
     if [[ "$needs_reboot" == "true" ]]; then
-        read -n 1 -rp "Reboot now? (y/N) " REBOOT_CHOICE
+        read -n 1 -rp "Reboot now? (y/N) " REBOOT_CHOICE < /dev/tty
         echo
         REBOOT_CHOICE=${REBOOT_CHOICE:-N}
         case "$REBOOT_CHOICE" in
@@ -437,6 +453,7 @@ Options:
   --update <name>       Non-interactively update a utility by name
   --update-all          Update every currently installed utility
   --check <name>        Exit 0 if utility is installed, 1 if not
+  --no-color            Disable colored output
   --setup-logrotate     Install logrotate config for linux_util logs
 
 Configuration: Copy linux_util.conf.example to linux_util.conf to customize.
@@ -482,15 +499,24 @@ EOF
                 VERBOSE=true   # debug implies verbose
                 shift
                 ;;
+            --no-color)
+                NO_COLOR_FLAG=true
+                BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN=""
+                shift
+                ;;
             --setup-logrotate)
                 setup_logrotate
                 exit $?
                 ;;
             --install)
                 [[ -z "${2:-}" ]] && { echo "Error: --install requires a utility name."; exit 1; }
-                resolve_utility_name "$2" || exit 1
-                local _util="$_RESOLVED"; shift 2
-                local _func="${INSTALL_FUNCS[$_util]}"
+                local _util
+                _util=$(resolve_utility_name "$2") || exit 1
+                shift 2
+                local _func="${INSTALL_FUNCS[$_util]:-}"
+                if [[ -z "$_func" ]] || ! declare -f "$_func" &>/dev/null; then
+                    echo "Error: No install function found for: $_util"; exit 1
+                fi
                 pkg_refresh
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would install: $_util"; exit 0
@@ -500,9 +526,13 @@ EOF
                 ;;
             --uninstall)
                 [[ -z "${2:-}" ]] && { echo "Error: --uninstall requires a utility name."; exit 1; }
-                resolve_utility_name "$2" || exit 1
-                local _util="$_RESOLVED"; shift 2
-                local _func="${UNINSTALL_FUNCS[$_util]}"
+                local _util
+                _util=$(resolve_utility_name "$2") || exit 1
+                shift 2
+                local _func="${UNINSTALL_FUNCS[$_util]:-}"
+                if [[ -z "$_func" ]] || ! declare -f "$_func" &>/dev/null; then
+                    echo "Error: No uninstall function found for: $_util"; exit 1
+                fi
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would uninstall: $_util"; exit 0
                 fi
@@ -511,9 +541,13 @@ EOF
                 ;;
             --update)
                 [[ -z "${2:-}" ]] && { echo "Error: --update requires a utility name."; exit 1; }
-                resolve_utility_name "$2" || exit 1
-                local _util="$_RESOLVED"; shift 2
-                local _func="${UPDATE_FUNCS[$_util]}"
+                local _util
+                _util=$(resolve_utility_name "$2") || exit 1
+                shift 2
+                local _func="${UPDATE_FUNCS[$_util]:-}"
+                if [[ -z "$_func" ]] || ! declare -f "$_func" &>/dev/null; then
+                    echo "Error: No update function found for: $_util"; exit 1
+                fi
                 pkg_refresh
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would update: $_util"; exit 0
@@ -549,8 +583,9 @@ EOF
                 ;;
             --check)
                 [[ -z "${2:-}" ]] && { echo "Error: --check requires a utility name."; exit 1; }
-                resolve_utility_name "$2" || exit 1
-                local _util="$_RESOLVED"; shift 2
+                local _util
+                _util=$(resolve_utility_name "$2") || exit 1
+                shift 2
                 local _func="${CHECK_FUNCS[$_util]}"
                 if $_func 2>/dev/null; then
                     local _ver_func="${VERSION_FUNCS[$_util]:-}"

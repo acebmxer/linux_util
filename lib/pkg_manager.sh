@@ -1139,7 +1139,7 @@ download_file() {
         fi
         warn "Download attempt $attempt/$retries failed: $(basename "$url")"
         (( attempt++ ))
-        (( attempt <= retries )) && sleep 2
+        (( attempt <= retries )) && sleep $(( 2 ** (attempt - 1) ))
     done
     error "Failed to download after $retries attempts: $url"
     return 1
