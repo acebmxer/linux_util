@@ -319,7 +319,7 @@ draw_menu() {
 
     _buf+="${pad}${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET} | ${YELLOW}Update: ${update_count}${RESET}${eol}"$'\n'
     _buf+="${pad}${eol}"$'\n'
-    _buf+="${pad}${YELLOW}↑/↓/←/→ navigate  SPACE select  U update installed  A select-all  D deselect-all  ENTER confirm  Q quit${RESET}${eol}"$'\n'
+    _buf+="${pad}${YELLOW}↑↓←→ move  SPACE select  U update  A all  D none  ENTER confirm  Q quit${RESET}${eol}"$'\n'
     _buf+="${pad}${eol}"$'\n'
     _buf+="${pad}${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} select  ${YELLOW}[U]${RESET}${DIM} update  ${RESET}${DIM}[ ]${RESET}${DIM} none  ${MAGENTA}(installed)${RESET}${DIM} = on system${RESET}${eol}"$'\n'
     _buf+="${pad}${DIM}[✓] on installed = uninstall; [✓] on missing = install; [U] on installed = update.${RESET}${eol}"$'\n'
