@@ -91,7 +91,8 @@ _timeshift_has_device() {
 }
 
 # Set up a Timeshift backup device. Attempts to auto-detect the boot device.
-# If uncertain, prompts the user to select one.
+# If uncertain, prompts the user to select one. On btrfs systems, asks the
+# user which snapshot method to use (BTRFS native or RSYNC).
 _timeshift_setup_device() {
     [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 0
 
@@ -132,6 +133,10 @@ _timeshift_setup_device() {
         fi
     done < <(echo "$devices_output" | grep -E '^\s*[0-9]+\s')
 
+    # --- Device selection ---
+    local selected_uuid=""
+    local selected_dev=""
+
     if [[ -n "$root_dev" && -n "$root_uuid" ]]; then
         echo "Current boot device detected: ${BOLD}${root_dev}${RESET} (UUID: ${root_uuid})"
         echo ""
@@ -139,81 +144,91 @@ _timeshift_setup_device() {
         echo ""
 
         if [[ ! "$_ts_choice" =~ ^[Nn]$ ]]; then
-            # Write config directly — timeshift --snapshot-device always defaults
-            # to RSYNC mode, ignoring the filesystem type.  By writing the config
-            # ourselves we ensure btrfs_mode is set correctly on btrfs systems.
-            _timeshift_write_device_config "$root_uuid"
-            echo "${GREEN}Timeshift configured to use: ${root_dev}${RESET}"
-            log_info "Timeshift: Configured backup device ${root_dev} (UUID: ${root_uuid})"
-            return 0
+            selected_uuid="$root_uuid"
+            selected_dev="$root_dev"
         fi
     else
         echo "${YELLOW}Could not auto-detect boot device.${RESET}"
         echo ""
     fi
 
-    # Manual device selection — accept a number from the list, device path, or UUID
-    echo "Please enter a device number from the list above, a device path (e.g., /dev/sda1), or UUID:"
-    read -rp "> " _ts_manual_dev
+    # Manual device selection if auto-detect was declined or failed
+    if [[ -z "$selected_uuid" ]]; then
+        echo "Please enter a device number from the list above, a device path (e.g., /dev/sda1), or UUID:"
+        read -rp "> " _ts_manual_dev
 
-    if [[ -z "$_ts_manual_dev" ]]; then
-        warn "No device selected. Timeshift snapshots will not be available."
-        TIMESHIFT_AVAILABLE=false
-        return 1
-    fi
-
-    # If the user entered a number, resolve it from the device list
-    if [[ "$_ts_manual_dev" =~ ^[0-9]+$ ]] && (( _ts_manual_dev < ${#_ts_dev_paths[@]} )); then
-        local _selected_dev="${_ts_dev_paths[$_ts_manual_dev]}"
-        local _selected_uuid="${_ts_dev_uuids[$_ts_manual_dev]}"
-        echo "Selected device: ${BOLD}${_selected_dev}${RESET}"
-        local manual_uuid="${_selected_uuid}"
-        _ts_manual_dev="$_selected_dev"
-    elif [[ "$_ts_manual_dev" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
-        # Standard UUID format
-        local manual_uuid="$_ts_manual_dev"
-    elif [[ "$_ts_manual_dev" == /dev/* ]]; then
-        # Device path — resolve UUID
-        local manual_uuid
-        manual_uuid=$(sudo blkid -s UUID -o value "$_ts_manual_dev" 2>/dev/null)
-    else
-        echo "${YELLOW}Invalid selection: ${_ts_manual_dev}${RESET}"
-        warn "No valid device selected. Timeshift snapshots will not be available."
-        TIMESHIFT_AVAILABLE=false
-        return 1
-    fi
-
-    if [[ -n "$manual_uuid" ]]; then
-        _timeshift_write_device_config "$manual_uuid"
-        echo "${GREEN}Timeshift configured to use: ${_ts_manual_dev}${RESET}"
-        log_info "Timeshift: Configured backup device ${_ts_manual_dev} (UUID: ${manual_uuid:-unknown})"
-    else
-        # No UUID resolved — try timeshift's own device setup as a last resort
-        sudo timeshift --snapshot-device "$_ts_manual_dev" --scripted 2>/dev/null || {
-            warn "Failed to configure Timeshift device. Snapshots may not work."
+        if [[ -z "$_ts_manual_dev" ]]; then
+            warn "No device selected. Timeshift snapshots will not be available."
             TIMESHIFT_AVAILABLE=false
             return 1
-        }
-        # Ensure btrfs_mode is correct even when timeshift wrote the config
-        if _is_btrfs_root && [[ -f /etc/timeshift/timeshift.json ]]; then
-            sudo sed -i 's/"btrfs_mode" *: *"false"/"btrfs_mode" : "true"/' /etc/timeshift/timeshift.json
         fi
-        echo "${GREEN}Timeshift configured to use: ${_ts_manual_dev}${RESET}"
-        log_info "Timeshift: Configured backup device ${_ts_manual_dev}"
+
+        # Resolve the user's input to a device path and UUID
+        if [[ "$_ts_manual_dev" =~ ^[0-9]+$ ]] && (( _ts_manual_dev < ${#_ts_dev_paths[@]} )); then
+            selected_dev="${_ts_dev_paths[$_ts_manual_dev]}"
+            selected_uuid="${_ts_dev_uuids[$_ts_manual_dev]}"
+            echo "Selected device: ${BOLD}${selected_dev}${RESET}"
+        elif [[ "$_ts_manual_dev" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+            selected_uuid="$_ts_manual_dev"
+            selected_dev="$_ts_manual_dev"
+        elif [[ "$_ts_manual_dev" == /dev/* ]]; then
+            selected_dev="$_ts_manual_dev"
+            selected_uuid=$(sudo blkid -s UUID -o value "$_ts_manual_dev" 2>/dev/null)
+        else
+            echo "${YELLOW}Invalid selection: ${_ts_manual_dev}${RESET}"
+            warn "No valid device selected. Timeshift snapshots will not be available."
+            TIMESHIFT_AVAILABLE=false
+            return 1
+        fi
+
+        if [[ -z "$selected_uuid" ]]; then
+            warn "Could not determine UUID for ${selected_dev}. Timeshift snapshots will not be available."
+            TIMESHIFT_AVAILABLE=false
+            return 1
+        fi
     fi
 
+    # --- Snapshot type selection ---
+    local snapshot_type="rsync"
+
+    if _is_btrfs_root; then
+        echo ""
+        echo "${BOLD}Btrfs filesystem detected.${RESET} Select snapshot type:"
+        echo ""
+        echo "  1) ${BOLD}BTRFS${RESET}  — Native btrfs snapshots (fast, low disk usage)"
+        echo "  2) RSYNC — File-level copy (slower, works across filesystems)"
+        echo ""
+        read -n 1 -rp "Enter selection [1-2] (default: 1): " _ts_type_choice
+        echo ""
+
+        if [[ "$_ts_type_choice" == "2" ]]; then
+            snapshot_type="rsync"
+            echo "Snapshot type: RSYNC"
+        else
+            snapshot_type="btrfs"
+            echo "Snapshot type: BTRFS"
+        fi
+    fi
+
+    # --- Write config ---
+    _timeshift_write_device_config "$selected_uuid" "$snapshot_type"
+    echo "${GREEN}Timeshift configured to use: ${selected_dev:-$selected_uuid}${RESET}"
+    log_info "Timeshift: Configured backup device ${selected_dev:-$selected_uuid} (UUID: ${selected_uuid}, mode: ${snapshot_type})"
     return 0
 }
 
-# Write device UUID directly to Timeshift config as a fallback.
+# Write Timeshift config with the given device UUID and snapshot type.
+# Arguments:
+#   $1 - Device UUID
+#   $2 - Snapshot type: "btrfs" or "rsync" (default: "rsync")
 _timeshift_write_device_config() {
     local uuid="$1"
+    local snapshot_type="${2:-rsync}"
     local config_file="/etc/timeshift/timeshift.json"
 
-    # Detect filesystem type so timeshift uses the correct snapshot mode
     local btrfs_mode="false"
     local btrfs_home="false"
-    if _is_btrfs_root; then
+    if [[ "$snapshot_type" == "btrfs" ]]; then
         btrfs_mode="true"
         # Include @home in snapshots if the subvolume exists
         if findmnt -n /home 2>/dev/null | grep -q 'subvol=.*@home'; then
@@ -249,8 +264,9 @@ _timeshift_write_device_config() {
 }
 TSCFG
     else
-        # Update existing config — replace the backup_device_uuid value
+        # Update existing config — replace the backup_device_uuid and btrfs_mode values
         sudo sed -i "s|\"backup_device_uuid\" *: *\"[^\"]*\"|\"backup_device_uuid\" : \"${uuid}\"|" "$config_file"
+        sudo sed -i "s|\"btrfs_mode\" *: *\"[^\"]*\"|\"btrfs_mode\" : \"${btrfs_mode}\"|" "$config_file"
     fi
 
     verbose "Timeshift: Wrote device UUID ${uuid} to ${config_file}"
