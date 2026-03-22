@@ -59,8 +59,10 @@ Script commit: abc1234  |  Latest commit: abc1234
 
 System Tasks:
   [ ] Full System Upgrade/Update     [ ] Local MOTD
-  [ ] KDE Desktop                    [ ] NVIDIA Drivers
-  [ ] System Updates                 [ ] XEN Guest Utilities
+  [ ] System Updates                 [ ] Create Snapshot
+  [ ] KDE Desktop                    [ ] Restore Snapshot
+  [ ] NVIDIA Drivers
+  [ ] XEN Guest Utilities
 
 ────────────────────────────────────────────────────────────────
 
