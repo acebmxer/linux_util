@@ -50,37 +50,23 @@ timeshift_init() {
 _timeshift_has_device() {
     [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 1
 
-    # timeshift --list will show snapshots and device info.
-    # If no device is configured, it typically shows an error or empty device.
-    local list_output
-    list_output=$(sudo timeshift --list 2>&1) || true
-
-    # Check for signs that no device is configured
-    if echo "$list_output" | grep -qi "no snapshots\|E: /dev/\|device not found\|select a snapshot device\|No snapshot device selected"; then
-        # "No snapshots" alone doesn't mean no device — check more carefully
-        if echo "$list_output" | grep -qi "device not found\|select a snapshot device\|No snapshot device selected"; then
-            verbose "Timeshift: No backup device configured"
-            return 1
-        fi
+    # First check: config file must exist and not be in first-run mode.
+    # Without a config file, timeshift enters "first run mode" which breaks
+    # --create --tags, so we must ensure proper setup before anything else.
+    if [[ ! -f /etc/timeshift/timeshift.json ]]; then
+        verbose "Timeshift: No config file found — needs setup"
+        return 1
     fi
 
-    # If we got a normal listing (even with 0 snapshots), device is configured
-    if echo "$list_output" | grep -qi "Device\|Snapshot"; then
-        verbose "Timeshift: Backup device is configured"
+    # Check if the config has a backup device UUID set
+    local dev
+    dev=$(grep -o '"backup_device_uuid" *: *"[^"]*"' /etc/timeshift/timeshift.json 2>/dev/null | grep -o '"[^"]*"$' | tr -d '"')
+    if [[ -n "$dev" && "$dev" != "" ]]; then
+        verbose "Timeshift: Device configured via config file (UUID: ${dev})"
         return 0
     fi
 
-    # Fallback: check the config file directly
-    if [[ -f /etc/timeshift/timeshift.json ]]; then
-        local dev
-        dev=$(grep -o '"backup_device_uuid" *: *"[^"]*"' /etc/timeshift/timeshift.json 2>/dev/null | grep -o '"[^"]*"$' | tr -d '"')
-        if [[ -n "$dev" && "$dev" != "" ]]; then
-            verbose "Timeshift: Device configured via config file (UUID: ${dev})"
-            return 0
-        fi
-    fi
-
-    verbose "Timeshift: No backup device configured"
+    verbose "Timeshift: No backup device configured in config file"
     return 1
 }
 
@@ -265,6 +251,16 @@ _timeshift_cache_last_snapshot() {
 # Returns 0 on success or if Timeshift is not available (fail quietly).
 timeshift_create_snapshot() {
     [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 0
+
+    # Guard against first-run mode: if the config file is missing, timeshift
+    # cannot process --tags and will fail.  Re-run device setup instead.
+    if [[ ! -f /etc/timeshift/timeshift.json ]]; then
+        verbose "Timeshift: Config file missing — attempting device setup"
+        if ! _timeshift_setup_device; then
+            log_warning "Timeshift: Could not configure device — skipping snapshot"
+            return 0
+        fi
+    fi
 
     local comment="${1:-linux_util: pre-operation snapshot}"
 
