@@ -89,6 +89,12 @@ draw_menu() {
         _buf+="  ${BOLD}${YELLOW}Script out of date, please update.${RESET}"$'\n'
     fi
     _buf+="         Detected System: ${BOLD}${DISTRO_NAME}${RESET}   Version: ${BOLD}${DISTRO_VERSION_ID}${RESET}"$'\n'
+
+    # Display Timeshift last snapshot if available
+    if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" ]]; then
+        _buf+="    Last Timeshift Snapshot: ${BOLD}${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}${RESET}"$'\n'
+    fi
+
     _buf+=$'\n'
 
     # Display System Tasks section
