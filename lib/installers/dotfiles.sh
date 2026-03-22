@@ -2,7 +2,52 @@
 # Dotfiles installer functions
 
 check_dotfiles() {
-    [[ -d ~/dotfiles ]] && [[ -f ~/.zshrc ]]
+    [[ -d ~/dotfiles ]] || [[ "$(basename "$(getent passwd "$USER" | cut -d: -f7)" 2>/dev/null)" == "zsh" ]]
+}
+
+uninstall_dotfiles() {
+    info "Uninstalling dotfiles..."
+
+    # Remove dotfiles directory for current user
+    if [[ -d ~/dotfiles ]]; then
+        rm -rf ~/dotfiles
+        info "Removed ~/dotfiles directory."
+    fi
+
+    # Remove zsh config files that dotfiles created
+    for f in ~/.zshrc ~/.zshenv ~/.zprofile ~/.p10k.zsh; do
+        [[ -e "$f" || -L "$f" ]] && rm -f "$f" && info "Removed $f"
+    done
+
+    # Change shell back to bash for current user
+    if [[ "$(getent passwd "$USER" | cut -d: -f7)" == */zsh ]]; then
+        chsh -s /bin/bash || warn "Failed to change shell back to bash for current user."
+        info "Default shell changed back to bash for $USER."
+    fi
+
+    # Clean up root's dotfiles and shell
+    sudo -s <<'EOF'
+info() { printf '\e[32m[INFO]\e[0m %s\n' "$*"; }
+warn() { printf '\e[33m[WARN]\e[0m %s\n' "$*"; }
+if [[ -d ~/dotfiles ]]; then
+    rm -rf ~/dotfiles
+    info "Removed root's ~/dotfiles directory."
+fi
+for f in ~/.zshrc ~/.zshenv ~/.zprofile ~/.p10k.zsh; do
+    [[ -e "$f" || -L "$f" ]] && rm -f "$f" && info "Removed root's $f"
+done
+if [[ "$(getent passwd root | cut -d: -f7)" == */zsh ]]; then
+    if command -v chsh &> /dev/null; then
+        chsh -s /bin/bash || warn "Failed to change shell back to bash for root."
+        info "Default shell changed back to bash for root."
+    else
+        warn "chsh not found. Run 'chsh -s /bin/bash' manually for root."
+    fi
+fi
+EOF
+
+    info "Dotfiles uninstall completed."
+    return 0
 }
 
 setup_install_dotfiles() {

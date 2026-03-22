@@ -62,7 +62,7 @@ register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden  
 register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave              get_version_brave
 register_utility "Devolutions RDM"     install_devolutions_rdm check_devolutions_rdm uninstall_devolutions_rdm update_devolutions_rdm    get_version_devolutions_rdm
 register_utility "Docker"              setup_install_docker    check_docker          uninstall_docker          update_docker             get_version_docker
-register_utility "Dotfiles"            setup_install_dotfiles  check_dotfiles        noop_function             setup_install_dotfiles
+register_utility "Dotfiles"            setup_install_dotfiles  check_dotfiles        uninstall_dotfiles        setup_install_dotfiles
 register_utility "Joplin Client"       install_joplin          check_joplin          uninstall_joplin          update_joplin             get_version_joplin
 register_utility "LibreOffice"         install_libreoffice     check_libreoffice     uninstall_libreoffice     update_libreoffice        get_version_libreoffice
 register_utility "OpenSSH Server"      install_openssh_server  check_openssh_server  uninstall_openssh_server  update_openssh_server     get_version_openssh_server
