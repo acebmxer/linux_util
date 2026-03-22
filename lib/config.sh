@@ -29,11 +29,15 @@ VERBOSE=false
 DEBUG=false
 
 verbose() {
-    [[ "$VERBOSE" == "true" ]] && printf '\e[36m[VERBOSE]\e[0m %s\n' "$*"
+    if [[ "$VERBOSE" == "true" ]]; then
+        printf '\e[36m[VERBOSE]\e[0m %s\n' "$*"
+    fi
 }
 
 debug() {
-    [[ "$DEBUG" == "true" ]] && printf '\e[35m[DEBUG]\e[0m %s\n' "$*" >&2
+    if [[ "$DEBUG" == "true" ]]; then
+        printf '\e[35m[DEBUG]\e[0m %s\n' "$*" >&2
+    fi
 }
 
 # --- Configuration File Parser ---
@@ -43,8 +47,14 @@ load_config() {
     local config_file="${1:-${SCRIPT_DIR}/linux_util.conf}"
 
     if [[ ! -f "$config_file" ]]; then
-        debug "No config file found at ${config_file}, using defaults."
-        return 0
+        local example_file="${config_file}.example"
+        if [[ -f "$example_file" ]]; then
+            cp "$example_file" "$config_file"
+            debug "Created ${config_file} from ${example_file}"
+        else
+            debug "No config file found at ${config_file}, using defaults."
+            return 0
+        fi
     fi
 
     debug "Loading configuration from ${config_file}"

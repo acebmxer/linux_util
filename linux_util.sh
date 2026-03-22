@@ -118,6 +118,7 @@ echo ""
 # Continue sourcing remaining library modules
 source "${SCRIPT_DIR}/lib/aur.sh" || { echo "Error: Failed to source aur.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/system.sh" || { echo "Error: Failed to source system.sh"; exit 1; }
+source "${SCRIPT_DIR}/lib/timeshift.sh" || { echo "Error: Failed to source timeshift.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/utilities.sh" || { echo "Error: Failed to source utilities.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/menu.sh" || { echo "Error: Failed to source menu.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/installers.sh" || { echo "Error: Failed to source installers.sh"; exit 1; }
@@ -135,6 +136,9 @@ trap '_err_handler' ERR
 sudo -v
 ( exec 9>&-; while true; do sudo -n true; sleep 50; done ) 2>/dev/null &
 SUDO_KEEPALIVE_PID=$!
+
+# Initialize Timeshift integration (Debian/Ubuntu only — silent no-op otherwise)
+timeshift_init
 
 # ============================================================================
 # UTILITY REGISTRY INITIALIZATION
@@ -228,6 +232,16 @@ process_selected() {
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "${YELLOW}[DRY RUN] No changes made. Exiting.${RESET}"
         exit 0
+    fi
+
+    # Create a Timeshift snapshot before making any changes
+    if [[ "$TIMESHIFT_AVAILABLE" == "true" ]]; then
+        local _ts_comment="linux_util:"
+        [[ ${#to_install[@]} -gt 0 ]] && _ts_comment+=" Install ${to_install[*]},"
+        [[ ${#to_uninstall[@]} -gt 0 ]] && _ts_comment+=" Uninstall ${to_uninstall[*]},"
+        [[ ${#to_update[@]} -gt 0 ]] && _ts_comment+=" Update ${to_update[*]},"
+        _ts_comment="${_ts_comment%,}"  # Remove trailing comma
+        timeshift_create_snapshot "$_ts_comment"
     fi
 
     # Run pre-flight checks before proceeding
@@ -481,6 +495,7 @@ EOF
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would install: $_util"; exit 0
                 fi
+                timeshift_create_snapshot "linux_util: Install ${_util}"
                 $_func && { echo "Installed: $_util"; exit 0; } || { echo "Failed: $_util"; exit 1; }
                 ;;
             --uninstall)
@@ -491,6 +506,7 @@ EOF
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would uninstall: $_util"; exit 0
                 fi
+                timeshift_create_snapshot "linux_util: Uninstall ${_util}"
                 $_func && { echo "Uninstalled: $_util"; exit 0; } || { echo "Failed: $_util"; exit 1; }
                 ;;
             --update)
@@ -502,12 +518,14 @@ EOF
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would update: $_util"; exit 0
                 fi
+                timeshift_create_snapshot "linux_util: Update ${_util}"
                 $_func && { echo "Updated: $_util"; exit 0; } || { echo "Failed: $_util"; exit 1; }
                 ;;
             --update-all)
                 shift
                 echo "Updating all installed utilities..."
                 pkg_refresh
+                timeshift_create_snapshot "linux_util: Update all installed utilities"
                 local _updated=0 _failed=0
                 for _util in "${UTILITIES[@]}"; do
                     local _check="${CHECK_FUNCS[$_util]:-}"

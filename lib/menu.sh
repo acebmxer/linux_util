@@ -55,6 +55,9 @@ draw_menu() {
     local utilities_start=$system_tasks
     local utilities_count=$((total - system_tasks))
 
+    # Re-query terminal width on every draw (supports live resize via SIGWINCH)
+    local term_width=${COLUMNS:-80}
+
     # Force 2 columns by calculating rows needed
     local system_rows_per_column=$(( (system_tasks + 1) / 2 ))  # ceil(system_tasks / 2) for 2 columns
     local rows_per_column=$(( (utilities_count + 1) / 2 ))      # ceil(utilities_count / 2) for 2 columns
@@ -63,36 +66,89 @@ draw_menu() {
     local num_columns=$(( utilities_count > 0 ? 2 : 0 ))
     local system_num_columns=$(( system_tasks > 0 ? 2 : 0 ))
 
-    local sys_col_width=40
-    local util_col_width=40
+    local col_width=40
+    local content_width=$(( col_width * 2 ))
+
+    # Centre the content block horizontally in the terminal
+    local margin=0
+    (( term_width > content_width )) && margin=$(( (term_width - content_width) / 2 ))
+    local pad=""
+    (( margin > 0 )) && printf -v pad '%*s' "$margin" ''
+
+    # Clear-to-end-of-line — appended to every line so shorter redraws
+    # overwrite longer previous lines without leaving ghost characters
+    local eol=$'\033[K'
 
     local dry_run_label=""
     [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
+
+    # Pre-build repeated-character strings without subshells
+    local inner_width=$((content_width - 2))
+    local border_fill sep_fill
+    printf -v border_fill '%*s' "$inner_width" ''; border_fill="${border_fill// /═}"
+    printf -v sep_fill '%*s' "$content_width" ''; sep_fill="${sep_fill// /-}"
 
     # Build entire menu into a single buffer and flush at once.
     # This eliminates SSH flicker caused by many individual write() syscalls.
     local _buf=""
 
-    # Clear screen + cursor home. Arrives in the same write as all menu content,
-    # so there is no blank-screen flash even over SSH.
-    _buf+=$'\033[2J\033[H'
+    # Cursor home — no clear-screen, overwrite in place for flicker-free rendering.
+    # Per-line \033[K and trailing \033[J clean up stale characters.
+    _buf+=$'\033[H'
 
-    _buf+=$'\n'
-    _buf+="${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"$'\n'
-    _buf+="${BOLD}${CYAN}║   Linux System Setup & Utilities - Select Programs/Tasks     ║${RESET}${dry_run_label}"$'\n'
-    _buf+="${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════╝${RESET}"$'\n'
-    _buf+=$'\n'
+    # ── Banner (dynamic width, centred text) ──
+    local banner_text="Linux System Setup & Utilities - Select Programs/Tasks"
+    local banner_len=${#banner_text}
+    local blpad=$(( (inner_width - banner_len) / 2 ))
+    local brpad=$(( inner_width - banner_len - blpad ))
+    local blspaces="" brspaces=""
+    (( blpad > 0 )) && printf -v blspaces '%*s' "$blpad" ''
+    (( brpad > 0 )) && printf -v brspaces '%*s' "$brpad" ''
 
-    # Display commit version info (values pre-fetched once in run_selection_menu)
-    _buf+="       Script commit: ${BOLD}${CACHED_LOCAL_COMMIT}${RESET}  |  Latest commit: ${BOLD}${CACHED_REMOTE_COMMIT}${RESET}"$'\n'
+    _buf+="${pad}${eol}"$'\n'
+    _buf+="${pad}${BOLD}${CYAN}╔${border_fill}╗${RESET}${eol}"$'\n'
+    _buf+="${pad}${BOLD}${CYAN}║${blspaces}${banner_text}${brspaces}║${RESET}${dry_run_label}${eol}"$'\n'
+    _buf+="${pad}${BOLD}${CYAN}╚${border_fill}╝${RESET}${eol}"$'\n'
+    _buf+="${pad}${eol}"$'\n'
+
+    # ── Commit & system info (centred within content area) ──
+    local _commit_plain="Script commit: ${CACHED_LOCAL_COMMIT}  |  Latest commit: ${CACHED_REMOTE_COMMIT}"
+    local _clpad=$(( (content_width - ${#_commit_plain}) / 2 ))
+    (( _clpad < 0 )) && _clpad=0
+    local _cspaces=""
+    (( _clpad > 0 )) && printf -v _cspaces '%*s' "$_clpad" ''
+    _buf+="${pad}${_cspaces}Script commit: ${BOLD}${CACHED_LOCAL_COMMIT}${RESET}  |  Latest commit: ${BOLD}${CACHED_REMOTE_COMMIT}${RESET}${eol}"$'\n'
+
     if [[ "$CACHED_LOCAL_COMMIT" != "unknown" && "$CACHED_REMOTE_COMMIT" != "unknown" && "$CACHED_LOCAL_COMMIT" != "$CACHED_REMOTE_COMMIT" ]]; then
-        _buf+="  ${BOLD}${YELLOW}Script out of date, please update.${RESET}"$'\n'
+        local _ood_text="Script out of date, please update."
+        local _olpad=$(( (content_width - ${#_ood_text}) / 2 ))
+        (( _olpad < 0 )) && _olpad=0
+        local _ospaces=""
+        (( _olpad > 0 )) && printf -v _ospaces '%*s' "$_olpad" ''
+        _buf+="${pad}${_ospaces}${BOLD}${YELLOW}${_ood_text}${RESET}${eol}"$'\n'
     fi
-    _buf+="         Detected System: ${BOLD}${DISTRO_NAME}${RESET}   Version: ${BOLD}${DISTRO_VERSION_ID}${RESET}"$'\n'
-    _buf+=$'\n'
+
+    local _sys_plain="Detected System: ${DISTRO_NAME}   Version: ${DISTRO_VERSION_ID}"
+    local _slpad=$(( (content_width - ${#_sys_plain}) / 2 ))
+    (( _slpad < 0 )) && _slpad=0
+    local _sspaces=""
+    (( _slpad > 0 )) && printf -v _sspaces '%*s' "$_slpad" ''
+    _buf+="${pad}${_sspaces}Detected System: ${BOLD}${DISTRO_NAME}${RESET}   Version: ${BOLD}${DISTRO_VERSION_ID}${RESET}${eol}"$'\n'
+
+    # Display Timeshift last snapshot if available
+    if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" ]]; then
+        local _ts_plain="Last Timeshift Snapshot: ${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}"
+        local _tlpad=$(( (content_width - ${#_ts_plain}) / 2 ))
+        (( _tlpad < 0 )) && _tlpad=0
+        local _tspaces=""
+        (( _tlpad > 0 )) && printf -v _tspaces '%*s' "$_tlpad" ''
+        _buf+="${pad}${_tspaces}Last Timeshift Snapshot: ${BOLD}${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}${RESET}${eol}"$'\n'
+    fi
+
+    _buf+="${pad}${eol}"$'\n'
 
     # Display System Tasks section
-    _buf+="${BOLD}${CYAN}System Tasks:${RESET}"$'\n'
+    _buf+="${pad}${BOLD}${CYAN}System Tasks:${RESET}${eol}"$'\n'
     for ((row=0; row<system_rows_per_column; row++)); do
         local line=""
         for ((col=0; col<system_num_columns; col++)); do
@@ -151,20 +207,20 @@ draw_menu() {
                 fi
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local padding=$((util_col_width - visible_len))
+                local padding=$((col_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
             fi
 
             line="${line}${item}"
         done
-        _buf+="$line"$'\n'
+        _buf+="${pad}${line}${eol}"$'\n'
     done
 
-    _buf+=$'\n'
-    _buf+="${DIM}----------------------------------------------------------------${RESET}"$'\n'
-    _buf+=$'\n'
-    _buf+="${BOLD}${CYAN}Utilities:${RESET}"$'\n'
+    _buf+="${pad}${eol}"$'\n'
+    _buf+="${pad}${DIM}${sep_fill}${RESET}${eol}"$'\n'
+    _buf+="${pad}${eol}"$'\n'
+    _buf+="${pad}${BOLD}${CYAN}Utilities:${RESET}${eol}"$'\n'
 
     # Build items for utilities in columns
     # RENDERING LOGIC IDENTICAL TO SYSTEM TASKS SECTION ABOVE:
@@ -229,18 +285,18 @@ draw_menu() {
                 fi
                 # Visible chars: prefix (2), checkbox (3), space (1), name, status text
                 local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local padding=$((util_col_width - visible_len))
+                local padding=$((col_width - visible_len))
                 [[ $padding -lt 2 ]] && padding=2
                 item="${item}$(printf '%*s' $padding '')"
             fi
 
             line="${line}${item}"
         done
-        _buf+="$line"$'\n'
+        _buf+="${pad}${line}${eol}"$'\n'
     done
 
-    _buf+=$'\n'
-    _buf+="----------------------------------------------------------------"$'\n'
+    _buf+="${pad}${eol}"$'\n'
+    _buf+="${pad}${sep_fill}${eol}"$'\n'
 
     # Count selected items and categorize actions
     local install_count=0
@@ -258,13 +314,15 @@ draw_menu() {
         fi
     done
 
-    _buf+="${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET} | ${YELLOW}Update: ${update_count}${RESET}"$'\n'
-    _buf+=$'\n'
-    _buf+="${YELLOW}↑/↓/←/→ navigate  SPACE select  U update installed  A select-all  D deselect-all  ENTER confirm  Q quit${RESET}"$'\n'
-    _buf+=$'\n'
-    _buf+="${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} select  ${YELLOW}[U]${RESET}${DIM} update  ${RESET}${DIM}[ ]${RESET}${DIM} none  ${MAGENTA}(installed)${RESET}${DIM} = on system${RESET}"$'\n'
-    _buf+="${DIM}[✓] on installed = uninstall; [✓] on missing = install; [U] on installed = update.${RESET}"$'\n'
-    _buf+=$'\n'
+    _buf+="${pad}${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET} | ${YELLOW}Update: ${update_count}${RESET}${eol}"$'\n'
+    _buf+="${pad}${eol}"$'\n'
+    _buf+="${pad}${YELLOW}↑/↓/←/→ navigate  SPACE select  U update installed  A select-all  D deselect-all  ENTER confirm  Q quit${RESET}${eol}"$'\n'
+    _buf+="${pad}${eol}"$'\n'
+    _buf+="${pad}${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} select  ${YELLOW}[U]${RESET}${DIM} update  ${RESET}${DIM}[ ]${RESET}${DIM} none  ${MAGENTA}(installed)${RESET}${DIM} = on system${RESET}${eol}"$'\n'
+    _buf+="${pad}${DIM}[✓] on installed = uninstall; [✓] on missing = install; [U] on installed = update.${RESET}${eol}"$'\n'
+
+    # Clear any leftover lines below from a previous (taller) render
+    _buf+=$'\033[J'
 
     # Single write flushes entire menu — eliminates per-line SSH flicker
     printf '%s' "$_buf"
@@ -399,8 +457,8 @@ run_selection_menu() {
     # Cleanup on exit
     trap 'show_cursor; stty echo; echo ""; cleanup_on_exit' EXIT
 
-    # Redraw on terminal resize
-    trap 'redraw_menu' WINCH
+    # Redraw on terminal resize (update COLUMNS for centering recalculation)
+    trap 'COLUMNS=$(tput cols 2>/dev/null || echo 80); redraw_menu' WINCH
 
     # Initial draw
     clear

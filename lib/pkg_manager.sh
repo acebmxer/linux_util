@@ -19,6 +19,30 @@ detect_distro() {
         exit 1
     fi
 
+    # Get full point-release version for select Debian-family distros
+    # (e.g. 24.04 → 24.04.4 for Ubuntu/Kubuntu/Neon, 12 → 12.5 for Debian)
+    case "$DISTRO_ID" in
+        ubuntu|kubuntu|neon)
+            # Extract point release from base-files package version.
+            # Format: <N>ubuntu<M>[.<point>]+...  e.g. 13ubuntu10.4+p24.04+...
+            local _bf_ver
+            _bf_ver=$(dpkg-query -W -f '${Version}' base-files 2>/dev/null || true)
+            if [[ "$_bf_ver" =~ ubuntu([0-9]+)(\.([0-9]+))? ]]; then
+                DISTRO_VERSION_ID="${DISTRO_VERSION_ID}.${BASH_REMATCH[3]:-0}"
+            fi
+            ;;
+        debian)
+            # /etc/debian_version has the full point release (e.g. "12.5")
+            if [[ -f /etc/debian_version ]]; then
+                local _deb_ver
+                _deb_ver=$(<"/etc/debian_version")
+                if [[ "$_deb_ver" =~ ^([0-9]+\.[0-9]+) ]]; then
+                    DISTRO_VERSION_ID="${BASH_REMATCH[1]}"
+                fi
+            fi
+            ;;
+    esac
+
     # Determine distro family
     case "$DISTRO_ID" in
         ubuntu|kubuntu|debian|linuxmint|pop|elementary|zorin|kali|neon)
