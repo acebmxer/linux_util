@@ -269,8 +269,16 @@ timeshift_create_snapshot() {
     echo "${DIM}Comment: ${comment}${RESET}"
     echo ""
 
-    local ts_output
-    if ts_output=$(sudo timeshift --create --comments "$comment" --tags O --scripted --yes 2>&1); then
+    # Try with --tags O first; some timeshift versions (e.g. Ubuntu 24.04) have a
+    # bug that rejects it, so fall back to creating without a tag.
+    local ts_output ts_ok=false
+    if ts_output=$(sudo timeshift --create --comments "$comment" --tags O --scripted 2>&1); then
+        ts_ok=true
+    elif ts_output=$(sudo timeshift --create --comments "$comment" --scripted 2>&1); then
+        ts_ok=true
+    fi
+
+    if [[ "$ts_ok" == "true" ]]; then
         echo "${GREEN}✓ Timeshift snapshot created successfully${RESET}"
         log_success "Timeshift snapshot created: ${comment}"
         verbose "Timeshift output: ${ts_output}"
