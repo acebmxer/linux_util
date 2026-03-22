@@ -14,25 +14,12 @@ SUDO_KEEPALIVE_PID=""
 cleanup_on_exit() {
     # Kill sudo keep-alive background process
     [[ -n "$SUDO_KEEPALIVE_PID" ]] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+    # Remove sudo PID file
+    rm -f "${LOCK_FILE}.pid" 2>/dev/null || true
     # Remove any registered temp files/dirs
     for _f in "${CLEANUP_FILES[@]}"; do
         rm -rf "$_f" 2>/dev/null || true
     done
-}
-
-# Trap errors and log them (skip intentional failures in conditionals)
-_err_handler() {
-    local _exit_code=$?
-    # Suppress logging for common intentional-failure patterns
-    case "$BASH_COMMAND" in
-        *"command -v"*|*"grep -q"*|*"2>/dev/null"*|*"&>/dev/null"*|*"|| true"*|*"|| return"*|*"|| warn"*|*"|| echo"*)
-            return 0 ;;
-    esac
-    # check_* functions return 1 to indicate "not installed", not an error
-    if [[ "${FUNCNAME[1]:-}" == check_* ]]; then
-        return 0
-    fi
-    log_error "Unexpected error at line ${BASH_LINENO[0]:-$LINENO}: Command \"$BASH_COMMAND\" failed (exit $_exit_code)"
 }
 
 # Function to initialize error log on first error

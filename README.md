@@ -36,9 +36,10 @@ The script supports non-interactive use for scripting and automation:
 | `--update <name>` | Update a utility by name |
 | `--update-all` | Update every currently installed utility |
 | `--check <name>` | Exit 0 if installed, 1 if not |
+| `--no-color` | Disable colored output |
 | `--setup-logrotate` | Install logrotate config for linux\_util logs |
 
-Utility names must match exactly as shown by `--list`. `--dry-run` can be combined with any flag.
+Utility names are matched case-insensitively and support partial matches. `--dry-run` can be combined with any flag.
 
 ```bash
 ./linux_util.sh --list
@@ -140,18 +141,25 @@ The script has been modularized for easier maintenance and navigation:
 
 ```
 linux_util/
-├── linux_util.sh          Main orchestrator (571 lines)
+├── linux_util.sh          Main orchestrator, CLI parsing, initialization
 ├── lib/
-│   ├── logging.sh         Logging, error handling, cleanup (168 lines)
-│   ├── pkg_manager.sh     Package manager abstraction, distro detection (249 lines)
-│   ├── aur.sh             Arch User Repository functions (64 lines)
-│   ├── config.sh          Configuration file parsing, verbose/debug helpers (93 lines)
-│   ├── system.sh          System setup tasks, NVIDIA, desktop env (153 lines)
-│   ├── menu.sh            TUI menu with keyboard navigation (556 lines)
-│   ├── utilities.sh       Utility registry and resolution (218 lines)
-│   └── installers.sh      All utility install/uninstall/update functions (2,845 lines)
+│   ├── config.sh          Configuration file parsing, verbose/debug helpers
+│   ├── logging.sh         Logging, cleanup, performance metrics
+│   ├── pkg_manager.sh     Package manager abstraction, distro detection
+│   ├── aur.sh             Arch User Repository functions
+│   ├── system.sh          Pre-flight checks, logrotate, system helpers
+│   ├── snapshot.sh        Snapshot integration — Timeshift and Snapper
+│   ├── utilities.sh       Utility registry, name resolution, dependency resolution
+│   ├── menu.sh            TUI menu with keyboard navigation
+│   ├── installers.sh      Loader + registration for all utilities/system tasks
+│   └── installers/        Per-utility installer scripts (one file per utility)
+│       ├── bitwarden.sh
+│       ├── brave.sh
+│       ├── docker.sh
+│       ├── ...            (22 files total — one per utility/system task)
+│       └── xen_guest_utilities.sh
 ├── logs/                  Timestamped execution logs
-├── manage_logs.sh         Log management utility (304 lines)
+├── manage_logs.sh         Log management utility
 └── README.md              This file
 ```
 
@@ -164,10 +172,12 @@ linux_util/
 | **lib/pkg_manager.sh** | Package manager abstraction, distro detection | Adding support for new distros or package managers |
 | **lib/aur.sh** | AUR/pacman-specific functions | Modifying AUR installation logic |
 | **lib/config.sh** | Configuration file parsing, verbose/debug output helpers | Changing default settings or adding new config options |
-| **lib/system.sh** | System tasks (full upgrade, NVIDIA drivers, KDE, etc.) | Adding or modifying system setup tasks |
+| **lib/system.sh** | Pre-flight checks, logrotate setup, system helpers | Adding pre-flight checks or system helper functions |
 | **lib/menu.sh** | TUI rendering, keyboard navigation, 2-column layout | Changing menu appearance or navigation behavior |
-| **lib/utilities.sh** | Utility registry, name resolution, status checking | Modifying how utilities are registered or checked |
-| **lib/installers.sh** | All utility-specific install/uninstall/update/check functions | **Adding new utilities or modifying existing ones** |
+| **lib/snapshot.sh** | Automatic snapshots via Timeshift or Snapper | Adding snapshot backends or changing snapshot behavior |
+| **lib/utilities.sh** | Utility registry, name resolution, dependency resolution, health checks | Modifying how utilities are registered or checked |
+| **lib/installers.sh** | Loader that sources `lib/installers/*.sh` and registers all utilities | **Adding a new registration line for a new utility** |
+| **lib/installers/\*.sh** | Per-utility install/uninstall/update/check functions (one file each) | **Adding or modifying a specific utility's installer** |
 
 ## Supported Distributions
 
@@ -181,13 +191,20 @@ linux_util/
 
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then by auto-detecting the available package manager.
 
-## Timeshift Snapshots
+## Automatic Snapshots
 
-On Debian/Ubuntu-based systems, the script automatically creates a Timeshift snapshot before every install, uninstall, or update operation. This provides an easy rollback point if anything goes wrong.
+The script automatically creates a system snapshot before every install, uninstall, or update operation, providing an easy rollback point if anything goes wrong.
 
-- Requires Timeshift to be installed on the system
-- Only runs on Debian-family distributions
-- Auto-detects and configures the backup device on first use
+### Supported Snapshot Tools
+
+| Tool | Distros | Notes |
+|------|---------|-------|
+| **Timeshift** | All supported distros | Used whenever `timeshift` is installed |
+| **Snapper** | Arch-based (CachyOS, Manjaro, etc.) | Used as fallback when Timeshift is not installed and Snapper has a root config |
+
+- Auto-detects which snapshot tool is available
+- On Arch-based systems with Snapper (e.g. CachyOS ships Snapper by default), snapshots work out of the box — no need to install Timeshift
+- Timeshift auto-detects and configures the backup device on first use
 - Each snapshot is tagged with a description of the operation (e.g., `linux_util: Install Docker`)
 - Non-blocking — if snapshot creation fails, the operation continues normally
 
@@ -214,22 +231,15 @@ chmod +x manage_logs.sh
 
 ## Adding New Utilities
 
-All utility install/uninstall/update/check functions are in **`lib/installers.sh`**. Add new utilities there in alphabetical order.
+Each utility lives in its own file under `lib/installers/`. The file is sourced automatically — no loader changes needed.
 
 ### Steps to Add a New Utility
 
-1. **Edit `lib/installers.sh`** and find the alphabetically correct position
-2. **Add a registration block** (before the utility definitions):
+1. **Create `lib/installers/my_utility.sh`** with the required functions:
    ```bash
-   UTILITIES+=("My Utility")
-   INSTALL_FUNCS["My Utility"]="install_my_utility"
-   CHECK_FUNCS["My Utility"]="check_my_utility"
-   UNINSTALL_FUNCS["My Utility"]="uninstall_my_utility"
-   UPDATE_FUNCS["My Utility"]="update_my_utility"
-   VERSION_FUNCS["My Utility"]="get_version_my_utility"  # optional
-   ```
-3. **Add implementation functions**:
-   ```bash
+   #!/bin/bash
+   # My Utility installer functions
+
    check_my_utility() {
        command -v my-utility &>/dev/null
    }
@@ -246,19 +256,27 @@ All utility install/uninstall/update/check functions are in **`lib/installers.sh
        pkg_upgrade my-utility
    }
 
-   get_version_my_utility() {
+   get_version_my_utility() {    # optional
        my-utility --version 2>/dev/null | head -1
    }
    ```
+2. **Register it in `lib/installers.sh`** — add a line in alphabetical order in the Utilities section:
+   ```bash
+   register_utility "My Utility" install_my_utility check_my_utility uninstall_my_utility update_my_utility get_version_my_utility
+   ```
+3. **Test** with `--dry-run` and verify menu rendering
 
 ### Adding System Tasks
 
-System tasks (like NVIDIA Drivers, KDE setup) are also in **`lib/system.sh`** and **`lib/installers.sh`**:
+System tasks use `register_system_task` instead of `register_utility`. They appear in the top section of the menu.
 
-- Add task registration to the `UTILITIES` array (near the top of `lib/installers.sh`)
-- Increment `SYSTEM_TASK_COUNT` in `linux_util.sh` if needed
-- Implement the `setup_*` function in `lib/system.sh`
-- Add check/version/uninstall functions in `lib/installers.sh`
+1. Create a file in `lib/installers/` with the task functions
+2. Register it in `lib/installers.sh` in the System Tasks section:
+   ```bash
+   register_system_task "My Task" setup_my_task check_my_task uninstall_my_task update_my_task
+   ```
+
+The system task count is derived automatically from the `SYSTEM_TASKS` array — no manual counter to update.
 
 ### Key Helper Functions
 
@@ -289,7 +307,7 @@ Use `$DISTRO_FAMILY` (`debian`, `fedora`, `rhel`, `arch`, `suse`) for distro-spe
 
 **AUR packages on Arch** — install `yay` or `paru` first. The script can fall back to building from AUR directly, but an AUR helper is recommended.
 
-**No colours / piped output** — set the `NO_COLOR` environment variable or pipe output to a file; ANSI colours are automatically disabled in non-interactive terminals.
+**No colours / piped output** — use `--no-color`, set the `NO_COLOR` environment variable, or pipe output to a file; ANSI colours are automatically disabled in non-interactive terminals.
 
 ## License
 
