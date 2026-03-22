@@ -111,11 +111,13 @@ Legend: [x] select  [U] update  [ ] none  (installed) = on system
 | Task | Description |
 |------|-------------|
 | **Full System Upgrade/Update** | Full system upgrade, essential tools, Landscape Client (Ubuntu), and package cache cleanup |
-| **KDE Desktop** | Installs KDE Plasma with SDDM |
-| **Local MOTD** | Installs Landscape Client and configures local MOTD (Ubuntu/Kubuntu/Neon only) |
-| **NVIDIA Drivers** | Detects available drivers, lets you choose a version, installs 32-bit libs, nvtop, and NVIDIA Container Toolkit if Docker is present |
 | **System Updates** | Package list refresh, full upgrade, autoremove, and cache clean |
+| **KDE Desktop** | Installs KDE Plasma with SDDM |
+| **NVIDIA Drivers** | Detects available drivers, lets you choose a version, installs 32-bit libs, nvtop, and NVIDIA Container Toolkit if Docker is present |
 | **XEN Guest Utilities** | Mounts XCP-NG ISO and runs the tools installer |
+| **Local MOTD** | Installs Landscape Client and configures local MOTD (Ubuntu/Kubuntu/Neon only) |
+| **Create Snapshot** | Creates a Timeshift or Snapper snapshot with a user-provided description |
+| **Restore Snapshot** | Lists available snapshots, creates a safety snapshot ("before restore"), then restores the selected snapshot |
 
 ### Utilities
 
@@ -208,6 +210,8 @@ The script automatically creates a system snapshot before every install, uninsta
 - On Arch-based systems with Snapper (e.g. CachyOS ships Snapper by default), snapshots work out of the box — no need to install Timeshift
 - Timeshift auto-detects and configures the backup device on first use
 - Each snapshot is tagged with a description of the operation (e.g., `linux_util: Install Docker`)
+- **Create Snapshot** and **Restore Snapshot** are available as System Tasks in the menu
+- Restore always takes a safety snapshot before proceeding
 - Non-blocking — if snapshot creation fails, the operation continues normally
 
 ## Logging
