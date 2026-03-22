@@ -394,10 +394,11 @@ _timeshift_restore_snapshot() {
     echo ""
 
     # Stream output directly so the user sees real-time progress.
-    # --skip-grub prevents an interactive GRUB prompt that hangs remote sessions.
-    # Pipe 'yes' to auto-accept any remaining interactive prompts (e.g.
-    # "Press ENTER to continue") that --scripted/--yes fail to suppress.
-    yes "" | sudo timeshift --restore --snapshot "$snapshot_name" --skip-grub --scripted --yes 2>&1
+    # --scripted --yes should run non-interactively per the timeshift docs.
+    # Pipe 'yes' as a safety net for buggy timeshift versions that still show
+    # "Press ENTER to continue" despite --scripted. Empty lines act as ENTER
+    # for all prompts (matching timeshift's own default-options guidance).
+    yes "" | sudo timeshift --restore --snapshot "$snapshot_name" --scripted --yes 2>&1
     local rc=${PIPESTATUS[1]}
 
     echo ""
@@ -405,9 +406,141 @@ _timeshift_restore_snapshot() {
         echo "${GREEN}✓ Timeshift restore completed successfully${RESET}"
         log_success "Timeshift restore completed: ${snapshot_name}"
         return 0
+    fi
+
+    # Timeshift native restore failed — offer rsync fallback
+    if [[ $rc -eq 139 ]] || [[ $rc -eq $((128 + 11)) ]]; then
+        echo "${RED}✗ Timeshift crashed (segmentation fault) during restore${RESET}"
+        echo "${YELLOW}  This is a known bug in some timeshift versions (e.g. Ubuntu 24.04).${RESET}"
+        log_error "Timeshift segfaulted during restore of snapshot: ${snapshot_name}"
     else
-        echo "${RED}✗ Timeshift restore failed${RESET}"
-        log_error "Timeshift restore failed for snapshot: ${snapshot_name}"
+        echo "${RED}✗ Timeshift restore failed (exit code: ${rc})${RESET}"
+        log_error "Timeshift restore failed for snapshot: ${snapshot_name} (exit code: ${rc})"
+    fi
+
+    echo ""
+    echo "${CYAN}Attempting rsync-based fallback restore...${RESET}"
+    _timeshift_rsync_restore "$snapshot_name"
+}
+
+# Fallback: restore a Timeshift RSYNC snapshot directly using rsync.
+# Timeshift RSYNC snapshots are plain directory trees, so we can restore
+# without the timeshift binary. This works around timeshift segfaults and
+# other bugs in the native --restore command.
+# Arguments:
+#   $1 - Snapshot name/timestamp to restore
+_timeshift_rsync_restore() {
+    local snapshot_name="$1"
+
+    # Locate the snapshot on the backup device
+    local snap_dir=""
+    local backup_uuid=""
+    backup_uuid=$(grep -o '"backup_device_uuid" *: *"[^"]*"' /etc/timeshift/timeshift.json 2>/dev/null \
+        | grep -o '"[^"]*"$' | tr -d '"')
+
+    if [[ -z "$backup_uuid" ]]; then
+        echo "${RED}✗ Cannot determine Timeshift backup device from config${RESET}"
+        return 1
+    fi
+
+    # Mount the backup device if not already mounted
+    local backup_dev
+    backup_dev=$(blkid -U "$backup_uuid" 2>/dev/null)
+    if [[ -z "$backup_dev" ]]; then
+        echo "${RED}✗ Backup device with UUID ${backup_uuid} not found${RESET}"
+        return 1
+    fi
+
+    local mount_point=""
+    mount_point=$(findmnt -n -o TARGET "$backup_dev" 2>/dev/null | head -1)
+
+    local _did_mount=false
+    if [[ -z "$mount_point" ]]; then
+        mount_point="/run/timeshift/rsync-restore"
+        sudo mkdir -p "$mount_point"
+        if ! sudo mount "$backup_dev" "$mount_point"; then
+            echo "${RED}✗ Failed to mount backup device ${backup_dev}${RESET}"
+            return 1
+        fi
+        _did_mount=true
+    fi
+
+    # Find the snapshot directory
+    snap_dir="${mount_point}/timeshift/snapshots/${snapshot_name}/localhost"
+    if [[ ! -d "$snap_dir" ]]; then
+        echo "${RED}✗ Snapshot directory not found: ${snap_dir}${RESET}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 1
+    fi
+
+    echo ""
+    echo "${BOLD}Snapshot found: ${snap_dir}${RESET}"
+    echo ""
+
+    # Verify rsync is available
+    if ! command -v rsync &>/dev/null; then
+        echo "${RED}✗ rsync is not installed. Install it with: sudo apt install rsync${RESET}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 1
+    fi
+
+    # Standard system directories to exclude from restore (virtual/temp filesystems)
+    local -a exclude_dirs=(
+        '/dev/*'
+        '/proc/*'
+        '/sys/*'
+        '/tmp/*'
+        '/run/*'
+        '/mnt/*'
+        '/media/*'
+        '/lost+found'
+        '/swapfile'
+    )
+
+    # Also read Timeshift's own exclude list if available
+    local ts_exclude_file="${mount_point}/timeshift/snapshots/${snapshot_name}/exclude.list"
+
+    # Build rsync exclude arguments
+    local -a rsync_excludes=()
+    for ex in "${exclude_dirs[@]}"; do
+        rsync_excludes+=(--exclude="$ex")
+    done
+    if [[ -f "$ts_exclude_file" ]]; then
+        rsync_excludes+=(--exclude-from="$ts_exclude_file")
+    fi
+
+    # Dry-run first to show what would change
+    echo "${CYAN}Running dry-run to preview changes...${RESET}"
+    echo ""
+    sudo rsync -avPHAXx --delete --dry-run "${rsync_excludes[@]}" \
+        "${snap_dir}/" / 2>&1 | tail -5
+    echo ""
+
+    local _confirm
+    read -n 1 -rp "${YELLOW}Proceed with rsync restore? (y/N) ${RESET}" _confirm < /dev/tty
+    echo ""
+    if [[ ! "$_confirm" =~ ^[Yy]$ ]]; then
+        echo "${YELLOW}Restore cancelled.${RESET}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 0
+    fi
+
+    echo ""
+    echo "${CYAN}Restoring via rsync (this may take several minutes)...${RESET}"
+    echo ""
+
+    if sudo rsync -avPHAXx --delete "${rsync_excludes[@]}" \
+        "${snap_dir}/" / 2>&1; then
+        echo ""
+        echo "${GREEN}✓ Rsync restore completed successfully${RESET}"
+        log_success "Rsync fallback restore completed: ${snapshot_name}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 0
+    else
+        echo ""
+        echo "${RED}✗ Rsync restore failed${RESET}"
+        log_error "Rsync fallback restore failed for snapshot: ${snapshot_name}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
         return 1
     fi
 }
