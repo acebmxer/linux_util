@@ -118,7 +118,7 @@ echo ""
 # Continue sourcing remaining library modules
 source "${SCRIPT_DIR}/lib/aur.sh" || { echo "Error: Failed to source aur.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/system.sh" || { echo "Error: Failed to source system.sh"; exit 1; }
-source "${SCRIPT_DIR}/lib/timeshift.sh" || { echo "Error: Failed to source timeshift.sh"; exit 1; }
+source "${SCRIPT_DIR}/lib/snapshot.sh" || { echo "Error: Failed to source snapshot.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/utilities.sh" || { echo "Error: Failed to source utilities.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/menu.sh" || { echo "Error: Failed to source menu.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/installers.sh" || { echo "Error: Failed to source installers.sh"; exit 1; }

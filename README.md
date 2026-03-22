@@ -148,6 +148,7 @@ linux_util/
 │   ├── config.sh          Configuration file parsing, verbose/debug helpers (93 lines)
 │   ├── system.sh          System setup tasks, NVIDIA, desktop env (153 lines)
 │   ├── menu.sh            TUI menu with keyboard navigation (556 lines)
+│   ├── snapshot.sh        Snapshot integration — Timeshift and Snapper (382 lines)
 │   ├── utilities.sh       Utility registry and resolution (218 lines)
 │   └── installers.sh      All utility install/uninstall/update functions (2,845 lines)
 ├── logs/                  Timestamped execution logs
@@ -166,6 +167,7 @@ linux_util/
 | **lib/config.sh** | Configuration file parsing, verbose/debug output helpers | Changing default settings or adding new config options |
 | **lib/system.sh** | System tasks (full upgrade, NVIDIA drivers, KDE, etc.) | Adding or modifying system setup tasks |
 | **lib/menu.sh** | TUI rendering, keyboard navigation, 2-column layout | Changing menu appearance or navigation behavior |
+| **lib/snapshot.sh** | Automatic snapshots via Timeshift or Snapper | Adding snapshot backends or changing snapshot behavior |
 | **lib/utilities.sh** | Utility registry, name resolution, status checking | Modifying how utilities are registered or checked |
 | **lib/installers.sh** | All utility-specific install/uninstall/update/check functions | **Adding new utilities or modifying existing ones** |
 
@@ -181,13 +183,20 @@ linux_util/
 
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then by auto-detecting the available package manager.
 
-## Timeshift Snapshots
+## Automatic Snapshots
 
-On Debian/Ubuntu-based systems, the script automatically creates a Timeshift snapshot before every install, uninstall, or update operation. This provides an easy rollback point if anything goes wrong.
+The script automatically creates a system snapshot before every install, uninstall, or update operation, providing an easy rollback point if anything goes wrong.
 
-- Requires Timeshift to be installed on the system
-- Only runs on Debian-family distributions
-- Auto-detects and configures the backup device on first use
+### Supported Snapshot Tools
+
+| Tool | Distros | Notes |
+|------|---------|-------|
+| **Timeshift** | All supported distros | Used whenever `timeshift` is installed |
+| **Snapper** | Arch-based (CachyOS, Manjaro, etc.) | Used as fallback when Timeshift is not installed and Snapper has a root config |
+
+- Auto-detects which snapshot tool is available
+- On Arch-based systems with Snapper (e.g. CachyOS ships Snapper by default), snapshots work out of the box — no need to install Timeshift
+- Timeshift auto-detects and configures the backup device on first use
 - Each snapshot is tagged with a description of the operation (e.g., `linux_util: Install Docker`)
 - Non-blocking — if snapshot creation fails, the operation continues normally
 

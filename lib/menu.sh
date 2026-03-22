@@ -137,12 +137,14 @@ draw_menu() {
 
     # Display Timeshift last snapshot if available
     if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" ]]; then
-        local _ts_plain="Last Timeshift Snapshot: ${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}"
+        local _snap_label="Timeshift"
+        [[ "${SNAPSHOT_BACKEND:-}" == "snapper" ]] && _snap_label="Snapper"
+        local _ts_plain="Last ${_snap_label} Snapshot: ${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}"
         local _tlpad=$(( (content_width - ${#_ts_plain}) / 2 ))
         (( _tlpad < 0 )) && _tlpad=0
         local _tspaces=""
         (( _tlpad > 0 )) && printf -v _tspaces '%*s' "$_tlpad" ''
-        _buf+="${pad}${_tspaces}Last Timeshift Snapshot: ${BOLD}${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}${RESET}${eol}"$'\n'
+        _buf+="${pad}${_tspaces}Last ${_snap_label} Snapshot: ${BOLD}${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}${RESET}${eol}"$'\n'
     fi
 
     _buf+="${pad}${eol}"$'\n'

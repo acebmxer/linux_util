@@ -1,44 +1,56 @@
 #!/bin/bash
 
 # ============================================================================
-# Linux Utilities - Timeshift Module
-# Provides Timeshift snapshot integration for Debian/Ubuntu-based systems.
-# If Timeshift is not installed or the system is not Debian-family,
-# all functions fail quietly and the script continues normally.
+# Linux Utilities - Snapshot Module (Timeshift / Snapper)
+# Provides snapshot integration using Timeshift (all supported distros) or
+# Snapper (Arch-based systems with btrfs). If no supported snapshot tool is
+# installed, all functions fail quietly and the script continues normally.
 # ============================================================================
 
 # Global state
 TIMESHIFT_AVAILABLE=false
 TIMESHIFT_LAST_SNAPSHOT=""
+SNAPSHOT_BACKEND=""  # "timeshift" or "snapper"
 
 # ============================================================================
 # Timeshift Detection & Initialization
 # ============================================================================
 
-# Check if Timeshift is installed and the system is Debian-family.
-# Sets TIMESHIFT_AVAILABLE=true if both conditions are met.
+# Initialize snapshot support. Checks for Timeshift on all distro families,
+# and falls back to Snapper on Arch-based systems (e.g. CachyOS with btrfs).
+# Sets TIMESHIFT_AVAILABLE=true and SNAPSHOT_BACKEND if a tool is found.
 timeshift_init() {
-    # Only support Debian-family systems (Ubuntu, Debian, Mint, Pop, etc.)
-    if [[ "${DISTRO_FAMILY:-}" != "debian" ]]; then
-        verbose "Timeshift: Skipping — not a Debian/Ubuntu-based system"
+    # Check for Timeshift (supported on all distro families)
+    if command -v timeshift &>/dev/null; then
+        SNAPSHOT_BACKEND="timeshift"
+        TIMESHIFT_AVAILABLE=true
+        verbose "Timeshift: Detected and available"
+
+        # Check if a backup device is configured; if not, set one up
+        if ! _timeshift_has_device; then
+            _timeshift_setup_device
+        fi
+
+        # Cache the last snapshot info for the banner
+        _timeshift_cache_last_snapshot
         return 0
     fi
 
-    if ! command -v timeshift &>/dev/null; then
-        verbose "Timeshift: Not installed — skipping snapshot integration"
-        return 0
+    # On Arch-based systems, check for Snapper as an alternative
+    if [[ "${DISTRO_FAMILY:-}" == "arch" ]] && command -v snapper &>/dev/null; then
+        if _snapper_has_config; then
+            SNAPSHOT_BACKEND="snapper"
+            TIMESHIFT_AVAILABLE=true
+            verbose "Snapper: Detected and available (Arch-based system)"
+            _snapper_cache_last_snapshot
+            return 0
+        else
+            verbose "Snapper: Installed but no root config found — skipping"
+        fi
     fi
 
-    TIMESHIFT_AVAILABLE=true
-    verbose "Timeshift: Detected and available"
-
-    # Check if a backup device is configured; if not, set one up
-    if ! _timeshift_has_device; then
-        _timeshift_setup_device
-    fi
-
-    # Cache the last snapshot info for the banner
-    _timeshift_cache_last_snapshot
+    verbose "Snapshot: No supported snapshot tool found — skipping"
+    return 0
 }
 
 # ============================================================================
@@ -242,15 +254,88 @@ _timeshift_cache_last_snapshot() {
 }
 
 # ============================================================================
+# Snapper Integration (Arch-based systems)
+# ============================================================================
+
+# Check if Snapper has a root configuration.
+_snapper_has_config() {
+    [[ -f /etc/snapper/configs/root ]]
+}
+
+# Cache the last Snapper snapshot info for the menu banner.
+_snapper_cache_last_snapshot() {
+    [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 0
+
+    local list_output
+    list_output=$(sudo snapper -c root list 2>&1) || true
+
+    # Parse the last snapshot line. Default snapper output:
+    #  # | Type   | Pre # | Date                     | User | Cleanup  | Description
+    # Columns: 1=#, 2=Type, 3=Pre#, 4=Date, 5=User, 6=Cleanup, 7=Description
+    local last_line
+    last_line=$(echo "$list_output" | grep -E '^\s*[0-9]+\s*\|' | grep -v '^\s*0\s*\|' | tail -1)
+
+    if [[ -n "$last_line" ]]; then
+        local snap_num snap_date snap_desc
+        snap_num=$(echo "$last_line" | awk -F'|' '{gsub(/^ +| +$/,"",$1); print $1}')
+        snap_date=$(echo "$last_line" | awk -F'|' '{gsub(/^ +| +$/,"",$4); print $4}')
+        snap_desc=$(echo "$last_line" | awk -F'|' '{gsub(/^ +| +$/,"",$7); print $7}')
+
+        TIMESHIFT_LAST_SNAPSHOT="#${snap_num}"
+        [[ -n "$snap_date" ]] && TIMESHIFT_LAST_SNAPSHOT+=" ${snap_date}"
+        [[ -n "$snap_desc" ]] && TIMESHIFT_LAST_SNAPSHOT+=" - ${snap_desc}"
+    fi
+
+    if [[ -z "$TIMESHIFT_LAST_SNAPSHOT" ]]; then
+        TIMESHIFT_LAST_SNAPSHOT="No snapshots found"
+    fi
+
+    verbose "Snapper: Last snapshot: ${TIMESHIFT_LAST_SNAPSHOT}"
+}
+
+# Create a Snapper snapshot. Used as backend when SNAPSHOT_BACKEND=snapper.
+# Arguments:
+#   $1 - Comment/description for the snapshot (optional)
+# Always returns 0 (fail quietly).
+_snapper_create_snapshot() {
+    local comment="${1:-linux_util: pre-operation snapshot}"
+
+    echo ""
+    echo "${BOLD}${CYAN}Creating Snapper snapshot...${RESET}"
+    echo "${DIM}Comment: ${comment}${RESET}"
+    echo ""
+
+    local snap_output
+    if snap_output=$(sudo snapper -c root create --type single --description "$comment" --cleanup-algorithm number 2>&1); then
+        echo "${GREEN}✓ Snapper snapshot created successfully${RESET}"
+        log_success "Snapper snapshot created: ${comment}"
+        verbose "Snapper output: ${snap_output}"
+        _snapper_cache_last_snapshot
+    else
+        echo "${YELLOW}⚠ Snapper snapshot creation failed (continuing anyway)${RESET}"
+        log_warning "Snapper snapshot creation failed: ${snap_output}"
+        verbose "Snapper error output: ${snap_output}"
+    fi
+
+    return 0
+}
+
+# ============================================================================
 # Snapshot Creation
 # ============================================================================
 
-# Create a Timeshift snapshot before performing operations.
+# Create a snapshot before performing operations (dispatches to active backend).
 # Arguments:
 #   $1 - Comment/description for the snapshot (optional)
 # Returns 0 on success or if Timeshift is not available (fail quietly).
 timeshift_create_snapshot() {
     [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 0
+
+    # Dispatch to Snapper backend if active
+    if [[ "$SNAPSHOT_BACKEND" == "snapper" ]]; then
+        _snapper_create_snapshot "$@"
+        return $?
+    fi
 
     # Guard against first-run mode: if the config file is missing, timeshift
     # cannot process --tags and will fail.  Re-run device setup instead.
