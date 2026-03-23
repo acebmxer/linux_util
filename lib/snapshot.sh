@@ -12,6 +12,25 @@ TIMESHIFT_AVAILABLE=false
 TIMESHIFT_LAST_SNAPSHOT=""
 SNAPSHOT_BACKEND=""  # "timeshift" or "snapper"
 
+# Check if the root filesystem is btrfs.
+# Returns 0 if btrfs, 1 otherwise.
+_is_btrfs_root() {
+    local fstype
+    fstype=$(findmnt -n -o FSTYPE / 2>/dev/null)
+    [[ "$fstype" == "btrfs" ]]
+}
+
+# Check if the btrfs subvolume layout is compatible with Timeshift BTRFS mode.
+# Timeshift requires the root subvolume to be named "@" and optionally "@home".
+# Distros like Fedora use "root"/"home" instead, which is incompatible.
+# Returns 0 if compatible, 1 otherwise.
+_is_timeshift_btrfs_compatible() {
+    _is_btrfs_root || return 1
+    local root_subvol
+    root_subvol=$(findmnt -n -o OPTIONS / 2>/dev/null | grep -oP 'subvol=\K[^,]+')
+    [[ "$root_subvol" == "/@" || "$root_subvol" == "@" ]]
+}
+
 # ============================================================================
 # Timeshift Detection & Initialization
 # ============================================================================
@@ -83,7 +102,8 @@ _timeshift_has_device() {
 }
 
 # Set up a Timeshift backup device. Attempts to auto-detect the boot device.
-# If uncertain, prompts the user to select one.
+# If uncertain, prompts the user to select one. On btrfs systems, asks the
+# user which snapshot method to use (BTRFS native or RSYNC).
 _timeshift_setup_device() {
     [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 0
 
@@ -97,16 +117,36 @@ _timeshift_setup_device() {
     echo ""
 
     # Get the current root (boot) device
+    # Strip btrfs subvolume suffix (e.g. /dev/xvda3[/root] → /dev/xvda3)
     local root_dev root_uuid
-    root_dev=$(findmnt -n -o SOURCE / 2>/dev/null | head -1)
-    root_uuid=$(blkid -s UUID -o value "$root_dev" 2>/dev/null)
+    root_dev=$(findmnt -n -o SOURCE / 2>/dev/null | head -1 | sed 's/\[.*\]$//')
+    root_uuid=$(sudo blkid -s UUID -o value "$root_dev" 2>/dev/null)
 
-    # List devices via timeshift
+    # List devices via timeshift and parse the numbered device table
     local devices_output
     devices_output=$(sudo timeshift --list-devices 2>&1) || true
 
     echo "$devices_output"
     echo ""
+
+    # Build arrays of device paths and UUIDs from the numbered list
+    # Format: "0    >  /dev/xvda2    2.1 GB   ext4"
+    local -a _ts_dev_paths=()
+    local -a _ts_dev_uuids=()
+    while IFS= read -r _line; do
+        local _dev_path
+        _dev_path=$(echo "$_line" | grep -oP '/dev/\S+')
+        if [[ -n "$_dev_path" ]]; then
+            _ts_dev_paths+=("$_dev_path")
+            local _dev_uuid
+            _dev_uuid=$(sudo blkid -s UUID -o value "$_dev_path" 2>/dev/null)
+            _ts_dev_uuids+=("${_dev_uuid:-}")
+        fi
+    done < <(echo "$devices_output" | grep -E '^\s*[0-9]+\s')
+
+    # --- Device selection ---
+    local selected_uuid=""
+    local selected_dev=""
 
     if [[ -n "$root_dev" && -n "$root_uuid" ]]; then
         echo "Current boot device detected: ${BOLD}${root_dev}${RESET} (UUID: ${root_uuid})"
@@ -115,74 +155,115 @@ _timeshift_setup_device() {
         echo ""
 
         if [[ ! "$_ts_choice" =~ ^[Nn]$ ]]; then
-            # Configure Timeshift to use the boot device
-            sudo timeshift --snapshot-device "$root_uuid" --scripted 2>/dev/null || \
-            sudo timeshift --snapshot-device "$root_dev" --scripted 2>/dev/null || {
-                # Fallback: write to config directly
-                _timeshift_write_device_config "$root_uuid"
-            }
-            echo "${GREEN}Timeshift configured to use: ${root_dev}${RESET}"
-            log_info "Timeshift: Configured backup device ${root_dev} (UUID: ${root_uuid})"
-            return 0
+            selected_uuid="$root_uuid"
+            selected_dev="$root_dev"
         fi
     else
         echo "${YELLOW}Could not auto-detect boot device.${RESET}"
         echo ""
     fi
 
-    # Manual device selection
-    echo "Please enter the device path (e.g., /dev/sda1) or UUID for Timeshift snapshots:"
-    read -rp "> " _ts_manual_dev
+    # Manual device selection if auto-detect was declined or failed
+    if [[ -z "$selected_uuid" ]]; then
+        echo "Please enter a device number from the list above, a device path (e.g., /dev/sda1), or UUID:"
+        read -rp "> " _ts_manual_dev
 
-    if [[ -z "$_ts_manual_dev" ]]; then
-        warn "No device selected. Timeshift snapshots will not be available."
-        TIMESHIFT_AVAILABLE=false
-        return 1
-    fi
-
-    # If user entered a UUID, use it directly; otherwise get UUID from device path
-    if [[ "$_ts_manual_dev" =~ ^[0-9a-fA-F-]+$ ]]; then
-        local manual_uuid="$_ts_manual_dev"
-    else
-        local manual_uuid
-        manual_uuid=$(blkid -s UUID -o value "$_ts_manual_dev" 2>/dev/null)
-    fi
-
-    if [[ -n "$manual_uuid" ]]; then
-        sudo timeshift --snapshot-device "$manual_uuid" --scripted 2>/dev/null || \
-        sudo timeshift --snapshot-device "$_ts_manual_dev" --scripted 2>/dev/null || {
-            _timeshift_write_device_config "$manual_uuid"
-        }
-        echo "${GREEN}Timeshift configured to use: ${_ts_manual_dev}${RESET}"
-        log_info "Timeshift: Configured backup device ${_ts_manual_dev} (UUID: ${manual_uuid:-unknown})"
-    else
-        sudo timeshift --snapshot-device "$_ts_manual_dev" --scripted 2>/dev/null || {
-            warn "Failed to configure Timeshift device. Snapshots may not work."
+        if [[ -z "$_ts_manual_dev" ]]; then
+            warn "No device selected. Timeshift snapshots will not be available."
             TIMESHIFT_AVAILABLE=false
             return 1
-        }
-        echo "${GREEN}Timeshift configured to use: ${_ts_manual_dev}${RESET}"
-        log_info "Timeshift: Configured backup device ${_ts_manual_dev}"
+        fi
+
+        # Resolve the user's input to a device path and UUID
+        if [[ "$_ts_manual_dev" =~ ^[0-9]+$ ]] && (( _ts_manual_dev < ${#_ts_dev_paths[@]} )); then
+            selected_dev="${_ts_dev_paths[$_ts_manual_dev]}"
+            selected_uuid="${_ts_dev_uuids[$_ts_manual_dev]}"
+            echo "Selected device: ${BOLD}${selected_dev}${RESET}"
+        elif [[ "$_ts_manual_dev" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+            selected_uuid="$_ts_manual_dev"
+            selected_dev="$_ts_manual_dev"
+        elif [[ "$_ts_manual_dev" == /dev/* ]]; then
+            selected_dev="$_ts_manual_dev"
+            selected_uuid=$(sudo blkid -s UUID -o value "$_ts_manual_dev" 2>/dev/null)
+        else
+            echo "${YELLOW}Invalid selection: ${_ts_manual_dev}${RESET}"
+            warn "No valid device selected. Timeshift snapshots will not be available."
+            TIMESHIFT_AVAILABLE=false
+            return 1
+        fi
+
+        if [[ -z "$selected_uuid" ]]; then
+            warn "Could not determine UUID for ${selected_dev}. Timeshift snapshots will not be available."
+            TIMESHIFT_AVAILABLE=false
+            return 1
+        fi
     fi
 
+    # --- Snapshot type selection ---
+    local snapshot_type="rsync"
+
+    if _is_timeshift_btrfs_compatible; then
+        echo ""
+        echo "${BOLD}Btrfs filesystem detected (@ subvolume layout).${RESET} Select snapshot type:"
+        echo ""
+        echo "  1) ${BOLD}BTRFS${RESET}  — Native btrfs snapshots (fast, low disk usage)"
+        echo "  2) RSYNC — File-level copy (slower, works across filesystems)"
+        echo ""
+        read -n 1 -rp "Enter selection [1-2] (default: 1): " _ts_type_choice
+        echo ""
+
+        if [[ "$_ts_type_choice" == "2" ]]; then
+            snapshot_type="rsync"
+            echo "Snapshot type: RSYNC"
+        else
+            snapshot_type="btrfs"
+            echo "Snapshot type: BTRFS"
+        fi
+    elif _is_btrfs_root; then
+        echo ""
+        echo "${YELLOW}Btrfs filesystem detected, but subvolume layout is not compatible"
+        echo "with Timeshift BTRFS mode (requires '@' subvolume, e.g. Ubuntu/Arch).${RESET}"
+        echo "Using RSYNC mode for snapshots."
+    fi
+
+    # --- Write config ---
+    _timeshift_write_device_config "$selected_uuid" "$snapshot_type"
+    echo "${GREEN}Timeshift configured to use: ${selected_dev:-$selected_uuid}${RESET}"
+    log_info "Timeshift: Configured backup device ${selected_dev:-$selected_uuid} (UUID: ${selected_uuid}, mode: ${snapshot_type})"
     return 0
 }
 
-# Write device UUID directly to Timeshift config as a fallback.
+# Write Timeshift config with the given device UUID and snapshot type.
+# Arguments:
+#   $1 - Device UUID
+#   $2 - Snapshot type: "btrfs" or "rsync" (default: "rsync")
 _timeshift_write_device_config() {
     local uuid="$1"
+    local snapshot_type="${2:-rsync}"
     local config_file="/etc/timeshift/timeshift.json"
 
-    if [[ ! -f "$config_file" ]]; then
-        sudo mkdir -p /etc/timeshift
-        sudo tee "$config_file" > /dev/null <<TSCFG
+    local btrfs_mode="false"
+    local btrfs_home="false"
+    if [[ "$snapshot_type" == "btrfs" ]]; then
+        btrfs_mode="true"
+        # Include @home in snapshots if the subvolume exists
+        if findmnt -n /home 2>/dev/null | grep -q 'subvol=.*@home'; then
+            btrfs_home="true"
+        fi
+    fi
+
+    # Always write the full config — timeshift --list-devices may have created
+    # an incomplete config as a side effect (e.g. missing btrfs_mode field),
+    # so patching with sed is unreliable. Overwrite with our known-good config.
+    sudo mkdir -p /etc/timeshift
+    sudo tee "$config_file" > /dev/null <<TSCFG
 {
   "backup_device_uuid" : "${uuid}",
   "parent_device_uuid" : "",
   "do_first_run" : "false",
-  "btrfs_mode" : "false",
-  "include_btrfs_home_for_backup" : "false",
-  "include_btrfs_home_for_restore" : "false",
+  "btrfs_mode" : "${btrfs_mode}",
+  "include_btrfs_home_for_backup" : "${btrfs_home}",
+  "include_btrfs_home_for_restore" : "${btrfs_home}",
   "stop_cron_emails" : "true",
   "schedule_monthly" : "false",
   "schedule_weekly" : "false",
@@ -200,10 +281,6 @@ _timeshift_write_device_config() {
   "exclude-apps" : []
 }
 TSCFG
-    else
-        # Update existing config — replace the backup_device_uuid value
-        sudo sed -i "s|\"backup_device_uuid\" *: *\"[^\"]*\"|\"backup_device_uuid\" : \"${uuid}\"|" "$config_file"
-    fi
 
     verbose "Timeshift: Wrote device UUID ${uuid} to ${config_file}"
 }
@@ -381,7 +458,139 @@ timeshift_list_snapshots() {
 # Snapshot Restore
 # ============================================================================
 
+# Restore a Timeshift BTRFS snapshot by replacing the active @ subvolume
+# with a writable snapshot from the selected snapshot. The current @ (and
+# optionally @home) subvolumes are renamed as backups before the swap.
+# Arguments:
+#   $1 - Snapshot name/timestamp to restore
+# Returns 0 on success, 1 on failure.
+_timeshift_btrfs_restore() {
+    local snapshot_name="$1"
+
+    # Get the backup device from timeshift config
+    local backup_uuid
+    backup_uuid=$(grep -o '"backup_device_uuid" *: *"[^"]*"' /etc/timeshift/timeshift.json 2>/dev/null \
+        | grep -o '"[^"]*"$' | tr -d '"')
+
+    if [[ -z "$backup_uuid" ]]; then
+        echo "${RED}✗ Cannot determine Timeshift backup device from config${RESET}"
+        return 1
+    fi
+
+    local backup_dev
+    backup_dev=$(sudo blkid -U "$backup_uuid" 2>/dev/null)
+    if [[ -z "$backup_dev" ]]; then
+        echo "${RED}✗ Backup device with UUID ${backup_uuid} not found${RESET}"
+        return 1
+    fi
+
+    # Mount the btrfs volume at subvolid=5 (top-level) to access all subvolumes
+    local mount_point=""
+    local _did_mount=false
+
+    # Check if already mounted with access to the snapshot directory
+    mount_point=$(findmnt -n -o TARGET "$backup_dev" 2>/dev/null | head -1)
+
+    if [[ -z "$mount_point" ]] || [[ ! -d "${mount_point}/timeshift-btrfs/snapshots" ]]; then
+        mount_point="/run/timeshift/btrfs-restore"
+        sudo mkdir -p "$mount_point"
+        if ! sudo mount -o subvolid=5 "$backup_dev" "$mount_point"; then
+            echo "${RED}✗ Failed to mount btrfs volume ${backup_dev} at subvolid=5${RESET}"
+            return 1
+        fi
+        _did_mount=true
+    fi
+
+    # Locate the snapshot subvolume
+    local snap_root="${mount_point}/timeshift-btrfs/snapshots/${snapshot_name}/@"
+    if [[ ! -d "$snap_root" ]]; then
+        echo "${RED}✗ Snapshot subvolume not found: ${snap_root}${RESET}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 1
+    fi
+
+    echo ""
+    echo "${BOLD}Snapshot found: ${snap_root}${RESET}"
+
+    # Check if @home is also in the snapshot
+    local snap_home="${mount_point}/timeshift-btrfs/snapshots/${snapshot_name}/@home"
+    local has_home=false
+    [[ -d "$snap_home" ]] && has_home=true
+
+    echo "  Root subvolume (@): yes"
+    echo "  Home subvolume (@home): ${has_home}"
+    echo ""
+
+    local _confirm
+    read -n 1 -rp "${YELLOW}Proceed with btrfs subvolume restore? (y/N) ${RESET}" _confirm < /dev/tty
+    echo ""
+    if [[ ! "$_confirm" =~ ^[Yy]$ ]]; then
+        echo "${YELLOW}Restore cancelled.${RESET}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 0
+    fi
+
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
+
+    # Rename current @ subvolume to a backup
+    local current_root="${mount_point}/@"
+    local backup_name="@_backup_${timestamp}"
+
+    echo ""
+    echo "${CYAN}Backing up current root subvolume: @ → ${backup_name}${RESET}"
+    if ! sudo mv "$current_root" "${mount_point}/${backup_name}"; then
+        echo "${RED}✗ Failed to rename current @ subvolume${RESET}"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 1
+    fi
+
+    # Create a writable snapshot from the selected snapshot's @
+    echo "${CYAN}Creating writable snapshot from ${snapshot_name}/@...${RESET}"
+    if ! sudo btrfs subvolume snapshot "$snap_root" "$current_root"; then
+        echo "${RED}✗ Failed to create root snapshot — rolling back${RESET}"
+        sudo mv "${mount_point}/${backup_name}" "$current_root"
+        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+        return 1
+    fi
+    echo "${GREEN}✓ Root subvolume restored${RESET}"
+
+    # Restore @home if present in the snapshot
+    if [[ "$has_home" == "true" ]]; then
+        local current_home="${mount_point}/@home"
+        if [[ -d "$current_home" ]]; then
+            local home_backup="@home_backup_${timestamp}"
+            echo "${CYAN}Backing up current home subvolume: @home → ${home_backup}${RESET}"
+            if sudo mv "$current_home" "${mount_point}/${home_backup}"; then
+                echo "${CYAN}Restoring @home from snapshot...${RESET}"
+                if sudo btrfs subvolume snapshot "$snap_home" "$current_home"; then
+                    echo "${GREEN}✓ Home subvolume restored${RESET}"
+                else
+                    echo "${YELLOW}⚠ Failed to restore @home — restoring backup${RESET}"
+                    sudo mv "${mount_point}/${home_backup}" "$current_home"
+                    log_warning "Failed to restore @home subvolume"
+                fi
+            else
+                echo "${YELLOW}⚠ Failed to back up @home — skipping home restore${RESET}"
+                log_warning "Failed to rename @home for backup"
+            fi
+        fi
+    fi
+
+    sudo sync
+
+    echo ""
+    echo "${GREEN}✓ Btrfs subvolume restore completed successfully${RESET}"
+    log_success "Btrfs subvolume restore completed: ${snapshot_name}"
+    [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+    return 0
+}
+
 # Restore a Timeshift snapshot by name.
+# Uses rsync or btrfs subvolume swap directly instead of `timeshift --restore`
+# because the native restore command always triggers an automatic reboot that
+# cannot be suppressed, which breaks SSH sessions. By handling the restore
+# ourselves, the script retains control and can offer a clean reboot prompt.
 # Arguments:
 #   $1 - Snapshot name/timestamp to restore
 # Returns 0 on success, 1 on failure.
@@ -394,13 +603,10 @@ _timeshift_restore_snapshot() {
     echo ""
 
     # Auto-detect the GRUB device (the whole disk containing the root partition).
-    # Without --grub-device, timeshift CLI interactively asks the user to pick a
-    # GRUB device. When running non-interactively (piped input), this prompt
-    # rejects empty/blank input and aborts after 3 attempts.
+    # Strip btrfs subvolume suffix (e.g. /dev/xvda3[/root] → /dev/xvda3)
     local grub_device=""
-    local grub_args=()
     local root_part
-    root_part=$(findmnt -n -o SOURCE / 2>/dev/null | head -1)
+    root_part=$(findmnt -n -o SOURCE / 2>/dev/null | head -1 | sed 's/\[.*\]$//')
     if [[ -n "$root_part" ]]; then
         # Strip partition number/suffix to get the parent disk
         # Handles: /dev/sda1→sda, /dev/nvme0n1p2→nvme0n1, /dev/xvda1→xvda
@@ -413,64 +619,53 @@ _timeshift_restore_snapshot() {
 
     if [[ -n "$grub_device" && -b "$grub_device" ]]; then
         echo "${DIM}GRUB device detected: ${grub_device}${RESET}"
-        grub_args=(--grub-device "$grub_device")
     else
-        # Cannot detect GRUB device — skip GRUB reinstall rather than letting
-        # timeshift prompt interactively (which fails in non-interactive mode).
-        echo "${YELLOW}Could not auto-detect GRUB device — skipping GRUB reinstall${RESET}"
-        grub_args=(--skip-grub)
+        echo "${YELLOW}Could not auto-detect GRUB device — GRUB reinstall will be skipped${RESET}"
     fi
 
-    # Run timeshift restore, streaming output in real-time via tee while also
-    # capturing it to a temp file so we can check for silent failures.
-    # --scripted --yes should run non-interactively per the timeshift docs.
-    local restore_log
-    restore_log=$(mktemp /tmp/timeshift-restore.XXXXXX)
-
-    sudo timeshift --restore --snapshot "$snapshot_name" \
-        --scripted "${grub_args[@]}" 2>&1 | tee "$restore_log"
-    local rc=${PIPESTATUS[0]}
-
-    echo ""
-
-    # Timeshift may exit 0 even when the restore was aborted (e.g. GRUB device
-    # prompt failure). Check the output for signs of a silent abort.
-    if [[ $rc -eq 0 ]] && grep -qiE 'Aborted|E: Failed to get input' "$restore_log"; then
-        echo "${RED}✗ Timeshift restore was aborted (GRUB device prompt failure)${RESET}"
-        log_error "Timeshift restore aborted during GRUB device selection: ${snapshot_name}"
-        rc=1
+    # Route to the appropriate restore method based on Timeshift's configured mode,
+    # not the filesystem type. A btrfs filesystem may still use RSYNC mode.
+    local ts_mode="RSYNC"
+    if grep -q '"btrfs_mode" *: *"true"' /etc/timeshift/timeshift.json 2>/dev/null; then
+        ts_mode="BTRFS"
     fi
 
-    # Verify that rsync actually ran — if timeshift reported success but never
-    # synced any files, the restore didn't actually happen.
-    if [[ $rc -eq 0 ]] && ! grep -qE 'Syncing files|rsync|Deleting|First run mode' "$restore_log"; then
-        echo "${RED}✗ Timeshift reported success but no file sync occurred${RESET}"
-        log_error "Timeshift restore produced no sync output: ${snapshot_name}"
-        rc=1
+    if [[ "$ts_mode" == "BTRFS" ]]; then
+        echo "${DIM}Timeshift mode: BTRFS — using subvolume restore${RESET}"
+        if ! _timeshift_btrfs_restore "$snapshot_name"; then
+            return 1
+        fi
+    else
+        echo "${DIM}Timeshift mode: RSYNC — using rsync restore${RESET}"
+        if ! _timeshift_rsync_restore "$snapshot_name"; then
+            return 1
+        fi
     fi
 
-    rm -f "$restore_log"
+    # Reinstall GRUB bootloader (same as timeshift would do after restore)
+    if [[ -n "$grub_device" && -b "$grub_device" ]]; then
+        echo ""
+        echo "${CYAN}Re-installing GRUB2 bootloader...${RESET}"
+        if sudo grub-install "$grub_device" 2>&1; then
+            echo "${GREEN}✓ GRUB installed to ${grub_device}${RESET}"
+        else
+            echo "${YELLOW}⚠ grub-install failed — boot may require manual repair${RESET}"
+            log_warning "grub-install failed for device: ${grub_device}"
+        fi
 
-    if [[ $rc -eq 0 ]]; then
-        echo "${GREEN}✓ Timeshift restore completed successfully${RESET}"
-        log_success "Timeshift restore completed: ${snapshot_name}"
-        return 0
-    fi
-
-    # Timeshift native restore failed — offer rsync fallback
-    if [[ $rc -eq 139 ]] || [[ $rc -eq $((128 + 11)) ]]; then
-        echo "${RED}✗ Timeshift crashed (segmentation fault) during restore${RESET}"
-        echo "${YELLOW}  This is a known bug in some timeshift versions (e.g. Ubuntu 24.04).${RESET}"
-        log_error "Timeshift segfaulted during restore of snapshot: ${snapshot_name}"
-    elif [[ $rc -ne 1 ]]; then
-        echo "${RED}✗ Timeshift restore failed (exit code: ${rc})${RESET}"
-        log_error "Timeshift restore failed for snapshot: ${snapshot_name} (exit code: ${rc})"
+        echo "${CYAN}Updating GRUB menu...${RESET}"
+        if sudo update-grub 2>&1; then
+            echo "${GREEN}✓ GRUB menu updated${RESET}"
+        else
+            echo "${YELLOW}⚠ update-grub failed${RESET}"
+            log_warning "update-grub failed after restore"
+        fi
     fi
 
     echo ""
-    echo "${CYAN}Attempting rsync-based fallback restore...${RESET}"
-    _timeshift_rsync_restore "$snapshot_name"
-    return $?
+    echo "${GREEN}✓ Restore completed — a reboot is required to apply changes${RESET}"
+    log_success "Timeshift restore completed: ${snapshot_name}"
+    return 0
 }
 
 # Fallback: restore a Timeshift RSYNC snapshot directly using rsync.
@@ -495,20 +690,38 @@ _timeshift_rsync_restore() {
 
     # Mount the backup device if not already mounted
     local backup_dev
-    backup_dev=$(blkid -U "$backup_uuid" 2>/dev/null)
+    backup_dev=$(sudo blkid -U "$backup_uuid" 2>/dev/null)
     if [[ -z "$backup_dev" ]]; then
         echo "${RED}✗ Backup device with UUID ${backup_uuid} not found${RESET}"
         return 1
     fi
 
+    # Mount the backup device. If already mounted (e.g. as / on a root device),
+    # check whether the snapshot directory is accessible. If not, mount it at
+    # our own path — timeshift may store snapshots in a subvolume only visible
+    # from a dedicated mount.
     local mount_point=""
+    local _did_mount=false
+
     mount_point=$(findmnt -n -o TARGET "$backup_dev" 2>/dev/null | head -1)
 
-    local _did_mount=false
+    # Verify the snapshot directory is actually reachable at this mount point
+    if [[ -n "$mount_point" ]] && [[ ! -d "${mount_point}/timeshift/snapshots/${snapshot_name}" ]]; then
+        # Existing mount (often /) doesn't expose the snapshot dir — remount
+        mount_point=""
+    fi
+
     if [[ -z "$mount_point" ]]; then
         mount_point="/run/timeshift/rsync-restore"
         sudo mkdir -p "$mount_point"
-        if ! sudo mount "$backup_dev" "$mount_point"; then
+        # On btrfs, mount the top-level subvolume (subvolid=5) so that the
+        # timeshift snapshot directory is visible — a default mount would only
+        # show the root subvolume (e.g. Fedora's "root" subvol).
+        local mount_opts=""
+        if _is_btrfs_root; then
+            mount_opts="-o subvolid=5"
+        fi
+        if ! sudo mount $mount_opts "$backup_dev" "$mount_point"; then
             echo "${RED}✗ Failed to mount backup device ${backup_dev}${RESET}"
             return 1
         fi

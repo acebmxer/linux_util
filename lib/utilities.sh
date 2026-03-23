@@ -57,13 +57,24 @@ resolve_utility_name() {
         fi
     done
 
-    # Then try partial match
+    # Then try partial match — collect all matches to detect ambiguity
+    local -a matches=()
     for util in "${UTILITIES[@]}"; do
         if [[ "$(echo "$util" | tr '[:upper:]' '[:lower:]')" == *"$input_lower"* ]]; then
-            echo "$util"
-            return 0
+            matches+=("$util")
         fi
     done
+
+    if [[ ${#matches[@]} -eq 1 ]]; then
+        echo "${matches[0]}"
+        return 0
+    elif [[ ${#matches[@]} -gt 1 ]]; then
+        echo "Error: Ambiguous utility name '$input'. Matches:" >&2
+        for m in "${matches[@]}"; do
+            echo "  - $m" >&2
+        done
+        return 1
+    fi
 
     echo "Error: Utility '$input' not found." >&2
     return 1

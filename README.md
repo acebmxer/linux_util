@@ -164,10 +164,14 @@ linux_util/
 │       ├── bitwarden.sh
 │       ├── brave.sh
 │       ├── docker.sh
-│       ├── ...            (22 files total — one per utility/system task)
+│       ├── ...            (23 files total — one per utility/system task)
 │       └── xen_guest_utilities.sh
+├── linux_util.conf.example Example configuration
+├── linux_util.logrotate   Logrotate config for log rotation
 ├── logs/                  Timestamped execution logs
 ├── manage_logs.sh         Log management utility
+├── tests/
+│   └── test_linux_util.sh Test suite
 └── README.md              This file
 ```
 
@@ -194,7 +198,7 @@ linux_util/
 | Debian/Ubuntu | Ubuntu, Debian, Linux Mint, Pop!\_OS, elementary OS, Zorin, Kali, KDE neon | apt |
 | Fedora | Fedora | dnf |
 | RHEL | RHEL, CentOS, Rocky Linux, AlmaLinux, Oracle Linux | dnf / yum |
-| Arch | Arch Linux, Manjaro, EndeavourOS, Garuda, Artix | pacman + AUR |
+| Arch | Arch Linux, Manjaro, EndeavourOS, Garuda, Artix, CachyOS | pacman + AUR |
 | openSUSE | openSUSE Leap, Tumbleweed, SLES | zypper |
 
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then by auto-detecting the available package manager.
