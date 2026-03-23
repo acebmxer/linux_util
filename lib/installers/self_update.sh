@@ -11,11 +11,28 @@ self_update_script() {
         warn "Script directory is not a git repository; cannot self-update."
         return 1
     fi
+    # Ensure we're on main and up to date with origin
+    git -C "$SCRIPT_DIR" fetch origin main 2>/dev/null || {
+        warn "git fetch failed. Ensure you have network access."
+        return 1
+    }
     local before
     before=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
-    if ! git -C "$SCRIPT_DIR" pull --ff-only origin main; then
-        warn "git pull failed. Ensure you have network access and no local uncommitted changes."
-        return 1
+    local pull_err
+    if ! pull_err=$(git -C "$SCRIPT_DIR" pull --ff-only origin main 2>&1); then
+        # Pull failed — likely untracked/modified files conflict with upstream
+        # (common after switching branches). Reset to align with origin/main.
+        warn "git pull failed; attempting to resolve..."
+        git -C "$SCRIPT_DIR" checkout main 2>/dev/null
+        git -C "$SCRIPT_DIR" reset --hard origin/main 2>/dev/null
+        # Clean any remaining untracked files that conflict with tracked files
+        git -C "$SCRIPT_DIR" clean -fd 2>/dev/null
+        if [[ "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)" == "$(git -C "$SCRIPT_DIR" rev-parse origin/main 2>/dev/null)" ]]; then
+            info "Resolved by resetting to origin/main."
+        else
+            warn "Unable to auto-resolve: $pull_err"
+            return 1
+        fi
     fi
     local after
     after=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
