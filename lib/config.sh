@@ -30,13 +30,13 @@ DEBUG=false
 
 verbose() {
     if [[ "$VERBOSE" == "true" ]]; then
-        printf '\e[36m[VERBOSE]\e[0m %s\n' "$*"
+        printf '%s[VERBOSE]%s %s\n' "${CYAN:-}" "${RESET:-}" "$*"
     fi
 }
 
 debug() {
     if [[ "$DEBUG" == "true" ]]; then
-        printf '\e[35m[DEBUG]\e[0m %s\n' "$*" >&2
+        printf '%s[DEBUG]%s %s\n' "${MAGENTA:-}" "${RESET:-}" "$*" >&2
     fi
 }
 

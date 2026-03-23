@@ -138,6 +138,7 @@ trap 'echo ""; echo "Interrupted."; exit 130' INT TERM
 
 # Clean up any orphaned sudo keep-alive from a previous killed run
 SUDO_PID_FILE="${LOCK_FILE}.pid"
+readonly SUDO_PID_FILE
 if [[ -f "$SUDO_PID_FILE" ]]; then
     _orphan_pid=$(<"$SUDO_PID_FILE")
     if [[ -n "$_orphan_pid" ]] && kill -0 "$_orphan_pid" 2>/dev/null; then
@@ -161,6 +162,7 @@ timeshift_init
 # ============================================================================
 
 # Initialize arrays for tracking utility state
+declare -a SELECTED INSTALLED UPDATE_SELECTED INSTALLED_VERSIONS
 for ((i=0; i<${#UTILITIES[@]}; i++)); do
     SELECTED[$i]=0
     INSTALLED[$i]=0
@@ -328,7 +330,6 @@ process_selected() {
         fi
 
         local _op_start=$SECONDS
-        local _op_status="success"
 
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
             if $func; then
@@ -343,7 +344,7 @@ process_selected() {
                     health_check "$util" || true
                 fi
 
-                ((success_count++))
+                (( success_count += 1 ))
             else
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
@@ -355,7 +356,7 @@ process_selected() {
                 if [[ "$CFG_RETRY_FAILED" == "true" && "$op_type" != "uninstall" && -z "${NO_RETRY[$util]:-}" ]]; then
                     local _attempt=1
                     while (( _attempt < CFG_RETRY_ATTEMPTS )); do
-                        ((_attempt++))
+                        (( _attempt += 1 ))
                         echo "${YELLOW}Retrying ${_verb} for ${util} (attempt ${_attempt}/${CFG_RETRY_ATTEMPTS})...${RESET}"
                         local _retry_start=$SECONDS
                         if $func; then
@@ -363,8 +364,7 @@ process_selected() {
                             echo "${GREEN}✓ Retry succeeded: $util${RESET} ${DIM}(${_retry_dur}s)${RESET}"
                             log_success "Retry ${_verb} succeeded: $util (attempt ${_attempt})"
                             metrics_record "${_verb}_retry" "$util" "$_retry_dur" "success"
-                            _op_status="success"
-                            ((success_count++))
+                            (( success_count += 1 ))
                             if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
                                 health_check "$util" || true
                             fi
@@ -373,7 +373,7 @@ process_selected() {
                     done
                 fi
 
-                ((fail_count++))
+                (( fail_count += 1 ))
                 if [[ "$_is_system_task" == "true" ]]; then
                     failed_utils+=("$util")
                 else
@@ -383,7 +383,7 @@ process_selected() {
         else
             echo "${RED}✗ No ${_verb} function found for: $util${RESET}"
             log_error "No ${_verb} function found for: $util"
-            ((fail_count++))
+            (( fail_count += 1 ))
             if [[ "$_is_system_task" == "true" ]]; then
                 failed_utils+=("$util")
             else
@@ -556,7 +556,11 @@ EOF
                     echo "[DRY RUN] Would install: $_util"; exit 0
                 fi
                 timeshift_create_snapshot "linux_util: Install ${_util}"
-                $_func && { echo "Installed: $_util"; exit 0; } || { echo "Failed: $_util"; exit 1; }
+                if $_func; then
+                    echo "Installed: $_util"; exit 0
+                else
+                    echo "Failed: $_util"; exit 1
+                fi
                 ;;
             --uninstall)
                 [[ -z "${2:-}" ]] && { echo "Error: --uninstall requires a utility name."; exit 1; }
@@ -571,7 +575,11 @@ EOF
                     echo "[DRY RUN] Would uninstall: $_util"; exit 0
                 fi
                 timeshift_create_snapshot "linux_util: Uninstall ${_util}"
-                $_func && { echo "Uninstalled: $_util"; exit 0; } || { echo "Failed: $_util"; exit 1; }
+                if $_func; then
+                    echo "Uninstalled: $_util"; exit 0
+                else
+                    echo "Failed: $_util"; exit 1
+                fi
                 ;;
             --update)
                 [[ -z "${2:-}" ]] && { echo "Error: --update requires a utility name."; exit 1; }
@@ -587,7 +595,11 @@ EOF
                     echo "[DRY RUN] Would update: $_util"; exit 0
                 fi
                 timeshift_create_snapshot "linux_util: Update ${_util}"
-                $_func && { echo "Updated: $_util"; exit 0; } || { echo "Failed: $_util"; exit 1; }
+                if $_func; then
+                    echo "Updated: $_util"; exit 0
+                else
+                    echo "Failed: $_util"; exit 1
+                fi
                 ;;
             --update-all)
                 shift
@@ -604,10 +616,10 @@ EOF
                             if [[ "$DRY_RUN" == "true" ]]; then
                                 echo "  (dry-run skipped)"
                             elif $_upd; then
-                                (( _updated++ ))
+                                (( _updated += 1 ))
                             else
                                 echo "  Failed to update: $_util"
-                                (( _failed++ ))
+                                (( _failed += 1 ))
                             fi
                         fi
                     fi
@@ -620,7 +632,10 @@ EOF
                 local _util
                 _util=$(resolve_utility_name "$2") || exit 1
                 shift 2
-                local _func="${CHECK_FUNCS[$_util]}"
+                local _func="${CHECK_FUNCS[$_util]:-}"
+                if [[ -z "$_func" ]] || ! declare -f "$_func" &>/dev/null; then
+                    echo "Error: No check function found for: $_util"; exit 1
+                fi
                 if $_func 2>/dev/null; then
                     local _ver_func="${VERSION_FUNCS[$_util]:-}"
                     if [[ -n "$_ver_func" ]] && declare -f "$_ver_func" &>/dev/null; then
@@ -649,6 +664,17 @@ EOF
 # ============================================================================
 
 main() {
+    # Pre-parse info-only flags that should work without network access or
+    # side effects (self_update_script does a git pull).
+    for _arg in "$@"; do
+        case "$_arg" in
+            --help|-h|--version|--list|--check)
+                parse_args "$@"
+                return  # parse_args exits for these flags; this is a safety net
+                ;;
+        esac
+    done
+
     self_update_script "$@"
     parse_args "$@"
     run_selection_menu

@@ -307,12 +307,12 @@ draw_menu() {
     local update_count=0
     for ((i=0; i<total; i++)); do
         if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
-            ((update_count++))
+            (( update_count += 1 ))
         elif [[ ${SELECTED[$i]} -eq 1 ]]; then
             if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                ((uninstall_count++))
+                (( uninstall_count += 1 ))
             else
-                ((install_count++))
+                (( install_count += 1 ))
             fi
         fi
     done
@@ -372,8 +372,8 @@ build_nav_columns() {
             local idx=$(( c * sys_rows + r ))
             if (( idx < sys_tasks )); then
                 NAV_FLAT+=( "$idx" )
-                (( col_size++ ))
-                (( col_sys_size++ ))
+                (( col_size += 1 ))
+                (( col_sys_size += 1 ))
             fi
         done
 
@@ -382,7 +382,7 @@ build_nav_columns() {
             local u_idx=$(( c * util_rows + r ))
             if (( u_idx < utilities_count )); then
                 NAV_FLAT+=( "$(( sys_tasks + u_idx ))" )
-                (( col_size++ ))
+                (( col_size += 1 ))
             fi
         done
 
@@ -621,12 +621,14 @@ run_selection_menu() {
                 # Continue to installation
                 show_cursor
                 stty echo
+                trap - WINCH
                 trap cleanup_on_exit EXIT
                 return 0
                 ;;
             QUIT)
                 show_cursor
                 stty echo
+                trap - WINCH
                 trap cleanup_on_exit EXIT
                 echo ""
                 echo "${YELLOW}Operation cancelled.${RESET}"

@@ -11,9 +11,9 @@
 # subject to word-splitting by sh. For commands with complex quoting,
 # use 'sudo bash -c "..."' directly instead of this helper.
 run_as_root() { sudo sh -c "$*"; }
-info()  { printf '\e[32m[INFO]\e[0m %s\n' "$*"; }
-warn()  { printf '\e[33m[WARN]\e[0m %s\n' "$*"; }
-error() { printf '\e[31m[ERROR]\e[0m %s\n' "$*" >&2; }
+info()  { printf '%s[INFO]%s %s\n' "${GREEN:-}" "${RESET:-}" "$*"; }
+warn()  { printf '%s[WARN]%s %s\n' "${YELLOW:-}" "${RESET:-}" "$*"; }
+error() { printf '%s[ERROR]%s %s\n' "${RED:-}" "${RESET:-}" "$*" >&2; }
 
 # ============================================================================
 # Pre-flight System Checks
@@ -37,11 +37,11 @@ preflight_checks() {
         local free_mb=$(( free_kb / 1024 ))
         warn "Low disk space: ${free_mb}MB available (minimum: ${CFG_DISK_MIN_MB}MB)"
         log_warning "Pre-flight: Low disk space: ${free_mb}MB (min ${CFG_DISK_MIN_MB}MB)"
-        ((checks_failed++))
+        (( checks_failed += 1 ))
     else
         local free_mb=$(( free_kb / 1024 ))
         verbose "Disk space OK: ${free_mb}MB available"
-        ((checks_passed++))
+        (( checks_passed += 1 ))
     fi
 
     # 2. Internet connectivity
@@ -50,34 +50,40 @@ preflight_checks() {
                ping -c1 -W"$CFG_DNS_TIMEOUT_SECONDS" 8.8.8.8; } &>/dev/null; then
             warn "Internet connectivity check failed. Downloads may not work."
             log_warning "Pre-flight: Internet connectivity check failed"
-            ((checks_warned++))
+            (( checks_warned += 1 ))
         else
             verbose "Internet connectivity OK"
-            ((checks_passed++))
+            (( checks_passed += 1 ))
         fi
     else
         verbose "DNS check disabled by config"
-        ((checks_passed++))
+        (( checks_passed += 1 ))
     fi
 
     # 3. Conflicting package manager processes
-    local pm_pattern=""
+    local -a pm_names=()
     case "$PKG_MGR" in
-        apt)     pm_pattern="apt|dpkg" ;;
-        dnf)     pm_pattern="dnf|rpm" ;;
-        yum)     pm_pattern="yum|rpm" ;;
-        pacman)  pm_pattern="pacman" ;;
-        zypper)  pm_pattern="zypper|rpm" ;;
+        apt)     pm_names=(apt dpkg) ;;
+        dnf)     pm_names=(dnf rpm) ;;
+        yum)     pm_names=(yum rpm) ;;
+        pacman)  pm_names=(pacman) ;;
+        zypper)  pm_names=(zypper rpm) ;;
     esac
-    if [[ -n "$pm_pattern" ]]; then
-        # Exclude our own process and grep itself
-        if pgrep -x -f "$pm_pattern" &>/dev/null 2>&1; then
-            warn "Another package manager process may be running (${pm_pattern})"
+    if [[ ${#pm_names[@]} -gt 0 ]]; then
+        local _pm_conflict=false
+        for _pm in "${pm_names[@]}"; do
+            if pgrep -x "$_pm" &>/dev/null; then
+                _pm_conflict=true
+                break
+            fi
+        done
+        if [[ "$_pm_conflict" == "true" ]]; then
+            warn "Another package manager process may be running (${pm_names[*]})"
             log_warning "Pre-flight: Conflicting package manager process detected"
-            ((checks_warned++))
+            (( checks_warned += 1 ))
         else
             verbose "No conflicting package manager processes"
-            ((checks_passed++))
+            (( checks_passed += 1 ))
         fi
     fi
 
@@ -108,11 +114,11 @@ preflight_checks() {
     esac
     if [[ "$repo_ok" == "true" ]]; then
         verbose "Package repositories accessible"
-        ((checks_passed++))
+        (( checks_passed += 1 ))
     else
         warn "Package repository check failed. Installs from repos may fail."
         log_warning "Pre-flight: Package repository check failed"
-        ((checks_warned++))
+        (( checks_warned += 1 ))
     fi
 
     # Summary
@@ -143,10 +149,12 @@ setup_logrotate() {
     fi
 
     # Substitute the actual log directory path into the template
-    sudo sed "s|__LOG_DIR__|${LOG_DIR}|g; s|__USER__|${USER}|g" \
-        "$logrotate_src" > /tmp/linux_util_logrotate.tmp
-    sudo mv /tmp/linux_util_logrotate.tmp "$logrotate_dest"
-    sudo chmod 644 "$logrotate_dest"
+    local tmp_file
+    tmp_file=$(mktemp) || { error "Failed to create temp file"; return 1; }
+    sed "s|__LOG_DIR__|${LOG_DIR}|g; s|__USER__|${USER}|g" \
+        "$logrotate_src" > "$tmp_file"
+    sudo install -m 644 -o root -g root "$tmp_file" "$logrotate_dest"
+    rm -f "$tmp_file"
 
     info "Logrotate configuration installed to ${logrotate_dest}"
     return 0
