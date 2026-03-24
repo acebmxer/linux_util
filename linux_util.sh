@@ -252,7 +252,7 @@ process_selected() {
         echo ""
     fi
 
-    read -p "Press ENTER to continue or Ctrl+C to cancel..." < /dev/tty
+    read -rp "Press ENTER to continue or Ctrl+C to cancel..." < /dev/tty
     echo ""
 
     if [[ "$DRY_RUN" == "true" ]]; then

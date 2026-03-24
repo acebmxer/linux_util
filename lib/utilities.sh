@@ -236,7 +236,7 @@ health_check() {
         return 0
     fi
 
-    if eval "$check_cmd" &>/dev/null; then
+    if bash -c "$check_cmd" &>/dev/null; then
         verbose "Health check passed for ${util_name}"
         log_success "Health check passed: ${util_name}"
         return 0

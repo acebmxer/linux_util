@@ -21,8 +21,17 @@ self_update_script() {
     local pull_err
     if ! pull_err=$(git -C "$SCRIPT_DIR" pull --ff-only origin main 2>&1); then
         # Pull failed — likely untracked/modified files conflict with upstream
-        # (common after switching branches). Reset to align with origin/main.
-        warn "git pull failed; attempting to resolve..."
+        # (common after switching branches). Warn the user before discarding
+        # local changes, since reset --hard + clean -fd are destructive.
+        warn "git pull failed: $pull_err"
+        warn "Local modifications in ${SCRIPT_DIR} will be discarded to sync with origin/main."
+        local _reset_confirm
+        read -n 1 -rp "Reset to origin/main? Any local changes will be lost. (y/N) " _reset_confirm < /dev/tty
+        echo
+        if [[ ! "$_reset_confirm" =~ ^[Yy]$ ]]; then
+            warn "Self-update aborted. Resolve git conflicts manually in ${SCRIPT_DIR}."
+            return 1
+        fi
         git -C "$SCRIPT_DIR" checkout main 2>/dev/null
         git -C "$SCRIPT_DIR" reset --hard origin/main 2>/dev/null
         # Clean any remaining untracked files that conflict with tracked files
@@ -30,7 +39,7 @@ self_update_script() {
         if [[ "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)" == "$(git -C "$SCRIPT_DIR" rev-parse origin/main 2>/dev/null)" ]]; then
             info "Resolved by resetting to origin/main."
         else
-            warn "Unable to auto-resolve: $pull_err"
+            warn "Unable to auto-resolve. Manual intervention required."
             return 1
         fi
     fi
