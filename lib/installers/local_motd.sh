@@ -75,7 +75,8 @@ fi'
 
 uninstall_landscape_motd() {
     info "Uninstalling Landscape Client and removing MOTD configuration..."
-    run_as_root "apt-get remove -y landscape-client" || warn "Failed to uninstall landscape-client"
+    run_as_root "apt-get purge --autoremove -y landscape-client" || warn "Failed to uninstall landscape-client"
+    run_as_root "apt-get autoclean"
 
     if [[ -f "${HOME}/.bashrc" ]]; then
         sed -i '/^# Display MOTD for ZSH/,/^fi$/d' "${HOME}/.bashrc"
@@ -87,6 +88,8 @@ uninstall_landscape_motd() {
         info "Removed MOTD code from ~/.zshrc"
     fi
 
+    rm -rf ~/.config/landscape
+    rm -rf ~/.landscape
     info "Local MOTD configuration removed."
 }
 

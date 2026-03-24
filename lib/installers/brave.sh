@@ -43,7 +43,8 @@ uninstall_brave() {
     echo "Uninstalling Brave Browser..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y brave-browser
+            sudo apt purge --autoremove -y brave-browser
+            sudo apt autoclean
             sudo rm -f /etc/apt/sources.list.d/brave-browser-release.list
             sudo rm -f /usr/share/keyrings/brave-browser-archive-keyring.gpg
             ;;
@@ -59,6 +60,8 @@ uninstall_brave() {
             sudo zypper removerepo brave-browser 2>/dev/null || true
             ;;
     esac
+    rm -rf ~/.config/BraveSoftware
+    rm -rf ~/.brave
 }
 update_brave() {
     echo "Updating Brave Browser..."

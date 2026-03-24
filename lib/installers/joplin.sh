@@ -102,6 +102,8 @@ uninstall_joplin() {
     rm -f ~/.local/share/icons/hicolor/*/apps/joplin.png
     rm -f ~/.local/share/icons/hicolor/*/apps/appimagekit-joplin.png
     rm -f ~/.local/bin/joplin
+    rm -rf ~/.config/joplin-desktop
+    rm -rf ~/.config/joplin
     command -v update-desktop-database &>/dev/null && update-desktop-database ~/.local/share/applications || true
     command -v gtk-update-icon-cache &>/dev/null && gtk-update-icon-cache ~/.local/share/icons/hicolor || true
 }

@@ -50,14 +50,15 @@ install_syncthing() {
 
 uninstall_syncthing() {
     echo "Uninstalling Syncthing..."
-    
+
     # Stop and disable the service if running
     systemctl --user stop syncthing.service 2>/dev/null || true
     systemctl --user disable syncthing.service 2>/dev/null || true
-    
+
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y syncthing
+            sudo apt purge --autoremove -y syncthing
+            sudo apt autoclean
             sudo rm -f /etc/apt/sources.list.d/syncthing.list
             sudo rm -f /etc/apt/keyrings/syncthing-archive-keyring.gpg
             ;;
@@ -72,10 +73,9 @@ uninstall_syncthing() {
             sudo zypper remove -y syncthing
             ;;
     esac
-    
+    rm -rf ~/.config/syncthing
+    rm -rf ~/.syncthing
     echo "Syncthing has been uninstalled."
-    echo "Note: Your Syncthing configuration and data (~/.config/syncthing) have been preserved."
-    echo "To remove them manually, run: rm -rf ~/.config/syncthing"
 }
 
 update_syncthing() {

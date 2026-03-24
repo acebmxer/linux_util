@@ -45,7 +45,8 @@ uninstall_vscode() {
     echo "Uninstalling Visual Studio Code..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y code
+            sudo apt purge --autoremove -y code
+            sudo apt autoclean
             sudo rm -f /etc/apt/sources.list.d/vscode.list
             sudo rm -f /etc/apt/keyrings/packages.microsoft.gpg
             ;;
@@ -61,6 +62,8 @@ uninstall_vscode() {
             sudo rm -f /etc/zypp/repos.d/vscode.repo
             ;;
     esac
+    rm -rf ~/.config/Code
+    rm -rf ~/.vscode
 }
 update_vscode() {
     echo "Updating Visual Studio Code..."

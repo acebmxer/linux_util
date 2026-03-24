@@ -58,8 +58,9 @@ uninstall_termius() {
         flatpak uninstall -y com.termius.Termius
     else
         echo "Termius installation not found."
-        return 1
     fi
+    rm -rf ~/.config/Termius
+    rm -rf ~/.termius
 }
 update_termius() {
     echo "Updating Termius SSH Client..."

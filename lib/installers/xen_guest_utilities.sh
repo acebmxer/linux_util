@@ -6,6 +6,29 @@ check_xen_guest_utilities() {
     pkg_check_installed xe-guest-utilities || pkg_check_installed xen-guest-agent || pkg_check_installed xe-guest-utilities-latest
 }
 
+uninstall_xen_guest_utilities() {
+    echo "Uninstalling XEN Guest Utilities..."
+
+    # Stop and disable the service
+    sudo systemctl stop xe-linux-distribution 2>/dev/null || true
+    sudo systemctl disable xe-linux-distribution 2>/dev/null || true
+
+    # Remove all known package variants
+    if pkg_check_installed xe-guest-utilities; then
+        pkg_remove xe-guest-utilities
+    fi
+    if pkg_check_installed xen-guest-agent; then
+        pkg_remove xen-guest-agent
+    fi
+    if pkg_check_installed xe-guest-utilities-latest; then
+        pkg_remove xe-guest-utilities-latest
+    fi
+
+    rm -rf ~/.config/xen
+    rm -rf ~/.xen
+    echo "XEN Guest Utilities have been uninstalled."
+}
+
 get_version_xen_guest_utilities() {
     local ver=""
     if pkg_check_installed xe-guest-utilities; then

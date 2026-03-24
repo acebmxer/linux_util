@@ -39,8 +39,8 @@ uninstall_kde() {
     echo "Uninstalling KDE Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y kde-full kde-plasma-desktop plasma-desktop sddm
-            sudo apt autoremove -y
+            sudo apt purge --autoremove -y kde-full kde-plasma-desktop plasma-desktop sddm
+            sudo apt autoclean
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group remove -y @kde-desktop-environment || \
@@ -54,6 +54,8 @@ uninstall_kde() {
             sudo zypper remove -y -t pattern kde kde_plasma
             ;;
     esac
+    rm -rf ~/.config/kde*
+    rm -rf ~/.kde*
     echo "KDE Desktop uninstalled. You may need to install another desktop environment."
 }
 

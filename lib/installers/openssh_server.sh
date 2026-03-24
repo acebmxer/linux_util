@@ -41,8 +41,8 @@ uninstall_openssh_server() {
     sudo systemctl disable ssh 2>/dev/null || sudo systemctl disable sshd 2>/dev/null || true
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y openssh-server
-            sudo apt autoremove -y
+            sudo apt purge --autoremove -y openssh-server
+            sudo apt autoclean
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" remove -y openssh-server

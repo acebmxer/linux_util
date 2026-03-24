@@ -73,7 +73,8 @@ uninstall_pia_vpn() {
     echo "Uninstalling PIA VPN..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y privateinternetaccess
+            sudo apt purge --autoremove -y privateinternetaccess
+            sudo apt autoclean
             sudo rm -f /etc/apt/sources.list.d/pia.list
             sudo rm -f /usr/share/keyrings/pia-archive-keyring.gpg
             ;;
@@ -88,6 +89,8 @@ uninstall_pia_vpn() {
             flatpak uninstall -y com.privateinternetaccess.PIA 2>/dev/null || true
             ;;
     esac
+    rm -rf ~/.config/privateinternetaccess
+    rm -rf ~/.privateinternetaccess
     echo "PIA VPN has been uninstalled."
 }
 

@@ -82,8 +82,9 @@ uninstall_bitwarden() {
         pkg_remove bitwarden
     else
         echo "Bitwarden installation not found."
-        return 1
     fi
+    rm -rf ~/.config/Bitwarden
+    rm -rf ~/.bitwarden
 }
 update_bitwarden() {
     echo "Updating Bitwarden Client..."

@@ -103,6 +103,7 @@ uninstall_devolutions_rdm() {
             # Clean up repository configuration for Debian
             if [[ "$DISTRO_FAMILY" == "debian" ]]; then
                 sudo rm -f /etc/apt/sources.list.d/devolutions-rdm.list
+                sudo rm -f /usr/share/keyrings/devolutions-rdm.gpg
             fi
             # Clean up repository configuration for RHEL/Fedora
             if [[ "$DISTRO_FAMILY" == "fedora" ]] || [[ "$DISTRO_FAMILY" == "rhel" ]]; then
@@ -122,6 +123,8 @@ uninstall_devolutions_rdm() {
             fi
             ;;
     esac
+    rm -rf ~/.config/Devolutions
+    rm -rf ~/.devolutions
 }
 update_devolutions_rdm() {
     echo "Updating Devolutions RDM..."
