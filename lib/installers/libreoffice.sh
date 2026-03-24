@@ -94,8 +94,8 @@ uninstall_libreoffice() {
     echo "Uninstalling LibreOffice..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y libreoffice*
-            sudo apt autoremove -y
+            sudo apt purge --autoremove -y libreoffice*
+            sudo apt autoclean
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" remove -y libreoffice*
@@ -114,6 +114,8 @@ uninstall_libreoffice() {
             fi
             ;;
     esac
+    rm -rf ~/.config/libreoffice
+    rm -rf ~/.libreoffice
     echo "LibreOffice has been uninstalled."
 }
 update_libreoffice() {

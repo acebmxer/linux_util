@@ -395,8 +395,8 @@ uninstall_nvidia_drivers() {
     echo "Uninstalling NVIDIA drivers..."
     case "$PKG_MGR" in
         apt)
-            sudo apt-get remove -y 'nvidia-driver-*' nvtop
-            sudo apt-get autoremove -y
+            sudo apt-get purge --autoremove -y 'nvidia-driver-*' nvtop
+            sudo apt-get autoclean
             ;;
         dnf|yum)
             sudo "$PKG_MGR" remove -y nvidia* nvtop
@@ -408,6 +408,8 @@ uninstall_nvidia_drivers() {
             sudo zypper remove -y nvidia* nvtop
             ;;
     esac
+    rm -rf ~/.config/nvidia
+    rm -rf ~/.nv
 }
 
 update_nvidia_drivers() {

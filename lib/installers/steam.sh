@@ -215,10 +215,15 @@ uninstall_steam() {
         flatpak uninstall -y com.valvesoftware.Steam
     else
         case "$DISTRO_FAMILY" in
-            debian) sudo apt remove -y steam steam-installer steam-launcher ;;
+            debian)
+                sudo apt purge --autoremove -y steam steam-installer steam-launcher
+                sudo apt autoclean
+                ;;
             *)      pkg_remove steam 2>/dev/null || true ;;
         esac
     fi
+    rm -rf ~/.config/steam
+    rm -rf ~/.steam
 }
 update_steam() {
     echo "Updating Steam..."

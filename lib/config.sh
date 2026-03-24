@@ -40,6 +40,18 @@ debug() {
     fi
 }
 
+# --- Validation Helpers ---
+# Verify that a config value is a positive integer. Returns 0 if valid, 1 if not.
+# On failure, prints a warning and leaves the variable at its previous (default) value.
+_cfg_require_int() {
+    local key="$1" value="$2"
+    if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+        echo "[WARN] Invalid value for ${key}: '${value}' (expected a positive integer, keeping default)" >&2
+        return 1
+    fi
+    return 0
+}
+
 # --- Configuration File Parser ---
 # Reads key=value pairs from a config file, ignoring comments and blank lines.
 # Only sets variables that match known CFG_* keys (whitelist approach).
@@ -77,16 +89,16 @@ load_config() {
 
         # Map config keys to CFG_ variables (whitelist)
         case "$key" in
-            log_retention_days)     CFG_LOG_RETENTION_DAYS="$value" ;;
-            max_log_size_mb)        CFG_MAX_LOG_SIZE_MB="$value" ;;
+            log_retention_days)     _cfg_require_int "$key" "$value" && CFG_LOG_RETENTION_DAYS="$value" ;;
+            max_log_size_mb)        _cfg_require_int "$key" "$value" && CFG_MAX_LOG_SIZE_MB="$value" ;;
             compress_old_logs)      CFG_COMPRESS_OLD_LOGS="$value" ;;
             log_level)              CFG_LOG_LEVEL="$value" ;;
             auto_confirm)           CFG_AUTO_CONFIRM="$value" ;;
             retry_failed)           CFG_RETRY_FAILED="$value" ;;
-            retry_attempts)         CFG_RETRY_ATTEMPTS="$value" ;;
+            retry_attempts)         _cfg_require_int "$key" "$value" && CFG_RETRY_ATTEMPTS="$value" ;;
             dns_check_enabled)      CFG_DNS_CHECK_ENABLED="$value" ;;
-            dns_timeout_seconds)    CFG_DNS_TIMEOUT_SECONDS="$value" ;;
-            disk_min_mb)            CFG_DISK_MIN_MB="$value" ;;
+            dns_timeout_seconds)    _cfg_require_int "$key" "$value" && CFG_DNS_TIMEOUT_SECONDS="$value" ;;
+            disk_min_mb)            _cfg_require_int "$key" "$value" && CFG_DISK_MIN_MB="$value" ;;
             auto_cleanup)           CFG_AUTO_CLEANUP="$value" ;;
             create_backups)         CFG_CREATE_BACKUPS="$value" ;;
             backup_dir)             CFG_BACKUP_DIR="$value" ;;

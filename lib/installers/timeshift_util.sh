@@ -56,8 +56,8 @@ uninstall_timeshift() {
     echo "Uninstalling Timeshift..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y timeshift
-            sudo apt autoremove -y
+            sudo apt purge --autoremove -y timeshift
+            sudo apt autoclean
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" remove -y timeshift
@@ -69,6 +69,8 @@ uninstall_timeshift() {
             sudo zypper remove -y timeshift
             ;;
     esac
+    rm -rf ~/.config/timeshift
+    rm -rf ~/.timeshift
 }
 
 update_timeshift() {

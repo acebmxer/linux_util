@@ -35,7 +35,8 @@ uninstall_qbittorrent() {
     echo "Uninstalling QBittorrent..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y qbittorrent
+            sudo apt purge --autoremove -y qbittorrent
+            sudo apt autoclean
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" remove -y qbittorrent
@@ -48,6 +49,8 @@ uninstall_qbittorrent() {
             sudo zypper remove -y qbittorrent 2>/dev/null || true
             ;;
     esac
+    rm -rf ~/.config/qBittorrent
+    rm -rf ~/.qBittorrent
     echo "QBittorrent has been uninstalled."
 }
 

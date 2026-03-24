@@ -18,7 +18,7 @@ setup_local_motd() {
         return 1
     }
 
-    local motd_code='# Display MOTD for ZSH
+    local motd_code='# BEGIN linux_util MOTD display
 if [ -f /etc/update-motd.d/00-header ]; then
     /etc/update-motd.d/00-header
 fi
@@ -48,10 +48,17 @@ if [ -f /etc/update-motd.d/98-fsck-at-reboot ]; then
 fi
 if [ -f /etc/update-motd.d/98-reboot-required ]; then
     /etc/update-motd.d/98-reboot-required
-fi'
+fi
+# END linux_util MOTD display'
 
     if [[ -f "${HOME}/.bashrc" ]]; then
-        if ! grep -q "Display MOTD for ZSH" "${HOME}/.bashrc"; then
+        # Remove legacy MOTD block (pre-v2 marker) if present.
+        # The old block has multiple if/fi pairs; sed range stops at the first
+        # ^fi$, so we must loop until the marker is fully gone.
+        while grep -q '^# Display MOTD for ZSH$' "${HOME}/.bashrc"; do
+            sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.bashrc"
+        done
+        if ! grep -q "BEGIN linux_util MOTD display" "${HOME}/.bashrc"; then
             echo "" >> "${HOME}/.bashrc"
             echo "$motd_code" >> "${HOME}/.bashrc"
             info "Added MOTD display code to ~/.bashrc"
@@ -61,7 +68,11 @@ fi'
     fi
 
     if [[ -f "${HOME}/.zshrc" ]]; then
-        if ! grep -q "Display MOTD for ZSH" "${HOME}/.zshrc"; then
+        # Remove legacy MOTD block (pre-v2 marker) if present.
+        while grep -q '^# Display MOTD for ZSH$' "${HOME}/.zshrc"; do
+            sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.zshrc"
+        done
+        if ! grep -q "BEGIN linux_util MOTD display" "${HOME}/.zshrc"; then
             echo "" >> "${HOME}/.zshrc"
             echo "$motd_code" >> "${HOME}/.zshrc"
             info "Added MOTD display code to ~/.zshrc"
@@ -75,18 +86,32 @@ fi'
 
 uninstall_landscape_motd() {
     info "Uninstalling Landscape Client and removing MOTD configuration..."
-    run_as_root "apt-get remove -y landscape-client" || warn "Failed to uninstall landscape-client"
+    run_as_root "apt-get purge --autoremove -y landscape-client" || warn "Failed to uninstall landscape-client"
+    run_as_root "apt-get autoclean"
 
     if [[ -f "${HOME}/.bashrc" ]]; then
-        sed -i '/^# Display MOTD for ZSH/,/^fi$/d' "${HOME}/.bashrc"
+        # Remove current markers
+        sed -i '/^# BEGIN linux_util MOTD display$/,/^# END linux_util MOTD display$/d' "${HOME}/.bashrc"
+        # Remove legacy markers (pre-v2) — loop because each sed pass only
+        # removes up to the first ^fi$, and the old block has many if/fi pairs.
+        while grep -q '^# Display MOTD for ZSH$' "${HOME}/.bashrc"; do
+            sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.bashrc"
+        done
         info "Removed MOTD code from ~/.bashrc"
     fi
 
     if [[ -f "${HOME}/.zshrc" ]]; then
-        sed -i '/^# Display MOTD for ZSH/,/^fi$/d' "${HOME}/.zshrc"
+        # Remove current markers
+        sed -i '/^# BEGIN linux_util MOTD display$/,/^# END linux_util MOTD display$/d' "${HOME}/.zshrc"
+        # Remove legacy markers (pre-v2)
+        while grep -q '^# Display MOTD for ZSH$' "${HOME}/.zshrc"; do
+            sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.zshrc"
+        done
         info "Removed MOTD code from ~/.zshrc"
     fi
 
+    rm -rf ~/.config/landscape
+    rm -rf ~/.landscape
     info "Local MOTD configuration removed."
 }
 

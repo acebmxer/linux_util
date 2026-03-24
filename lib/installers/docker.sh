@@ -84,7 +84,8 @@ uninstall_docker() {
     sudo systemctl disable docker 2>/dev/null || true
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            sudo apt purge --autoremove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            sudo apt autoclean
             sudo rm -f /etc/apt/sources.list.d/docker.list
             sudo rm -f /usr/share/keyrings/docker-archive-keyring.gpg
             sudo rm -f /etc/apt/keyrings/docker.gpg
@@ -99,6 +100,8 @@ uninstall_docker() {
             sudo zypper remove -y docker docker-compose docker-buildx
             ;;
     esac
+    rm -rf ~/.config/docker
+    rm -rf ~/.docker
 }
 update_docker() {
     echo "Updating Docker..."

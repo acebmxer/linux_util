@@ -131,7 +131,7 @@ pkg_install() {
 
 pkg_remove() {
     case "$PKG_MGR" in
-        apt)     sudo apt remove -y "$@" ;;
+        apt)     sudo apt purge --autoremove -y "$@" && sudo apt autoclean ;;
         dnf|yum) sudo "$PKG_MGR" remove -y "$@" ;;
         pacman)  sudo pacman -Rs --noconfirm "$@" ;;
         zypper)  sudo zypper remove -y "$@" ;;
