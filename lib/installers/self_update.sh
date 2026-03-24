@@ -11,8 +11,15 @@ self_update_script() {
         warn "Script directory is not a git repository; cannot self-update."
         return 1
     fi
-    # Ensure we're on main and up to date with origin
-    git -C "$SCRIPT_DIR" fetch origin main 2>/dev/null || {
+    # Detect the current branch so updates track whichever branch was checked out
+    local current_branch
+    current_branch=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    if [[ -z "$current_branch" || "$current_branch" == "HEAD" ]]; then
+        current_branch="main"
+        warn "Could not detect current branch; defaulting to '$current_branch'."
+    fi
+    info "Current branch: $current_branch"
+    git -C "$SCRIPT_DIR" fetch origin "$current_branch" 2>/dev/null || {
         warn "git fetch failed. Ensure you have network access."
         return 1
     }
@@ -36,8 +43,8 @@ self_update_script() {
         git -C "$SCRIPT_DIR" reset --hard origin/main 2>/dev/null
         # Clean any remaining untracked files that conflict with tracked files
         git -C "$SCRIPT_DIR" clean -fd 2>/dev/null
-        if [[ "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)" == "$(git -C "$SCRIPT_DIR" rev-parse origin/main 2>/dev/null)" ]]; then
-            info "Resolved by resetting to origin/main."
+        if [[ "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)" == "$(git -C "$SCRIPT_DIR" rev-parse "origin/$current_branch" 2>/dev/null)" ]]; then
+            info "Resolved by resetting to origin/$current_branch."
         else
             warn "Unable to auto-resolve. Manual intervention required."
             return 1
@@ -46,7 +53,7 @@ self_update_script() {
     local after
     after=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
     if [[ "$before" != "$after" ]]; then
-        info "Script updated to $(git -C "$SCRIPT_DIR" rev-parse --short HEAD). Restarting..."
+        info "Script updated to $(git -C "$SCRIPT_DIR" rev-parse --short HEAD) on branch '$current_branch'. Restarting..."
         # Clean up before re-exec (EXIT trap does not fire on exec)
         [[ -n "$SUDO_KEEPALIVE_PID" ]] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
         exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
