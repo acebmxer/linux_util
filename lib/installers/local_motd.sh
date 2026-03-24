@@ -52,8 +52,12 @@ fi
 # END linux_util MOTD display'
 
     if [[ -f "${HOME}/.bashrc" ]]; then
-        # Remove legacy MOTD block (pre-v2 marker) if present
-        sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.bashrc"
+        # Remove legacy MOTD block (pre-v2 marker) if present.
+        # The old block has multiple if/fi pairs; sed range stops at the first
+        # ^fi$, so we must loop until the marker is fully gone.
+        while grep -q '^# Display MOTD for ZSH$' "${HOME}/.bashrc"; do
+            sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.bashrc"
+        done
         if ! grep -q "BEGIN linux_util MOTD display" "${HOME}/.bashrc"; then
             echo "" >> "${HOME}/.bashrc"
             echo "$motd_code" >> "${HOME}/.bashrc"
@@ -64,8 +68,10 @@ fi
     fi
 
     if [[ -f "${HOME}/.zshrc" ]]; then
-        # Remove legacy MOTD block (pre-v2 marker) if present
-        sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.zshrc"
+        # Remove legacy MOTD block (pre-v2 marker) if present.
+        while grep -q '^# Display MOTD for ZSH$' "${HOME}/.zshrc"; do
+            sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.zshrc"
+        done
         if ! grep -q "BEGIN linux_util MOTD display" "${HOME}/.zshrc"; then
             echo "" >> "${HOME}/.zshrc"
             echo "$motd_code" >> "${HOME}/.zshrc"
@@ -86,8 +92,11 @@ uninstall_landscape_motd() {
     if [[ -f "${HOME}/.bashrc" ]]; then
         # Remove current markers
         sed -i '/^# BEGIN linux_util MOTD display$/,/^# END linux_util MOTD display$/d' "${HOME}/.bashrc"
-        # Remove legacy markers (pre-v2)
-        sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.bashrc"
+        # Remove legacy markers (pre-v2) — loop because each sed pass only
+        # removes up to the first ^fi$, and the old block has many if/fi pairs.
+        while grep -q '^# Display MOTD for ZSH$' "${HOME}/.bashrc"; do
+            sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.bashrc"
+        done
         info "Removed MOTD code from ~/.bashrc"
     fi
 
@@ -95,7 +104,9 @@ uninstall_landscape_motd() {
         # Remove current markers
         sed -i '/^# BEGIN linux_util MOTD display$/,/^# END linux_util MOTD display$/d' "${HOME}/.zshrc"
         # Remove legacy markers (pre-v2)
-        sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.zshrc"
+        while grep -q '^# Display MOTD for ZSH$' "${HOME}/.zshrc"; do
+            sed -i '/^# Display MOTD for ZSH$/,/^fi$/d' "${HOME}/.zshrc"
+        done
         info "Removed MOTD code from ~/.zshrc"
     fi
 
