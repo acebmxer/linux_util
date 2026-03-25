@@ -270,9 +270,25 @@ process_selected() {
 
     if [[ "$TIMESHIFT_AVAILABLE" == "true" && "$_skip_auto_snapshot" == "false" ]]; then
         local _ts_comment="linux_util:"
-        [[ ${#to_install[@]} -gt 0 ]] && _ts_comment+=" Install ${to_install[*]},"
-        [[ ${#to_uninstall[@]} -gt 0 ]] && _ts_comment+=" Uninstall ${to_uninstall[*]},"
-        [[ ${#to_update[@]} -gt 0 ]] && _ts_comment+=" Update ${to_update[*]},"
+
+        # Separate "run" tasks from "install" tasks based on uninstall function.
+        # System tasks with noop_function as uninstall are "run" (e.g. System Updates);
+        # everything else is "install" (regular utilities + system tasks like KDE, NVIDIA).
+        if [[ ${#to_install[@]} -gt 0 ]]; then
+            local _run_items=() _install_items=()
+            for _item in "${to_install[@]}"; do
+                if [[ "${UNINSTALL_FUNCS[$_item]:-}" == "noop_function" ]]; then
+                    _run_items+=("$_item")
+                else
+                    _install_items+=("$_item")
+                fi
+            done
+            [[ ${#_run_items[@]} -gt 0 ]] && _ts_comment+=" Before running ${_run_items[*]},"
+            [[ ${#_install_items[@]} -gt 0 ]] && _ts_comment+=" Before installing ${_install_items[*]},"
+        fi
+
+        [[ ${#to_uninstall[@]} -gt 0 ]] && _ts_comment+=" Before uninstalling ${to_uninstall[*]},"
+        [[ ${#to_update[@]} -gt 0 ]] && _ts_comment+=" Before updating ${to_update[*]},"
         _ts_comment="${_ts_comment%,}"  # Remove trailing comma
         timeshift_create_snapshot "$_ts_comment"
     fi
@@ -555,7 +571,11 @@ EOF
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would install: $_util"; exit 0
                 fi
-                timeshift_create_snapshot "linux_util: Install ${_util}"
+                if [[ "${UNINSTALL_FUNCS[$_util]:-}" == "noop_function" ]]; then
+                    timeshift_create_snapshot "linux_util: Before running ${_util}"
+                else
+                    timeshift_create_snapshot "linux_util: Before installing ${_util}"
+                fi
                 if $_func; then
                     echo "Installed: $_util"; exit 0
                 else
@@ -574,7 +594,7 @@ EOF
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would uninstall: $_util"; exit 0
                 fi
-                timeshift_create_snapshot "linux_util: Uninstall ${_util}"
+                timeshift_create_snapshot "linux_util: Before uninstalling ${_util}"
                 if $_func; then
                     echo "Uninstalled: $_util"; exit 0
                 else
@@ -594,7 +614,7 @@ EOF
                 if [[ "$DRY_RUN" == "true" ]]; then
                     echo "[DRY RUN] Would update: $_util"; exit 0
                 fi
-                timeshift_create_snapshot "linux_util: Update ${_util}"
+                timeshift_create_snapshot "linux_util: Before updating ${_util}"
                 if $_func; then
                     echo "Updated: $_util"; exit 0
                 else
@@ -605,7 +625,7 @@ EOF
                 shift
                 echo "Updating all installed utilities..."
                 pkg_refresh
-                timeshift_create_snapshot "linux_util: Update all installed utilities"
+                timeshift_create_snapshot "linux_util: Before updating all installed utilities"
                 local _updated=0 _failed=0
                 for _util in "${UTILITIES[@]}"; do
                     local _check="${CHECK_FUNCS[$_util]:-}"
