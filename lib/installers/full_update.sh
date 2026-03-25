@@ -104,28 +104,36 @@ setup_full_update() {
         local confirm=""
         read -rp "Continue with distribution upgrade? (y/N): " confirm
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
-            if pkg_distro_upgrade "$target_version"; then
+            local upgrade_rc=0
+            pkg_distro_upgrade "$target_version" || upgrade_rc=$?
+
+            if (( upgrade_rc == 0 )); then
                 info "Distribution upgrade completed. Running cleanup..."
                 pkg_cleanup_thorough
                 info "Full system upgrade completed."
                 return 0
             fi
 
-            # If a reboot is required (updates were applied but system needs restart),
-            # don't fall through to redundant package updates — just exit cleanly.
-            local reboot_needed=false
-            if [[ -f /var/run/reboot-required ]]; then
-                reboot_needed=true
-            elif command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
-                reboot_needed=true
-            fi
+            # Return code 2: no upgrade available on the selected track
+            # (e.g., user chose LTS but no next LTS release exists yet).
+            # Fall through to standard package updates without a warning.
+            if (( upgrade_rc != 2 )); then
+                # If a reboot is required (updates were applied but system needs restart),
+                # don't fall through to redundant package updates — just exit cleanly.
+                local reboot_needed=false
+                if [[ -f /var/run/reboot-required ]]; then
+                    reboot_needed=true
+                elif command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+                    reboot_needed=true
+                fi
 
-            if [[ "$reboot_needed" == "true" ]]; then
-                info "System updates were applied. Please reboot and re-run to continue the distribution upgrade."
-                return 0
-            fi
+                if [[ "$reboot_needed" == "true" ]]; then
+                    info "System updates were applied. Please reboot and re-run to continue the distribution upgrade."
+                    return 0
+                fi
 
-            warn "Distribution upgrade failed. Falling back to package updates..."
+                warn "Distribution upgrade failed. Falling back to package updates..."
+            fi
         else
             info "Distribution upgrade skipped by user."
         fi

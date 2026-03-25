@@ -744,6 +744,32 @@ pkg_distro_upgrade() {
 
                     if [[ "$lts_choice" == "1" ]]; then
                         sudo sed -i "s/^Prompt=.*/Prompt=lts/" "$release_config"
+                        # Verify an LTS upgrade is actually available
+                        local tgt_ver="${target_version%% *}"
+                        local tgt_y tgt_m
+                        tgt_y=$(echo "$tgt_ver" | cut -d. -f1)
+                        tgt_m=$(echo "$tgt_ver" | cut -d. -f2)
+                        if ! (( tgt_m == 4 && tgt_y % 2 == 0 )); then
+                            # Detected target was non-LTS — check if an LTS upgrade exists
+                            local lts_check
+                            lts_check=$(do-release-upgrade -c 2>&1) || true
+                            if echo "$lts_check" | grep -qi "new release"; then
+                                # LTS upgrade found — update target_version
+                                local lts_target
+                                lts_target=$(echo "$lts_check" | grep -oP "New release '\K[^']+" || true)
+                                if [[ -n "$lts_target" ]]; then
+                                    target_version="$lts_target"
+                                    info "LTS upgrade target: ${target_version}"
+                                fi
+                            else
+                                info "No next LTS release is available yet. Your system is up to date on the LTS track."
+                                # Restore original prompt setting
+                                if [[ -n "$original_prompt" ]]; then
+                                    sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
+                                fi
+                                return 2
+                            fi
+                        fi
                     else
                         sudo sed -i "s/^Prompt=.*/Prompt=normal/" "$release_config"
                     fi
