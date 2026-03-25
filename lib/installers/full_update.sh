@@ -133,7 +133,6 @@ setup_full_update() {
                 fi
 
                 warn "Distribution upgrade failed. Falling back to package updates..."
-                local dist_upgrade_failed=true
             fi
         else
             info "Distribution upgrade skipped by user."
@@ -147,11 +146,5 @@ setup_full_update() {
     pkg_full_upgrade
     pkg_cleanup_thorough
     info "System update completed."
-
-    # If the distribution upgrade failed, return non-zero so the caller
-    # does not report overall success
-    if [[ "${dist_upgrade_failed:-false}" == "true" ]]; then
-        return 1
-    fi
     return 0
 }
