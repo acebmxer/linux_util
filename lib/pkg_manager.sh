@@ -802,7 +802,7 @@ pkg_distro_upgrade() {
             # I-4: Run upgrade and always restore prompt setting afterward
             info "Starting distribution upgrade to ${target_version}..."
             local rc=0
-            sudo do-release-upgrade -f DistUpgradeViewNonInteractive || rc=$?
+            sudo DEBIAN_FRONTEND=noninteractive do-release-upgrade -f DistUpgradeViewNonInteractive </dev/null || rc=$?
 
             # Always restore original prompt setting
             if [[ -n "$original_prompt" && -f "$release_config" ]]; then
