@@ -110,7 +110,27 @@ uninstall_joplin() {
 update_joplin() {
     echo "Updating Joplin Client..."
     detect_and_export_desktop_env
-    wget -O - https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
+
+    local tmpfile
+    tmpfile=$(mktemp /tmp/joplin-update-XXXXXX.sh)
+    CLEANUP_FILES+=("$tmpfile")
+
+    if ! wget -qO "$tmpfile" https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh; then
+        echo "Error: Failed to download Joplin update script."
+        rm -f "$tmpfile"
+        return 1
+    fi
+
+    if [[ ! -s "$tmpfile" ]]; then
+        echo "Error: Downloaded update script is empty."
+        rm -f "$tmpfile"
+        return 1
+    fi
+
+    bash "$tmpfile" || {
+        echo "Error: Joplin update script failed."
+        return 1
+    }
 }
 get_version_joplin() {
     # NOTE: Do NOT run the AppImage with --version — it opens a GUI error dialog.
@@ -132,12 +152,12 @@ get_version_joplin() {
     if [[ -f "$appimage" ]]; then
         local tmpdir
         tmpdir=$(mktemp -d)
+        trap "rm -rf '$tmpdir'" RETURN
 
         # Try resources/app/package.json (Electron apps without asar packaging)
         if (cd "$tmpdir" && timeout 10 "$appimage" --appimage-extract "resources/app/package.json") &>/dev/null; then
             version=$(awk -F'"' '/"version"/{print $4; exit}' "$tmpdir/squashfs-root/resources/app/package.json" 2>/dev/null)
             if [[ -n "$version" ]]; then
-                rm -rf "$tmpdir"
                 echo "$version"
                 return 0
             fi
@@ -147,13 +167,10 @@ get_version_joplin() {
         if (cd "$tmpdir" && timeout 10 "$appimage" --appimage-extract "*.desktop") &>/dev/null; then
             version=$(grep -h 'X-AppImage-Version=' "$tmpdir"/squashfs-root/*.desktop 2>/dev/null | head -1 | cut -d= -f2)
             if [[ -n "$version" ]]; then
-                rm -rf "$tmpdir"
                 echo "$version"
                 return 0
             fi
         fi
-
-        rm -rf "$tmpdir"
     fi
 
     echo ""

@@ -128,7 +128,9 @@ install_steam() {
             else
                 # Debian and other derivatives: download the official .deb installer
                 echo "Downloading Steam installer from store.steampowered.com..."
-                local steam_deb="/tmp/steam_latest.deb"
+                local steam_deb
+                steam_deb=$(mktemp /tmp/steam-XXXXXX.deb)
+                CLEANUP_FILES+=("$steam_deb")
                 if ! wget -O "$steam_deb" "https://cdn.akamai.steamstatic.com/client/installer/steam.deb"; then
                     echo "Error: Failed to download Steam installer."
                     rm -f "$steam_deb"

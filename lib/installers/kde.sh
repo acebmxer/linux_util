@@ -93,59 +93,59 @@ setup_install_kde() {
 
     case "$PKG_MGR" in
         apt)
-            run_as_root "apt-get update"
+            run_as_root apt-get update
             info "Installing KDE Full Desktop Environment..."
-            run_as_root "apt-get install -y kde-full sddm" || {
+            run_as_root apt-get install -y kde-full sddm || {
                 error "Failed to install KDE Full Desktop Environment"
                 return 1
             }
             info "Enabling display manager..."
-            run_as_root "systemctl enable sddm" || warn "Failed to enable sddm"
-            run_as_root "systemctl start sddm" || warn "Failed to start sddm"
+            run_as_root systemctl enable sddm || warn "Failed to enable sddm"
+            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         dnf|yum)
             info "Installing KDE Full Desktop Environment..."
-            if ! run_as_root "$PKG_MGR groupinstall -y 'KDE Plasma Workspaces'" 2>/dev/null && \
-               ! run_as_root "$PKG_MGR group install -y @kde-desktop-environment" 2>/dev/null; then
+            if ! run_as_root "$PKG_MGR" groupinstall -y 'KDE Plasma Workspaces' 2>/dev/null && \
+               ! run_as_root "$PKG_MGR" group install -y @kde-desktop-environment 2>/dev/null; then
                 info "Group install not available, installing KDE packages individually..."
-                run_as_root "$PKG_MGR install -y epel-release" 2>/dev/null || true
-                run_as_root "crb enable" 2>/dev/null || run_as_root "$PKG_MGR config-manager --set-enabled crb" 2>/dev/null || true
-                run_as_root "$PKG_MGR install -y plasma-desktop plasma-workspace sddm \
+                run_as_root "$PKG_MGR" install -y epel-release 2>/dev/null || true
+                run_as_root crb enable 2>/dev/null || run_as_root "$PKG_MGR" config-manager --set-enabled crb 2>/dev/null || true
+                run_as_root "$PKG_MGR" install -y plasma-desktop plasma-workspace sddm \
                     plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons plasma-thunderbolt \
                     bluedevil breeze-gtk kscreen kinfocenter kwrited \
                     konsole dolphin kate ark gwenview okular spectacle \
                     kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde \
-                    phonon-qt5-backend-gstreamer" || {
+                    phonon-qt5-backend-gstreamer || {
                     error "Failed to install KDE Full Desktop Environment packages"
                     return 1
                 }
             fi
             info "Enabling display manager..."
-            run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
-            run_as_root "systemctl start sddm" || warn "Failed to start sddm"
+            run_as_root systemctl enable sddm || run_as_root systemctl set-default graphical.target
+            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         zypper)
             info "Installing KDE Full Desktop Environment..."
-            run_as_root "zypper install -y -t pattern kde kde_plasma kde_utilities kde_imaging kde_multimedia kde_office kde_games" || {
+            run_as_root zypper install -y -t pattern kde kde_plasma kde_utilities kde_imaging kde_multimedia kde_office kde_games || {
                 error "Failed to install KDE Full Desktop Environment"
                 return 1
             }
             info "Enabling display manager..."
-            run_as_root "systemctl enable sddm" || run_as_root "systemctl set-default graphical.target"
-            run_as_root "systemctl start sddm" || warn "Failed to start sddm"
+            run_as_root systemctl enable sddm || run_as_root systemctl set-default graphical.target
+            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         pacman)
             info "Installing KDE Full Desktop Environment..."
-            run_as_root "pacman -S --noconfirm plasma-meta kde-applications-meta sddm" || {
+            run_as_root pacman -S --noconfirm plasma-meta kde-applications-meta sddm || {
                 error "Failed to install KDE Full Desktop Environment"
                 return 1
             }
             info "Enabling display manager..."
-            run_as_root "systemctl enable sddm"
-            run_as_root "systemctl start sddm" || warn "Failed to start sddm"
+            run_as_root systemctl enable sddm
+            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         *)

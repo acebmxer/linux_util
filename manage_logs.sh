@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 # ============================================================================
 # Log Management Utility for linux_util.sh

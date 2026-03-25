@@ -454,6 +454,22 @@ NAV_NUM_COLS=0
 # Escape key for terminal input
 ESC=$'\x1b'
 
+# Global flag: true while the TUI menu is actively displayed (cursor hidden,
+# echo disabled).  Used by trap handlers to restore terminal state on
+# unexpected exit (Ctrl+C, SIGTERM, etc.).
+_MENU_ACTIVE=false
+
+# Wrapper that restores cursor/echo when the menu was active, then calls the
+# original cleanup_on_exit defined in logging.sh.
+_menu_cleanup_on_exit() {
+    if [[ "$_MENU_ACTIVE" == "true" ]]; then
+        show_cursor
+        stty echo 2>/dev/null
+        _MENU_ACTIVE=false
+    fi
+    cleanup_on_exit
+}
+
 # Main selection loop
 run_selection_menu() {
     local total=${#UTILITIES[@]}
@@ -477,9 +493,11 @@ run_selection_menu() {
     # Setup terminal
     hide_cursor
     stty -echo
+    _MENU_ACTIVE=true
 
-    # Cleanup on exit
-    trap 'show_cursor; stty echo; echo ""; cleanup_on_exit' EXIT
+    # Cleanup on exit — uses the wrapper so INT/TERM also restore cursor/echo
+    trap '_menu_cleanup_on_exit' EXIT
+    trap 'echo ""; _MENU_ACTIVE=false; show_cursor; stty echo; exit 130' INT TERM
 
     # Redraw on terminal resize (update COLUMNS for centering recalculation)
     trap 'COLUMNS=$(tput cols 2>/dev/null || echo 80); redraw_menu' WINCH
@@ -621,14 +639,16 @@ run_selection_menu() {
                 # Continue to installation
                 show_cursor
                 stty echo
-                trap - WINCH
+                _MENU_ACTIVE=false
+                trap - WINCH INT TERM
                 trap cleanup_on_exit EXIT
                 return 0
                 ;;
             QUIT)
                 show_cursor
                 stty echo
-                trap - WINCH
+                _MENU_ACTIVE=false
+                trap - WINCH INT TERM
                 trap cleanup_on_exit EXIT
                 echo ""
                 echo "${YELLOW}Operation cancelled.${RESET}"

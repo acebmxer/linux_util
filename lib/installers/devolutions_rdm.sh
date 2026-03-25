@@ -29,7 +29,23 @@ install_devolutions_rdm() {
                 echo "deb [signed-by=/usr/share/keyrings/devolutions-rdm.gpg] https://dl.cloudsmith.io/public/devolutions/rdm/deb/ubuntu ${ubuntu_codename} main" | \
                     sudo tee /etc/apt/sources.list.d/devolutions-rdm.list > /dev/null
             else
-                curl -1sLf 'https://dl.cloudsmith.io/public/devolutions/rdm/setup.deb.sh' | sudo -E bash
+                local tmpfile
+                tmpfile=$(mktemp /tmp/devolutions-setup-XXXXXX.sh)
+                CLEANUP_FILES+=("$tmpfile")
+
+                if ! curl -1sLf -o "$tmpfile" 'https://dl.cloudsmith.io/public/devolutions/rdm/setup.deb.sh'; then
+                    echo "Error: Failed to download Devolutions repository setup script."
+                    rm -f "$tmpfile"
+                    return 1
+                fi
+
+                if [[ ! -s "$tmpfile" ]]; then
+                    echo "Error: Downloaded setup script is empty."
+                    rm -f "$tmpfile"
+                    return 1
+                fi
+
+                sudo -E bash "$tmpfile"
             fi
 
             # Install required packages for repository management

@@ -12,8 +12,8 @@ check_landscape_motd() {
 setup_local_motd() {
     info "Installing/Updating Landscape Client and configuring Local MOTD..."
 
-    run_as_root "add-apt-repository -y ppa:landscape/self-hosted-beta 2>/dev/null || true"
-    run_as_root "apt-get update && apt-get install -y --no-install-recommends landscape-client" || {
+    run_as_root_sh "add-apt-repository -y ppa:landscape/self-hosted-beta 2>/dev/null || true"
+    run_as_root_sh "apt-get update && apt-get install -y --no-install-recommends landscape-client" || {
         warn "Failed to install landscape-client"
         return 1
     }
@@ -86,8 +86,8 @@ fi
 
 uninstall_landscape_motd() {
     info "Uninstalling Landscape Client and removing MOTD configuration..."
-    run_as_root "apt-get purge --autoremove -y landscape-client" || warn "Failed to uninstall landscape-client"
-    run_as_root "apt-get autoclean"
+    run_as_root apt-get purge --autoremove -y landscape-client || warn "Failed to uninstall landscape-client"
+    run_as_root apt-get autoclean
 
     if [[ -f "${HOME}/.bashrc" ]]; then
         # Remove current markers
@@ -117,6 +117,6 @@ uninstall_landscape_motd() {
 
 update_landscape_motd() {
     info "Updating Landscape Client..."
-    run_as_root "apt-get update && apt-get upgrade -y landscape-client" || warn "Failed to update landscape-client"
+    run_as_root_sh "apt-get update && apt-get upgrade -y landscape-client" || warn "Failed to update landscape-client"
     info "Landscape Client updated."
 }

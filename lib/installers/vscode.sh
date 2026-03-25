@@ -11,11 +11,14 @@ install_vscode() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/packages.microsoft.gpg
-            sudo install -D -o root -g root -m 644 /tmp/packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
+            local gpg_tmp
+            gpg_tmp=$(mktemp /tmp/vscode-gpg-XXXXXX)
+            CLEANUP_FILES+=("$gpg_tmp")
+            wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > "$gpg_tmp"
+            sudo install -D -o root -g root -m 644 "$gpg_tmp" /etc/apt/keyrings/packages.microsoft.gpg
             echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | \
                 sudo tee /etc/apt/sources.list.d/vscode.list > /dev/null
-            rm -f /tmp/packages.microsoft.gpg
+            rm -f "$gpg_tmp"
             sudo apt update
             sudo apt install -y code
             ;;

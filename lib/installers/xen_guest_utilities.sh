@@ -263,7 +263,7 @@ _install_from_repository() {
     case "$DISTRO_FAMILY" in
         debian)
             info "Installing xe-guest-utilities via apt..."
-            if run_as_root "apt-get update && apt-get install -y xe-guest-utilities"; then
+            if run_as_root_sh "apt-get update && apt-get install -y xe-guest-utilities"; then
                 if _verify_xen_services; then
                     info "XEN Guest Utilities installed and services are running."
                 else
@@ -275,12 +275,12 @@ _install_from_repository() {
             ;;
 
         fedora|rhel)
-            run_as_root "yum install -y epel-release" 2>/dev/null || true
+            run_as_root yum install -y epel-release 2>/dev/null || true
             info "Installing xe-guest-utilities via yum..."
-            if run_as_root "yum install -y xe-guest-utilities-latest" 2>/dev/null || \
-               run_as_root "yum install -y xe-guest-utilities"; then
-                run_as_root "systemctl enable xe-linux-distribution" || warn "Failed to enable xe-linux-distribution"
-                run_as_root "systemctl start xe-linux-distribution" || warn "Failed to start xe-linux-distribution"
+            if run_as_root yum install -y xe-guest-utilities-latest 2>/dev/null || \
+               run_as_root yum install -y xe-guest-utilities; then
+                run_as_root systemctl enable xe-linux-distribution || warn "Failed to enable xe-linux-distribution"
+                run_as_root systemctl start xe-linux-distribution || warn "Failed to start xe-linux-distribution"
                 if _verify_xen_services; then
                     info "XEN Guest Utilities installed and services are running."
                 else
@@ -293,7 +293,7 @@ _install_from_repository() {
 
         arch)
             info "Installing xe-guest-utilities via pacman..."
-            if run_as_root "pacman -S --noconfirm xe-guest-utilities"; then
+            if run_as_root pacman -S --noconfirm xe-guest-utilities; then
                 if _verify_xen_services; then
                     info "XEN Guest Utilities installed and services are running."
                 else
@@ -306,7 +306,7 @@ _install_from_repository() {
 
         suse)
             info "Installing xe-guest-utilities via zypper..."
-            if run_as_root "zypper install -y xe-guest-utilities"; then
+            if run_as_root zypper install -y xe-guest-utilities; then
                 if _verify_xen_services; then
                     info "XEN Guest Utilities installed and services are running."
                 else
@@ -319,7 +319,7 @@ _install_from_repository() {
 
         alpine)
             info "Installing xe-guest-utilities via apk..."
-            if run_as_root "apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/community xe-guest-utilities"; then
+            if run_as_root apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/community xe-guest-utilities; then
                 if _verify_xen_services; then
                     info "XEN Guest Utilities installed and services are running."
                 else

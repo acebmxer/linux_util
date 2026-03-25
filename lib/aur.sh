@@ -54,6 +54,7 @@ ensure_aur_build_deps() {
 # Usage: aur_build <aur-package-name>
 aur_build() {
     local pkg_name="$1"
+    [[ "$pkg_name" =~ ^[a-zA-Z0-9._-]+$ ]] || { warn "Invalid package name: $pkg_name"; return 1; }
     ensure_aur_build_deps
     local build_dir
     build_dir=$(mktemp -d)

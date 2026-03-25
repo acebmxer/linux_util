@@ -26,21 +26,21 @@ self_update_script() {
     local before
     before=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)
     local pull_err
-    if ! pull_err=$(git -C "$SCRIPT_DIR" pull --ff-only origin main 2>&1); then
+    if ! pull_err=$(git -C "$SCRIPT_DIR" pull --ff-only origin "$current_branch" 2>&1); then
         # Pull failed — likely untracked/modified files conflict with upstream
         # (common after switching branches). Warn the user before discarding
         # local changes, since reset --hard + clean -fd are destructive.
         warn "git pull failed: $pull_err"
-        warn "Local modifications in ${SCRIPT_DIR} will be discarded to sync with origin/main."
+        warn "Local modifications in ${SCRIPT_DIR} will be discarded to sync with origin/${current_branch}."
         local _reset_confirm
-        read -n 1 -rp "Reset to origin/main? Any local changes will be lost. (y/N) " _reset_confirm < /dev/tty
+        read -n 1 -rp "Reset to origin/${current_branch}? Any local changes will be lost. (y/N) " _reset_confirm < /dev/tty
         echo
         if [[ ! "$_reset_confirm" =~ ^[Yy]$ ]]; then
             warn "Self-update aborted. Resolve git conflicts manually in ${SCRIPT_DIR}."
             return 1
         fi
-        git -C "$SCRIPT_DIR" checkout main 2>/dev/null
-        git -C "$SCRIPT_DIR" reset --hard origin/main 2>/dev/null
+        git -C "$SCRIPT_DIR" checkout "$current_branch" 2>/dev/null
+        git -C "$SCRIPT_DIR" reset --hard "origin/$current_branch" 2>/dev/null
         # Clean any remaining untracked files that conflict with tracked files
         git -C "$SCRIPT_DIR" clean -fd 2>/dev/null
         if [[ "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null)" == "$(git -C "$SCRIPT_DIR" rev-parse "origin/$current_branch" 2>/dev/null)" ]]; then

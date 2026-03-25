@@ -261,10 +261,10 @@ test_register_utility_no_version() {
 test_resolve_utility_name() {
     UTILITIES=("Docker" "Brave Browser" "Steam App")
 
-    resolve_utility_name "docker" 2>/dev/null
+    _RESOLVED=$(resolve_utility_name "docker" 2>/dev/null)
     assert_eq "Docker" "$_RESOLVED" "resolve_utility_name matches case-insensitively"
 
-    resolve_utility_name "brave" 2>/dev/null
+    _RESOLVED=$(resolve_utility_name "brave" 2>/dev/null)
     assert_eq "Brave Browser" "$_RESOLVED" "resolve_utility_name matches partial names"
 
     assert_false "resolve_utility_name rejects unknown names" resolve_utility_name "nonexistent"

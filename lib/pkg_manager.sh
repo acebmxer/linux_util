@@ -110,6 +110,7 @@ detect_distro() {
 # --- Package Manager Wrappers ---
 
 pkg_refresh() {
+    [[ "${_PKG_REFRESHED:-}" == "true" ]] && return 0
     case "$PKG_MGR" in
         apt)     sudo apt update ;;
         dnf|yum) sudo "$PKG_MGR" makecache ;;
@@ -118,6 +119,7 @@ pkg_refresh() {
         pacman)  sudo pacman -Syu --noconfirm ;;
         zypper)  sudo zypper refresh ;;
     esac
+    _PKG_REFRESHED=true
 }
 
 pkg_install() {

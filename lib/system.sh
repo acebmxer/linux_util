@@ -6,11 +6,18 @@
 # ============================================================================
 
 # Helper functions for system setup
-# NOTE: run_as_root passes its arguments as a single string to sh -c.
+# run_as_root executes a command with sudo using argument-vector semantics.
+# Each argument is passed directly to sudo without shell re-parsing.
+# Usage: run_as_root command arg1 arg2 ...
+run_as_root() { sudo "$@"; }
+
+# run_as_root_sh passes its arguments as a single string to sh -c.
+# Use this variant when the command requires shell features such as
+# pipes (|), redirections (>), or compound operators (&& / ||).
 # Arguments containing spaces, quotes, or special characters will be
-# subject to word-splitting by sh. For commands with complex quoting,
-# use 'sudo bash -c "..."' directly instead of this helper.
-run_as_root() { sudo sh -c "$*"; }
+# subject to word-splitting by sh.
+# Usage: run_as_root_sh "cmd1 && cmd2" or run_as_root_sh "cmd | other"
+run_as_root_sh() { sudo sh -c "$*"; }
 info()  { printf '%s[INFO]%s %s\n' "${GREEN:-}" "${RESET:-}" "$*"; }
 warn()  { printf '%s[WARN]%s %s\n' "${YELLOW:-}" "${RESET:-}" "$*"; }
 error() { printf '%s[ERROR]%s %s\n' "${RED:-}" "${RESET:-}" "$*" >&2; }

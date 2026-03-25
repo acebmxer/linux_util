@@ -399,13 +399,13 @@ uninstall_nvidia_drivers() {
             sudo apt-get autoclean
             ;;
         dnf|yum)
-            sudo "$PKG_MGR" remove -y nvidia* nvtop
+            sudo "$PKG_MGR" remove -y 'nvidia*' nvtop
             ;;
         pacman)
             sudo pacman -Rs --noconfirm nvidia nvidia-utils nvtop 2>/dev/null || true
             ;;
         zypper)
-            sudo zypper remove -y nvidia* nvtop
+            sudo zypper remove -y 'nvidia*' nvtop
             ;;
     esac
     rm -rf ~/.config/nvidia
