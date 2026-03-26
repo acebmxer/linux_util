@@ -312,9 +312,21 @@ _timeshift_cache_last_snapshot() {
         local snap_tags
         snap_tags=$(echo "$last_line" | awk '{for(i=1;i<=NF;i++) if($i ~ /^[DWMOB]+$/) {print $i; exit}}')
 
-        # Extract description (everything after the tag)
+        # Extract description (everything after the tag field).
+        # We locate the tag field by position (the awk word matching [DWMOB]+)
+        # and take everything after it, avoiding the greedy sed that would
+        # incorrectly consume description text containing D/W/M/O/B characters.
         local snap_desc
-        snap_desc=$(echo "$last_line" | sed -E 's/.*[DWMOB]+\s*//' | sed 's/^\s*//')
+        snap_desc=$(echo "$last_line" | awk '{
+            for (i=1; i<=NF; i++) {
+                if ($i ~ /^[DWMOB]+$/) {
+                    desc = ""
+                    for (j=i+1; j<=NF; j++) desc = (desc == "" ? $j : desc " " $j)
+                    print desc
+                    exit
+                }
+            }
+        }')
 
         if [[ -n "$snap_name" ]]; then
             TIMESHIFT_LAST_SNAPSHOT="${snap_name}"

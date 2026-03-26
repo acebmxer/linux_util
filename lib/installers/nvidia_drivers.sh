@@ -6,7 +6,12 @@ check_nvidia_drivers() {
     command -v nvidia-smi &>/dev/null || lsmod | grep -q "^nvidia"
 }
 get_version_nvidia_drivers() {
-    nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 || echo ""
+    local ver
+    if ver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null); then
+        echo "$ver" | head -1
+    else
+        echo ""
+    fi
 }
 
 install_nvtop_package() {

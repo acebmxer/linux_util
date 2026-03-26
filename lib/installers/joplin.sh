@@ -81,17 +81,16 @@ install_joplin() {
         return 1
     }
 
-    # Ubuntu 24.04+ restricts unprivileged user namespaces via AppArmor,
-    # which breaks Electron-based AppImages like Joplin (causes SIGTRAP crash).
-    if [[ "$DISTRO_ID" == "ubuntu" ]] && [[ "${DISTRO_VERSION_ID%%.*}" -ge 24 ]]; then
-        local sysctl_file="/etc/sysctl.d/99-appimage-userns.conf"
-        local sysctl_key="kernel.apparmor_restrict_unprivileged_userns"
-        if [[ "$(sysctl -n "$sysctl_key" 2>/dev/null)" == "1" ]]; then
-            echo "Configuring system to allow AppImage user namespaces (required for Joplin on Ubuntu 24.04+)..."
-            echo "${sysctl_key}=0" | sudo tee "$sysctl_file" >/dev/null
-            sudo sysctl --system >/dev/null 2>&1
-            echo "AppImage user namespace restriction disabled."
-        fi
+    # Some distros (Ubuntu 24.04+, KDE Neon, Kubuntu, etc.) restrict unprivileged
+    # user namespaces via AppArmor, which breaks Electron-based AppImages like
+    # Joplin (causes SIGTRAP crash). Disable the restriction if it is active.
+    local sysctl_file="/etc/sysctl.d/99-appimage-userns.conf"
+    local sysctl_key="kernel.apparmor_restrict_unprivileged_userns"
+    if [[ "$(sysctl -n "$sysctl_key" 2>/dev/null)" == "1" ]]; then
+        echo "Configuring system to allow AppImage user namespaces (required for Joplin)..."
+        echo "${sysctl_key}=0" | sudo tee "$sysctl_file" >/dev/null
+        sudo sysctl --system >/dev/null 2>&1
+        echo "AppImage user namespace restriction disabled."
     fi
 }
 uninstall_joplin() {
