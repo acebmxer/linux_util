@@ -199,6 +199,7 @@ _init_health_checks() {
     HEALTH_CHECK_CMDS["LibreOffice"]="libreoffice --version 2>/dev/null || soffice --version 2>/dev/null"
     HEALTH_CHECK_CMDS["Termius SSH Client"]="command -v termius || command -v termius-app"
     HEALTH_CHECK_CMDS["NVIDIA Drivers"]="nvidia-smi"
+    HEALTH_CHECK_CMDS["Feral Gamemode"]="gamemoded --version"
     HEALTH_CHECK_CMDS["KDE Desktop"]="command -v plasmashell"
     HEALTH_CHECK_CMDS["XEN Guest Utilities"]="command -v xe-daemon || systemctl is-active xe-linux-distribution 2>/dev/null"
 }
