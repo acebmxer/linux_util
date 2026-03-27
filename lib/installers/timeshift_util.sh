@@ -30,7 +30,7 @@ install_timeshift() {
                     echo "Snapper successfully uninstalled. Now installing TimeShift..."
                 else
                     warn "Skipping TimeShift installation. Snapper was not removed."
-                    return 1
+                    return 2
                 fi
             fi
             pkg_install timeshift || return 1

@@ -77,7 +77,7 @@ setup_restore_snapshot() {
         read -rp "Enter selection [0-${#SNAPSHOT_NAMES[@]}]: " _choice < /dev/tty
         if [[ "$_choice" == "0" ]]; then
             echo "${YELLOW}Restore cancelled.${RESET}"
-            return 0
+            return 2
         fi
         if [[ "$_choice" =~ ^[0-9]+$ ]] && (( _choice >= 1 && _choice <= ${#SNAPSHOT_NAMES[@]} )); then
             break
@@ -95,7 +95,7 @@ setup_restore_snapshot() {
     echo ""
     if [[ ! "$_confirm" =~ ^[Yy]$ ]]; then
         echo "${YELLOW}Restore cancelled.${RESET}"
-        return 0
+        return 2
     fi
 
     # Create a safety snapshot before restoring

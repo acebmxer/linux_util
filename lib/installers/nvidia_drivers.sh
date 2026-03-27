@@ -319,7 +319,7 @@ install_nvidia_drivers() {
     
     if [[ "$choice" == "0" ]] || [[ -z "$choice" ]]; then
         warn "Installation cancelled."
-        return 1
+        return 2
     fi
     
     if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le ${#available_drivers[@]} ]]; then

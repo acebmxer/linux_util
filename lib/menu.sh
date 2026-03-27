@@ -140,12 +140,52 @@ draw_menu() {
     if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" ]]; then
         local _snap_label="Timeshift"
         [[ "${SNAPSHOT_BACKEND:-}" == "snapper" ]] && _snap_label="Snapper"
-        local _ts_plain="Last ${_snap_label} Snapshot: ${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}"
+        local _snap_raw="${TIMESHIFT_LAST_SNAPSHOT:-}"
+        local _snap_formatted
+        if [[ -n "$_snap_raw" ]]; then
+            # Parse and reformat the leading YYYY-MM-DD_HH-MM-SS timestamp
+            local _snap_name="${_snap_raw%%[[:space:]]*}"   # e.g. 2026-03-27_18-13-11
+            local _snap_date="${_snap_name%%_*}"             # e.g. 2026-03-27
+            local _snap_time="${_snap_name##*_}"             # e.g. 18-13-11
+            _snap_time="${_snap_time//-/:}"                  # e.g. 18:13:11
+            local _snap_display
+            _snap_display="$(date -d "${_snap_date} ${_snap_time}" '+%d %b %Y %I:%M %p' 2>/dev/null)" \
+                || _snap_display="$_snap_name"
+            # Remainder after the snap_name (e.g. " [O] - description")
+            local _snap_remainder="${_snap_raw#"$_snap_name"}"
+            _snap_formatted="${_snap_display}${_snap_remainder}"
+        else
+            _snap_formatted="No snapshots found"
+        fi
+
+        # Truncate the description so the full plain line fits within content_width
+        local _snap_prefix="Last ${_snap_label} Snapshot: "
+        local _snap_full_plain="${_snap_prefix}${_snap_formatted}"
+        local _snap_over=$(( ${#_snap_full_plain} - content_width ))
+        if (( _snap_over > 0 )); then
+            # Only truncate the description part (after " - "), leaving date/tags intact
+            local _snap_desc_marker=" - "
+            local _snap_before_desc="${_snap_formatted%%"${_snap_desc_marker}"*}"
+            local _snap_desc="${_snap_formatted#*"${_snap_desc_marker}"}"
+            if [[ "$_snap_before_desc" != "$_snap_formatted" ]]; then
+                # Trim _snap_over chars off the description, then append "..."
+                local _snap_desc_trimlen=$(( ${#_snap_desc} - _snap_over - 3 ))
+                (( _snap_desc_trimlen < 0 )) && _snap_desc_trimlen=0
+                _snap_formatted="${_snap_before_desc}${_snap_desc_marker}${_snap_desc:0:$_snap_desc_trimlen}..."
+            else
+                # No description section; trim the whole formatted string
+                local _snap_trimlen=$(( content_width - ${#_snap_prefix} - 3 ))
+                (( _snap_trimlen < 0 )) && _snap_trimlen=0
+                _snap_formatted="${_snap_formatted:0:$_snap_trimlen}..."
+            fi
+        fi
+
+        local _ts_plain="${_snap_prefix}${_snap_formatted}"
         local _tlpad=$(( (content_width - ${#_ts_plain}) / 2 ))
         (( _tlpad < 0 )) && _tlpad=0
         local _tspaces=""
         (( _tlpad > 0 )) && printf -v _tspaces '%*s' "$_tlpad" ''
-        _buf+="${pad}${_tspaces}Last ${_snap_label} Snapshot: ${BOLD}${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}${RESET}${eol}"$'\n'
+        _buf+="${pad}${_tspaces}${_snap_prefix}${BOLD}${_snap_formatted}${RESET}${eol}"$'\n'
     fi
 
     _buf+="${pad}${eol}"$'\n'

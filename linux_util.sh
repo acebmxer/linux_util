@@ -205,14 +205,6 @@ process_selected() {
             fi
         fi
 
-        # Reboot required for System Tasks (except snapshots) and Docker
-        if [[ ${SELECTED[$i]} -eq 1 || ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
-            if [[ -z "${NO_REBOOT[$util]:-}" ]]; then
-                if [[ $i -lt $system_tasks ]] || [[ "$util" == "Docker" ]]; then
-                    needs_reboot=true
-                fi
-            fi
-        fi
     done
 
     # Check if there's anything to do
@@ -348,7 +340,14 @@ process_selected() {
         local _op_start=$SECONDS
 
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
-            if $func; then
+            local _exit_code=0
+            $func || _exit_code=$?
+            if [[ $_exit_code -eq 2 ]]; then
+                local _duration=$(( SECONDS - _op_start ))
+                echo ""
+                echo "${YELLOW}⊘ Cancelled: $util${RESET} ${DIM}(${_duration}s)${RESET}"
+                log_info "Cancelled by user: $util"
+            elif [[ $_exit_code -eq 0 ]]; then
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
                 echo "${GREEN}✓ Successfully ${_past}: $util${RESET} ${DIM}(${_duration}s)${RESET}"
@@ -361,6 +360,13 @@ process_selected() {
                 fi
 
                 (( success_count += 1 ))
+
+                # Reboot required for system tasks (except no-reboot list) and Docker
+                if [[ -z "${NO_REBOOT[$util]:-}" ]]; then
+                    if [[ "$_is_system_task" == "true" || "$util" == "Docker" ]]; then
+                        needs_reboot=true
+                    fi
+                fi
             else
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
