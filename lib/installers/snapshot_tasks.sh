@@ -59,7 +59,14 @@ setup_restore_snapshot() {
     echo "Select a snapshot to restore:"
     echo ""
     for ((i=0; i<${#SNAPSHOT_NAMES[@]}; i++)); do
-        echo "  $((i + 1))) ${SNAPSHOT_NAMES[$i]}"
+        local snap_name="${SNAPSHOT_NAMES[$i]}"
+        local snap_date="${snap_name%%_*}"
+        local snap_time="${snap_name##*_}"
+        snap_time="${snap_time//-/:}"
+        local snap_display
+        snap_display="$(date -d "${snap_date} ${snap_time}" '+%d %b %Y %I:%M %p' 2>/dev/null)" \
+            || snap_display="${snap_name}"
+        echo "  $((i + 1))) ${snap_display}"
     done
     echo ""
     echo "  0) Cancel"
