@@ -61,6 +61,7 @@ NO_RETRY["Restore Snapshot"]=1
 # --- Utilities (alphabetical order) ---
 register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden
 register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave              get_version_brave
+register_utility "Claude Code"         install_claude_code     check_claude_code     uninstall_claude_code     update_claude_code        get_version_claude_code
 register_utility "Devolutions RDM"     install_devolutions_rdm check_devolutions_rdm uninstall_devolutions_rdm update_devolutions_rdm    get_version_devolutions_rdm
 register_utility "Docker"              setup_install_docker    check_docker          uninstall_docker          update_docker             get_version_docker
 register_utility "Dotfiles"            setup_install_dotfiles  check_dotfiles        uninstall_dotfiles        setup_install_dotfiles
