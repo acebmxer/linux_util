@@ -23,13 +23,7 @@ install_xrdp() {
 
                 info "Configuring xrdp to launch KDE Plasma X11 session..."
                 run_as_root sed -i '/^test -x \/etc\/X11\/Xsession/d; /^exec \/bin\/sh \/etc\/X11\/Xsession/d' /etc/xrdp/startwm.sh
-                run_as_root tee -a /etc/xrdp/startwm.sh > /dev/null <<'STARTWM'
-export XDG_SESSION_TYPE=x11
-export XDG_SESSION_DESKTOP=KDE
-export XDG_CURRENT_DESKTOP=KDE
-export DESKTOP_SESSION=plasma
-exec /usr/bin/startplasma-x11
-STARTWM
+                echo "exec /usr/bin/startplasma-x11" | run_as_root tee -a /etc/xrdp/startwm.sh > /dev/null
 
                 info "Granting xrdp access to SSL certificates..."
                 run_as_root adduser xrdp ssl-cert
