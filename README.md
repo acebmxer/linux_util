@@ -55,7 +55,7 @@ Utility names are matched case-insensitively and support partial matches. `--dry
 ║        Linux System Setup & Utilities - Select Programs/Tasks        ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
-  Script commit: abc1234  |  Latest commit: def5678
+            Script (test): abc1234  |  Main Branch: def5678
                     Script out of date, please update.
               Detected System: Ubuntu   Version: 24.04.4
   Last Timeshift Snapshot: 2026-03-22_12-30-16 [0] - linux_util: ...
