@@ -76,3 +76,4 @@ register_utility "Syncthing"           install_syncthing       check_syncthing  
 register_utility "Termius SSH Client"  install_termius         check_termius         uninstall_termius         update_termius            get_version_termius
 register_utility "Timeshift"           install_timeshift       check_timeshift       uninstall_timeshift       update_timeshift          get_version_timeshift
 register_utility "Visual Studio Code"  install_vscode          check_vscode          uninstall_vscode          update_vscode             get_version_vscode
+register_utility "xrdp"                install_xrdp            check_xrdp            uninstall_xrdp            update_xrdp               get_version_xrdp
