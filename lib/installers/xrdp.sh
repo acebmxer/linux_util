@@ -17,7 +17,7 @@ install_xrdp() {
             run_as_root apt-get install -y xrdp
 
             # Kubuntu 26.04+ ships without X11 by default — install KDE X11 packages
-            if [[ "$DISTRO_ID" == "kubuntu" ]] && dpkg --compare-versions "${DISTRO_VERSION_ID}" ge "26.04" 2>/dev/null; then
+            if [[ "$DISTRO_NAME" == *"Kubuntu"* ]] && dpkg --compare-versions "${DISTRO_VERSION_ID}" ge "26.04" 2>/dev/null; then
                 info "Kubuntu ${DISTRO_VERSION_ID} detected — installing KDE X11 session packages..."
                 run_as_root apt-get install -y kwin-x11 plasma-session-x11
 
@@ -66,7 +66,7 @@ uninstall_xrdp() {
         debian)
             run_as_root apt purge --autoremove -y xrdp
             # Clean up Kubuntu 26.04+ KDE X11 additions if present
-            if [[ "$DISTRO_ID" == "kubuntu" ]] && dpkg --compare-versions "${DISTRO_VERSION_ID}" ge "26.04" 2>/dev/null; then
+            if [[ "$DISTRO_NAME" == *"Kubuntu"* ]] && dpkg --compare-versions "${DISTRO_VERSION_ID}" ge "26.04" 2>/dev/null; then
                 run_as_root apt purge --autoremove -y kwin-x11 plasma-session-x11
             fi
             run_as_root_sh "apt autoclean"
