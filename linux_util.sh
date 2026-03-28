@@ -246,7 +246,7 @@ process_selected() {
     fi
 
     read -rp "Press ENTER to continue or Ctrl+C to cancel..." < /dev/tty
-    echo ""
+    clear
 
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "${YELLOW}[DRY RUN] No changes made. Exiting.${RESET}"

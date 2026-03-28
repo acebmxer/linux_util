@@ -112,40 +112,45 @@ detect_distro() {
 pkg_refresh() {
     [[ "${_PKG_REFRESHED:-}" == "true" ]] && return 0
     case "$PKG_MGR" in
-        apt)     sudo apt update ;;
-        dnf|yum) sudo "$PKG_MGR" makecache ;;
+        apt)     run_with_spinner "Refreshing package cache"             sudo apt update ;;
+        dnf|yum) run_with_spinner "Refreshing package cache"             sudo "$PKG_MGR" makecache ;;
         # NOTE: On Arch, -Sy without -u risks partial upgrades. We use -Syu
         # here so that any subsequent pkg_install calls have a consistent DB+system.
-        pacman)  sudo pacman -Syu --noconfirm ;;
-        zypper)  sudo zypper refresh ;;
+        pacman)  run_with_spinner "Refreshing package cache & upgrading" sudo pacman -Syu --noconfirm ;;
+        zypper)  run_with_spinner "Refreshing package cache"             sudo zypper refresh ;;
     esac
     _PKG_REFRESHED=true
 }
 
 pkg_install() {
+    local _label="Installing: $*"
     case "$PKG_MGR" in
-        apt)     sudo apt install -y "$@" ;;
-        dnf|yum) sudo "$PKG_MGR" install -y "$@" ;;
-        pacman)  sudo pacman -S --noconfirm "$@" ;;
-        zypper)  sudo zypper install -y "$@" ;;
+        apt)     run_with_spinner "$_label" sudo apt install -y "$@" ;;
+        dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" install -y "$@" ;;
+        pacman)  run_with_spinner "$_label" sudo pacman -S --noconfirm "$@" ;;
+        zypper)  run_with_spinner "$_label" sudo zypper install -y "$@" ;;
     esac
 }
 
 pkg_remove() {
+    local _label="Removing: $*"
     case "$PKG_MGR" in
-        apt)     sudo apt purge --autoremove -y "$@" && sudo apt autoclean ;;
-        dnf|yum) sudo "$PKG_MGR" remove -y "$@" ;;
-        pacman)  sudo pacman -Rs --noconfirm "$@" ;;
-        zypper)  sudo zypper remove -y "$@" ;;
+        apt)     run_with_spinner "$_label" sudo apt purge --autoremove -y "$@" &&
+                 run_with_spinner "Cleaning apt cache" sudo apt autoclean ;;
+        dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" remove -y "$@" ;;
+        pacman)  run_with_spinner "$_label" sudo pacman -Rs --noconfirm "$@" ;;
+        zypper)  run_with_spinner "$_label" sudo zypper remove -y "$@" ;;
     esac
 }
 
 pkg_upgrade() {
+    local _label="Upgrading: $*"
     case "$PKG_MGR" in
-        apt)     sudo apt update && sudo apt upgrade -y "$@" ;;
-        dnf|yum) sudo "$PKG_MGR" upgrade -y "$@" ;;
-        pacman)  sudo pacman -S --noconfirm "$@" ;;
-        zypper)  sudo zypper update -y "$@" ;;
+        apt)     run_with_spinner "Refreshing package cache" sudo apt update &&
+                 run_with_spinner "$_label" sudo apt upgrade -y "$@" ;;
+        dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" upgrade -y "$@" ;;
+        pacman)  run_with_spinner "$_label" sudo pacman -S --noconfirm "$@" ;;
+        zypper)  run_with_spinner "$_label" sudo zypper update -y "$@" ;;
     esac
 }
 
@@ -159,45 +164,48 @@ pkg_check_installed() {
 }
 
 pkg_install_local() {
+    local _label="Installing local package: $(basename "$1")"
     case "$PKG_MGR" in
-        apt)     sudo apt install -y "$1" ;;
-        dnf|yum) sudo "$PKG_MGR" install -y "$1" ;;
-        pacman)  sudo pacman -U --noconfirm "$1" ;;
-        zypper)  sudo zypper install -y --allow-unsigned-rpm "$1" ;;
+        apt)     run_with_spinner "$_label" sudo apt install -y "$1" ;;
+        dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" install -y "$1" ;;
+        pacman)  run_with_spinner "$_label" sudo pacman -U --noconfirm "$1" ;;
+        zypper)  run_with_spinner "$_label" sudo zypper install -y --allow-unsigned-rpm "$1" ;;
     esac
 }
 
 pkg_autoremove() {
     case "$PKG_MGR" in
-        apt)     sudo apt autoremove -y ;;
-        dnf|yum) sudo "$PKG_MGR" autoremove -y ;;
-        pacman)  pacman -Qdtq 2>/dev/null | sudo pacman -Rs --noconfirm - 2>/dev/null || true ;;
+        apt)     run_with_spinner "Removing orphaned packages" sudo apt autoremove -y ;;
+        dnf|yum) run_with_spinner "Removing orphaned packages" sudo "$PKG_MGR" autoremove -y ;;
+        pacman)  run_with_spinner "Removing orphaned packages" \
+                     bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && echo "$pkgs" | sudo pacman -Rs --noconfirm - || true' ;;
         zypper)  true ;;
     esac
 }
 
 pkg_full_upgrade() {
     case "$PKG_MGR" in
-        apt)     sudo apt full-upgrade -y ;;
-        dnf|yum) sudo "$PKG_MGR" upgrade -y ;;
+        apt)     run_with_spinner "Running full system upgrade" sudo apt full-upgrade -y ;;
+        dnf|yum) run_with_spinner "Running full system upgrade" sudo "$PKG_MGR" upgrade -y ;;
         pacman)  if command -v yay &>/dev/null; then
-                     yay -Syu --noconfirm
+                     run_with_spinner "Running full system upgrade (yay)"  yay  -Syu --noconfirm
                  elif command -v paru &>/dev/null; then
-                     paru -Syu --noconfirm
+                     run_with_spinner "Running full system upgrade (paru)" paru -Syu --noconfirm
                  else
-                     sudo pacman -Syu --noconfirm
+                     run_with_spinner "Running full system upgrade"        sudo pacman -Syu --noconfirm
                  fi ;;
-        zypper)  sudo zypper update -y ;;
+        zypper)  run_with_spinner "Running full system upgrade" sudo zypper update -y ;;
     esac
 }
 
 pkg_clean() {
     case "$PKG_MGR" in
-        apt)     sudo apt clean && sudo apt autoclean ;;
-        dnf|yum) sudo "$PKG_MGR" clean all ;;
-        pacman)  sudo find /var/cache/pacman/pkg -maxdepth 1 -name 'download-*' -delete 2>/dev/null
-                 sudo pacman -Sc --noconfirm 2> >(grep -v 'could not open file.*download-' >&2) ;;
-        zypper)  sudo zypper clean -a ;;
+        apt)     run_with_spinner "Cleaning package cache" sudo apt clean
+                 run_with_spinner "Running apt autoclean"  sudo apt autoclean ;;
+        dnf|yum) run_with_spinner "Cleaning package cache" sudo "$PKG_MGR" clean all ;;
+        pacman)  run_with_spinner "Cleaning package cache" \
+                     bash -c 'sudo find /var/cache/pacman/pkg -maxdepth 1 -name "download-*" -delete 2>/dev/null; sudo pacman -Sc --noconfirm' ;;
+        zypper)  run_with_spinner "Cleaning package cache" sudo zypper clean -a ;;
     esac
 }
 
@@ -240,19 +248,19 @@ pkg_cleanup_thorough() {
                     fi
                 done
                 # shellcheck disable=SC2086
-                sudo apt-get purge -y $kernels_to_remove $headers_to_remove 2>/dev/null || true
+                run_with_spinner "Removing old kernels" sudo apt-get purge -y $kernels_to_remove $headers_to_remove || true
             else
                 info "No old kernels to remove."
             fi
             ;;
         dnf|yum)
-            sudo "$PKG_MGR" remove -y --oldinstallonly --setopt installonly_limit=2 2>/dev/null || true
+            run_with_spinner "Removing old kernels" sudo "$PKG_MGR" remove -y --oldinstallonly --setopt installonly_limit=2 || true
             ;;
         pacman)
             # Arch doesn't accumulate old kernels the same way; skip
             ;;
         zypper)
-            sudo zypper purge-kernels --keep 2 2>/dev/null || true
+            run_with_spinner "Removing old kernels" sudo zypper purge-kernels --keep 2 || true
             ;;
     esac
 
@@ -261,9 +269,8 @@ pkg_cleanup_thorough() {
         local rc_packages
         rc_packages=$(dpkg -l 2>/dev/null | awk '/^rc/ {print $2}')
         if [[ -n "$rc_packages" ]]; then
-            info "Purging removed package configs..."
             # shellcheck disable=SC2086
-            sudo dpkg --purge $rc_packages 2>/dev/null || true
+            run_with_spinner "Purging removed package configs" sudo dpkg --purge $rc_packages || true
         fi
     fi
 

@@ -100,6 +100,60 @@ log_command() {
 }
 
 # ============================================================================
+# Spinner
+# Runs a command in the background while showing an animated spinner.
+# Usage: run_with_spinner "Label" command [args...]
+# On success: prints ✓ label and appends captured output to the success log.
+# On failure: prints ✗ label and dumps captured output to the terminal.
+# ============================================================================
+
+run_with_spinner() {
+    local label="$1"
+    shift
+
+    # Non-interactive fallback: run directly with a plain status line
+    if [[ ! -t 1 ]]; then
+        echo "  ${label}..."
+        "$@"
+        return $?
+    fi
+
+    local _tmp
+    _tmp=$(mktemp)
+    CLEANUP_FILES+=("$_tmp")
+
+    # Run command in background, capturing all output
+    "$@" >"$_tmp" 2>&1 &
+    local _pid=$!
+
+    # Animate spinner until the command completes
+    local _frames=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+    local _i=0
+    while kill -0 "$_pid" 2>/dev/null; do
+        printf "\r  ${CYAN}%s${RESET}  %s" "${_frames[$(( _i % 10 ))]}" "$label"
+        (( _i++ )) || true
+        sleep 0.1
+    done
+
+    wait "$_pid"
+    local _rc=$?
+
+    # Clear the spinner line
+    printf "\r\033[K"
+
+    if [[ $_rc -eq 0 ]]; then
+        printf "  ${GREEN}✓${RESET}  %s\n" "$label"
+        [[ -s "$_tmp" ]] && cat "$_tmp" >> "$SUCCESS_LOG"
+    else
+        printf "  ${RED}✗${RESET}  %s\n" "$label"
+        [[ -s "$_tmp" ]] && cat "$_tmp"
+    fi
+
+    rm -f "$_tmp"
+    return $_rc
+}
+
+# ============================================================================
 # Performance Metrics
 # Tracks per-operation timing and saves to a persistent metrics log.
 # ============================================================================
