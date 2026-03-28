@@ -113,12 +113,12 @@ draw_menu() {
     _buf+="${pad}${eol}"$'\n'
 
     # ── Commit & system info (centred within content area) ──
-    local _commit_plain="Script commit: ${CACHED_LOCAL_COMMIT}  |  Latest commit: ${CACHED_REMOTE_COMMIT}"
+    local _commit_plain="Script (${CACHED_LOCAL_BRANCH}): ${CACHED_LOCAL_COMMIT}  |  Main Branch: ${CACHED_REMOTE_COMMIT}"
     local _clpad=$(( (content_width - ${#_commit_plain}) / 2 ))
     (( _clpad < 0 )) && _clpad=0
     local _cspaces=""
     (( _clpad > 0 )) && printf -v _cspaces '%*s' "$_clpad" ''
-    _buf+="${pad}${_cspaces}Script commit: ${BOLD}${CACHED_LOCAL_COMMIT}${RESET}  |  Latest commit: ${BOLD}${CACHED_REMOTE_COMMIT}${RESET}${eol}"$'\n'
+    _buf+="${pad}${_cspaces}Script (${BOLD}${CACHED_LOCAL_BRANCH}${RESET}): ${BOLD}${CACHED_LOCAL_COMMIT}${RESET}  |  Main Branch: ${BOLD}${CACHED_REMOTE_COMMIT}${RESET}${eol}"$'\n'
 
     if [[ "$CACHED_LOCAL_COMMIT" != "unknown" && "$CACHED_REMOTE_COMMIT" != "unknown" && "$CACHED_LOCAL_COMMIT" != "$CACHED_REMOTE_COMMIT" ]]; then
         local _ood_text="Script out of date, please update."
@@ -519,6 +519,7 @@ run_selection_menu() {
 
     # Fetch commit info once to avoid network call on every redraw
     CACHED_LOCAL_COMMIT=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    CACHED_LOCAL_BRANCH=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     local _remote_full
     _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin HEAD 2>/dev/null | awk '{print $1}')
     if [[ -n "$_remote_full" ]]; then

@@ -176,6 +176,7 @@ CURSOR=0
 # Cached commit info (fetched in run_selection_menu)
 CACHED_LOCAL_COMMIT="unknown"
 CACHED_REMOTE_COMMIT="unknown"
+CACHED_LOCAL_BRANCH="unknown"
 
 # ============================================================================
 # PROCESS SELECTED UTILITIES & SYSTEM TASKS

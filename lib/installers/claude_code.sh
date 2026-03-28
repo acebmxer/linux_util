@@ -76,5 +76,5 @@ update_claude_code() {
 }
 
 get_version_claude_code() {
-    claude --version 2>/dev/null || echo ""
+    claude --version 2>/dev/null | awk '{print $1}'
 }
