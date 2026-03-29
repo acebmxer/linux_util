@@ -29,7 +29,7 @@ install_gamemode() {
                 if [[ "$deb_major" =~ ^[0-9]+$ ]] && [[ "$deb_major" -ge 13 ]]; then
                     need_systemd_dev=true
                 fi
-            elif [[ "$DISTRO_ID" == "ubuntu" ]]; then
+            elif [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ]]; then
                 # Compare major version (e.g. 25.04 -> major=25, need >= 25)
                 local ubuntu_major="${DISTRO_VERSION_ID%%.*}"
                 if [[ "$ubuntu_major" =~ ^[0-9]+$ ]] && [[ "$ubuntu_major" -ge 25 ]]; then
@@ -93,7 +93,7 @@ install_gamemode() {
         return 1
     }
 
-    ./bootstrap.sh || {
+    echo "y" | ./bootstrap.sh || {
         echo "Error: Build failed. Check the output above for details."
         popd >/dev/null
         sudo rm -rf "$GAMEMODE_BUILD_DIR"
@@ -177,7 +177,7 @@ update_gamemode() {
         return 1
     }
 
-    ./bootstrap.sh || {
+    echo "y" | ./bootstrap.sh || {
         echo "Error: Rebuild failed. Check the output above for details."
         popd >/dev/null
         sudo rm -rf "$GAMEMODE_BUILD_DIR"
