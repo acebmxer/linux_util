@@ -14,6 +14,14 @@ detect_distro() {
         DISTRO_VERSION_ID="${VERSION_ID:-}"
         DISTRO_VERSION_CODENAME="${VERSION_CODENAME:-}"
         DISTRO_NAME="${NAME}"
+
+        # Kubuntu ships ID=ubuntu and NAME="Ubuntu" in os-release;
+        # detect it via the kubuntu-desktop metapackage so downstream
+        # DISTRO_ID checks (e.g. "kubuntu") work correctly.
+        if [[ "$DISTRO_ID" == "ubuntu" ]] && dpkg -l kubuntu-desktop 2>/dev/null | grep -q '^ii'; then
+            DISTRO_ID="kubuntu"
+            DISTRO_NAME="Kubuntu"
+        fi
     else
         echo "Error: Cannot detect Linux distribution (/etc/os-release not found)."
         exit 1
