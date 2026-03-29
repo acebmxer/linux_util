@@ -93,8 +93,23 @@ install_gamemode() {
         return 1
     }
 
-    echo "y" | ./bootstrap.sh || {
-        echo "Error: Build failed. Check the output above for details."
+    meson setup builddir --prefix=/usr --buildtype debugoptimized \
+        -Dwith-systemd-user-unit-dir=/etc/systemd/user || {
+        echo "Error: Meson setup failed. Check the output above for details."
+        popd >/dev/null
+        sudo rm -rf "$GAMEMODE_BUILD_DIR"
+        return 1
+    }
+
+    ninja -C builddir || {
+        echo "Error: Compile failed. Check the output above for details."
+        popd >/dev/null
+        sudo rm -rf "$GAMEMODE_BUILD_DIR"
+        return 1
+    }
+
+    sudo ninja -C builddir install || {
+        echo "Error: Install failed. Check the output above for details."
         popd >/dev/null
         sudo rm -rf "$GAMEMODE_BUILD_DIR"
         return 1
@@ -177,8 +192,23 @@ update_gamemode() {
         return 1
     }
 
-    echo "y" | ./bootstrap.sh || {
-        echo "Error: Rebuild failed. Check the output above for details."
+    meson setup builddir --prefix=/usr --buildtype debugoptimized \
+        -Dwith-systemd-user-unit-dir=/etc/systemd/user || {
+        echo "Error: Meson setup failed. Check the output above for details."
+        popd >/dev/null
+        sudo rm -rf "$GAMEMODE_BUILD_DIR"
+        return 1
+    }
+
+    ninja -C builddir || {
+        echo "Error: Compile failed. Check the output above for details."
+        popd >/dev/null
+        sudo rm -rf "$GAMEMODE_BUILD_DIR"
+        return 1
+    }
+
+    sudo ninja -C builddir install || {
+        echo "Error: Install failed. Check the output above for details."
         popd >/dev/null
         sudo rm -rf "$GAMEMODE_BUILD_DIR"
         return 1
