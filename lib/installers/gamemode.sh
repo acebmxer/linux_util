@@ -29,7 +29,7 @@ install_gamemode() {
                 if [[ "$deb_major" =~ ^[0-9]+$ ]] && [[ "$deb_major" -ge 13 ]]; then
                     need_systemd_dev=true
                 fi
-            elif [[ "$DISTRO_ID" == "ubuntu" ]]; then
+            elif [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ]]; then
                 # Compare major version (e.g. 25.04 -> major=25, need >= 25)
                 local ubuntu_major="${DISTRO_VERSION_ID%%.*}"
                 if [[ "$ubuntu_major" =~ ^[0-9]+$ ]] && [[ "$ubuntu_major" -ge 25 ]]; then
@@ -93,8 +93,23 @@ install_gamemode() {
         return 1
     }
 
-    ./bootstrap.sh || {
-        echo "Error: Build failed. Check the output above for details."
+    meson setup builddir --prefix=/usr --buildtype debugoptimized \
+        -Dwith-systemd-user-unit-dir=/etc/systemd/user || {
+        echo "Error: Meson setup failed. Check the output above for details."
+        popd >/dev/null
+        sudo rm -rf "$GAMEMODE_BUILD_DIR"
+        return 1
+    }
+
+    ninja -C builddir || {
+        echo "Error: Compile failed. Check the output above for details."
+        popd >/dev/null
+        sudo rm -rf "$GAMEMODE_BUILD_DIR"
+        return 1
+    }
+
+    sudo ninja -C builddir install || {
+        echo "Error: Install failed. Check the output above for details."
         popd >/dev/null
         sudo rm -rf "$GAMEMODE_BUILD_DIR"
         return 1
@@ -177,8 +192,23 @@ update_gamemode() {
         return 1
     }
 
-    ./bootstrap.sh || {
-        echo "Error: Rebuild failed. Check the output above for details."
+    meson setup builddir --prefix=/usr --buildtype debugoptimized \
+        -Dwith-systemd-user-unit-dir=/etc/systemd/user || {
+        echo "Error: Meson setup failed. Check the output above for details."
+        popd >/dev/null
+        sudo rm -rf "$GAMEMODE_BUILD_DIR"
+        return 1
+    }
+
+    ninja -C builddir || {
+        echo "Error: Compile failed. Check the output above for details."
+        popd >/dev/null
+        sudo rm -rf "$GAMEMODE_BUILD_DIR"
+        return 1
+    }
+
+    sudo ninja -C builddir install || {
+        echo "Error: Install failed. Check the output above for details."
         popd >/dev/null
         sudo rm -rf "$GAMEMODE_BUILD_DIR"
         return 1

@@ -17,7 +17,7 @@ setup_install_docker() {
 
             local docker_dist="$DISTRO_ID"
             local docker_codename="${DISTRO_VERSION_CODENAME:-stable}"
-            if [[ "$DISTRO_ID" == "linuxmint" || "$DISTRO_ID" == "pop" || "$DISTRO_ID" == "neon" ]]; then
+            if [[ "$DISTRO_ID" == "linuxmint" || "$DISTRO_ID" == "pop" || "$DISTRO_ID" == "neon" || "$DISTRO_ID" == "kubuntu" ]]; then
                 docker_dist="ubuntu"
                 if [[ "$DISTRO_ID" == "neon" && -z "$docker_codename" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
                     if [[ -f /etc/upstream-release/lsb-release ]]; then
