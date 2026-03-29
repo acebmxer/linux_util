@@ -27,6 +27,25 @@ install_xrdp() {
 
                 info "Granting xrdp access to SSL certificates..."
                 run_as_root adduser xrdp ssl-cert
+
+                # RDP sessions are treated as inactive by logind, which causes
+                # polkit to prompt for a password on NetworkManager actions.
+                # Fix: grant netdev group members network control without prompting,
+                # then add the current user to netdev.
+                info "Configuring polkit to allow network management in RDP sessions..."
+                run_as_root tee /etc/polkit-1/rules.d/50-xrdp-networkmanager.rules > /dev/null << 'EOF'
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") === 0 &&
+        subject.isInGroup("netdev")) {
+        return polkit.Result.YES;
+    }
+});
+EOF
+                local _rdp_user="${SUDO_USER:-${USER}}"
+                if [[ -n "$_rdp_user" && "$_rdp_user" != "root" ]]; then
+                    info "Adding ${_rdp_user} to netdev group for RDP network access..."
+                    run_as_root usermod -aG netdev "$_rdp_user"
+                fi
             fi
 
             run_as_root systemctl enable xrdp
@@ -68,6 +87,7 @@ uninstall_xrdp() {
             # Clean up Kubuntu 26.04+ KDE X11 additions if present
             if [[ "$DISTRO_ID" == "kubuntu" ]] && dpkg --compare-versions "${DISTRO_VERSION_ID}" ge "26.04" 2>/dev/null; then
                 run_as_root apt purge --autoremove -y kwin-x11 plasma-session-x11
+                run_as_root rm -f /etc/polkit-1/rules.d/50-xrdp-networkmanager.rules
             fi
             run_as_root_sh "apt autoclean"
             ;;
