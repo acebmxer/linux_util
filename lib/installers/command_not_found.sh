@@ -49,9 +49,11 @@ BASHRC_BLOCK
 
 # _cnf_apply_zsh writes the zsh handler block into the given rc file.
 # The handler shows Ubuntu package suggestions, then asks y/N and installs via apt.
+# Also ensures the command-not-found package and its database are present.
 _cnf_apply_zsh() {
     local rcfile="${1:-$HOME/.zshrc}"
     [[ -f "$rcfile" ]] || return 0
+    _cnf_ensure_package || true   # best-effort; handler works even without suggestions
     if grep -qF "$_CNF_ZSH_BEGIN" "$rcfile" 2>/dev/null; then
         info "command-not-found zsh block already present in ${rcfile}"
         return 0
@@ -100,8 +102,15 @@ setup_command_not_found() {
     _cnf_ensure_package || return 1
     _cnf_apply_bash "$HOME/.bashrc"
 
-    info "command-not-found setup complete."
-    info "Run 'source ~/.bashrc' or open a new terminal to activate."
+    # Also configure zsh if it is already installed (e.g. dotfiles were set up
+    # previously). If zsh is not yet installed, the dotfiles installer will call
+    # _cnf_apply_zsh itself after it creates ~/.zshrc.
+    if [[ -f "$HOME/.zshrc" ]]; then
+        _cnf_apply_zsh "$HOME/.zshrc"
+        info "command-not-found setup complete. Open a new terminal to activate."
+    else
+        info "command-not-found setup complete. Run 'source ~/.bashrc' or open a new terminal to activate."
+    fi
     return 0
 }
 
