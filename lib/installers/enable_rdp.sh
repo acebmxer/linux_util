@@ -20,33 +20,35 @@ _krdp_human_users() {
 }
 
 # Prompt user to select from the list of human accounts.
-# Prints the chosen username to stdout; returns 2 if skipped.
+# Prints the chosen username to stdout only; all UI output goes to stderr.
+# Returns 2 if the user skips/cancels.
 _krdp_prompt_user() {
     local -a users=()
     mapfile -t users < <(_krdp_human_users)
 
     if [[ ${#users[@]} -eq 0 ]]; then
-        warn "No human users found — skipping user configuration."
+        warn "No human users found — skipping user configuration." >&2
         return 2
     fi
 
-    echo ""
-    echo "${BOLD}${CYAN}Select user to enable RDP for:${RESET}"
-    echo ""
+    echo "" >&2
+    echo "${BOLD}${CYAN}Which user should be able to connect via RDP?${RESET}" >&2
+    echo "${DIM}(They will log in using their normal system password)${RESET}" >&2
+    echo "" >&2
     for i in "${!users[@]}"; do
-        printf "  %d) %s\n" "$((i + 1))" "${users[$i]}"
+        printf "  %d) %s\n" "$((i + 1))" "${users[$i]}" >&2
     done
-    echo ""
+    echo "" >&2
 
     local choice
     while true; do
         read -rp "Choice [1-${#users[@]}, or q to skip]: " choice < /dev/tty
         [[ "$choice" == "q" || "$choice" == "Q" ]] && return 2
         if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#users[@]} )); then
-            echo "${users[$((choice - 1))]}"
+            echo "${users[$((choice - 1))]}"   # only the username goes to stdout
             return 0
         fi
-        echo "Please enter a number between 1 and ${#users[@]}, or q to skip."
+        echo "  Please enter a number between 1 and ${#users[@]}, or q to skip." >&2
     done
 }
 
