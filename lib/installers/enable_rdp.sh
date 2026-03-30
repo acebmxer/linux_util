@@ -83,8 +83,8 @@ install_enable_rdp() {
     echo ""
     echo "${BOLD}${CYAN}Select RDP Server to Install:${RESET}"
     echo ""
-    echo "  1) xrdp  — traditional, X11-based, works on most distros"
-    echo "  2) krdp  — KDE-native, Wayland-based (recommended for KDE Plasma 6 / Kubuntu 26.04+)"
+    echo "  1) xrdp  — traditional, X11-based, works on most distros (currenlty recommended)"
+    echo "  2) krdp  — KDE-native, Wayland-based (currenlty not recommended)"
     echo ""
 
     local choice
