@@ -124,7 +124,7 @@ _timeshift_setup_device() {
 
     # List devices via timeshift and parse the numbered device table
     local devices_output
-    devices_output=$(sudo timeshift --list-devices 2>&1) || true
+    devices_output=$(sudo timeshift --list-devices </dev/null 2>&1) || true
 
     echo "$devices_output"
     echo ""
@@ -294,7 +294,7 @@ _timeshift_cache_last_snapshot() {
     [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 0
 
     local list_output
-    list_output=$(sudo timeshift --list 2>&1) || true
+    list_output=$(sudo timeshift --list </dev/null 2>&1) || true
 
     # Parse the last snapshot line from timeshift --list output.
     # Typical format:
@@ -421,7 +421,7 @@ declare -a SNAPSHOT_NAMES=()
 _timeshift_list_snapshots() {
     SNAPSHOT_NAMES=()
     local list_output
-    list_output=$(sudo timeshift --list 2>&1) || true
+    list_output=$(sudo timeshift --list </dev/null 2>&1) || true
 
     echo "$list_output"
     echo ""
@@ -897,9 +897,9 @@ timeshift_create_snapshot() {
     # Try with --tags O first; some timeshift versions (e.g. Ubuntu 24.04) have a
     # bug that rejects it, so fall back to creating without a tag.
     local ts_output ts_ok=false
-    if ts_output=$(sudo timeshift --create --comments "$comment" --tags O --scripted 2>&1); then
+    if ts_output=$(sudo timeshift --create --comments "$comment" --tags O --scripted </dev/null 2>&1); then
         ts_ok=true
-    elif ts_output=$(sudo timeshift --create --comments "$comment" --scripted 2>&1); then
+    elif ts_output=$(sudo timeshift --create --comments "$comment" --scripted </dev/null 2>&1); then
         ts_ok=true
     fi
 
