@@ -62,17 +62,21 @@ _krdp_enable_service() {
     local rdp_home
     rdp_home=$(getent passwd "$rdp_user" | cut -d: -f6)
 
-    # Write krdprc — tells krdp which system account to authenticate against.
-    # The RDP client connects using this username + the account's system password (PAM).
+    # Write krdpserverrc — the authoritative config read by krdpserver.
+    # SystemUserEnabled=true allows the user running the service to authenticate
+    # via their normal system (PAM) password. AutogenerateCertificates=true
+    # lets krdp create its own TLS certs so no manual cert setup is needed.
     info "Writing krdp config for ${rdp_user}..."
     run_as_root mkdir -p "${rdp_home}/.config"
-    run_as_root tee "${rdp_home}/.config/krdprc" > /dev/null << EOF
+    run_as_root tee "${rdp_home}/.config/krdpserverrc" > /dev/null << EOF
 [General]
-enabled=true
-username=${rdp_user}
+AutogenerateCertificates=true
+ListenPort=3389
+SystemUserEnabled=true
+Autostart=false
 EOF
-    run_as_root chown "${rdp_user}:${rdp_user}" "${rdp_home}/.config/krdprc"
-    run_as_root chmod 600 "${rdp_home}/.config/krdprc"
+    run_as_root chown "${rdp_user}:${rdp_user}" "${rdp_home}/.config/krdpserverrc"
+    run_as_root chmod 600 "${rdp_home}/.config/krdpserverrc"
 
     # Enable linger so the user's systemd instance starts at boot without a local login
     info "Enabling linger for ${rdp_user} (allows service to run without local login)..."
@@ -151,12 +155,12 @@ install_krdp() {
 uninstall_krdp() {
     info "Uninstalling krdp..."
 
-    # Disable service + linger for any user that has a krdprc config
+    # Disable service + linger for any user that has a krdpserverrc config
     while IFS=: read -r username _ uid _ _ homedir _; do
         [[ "$uid" -ge 1000 && "$uid" -lt 60000 ]] || continue
-        [[ -f "${homedir}/.config/krdprc" ]] || continue
+        [[ -f "${homedir}/.config/krdpserverrc" ]] || continue
         _krdp_disable_service "$username"
-        run_as_root rm -f "${homedir}/.config/krdprc"
+        run_as_root rm -f "${homedir}/.config/krdpserverrc"
     done < /etc/passwd
 
     case "$DISTRO_FAMILY" in
