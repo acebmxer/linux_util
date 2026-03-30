@@ -890,32 +890,26 @@ timeshift_create_snapshot() {
     local comment="${1:-linux_util: pre-operation snapshot}"
 
     echo ""
-    echo "${BOLD}${CYAN}Creating Timeshift snapshot...${RESET}"
     echo "${DIM}Comment: ${comment}${RESET}"
-    echo ""
 
     # Try with --tags O first; some timeshift versions (e.g. Ubuntu 24.04) have a
     # bug that rejects it, so fall back to creating without a tag.
-    local ts_output ts_ok=false
-    if ts_output=$(sudo timeshift --create --comments "$comment" --tags O --scripted </dev/null 2>&1); then
-        ts_ok=true
-    elif ts_output=$(sudo timeshift --create --comments "$comment" --scripted </dev/null 2>&1); then
-        ts_ok=true
-    fi
+    _timeshift_do_create() {
+        local _comment="$1"
+        if sudo timeshift --create --comments "$_comment" --tags O --scripted </dev/null 2>&1; then
+            return 0
+        fi
+        sudo timeshift --create --comments "$_comment" --scripted </dev/null 2>&1
+    }
 
-    if [[ "$ts_ok" == "true" ]]; then
-        echo "${GREEN}✓ Timeshift snapshot created successfully${RESET}"
+    if run_with_spinner "Creating Timeshift snapshot" _timeshift_do_create "$comment"; then
         log_success "Timeshift snapshot created: ${comment}"
-        verbose "Timeshift output: ${ts_output}"
-
-        # Refresh the cached last snapshot
         _timeshift_cache_last_snapshot
-        return 0
     else
         echo "${YELLOW}⚠ Timeshift snapshot creation failed (continuing anyway)${RESET}"
-        log_warning "Timeshift snapshot creation failed: ${ts_output}"
-        verbose "Timeshift error output: ${ts_output}"
-        # Fail quietly — don't block the script
-        return 0
+        log_warning "Timeshift snapshot creation failed"
     fi
+    echo ""
+    # Always return 0 — don't block the script on snapshot failure
+    return 0
 }
