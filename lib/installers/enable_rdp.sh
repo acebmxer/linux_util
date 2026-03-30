@@ -68,6 +68,7 @@ _krdp_enable_service() {
     run_as_root mkdir -p "${rdp_home}/.config"
     run_as_root tee "${rdp_home}/.config/krdprc" > /dev/null << EOF
 [General]
+enabled=true
 username=${rdp_user}
 EOF
     run_as_root chown "${rdp_user}:${rdp_user}" "${rdp_home}/.config/krdprc"
@@ -85,11 +86,11 @@ EOF
     fi
 
     # Enable and start plasma-krdp as the target user
-    info "Enabling plasma-krdp.service for ${rdp_user}..."
+    info "Enabling app-org.kde.krdpserver.service for ${rdp_user}..."
     if sudo -u "$rdp_user" \
             XDG_RUNTIME_DIR="$xdg_runtime" \
             DBUS_SESSION_BUS_ADDRESS="unix:path=${xdg_runtime}/bus" \
-            systemctl --user enable --now plasma-krdp.service; then
+            systemctl --user enable --now app-org.kde.krdpserver.service; then
         info "krdp is running for ${rdp_user}."
         info "Connect via RDP using username '${rdp_user}' and their system password."
     else
@@ -108,7 +109,7 @@ _krdp_disable_service() {
     sudo -u "$rdp_user" \
         XDG_RUNTIME_DIR="$xdg_runtime" \
         DBUS_SESSION_BUS_ADDRESS="unix:path=${xdg_runtime}/bus" \
-        systemctl --user disable --now plasma-krdp.service 2>/dev/null || true
+        systemctl --user disable --now app-org.kde.krdpserver.service 2>/dev/null || true
 
     run_as_root loginctl disable-linger "$rdp_user" 2>/dev/null || true
 }
