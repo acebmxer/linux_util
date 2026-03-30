@@ -1,0 +1,118 @@
+#!/bin/bash
+# Command-not-found auto-install prompt setup
+# Enables interactive y/N install prompt when a missing command is typed.
+# Bash: uses COMMAND_NOT_FOUND_INSTALL_PROMPT=1 with the standard handler.
+# Zsh:  defines command_not_found_handler() since Zsh ignores the env var.
+
+_CNF_BASH_BEGIN="# linux_util: command-not-found auto-install (bash) -- begin"
+_CNF_BASH_END="# linux_util: command-not-found auto-install (bash) -- end"
+_CNF_ZSH_BEGIN="# linux_util: command-not-found handler (zsh) -- begin"
+_CNF_ZSH_END="# linux_util: command-not-found handler (zsh) -- end"
+
+check_command_not_found() {
+    grep -qF "$_CNF_BASH_BEGIN" ~/.bashrc 2>/dev/null
+}
+
+# _cnf_ensure_package installs the command-not-found package if missing and
+# updates the lookup database so suggestions are available immediately.
+_cnf_ensure_package() {
+    if ! dpkg -l command-not-found &>/dev/null 2>&1; then
+        info "Installing command-not-found package..."
+        sudo apt-get install -y command-not-found || { warn "Failed to install command-not-found"; return 1; }
+    fi
+    # Refresh the package-name database (best-effort; may take a moment)
+    sudo apt-file update 2>/dev/null || true
+    sudo update-command-not-found 2>/dev/null || true
+    return 0
+}
+
+# _cnf_apply_bash writes the bash block into the given rc file (default: ~/.bashrc).
+_cnf_apply_bash() {
+    local rcfile="${1:-$HOME/.bashrc}"
+    if grep -qF "$_CNF_BASH_BEGIN" "$rcfile" 2>/dev/null; then
+        info "command-not-found bash block already present in ${rcfile}"
+        return 0
+    fi
+    cat >> "$rcfile" << BASHRC_BLOCK
+
+${_CNF_BASH_BEGIN}
+# Ensure the handler is loaded
+if [ -f /usr/lib/command-not-found ]; then
+    . /usr/lib/command-not-found
+fi
+# Enable the interactive install prompt (Bash only)
+export COMMAND_NOT_FOUND_INSTALL_PROMPT=1
+${_CNF_BASH_END}
+BASHRC_BLOCK
+    info "Added command-not-found auto-install block to ${rcfile}"
+}
+
+# _cnf_apply_zsh writes the zsh handler block into the given rc file.
+# The handler shows Ubuntu package suggestions, then asks y/N and installs via apt.
+_cnf_apply_zsh() {
+    local rcfile="${1:-$HOME/.zshrc}"
+    [[ -f "$rcfile" ]] || return 0
+    if grep -qF "$_CNF_ZSH_BEGIN" "$rcfile" 2>/dev/null; then
+        info "command-not-found zsh block already present in ${rcfile}"
+        return 0
+    fi
+    cat >> "$rcfile" << 'ZSHRC_BLOCK'
+
+# linux_util: command-not-found handler (zsh) -- begin
+# Zsh ignores COMMAND_NOT_FOUND_INSTALL_PROMPT; define the handler directly.
+command_not_found_handler() {
+    local cmd="$1"
+    # Show standard Ubuntu package suggestions
+    if [ -x /usr/lib/command-not-found ]; then
+        /usr/lib/command-not-found -- "$cmd"
+    fi
+    # Prompt user to install via apt
+    echo -n "Would you like to install '$cmd'? (y/N): "
+    read -k 1 reply
+    echo
+    if [[ "$reply" =~ ^[Yy]$ ]]; then
+        sudo apt install "$cmd"
+    else
+        return 127
+    fi
+}
+# linux_util: command-not-found handler (zsh) -- end
+ZSHRC_BLOCK
+    info "Added command-not-found handler to ${rcfile}"
+}
+
+# _cnf_remove_block removes a begin/end marker block from a file using sed.
+_cnf_remove_block() {
+    local rcfile="$1" begin_marker="$2" end_marker="$3"
+    [[ -f "$rcfile" ]] || return 0
+    if grep -qF "$begin_marker" "$rcfile" 2>/dev/null; then
+        local escaped_begin escaped_end
+        escaped_begin=$(printf '%s\n' "$begin_marker" | sed 's/[[\.*^$()+?{|]/\\&/g')
+        escaped_end=$(printf '%s\n' "$end_marker"   | sed 's/[[\.*^$()+?{|]/\\&/g')
+        sed -i "/^${escaped_begin}$/,/^${escaped_end}$/d" "$rcfile"
+        info "Removed command-not-found block from ${rcfile}"
+    fi
+}
+
+setup_command_not_found() {
+    info "Setting up command-not-found auto-install prompt..."
+
+    _cnf_ensure_package || return 1
+    _cnf_apply_bash "$HOME/.bashrc"
+
+    info "command-not-found setup complete."
+    info "Run 'source ~/.bashrc' or open a new terminal to activate."
+    return 0
+}
+
+uninstall_command_not_found() {
+    info "Removing command-not-found auto-install blocks from shell configs..."
+    _cnf_remove_block "$HOME/.bashrc" "$_CNF_BASH_BEGIN" "$_CNF_BASH_END"
+    _cnf_remove_block "$HOME/.zshrc"  "$_CNF_ZSH_BEGIN"  "$_CNF_ZSH_END"
+    info "command-not-found blocks removed."
+    return 0
+}
+
+update_command_not_found() {
+    setup_command_not_found
+}

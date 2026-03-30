@@ -53,6 +53,13 @@ if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DIS
     register_system_task "Local MOTD"    setup_local_motd        check_landscape_motd  uninstall_landscape_motd  update_landscape_motd     get_version_landscape_motd
 fi
 
+# Command-not-found auto-install prompt (Ubuntu, Kubuntu, KDE Neon)
+# Prerequisite: enables interactive y/N install prompt for missing commands in bash.
+# Dotfiles installer will additionally apply the zsh handler when zsh is set up.
+if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
+    register_system_task "Command-Not-Found Prompt" setup_command_not_found check_command_not_found uninstall_command_not_found update_command_not_found
+fi
+
 # Snapshot tasks (Create / Restore) — runtime checks for available backend
 register_system_task "Create Snapshot"   setup_create_snapshot   check_always_false    noop_function             setup_create_snapshot
 register_system_task "Restore Snapshot"  setup_restore_snapshot  check_always_false    noop_function             setup_restore_snapshot
