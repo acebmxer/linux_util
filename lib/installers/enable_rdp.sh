@@ -73,7 +73,7 @@ _krdp_enable_service() {
 AutogenerateCertificates=true
 ListenPort=3389
 SystemUserEnabled=true
-Autostart=false
+Autostart=true
 EOF
     run_as_root chown "${rdp_user}:${rdp_user}" "${rdp_home}/.config/krdpserverrc"
     run_as_root chmod 600 "${rdp_home}/.config/krdpserverrc"
@@ -89,12 +89,19 @@ EOF
         sleep 2
     fi
 
-    # Enable and start plasma-krdp as the target user
+    # Enable and start the krdp service as the target user.
+    # Enable creates the persistent symlink under plasma-workspace.target.wants/
+    # so it starts with every KDE Plasma session. Restart ensures it picks up
+    # the new config immediately even if it was already running.
     info "Enabling app-org.kde.krdpserver.service for ${rdp_user}..."
+    sudo -u "$rdp_user" \
+        XDG_RUNTIME_DIR="$xdg_runtime" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=${xdg_runtime}/bus" \
+        systemctl --user enable app-org.kde.krdpserver.service
     if sudo -u "$rdp_user" \
             XDG_RUNTIME_DIR="$xdg_runtime" \
             DBUS_SESSION_BUS_ADDRESS="unix:path=${xdg_runtime}/bus" \
-            systemctl --user enable --now app-org.kde.krdpserver.service; then
+            systemctl --user restart app-org.kde.krdpserver.service; then
         info "krdp is running for ${rdp_user}."
         info "Connect via RDP using username '${rdp_user}' and their system password."
     else
