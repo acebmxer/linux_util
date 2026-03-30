@@ -7,124 +7,6 @@
 # Note: running both simultaneously is not supported — they would conflict on port 3389.
 # xrdp functions live in xrdp.sh and are called directly by this dispatcher.
 
-# --- krdp helpers ---
-
-# Return list of human users (UID 1000-59999, real home dir, valid shell)
-_krdp_human_users() {
-    while IFS=: read -r username _ uid _ _ homedir shell; do
-        [[ "$uid" -ge 1000 && "$uid" -lt 60000 ]] || continue
-        [[ "$shell" == */false || "$shell" == */nologin ]] && continue
-        [[ -d "$homedir" ]] || continue
-        echo "$username"
-    done < /etc/passwd
-}
-
-# Prompt user to select from the list of human accounts.
-# Prints the chosen username to stdout only; all UI output goes to stderr.
-# Returns 2 if the user skips/cancels.
-_krdp_prompt_user() {
-    local -a users=()
-    mapfile -t users < <(_krdp_human_users)
-
-    if [[ ${#users[@]} -eq 0 ]]; then
-        warn "No human users found — skipping user configuration." >&2
-        return 2
-    fi
-
-    echo "" >&2
-    echo "${BOLD}${CYAN}Which user should be able to connect via RDP?${RESET}" >&2
-    echo "${DIM}(They will log in using their normal system password)${RESET}" >&2
-    echo "" >&2
-    for i in "${!users[@]}"; do
-        printf "  %d) %s\n" "$((i + 1))" "${users[$i]}" >&2
-    done
-    echo "" >&2
-
-    local choice
-    while true; do
-        read -rp "Choice [1-${#users[@]}, or q to skip]: " choice < /dev/tty
-        [[ "$choice" == "q" || "$choice" == "Q" ]] && return 2
-        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#users[@]} )); then
-            echo "${users[$((choice - 1))]}"   # only the username goes to stdout
-            return 0
-        fi
-        echo "  Please enter a number between 1 and ${#users[@]}, or q to skip." >&2
-    done
-}
-
-# Enable the plasma-krdp systemd user service for a given user, headlessly.
-# Sets up linger so it survives reboots without requiring a local login.
-_krdp_enable_service() {
-    local rdp_user="$1"
-    local rdp_uid
-    rdp_uid=$(id -u "$rdp_user")
-    local xdg_runtime="/run/user/${rdp_uid}"
-    local rdp_home
-    rdp_home=$(getent passwd "$rdp_user" | cut -d: -f6)
-
-    # Write krdpserverrc — the authoritative config read by krdpserver.
-    # SystemUserEnabled=true allows the user running the service to authenticate
-    # via their normal system (PAM) password. AutogenerateCertificates=true
-    # lets krdp create its own TLS certs so no manual cert setup is needed.
-    info "Writing krdp config for ${rdp_user}..."
-    run_as_root mkdir -p "${rdp_home}/.config"
-    run_as_root tee "${rdp_home}/.config/krdpserverrc" > /dev/null << EOF
-[General]
-AutogenerateCertificates=true
-ListenPort=3389
-SystemUserEnabled=true
-Autostart=true
-EOF
-    run_as_root chown "${rdp_user}:${rdp_user}" "${rdp_home}/.config/krdpserverrc"
-    run_as_root chmod 600 "${rdp_home}/.config/krdpserverrc"
-
-    # Enable linger so the user's systemd instance starts at boot without a local login
-    info "Enabling linger for ${rdp_user} (allows service to run without local login)..."
-    run_as_root loginctl enable-linger "$rdp_user"
-
-    # Ensure the user's systemd runtime dir exists (linger may take a moment)
-    if [[ ! -d "$xdg_runtime" ]]; then
-        info "Starting user@${rdp_uid} systemd instance..."
-        run_as_root systemctl start "user@${rdp_uid}.service" || true
-        sleep 2
-    fi
-
-    # Enable and start the krdp service as the target user.
-    # Enable creates the persistent symlink under plasma-workspace.target.wants/
-    # so it starts with every KDE Plasma session. Restart ensures it picks up
-    # the new config immediately even if it was already running.
-    info "Enabling app-org.kde.krdpserver.service for ${rdp_user}..."
-    sudo -u "$rdp_user" \
-        XDG_RUNTIME_DIR="$xdg_runtime" \
-        DBUS_SESSION_BUS_ADDRESS="unix:path=${xdg_runtime}/bus" \
-        systemctl --user enable app-org.kde.krdpserver.service
-    if sudo -u "$rdp_user" \
-            XDG_RUNTIME_DIR="$xdg_runtime" \
-            DBUS_SESSION_BUS_ADDRESS="unix:path=${xdg_runtime}/bus" \
-            systemctl --user restart app-org.kde.krdpserver.service; then
-        info "krdp is running for ${rdp_user}."
-        info "Connect via RDP using username '${rdp_user}' and their system password."
-    else
-        warn "Service enable failed — ${rdp_user} may need to enable it via System Settings > Remote Desktop."
-    fi
-}
-
-# Disable the plasma-krdp service and linger for a given user
-_krdp_disable_service() {
-    local rdp_user="$1"
-    local rdp_uid
-    rdp_uid=$(id -u "$rdp_user" 2>/dev/null) || return 0
-    local xdg_runtime="/run/user/${rdp_uid}"
-
-    info "Disabling krdp service for ${rdp_user}..."
-    sudo -u "$rdp_user" \
-        XDG_RUNTIME_DIR="$xdg_runtime" \
-        DBUS_SESSION_BUS_ADDRESS="unix:path=${xdg_runtime}/bus" \
-        systemctl --user disable --now app-org.kde.krdpserver.service 2>/dev/null || true
-
-    run_as_root loginctl disable-linger "$rdp_user" 2>/dev/null || true
-}
-
 # --- krdp ---
 
 check_krdp() {
@@ -149,26 +31,12 @@ install_krdp() {
             ;;
     esac
 
-    local rdp_user
-    rdp_user=$(_krdp_prompt_user) || {
-        info "krdp installed. To configure later, re-run and select Enable RDP."
-        return 0
-    }
-
-    _krdp_enable_service "$rdp_user"
+    info "krdp installed. Configure it via System Settings > Remote Desktop."
     return 0
 }
 
 uninstall_krdp() {
     info "Uninstalling krdp..."
-
-    # Disable service + linger for any user that has a krdpserverrc config
-    while IFS=: read -r username _ uid _ _ homedir _; do
-        [[ "$uid" -ge 1000 && "$uid" -lt 60000 ]] || continue
-        [[ -f "${homedir}/.config/krdpserverrc" ]] || continue
-        _krdp_disable_service "$username"
-        run_as_root rm -f "${homedir}/.config/krdpserverrc"
-    done < /etc/passwd
 
     case "$DISTRO_FAMILY" in
         debian)
