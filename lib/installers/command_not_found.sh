@@ -1,8 +1,9 @@
 #!/bin/bash
 # Command-not-found auto-install prompt setup
 # Enables interactive y/N install prompt when a missing command is typed.
-# Bash: uses COMMAND_NOT_FOUND_INSTALL_PROMPT=1 with the standard handler.
-# Zsh:  defines command_not_found_handler() since Zsh ignores the env var.
+# Bash: defines command_not_found_handle() — COMMAND_NOT_FOUND_INSTALL_PROMPT=1
+#       is not reliably supported in Ubuntu 26.04+.
+# Zsh:  defines command_not_found_handler() since the function name differs.
 
 _CNF_BASH_BEGIN="# linux_util: command-not-found auto-install (bash) -- begin"
 _CNF_BASH_END="# linux_util: command-not-found auto-install (bash) -- end"
@@ -26,21 +27,36 @@ _cnf_ensure_package() {
     return 0
 }
 
-# _cnf_apply_bash writes the bash block into the given rc file (default: ~/.bashrc).
+# _cnf_apply_bash writes the bash handler block into the given rc file (default: ~/.bashrc).
+# Defines command_not_found_handle(), which overrides the system default to add
+# an interactive y/N install prompt after showing package suggestions.
 _cnf_apply_bash() {
     local rcfile="${1:-$HOME/.bashrc}"
     if grep -qF "$_CNF_BASH_BEGIN" "$rcfile" 2>/dev/null; then
         info "command-not-found bash block already present in ${rcfile}"
         return 0
     fi
-    cat >> "$rcfile" << BASHRC_BLOCK
+    cat >> "$rcfile" << 'BASHRC_BLOCK'
 
-${_CNF_BASH_BEGIN}
-# Enable the interactive install prompt (Bash only)
-# Note: command_not_found_handle is set up by /etc/bash.bashrc when the
-# command-not-found package is installed — do not source it here.
-export COMMAND_NOT_FOUND_INSTALL_PROMPT=1
-${_CNF_BASH_END}
+# linux_util: command-not-found auto-install (bash) -- begin
+command_not_found_handle() {
+    local cmd="$1"
+    # Show standard Ubuntu package suggestions
+    if [ -x /usr/lib/command-not-found ]; then
+        /usr/lib/command-not-found -- "$cmd"
+    fi
+    # Prompt user to install via apt
+    printf "Would you like to install '%s'? (y/N): " "$cmd"
+    local reply
+    read -r -n 1 reply < /dev/tty
+    echo
+    if [[ "$reply" =~ ^[Yy]$ ]]; then
+        sudo apt install "$cmd"
+    else
+        return 127
+    fi
+}
+# linux_util: command-not-found auto-install (bash) -- end
 BASHRC_BLOCK
     info "Added command-not-found auto-install block to ${rcfile}"
 }
