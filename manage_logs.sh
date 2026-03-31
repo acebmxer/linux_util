@@ -67,18 +67,18 @@ list_logs() {
     if [[ ${#success_logs[@]} -gt 0 ]]; then
         echo "${BOLD}${GREEN}Success Logs:${RESET}"
         for log in "${success_logs[@]}"; do
-            local size=$(du -h "$log" | cut -f1)
-            local date=$(stat -c %y "$log" | cut -d' ' -f1,2 | cut -d'.' -f1)
+            local size; size=$(du -h "$log" | cut -f1)
+            local date; date=$(stat -c %y "$log" | cut -d' ' -f1,2 | cut -d'.' -f1)
             echo "  $(basename "$log") - ${size} - ${date}"
         done
         echo ""
     fi
-    
+
     if [[ ${#error_logs[@]} -gt 0 ]]; then
         echo "${BOLD}${RED}Error Logs:${RESET}"
         for log in "${error_logs[@]}"; do
-            local size=$(du -h "$log" | cut -f1)
-            local date=$(stat -c %y "$log" | cut -d'.' -f1)
+            local size; size=$(du -h "$log" | cut -f1)
+            local date; date=$(stat -c %y "$log" | cut -d' ' -f1,2 | cut -d'.' -f1)
             echo "  $(basename "$log") - ${size} - ${date}"
         done
     fi
@@ -163,7 +163,7 @@ search_logs() {
     # Search in all log files
     for log in "$LOG_DIR"/*.log; do
         if [[ -f "$log" ]]; then
-            local matches=$(grep -i "$pattern" "$log" 2>/dev/null)
+            local matches; matches=$(grep -i "$pattern" "$log" 2>/dev/null) || true
             if [[ -n "$matches" ]]; then
                 echo "${BOLD}${GREEN}=== $(basename "$log") ===${RESET}"
                 echo "$matches"
@@ -189,8 +189,8 @@ show_stats() {
         return 1
     fi
     
-    local total_logs=$(find "$LOG_DIR" -name "*.log" 2>/dev/null | wc -l)
-    local total_size=$(du -sh "$LOG_DIR" 2>/dev/null | cut -f1)
+    local total_logs; total_logs=$(find "$LOG_DIR" -name "*.log" 2>/dev/null | wc -l)
+    local total_size; total_size=$(du -sh "$LOG_DIR" 2>/dev/null | cut -f1)
     local -a _s_logs=("$LOG_DIR"/success_*.log)
     [[ -e "${_s_logs[0]}" ]] || _s_logs=()
     local success_count=${#_s_logs[@]}
@@ -211,9 +211,9 @@ show_stats() {
         echo ""
         
         # Count successes and errors
-        local successes=$(grep -c "\[SUCCESS\]" "${LOG_DIR}/success_latest.log" 2>/dev/null || echo 0)
-        local errors=$(grep -c "\[ERROR\]" "${LOG_DIR}/error_latest.log" 2>/dev/null || echo 0)
-        local warnings=$(grep -c "\[WARNING\]" "${LOG_DIR}/error_latest.log" 2>/dev/null || echo 0)
+        local successes; successes=$(grep -c "\[SUCCESS\]" "${LOG_DIR}/success_latest.log" 2>/dev/null || echo 0)
+        local errors; errors=$(grep -c "\[ERROR\]" "${LOG_DIR}/error_latest.log" 2>/dev/null || echo 0)
+        local warnings; warnings=$(grep -c "\[WARNING\]" "${LOG_DIR}/error_latest.log" 2>/dev/null || echo 0)
         
         echo "Latest run statistics:"
         echo "  ${GREEN}✓ Successes: ${successes}${RESET}"
@@ -232,7 +232,7 @@ clean_logs() {
         return 1
     fi
     
-    local count=$(find "$LOG_DIR" -name "*.log" -type f -mtime +${days} 2>/dev/null | wc -l)
+    local count; count=$(find "$LOG_DIR" -name "*.log" -type f -mtime +"${days}" 2>/dev/null | wc -l)
     
     if [[ $count -eq 0 ]]; then
         echo "${GREEN}No old logs to clean.${RESET}"

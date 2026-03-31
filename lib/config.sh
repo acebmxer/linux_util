@@ -73,7 +73,8 @@ load_config() {
         local example_file="${config_file}.example"
         if [[ -f "$example_file" ]]; then
             cp "$example_file" "$config_file"
-            debug "Created ${config_file} from ${example_file}"
+            echo "[INFO] Created default configuration: ${config_file}"
+            echo "[INFO] Edit it to customize behaviour, or re-run to use defaults."
         else
             debug "No config file found at ${config_file}, using defaults."
             return 0
@@ -95,8 +96,9 @@ load_config() {
         value="${line#*=}"
 
         # Trim whitespace
-        key="$(echo "$key" | tr -d '[:space:]')"
-        value="$(echo "$value" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+        key="${key//[[:space:]]/}"
+        value="${value#"${value%%[! ]*}"}"   # ltrim
+        value="${value%"${value##*[! ]}"}"   # rtrim
 
         # Map config keys to CFG_ variables (whitelist)
         case "$key" in

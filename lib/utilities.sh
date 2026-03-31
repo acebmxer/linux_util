@@ -46,12 +46,11 @@ register_utility() {
 # an error to stderr and returns 1.
 resolve_utility_name() {
     local input="$1"
-    local input_lower
-    input_lower=$(echo "$input" | tr '[:upper:]' '[:lower:]')
+    local input_lower="${input,,}"
 
     # First try exact match (case-insensitive)
     for util in "${UTILITIES[@]}"; do
-        if [[ "$(echo "$util" | tr '[:upper:]' '[:lower:]')" == "$input_lower" ]]; then
+        if [[ "${util,,}" == "$input_lower" ]]; then
             echo "$util"
             return 0
         fi
@@ -60,7 +59,7 @@ resolve_utility_name() {
     # Then try partial match — collect all matches to detect ambiguity
     local -a matches=()
     for util in "${UTILITIES[@]}"; do
-        if [[ "$(echo "$util" | tr '[:upper:]' '[:lower:]')" == *"$input_lower"* ]]; then
+        if [[ "${util,,}" == *"$input_lower"* ]]; then
             matches+=("$util")
         fi
     done

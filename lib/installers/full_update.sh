@@ -102,7 +102,7 @@ setup_full_update() {
         fi
         echo ""
         local confirm=""
-        read -rp "Continue with distribution upgrade? (y/N): " confirm
+        read -rp "Continue with distribution upgrade? (y/N): " confirm < /dev/tty
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
             local upgrade_rc=0
             pkg_distro_upgrade "$target_version" || upgrade_rc=$?

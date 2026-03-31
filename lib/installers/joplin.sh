@@ -26,7 +26,7 @@ check_joplin() {
     [[ -f ~/.joplin/Joplin.AppImage ]] || command -v joplin &>/dev/null
 }
 install_joplin() {
-    echo "Installing Joplin Client..."
+    info "Installing Joplin Client..."
     detect_and_export_desktop_env
 
     # Joplin ships as an AppImage which requires FUSE2. The package name differs
@@ -35,7 +35,7 @@ install_joplin() {
     case "$DISTRO_FAMILY" in
         arch)
             if ! pkg_check_installed fuse2; then
-                echo "Installing fuse2 (required for AppImage support)..."
+                info "Installing fuse2 (required for AppImage support)..."
                 pkg_install fuse2
             fi
             ;;
@@ -46,19 +46,19 @@ install_joplin() {
                 fuse2_pkg="libfuse2t64"
             fi
             if ! pkg_check_installed "$fuse2_pkg"; then
-                echo "Installing ${fuse2_pkg} (required for AppImage support)..."
+                info "Installing ${fuse2_pkg} (required for AppImage support)..."
                 pkg_install "$fuse2_pkg"
             fi
             ;;
         fedora|rhel)
             if ! pkg_check_installed fuse; then
-                echo "Installing fuse (required for AppImage support)..."
+                info "Installing fuse (required for AppImage support)..."
                 pkg_install fuse
             fi
             ;;
         suse)
             if ! pkg_check_installed fuse; then
-                echo "Installing fuse (required for AppImage support)..."
+                info "Installing fuse (required for AppImage support)..."
                 pkg_install fuse
             fi
             ;;
@@ -67,17 +67,17 @@ install_joplin() {
     # Download and run installer script
     local install_script
     install_script=$(wget -qO- https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh) || {
-        echo "Error: Failed to download Joplin installer script."
+        error "Failed to download Joplin installer script."
         return 1
     }
-    
+
     if [[ -z "$install_script" ]]; then
-        echo "Error: Downloaded installer script is empty."
+        error "Downloaded installer script is empty."
         return 1
     fi
-    
+
     echo "$install_script" | bash || {
-        echo "Error: Joplin installation script failed."
+        error "Joplin installation script failed."
         return 1
     }
 
@@ -87,14 +87,14 @@ install_joplin() {
     local sysctl_file="/etc/sysctl.d/99-appimage-userns.conf"
     local sysctl_key="kernel.apparmor_restrict_unprivileged_userns"
     if [[ "$(sysctl -n "$sysctl_key" 2>/dev/null)" == "1" ]]; then
-        echo "Configuring system to allow AppImage user namespaces (required for Joplin)..."
+        info "Configuring system to allow AppImage user namespaces (required for Joplin)..."
         echo "${sysctl_key}=0" | sudo tee "$sysctl_file" >/dev/null
         sudo sysctl --system >/dev/null 2>&1
-        echo "AppImage user namespace restriction disabled."
+        info "AppImage user namespace restriction disabled."
     fi
 }
 uninstall_joplin() {
-    echo "Uninstalling Joplin Client..."
+    info "Uninstalling Joplin Client..."
     rm -rf ~/.joplin
     rm -f ~/.local/share/applications/joplin.desktop
     rm -f ~/.local/share/applications/appimagekit-joplin.desktop
@@ -107,7 +107,7 @@ uninstall_joplin() {
     command -v gtk-update-icon-cache &>/dev/null && gtk-update-icon-cache ~/.local/share/icons/hicolor || true
 }
 update_joplin() {
-    echo "Updating Joplin Client..."
+    info "Updating Joplin Client..."
     detect_and_export_desktop_env
 
     local tmpfile
@@ -115,19 +115,19 @@ update_joplin() {
     CLEANUP_FILES+=("$tmpfile")
 
     if ! wget -qO "$tmpfile" https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh; then
-        echo "Error: Failed to download Joplin update script."
+        error "Failed to download Joplin update script."
         rm -f "$tmpfile"
         return 1
     fi
 
     if [[ ! -s "$tmpfile" ]]; then
-        echo "Error: Downloaded update script is empty."
+        error "Downloaded update script is empty."
         rm -f "$tmpfile"
         return 1
     fi
 
     bash "$tmpfile" || {
-        echo "Error: Joplin update script failed."
+        error "Joplin update script failed."
         return 1
     }
 }

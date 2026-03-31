@@ -7,7 +7,7 @@ check_brave() {
     command -v brave-browser &>/dev/null || pkg_check_installed brave-browser
 }
 install_brave() {
-    echo "Installing Brave Browser..."
+    info "Installing Brave Browser..."
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
@@ -40,7 +40,7 @@ install_brave() {
     esac
 }
 uninstall_brave() {
-    echo "Uninstalling Brave Browser..."
+    info "Uninstalling Brave Browser..."
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt purge --autoremove -y brave-browser
@@ -64,7 +64,7 @@ uninstall_brave() {
     rm -rf ~/.brave
 }
 update_brave() {
-    echo "Updating Brave Browser..."
+    info "Updating Brave Browser..."
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update

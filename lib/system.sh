@@ -94,27 +94,31 @@ preflight_checks() {
         fi
     fi
 
-    # 4. Repository availability (quick check)
+    # 4. Repository configuration check (local only — avoids duplicating the
+    #    pkg_refresh that process_selected runs immediately after preflight).
     local repo_ok=false
     case "$PKG_MGR" in
         apt)
-            if sudo apt-get update -qq 2>/dev/null; then
+            # Verify repos are configured and the local package cache is populated.
+            if apt-cache policy 2>/dev/null | grep -q 'http'; then
                 repo_ok=true
             fi
             ;;
         dnf|yum)
-            if sudo "$PKG_MGR" makecache -q 2>/dev/null; then
+            # Check that at least one enabled repo is configured.
+            if "$PKG_MGR" repolist 2>/dev/null | grep -q '.'; then
                 repo_ok=true
             fi
             ;;
         pacman)
-            # pacman -Sy would do a partial upgrade; just check if mirrorlist exists
+            # Check if mirrorlist exists and has active servers.
             if [[ -f /etc/pacman.d/mirrorlist ]] && grep -q "^Server" /etc/pacman.d/mirrorlist 2>/dev/null; then
                 repo_ok=true
             fi
             ;;
         zypper)
-            if sudo zypper refresh -q 2>/dev/null; then
+            # Check that at least one repo is registered.
+            if sudo zypper repos 2>/dev/null | grep -q 'http'; then
                 repo_ok=true
             fi
             ;;

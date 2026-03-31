@@ -59,8 +59,17 @@ setup_install_dotfiles() {
     fi
 
     info "Starting as regular user"
-    rm -rf ~/dotfiles
-    info "Previous dotfiles folder was removed."
+    if [[ -d ~/dotfiles ]]; then
+        warn "Existing ~/dotfiles directory found."
+        local _df_confirm=""
+        read -rp "Remove it and continue? Any uncommitted changes will be lost. (y/N): " _df_confirm < /dev/tty
+        if [[ ! "$_df_confirm" =~ ^[Yy]$ ]]; then
+            warn "Dotfiles installation cancelled."
+            return 2
+        fi
+        rm -rf ~/dotfiles
+        info "Previous dotfiles folder removed."
+    fi
     git clone https://github.com/flipsidecreations/dotfiles.git ~/dotfiles || { warn "Failed to clone dotfiles"; return 1; }
     (
         cd ~/dotfiles || exit 1
@@ -77,9 +86,9 @@ info() { printf '\e[32m[INFO]\e[0m %s\n' "$*"; }
 warn() { printf '\e[33m[WARN]\e[0m %s\n' "$*"; }
 info "Now running as root"
 rm -rf ~/dotfiles
-git clone https://github.com/flipsidecreations/dotfiles.git ~/dotfiles || exit 0
-cd ~/dotfiles || exit 0
-./install.sh
+git clone https://github.com/flipsidecreations/dotfiles.git ~/dotfiles || exit 1
+cd ~/dotfiles || exit 1
+./install.sh || exit 1
 if command -v chsh &> /dev/null; then
     chsh -s /bin/zsh || warn "Failed to change shell to zsh for root."
 else
