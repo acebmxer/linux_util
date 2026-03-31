@@ -896,10 +896,19 @@ timeshift_create_snapshot() {
     # bug that rejects it, so fall back to creating without a tag.
     _timeshift_do_create() {
         local _comment="$1"
-        if sudo timeshift --create --comments "$_comment" --tags O --scripted </dev/null 2>&1; then
+        local _out _rc
+        # Filter Timeshift's internal temp-script noise (e.g. "status: No such file or directory")
+        # which originates inside Timeshift's own generated scripts, not our code.
+        _out=$(sudo timeshift --create --comments "$_comment" --tags O --scripted </dev/null 2>&1)
+        _rc=$?
+        echo "$_out" | grep -v '/tmp/timeshift-[^:]*: line [0-9]*: status:'
+        if [[ $_rc -eq 0 ]]; then
             return 0
         fi
-        sudo timeshift --create --comments "$_comment" --scripted </dev/null 2>&1
+        _out=$(sudo timeshift --create --comments "$_comment" --scripted </dev/null 2>&1)
+        _rc=$?
+        echo "$_out" | grep -v '/tmp/timeshift-[^:]*: line [0-9]*: status:'
+        return $_rc
     }
 
     if run_with_spinner "Creating Timeshift snapshot" _timeshift_do_create "$comment"; then

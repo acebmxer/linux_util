@@ -36,11 +36,9 @@ _cnf_apply_bash() {
     cat >> "$rcfile" << BASHRC_BLOCK
 
 ${_CNF_BASH_BEGIN}
-# Ensure the handler is loaded
-if [ -f /usr/lib/command-not-found ]; then
-    . /usr/lib/command-not-found
-fi
 # Enable the interactive install prompt (Bash only)
+# Note: command_not_found_handle is set up by /etc/bash.bashrc when the
+# command-not-found package is installed — do not source it here.
 export COMMAND_NOT_FOUND_INSTALL_PROMPT=1
 ${_CNF_BASH_END}
 BASHRC_BLOCK

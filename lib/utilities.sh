@@ -196,7 +196,8 @@ _init_health_checks() {
     HEALTH_CHECK_CMDS["OpenSSH Server"]="systemctl is-active ssh 2>/dev/null || systemctl is-active sshd 2>/dev/null"
     HEALTH_CHECK_CMDS["Timeshift"]="timeshift --version"
     HEALTH_CHECK_CMDS["LibreOffice"]="libreoffice --version 2>/dev/null || soffice --version 2>/dev/null"
-    HEALTH_CHECK_CMDS["Termius SSH Client"]="command -v termius || command -v termius-app"
+    # Termius does not install a CLI binary in PATH when installed via .deb.
+    # Fall through to check_termius() which uses pkg_check_installed.
     HEALTH_CHECK_CMDS["NVIDIA Drivers"]="nvidia-smi"
     HEALTH_CHECK_CMDS["Feral Gamemode"]="gamemoded --version"
     HEALTH_CHECK_CMDS["KDE Desktop"]="command -v plasmashell"
