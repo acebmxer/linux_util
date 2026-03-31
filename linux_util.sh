@@ -478,6 +478,7 @@ process_selected() {
         case "$REBOOT_CHOICE" in
             y|Y)
                 info "Rebooting…"
+                printf '\n\n'
                 sudo reboot
                 ;;
             *)
