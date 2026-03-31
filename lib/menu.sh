@@ -458,7 +458,11 @@ run_selection_menu() {
     CACHED_LOCAL_COMMIT=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
     CACHED_LOCAL_BRANCH=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     local _remote_full
-    _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin HEAD 2>/dev/null | awk '{print $1}')
+    # Check against the remote tip of the current branch; fall back to origin HEAD (main)
+    _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin "refs/heads/${CACHED_LOCAL_BRANCH}" 2>/dev/null | awk '{print $1}')
+    if [[ -z "$_remote_full" ]]; then
+        _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin HEAD 2>/dev/null | awk '{print $1}')
+    fi
     if [[ -n "$_remote_full" ]]; then
         CACHED_REMOTE_COMMIT="${_remote_full:0:7}"
     else
