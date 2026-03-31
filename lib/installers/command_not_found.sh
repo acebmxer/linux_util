@@ -96,15 +96,17 @@ ZSHRC_BLOCK
     info "Added command-not-found handler to ${rcfile}"
 }
 
-# _cnf_remove_block removes a begin/end marker block from a file using sed.
+# _cnf_remove_block removes a begin/end marker block from a file using exact
+# string matching (awk), avoiding regex-escaping issues with BRE and sed.
 _cnf_remove_block() {
     local rcfile="$1" begin_marker="$2" end_marker="$3"
     [[ -f "$rcfile" ]] || return 0
     if grep -qF "$begin_marker" "$rcfile" 2>/dev/null; then
-        local escaped_begin escaped_end
-        escaped_begin=$(printf '%s\n' "$begin_marker" | sed 's/[[\.*^$()+?{|]/\\&/g')
-        escaped_end=$(printf '%s\n' "$end_marker"   | sed 's/[[\.*^$()+?{|]/\\&/g')
-        sed -i "/^${escaped_begin}$/,/^${escaped_end}$/d" "$rcfile"
+        awk -v begin="$begin_marker" -v end="$end_marker" '
+            $0 == begin { skip=1 }
+            skip { if ($0 == end) { skip=0 } next }
+            { print }
+        ' "$rcfile" > "${rcfile}.tmp" && mv "${rcfile}.tmp" "$rcfile"
         info "Removed command-not-found block from ${rcfile}"
     fi
 }
