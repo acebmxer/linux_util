@@ -6,7 +6,7 @@ setup_full_update() {
     info "Starting full system upgrade/update..."
 
     # Step 1: Refresh repos
-    pkg_refresh
+    pkg_refresh_interactive
 
     # Step 2: Check for distro version upgrade
     local target_version=""
@@ -109,7 +109,7 @@ setup_full_update() {
 
             if (( upgrade_rc == 0 )); then
                 info "Distribution upgrade completed. Running cleanup..."
-                pkg_cleanup_thorough
+                pkg_cleanup_thorough_interactive
                 info "Full system upgrade completed."
                 return 0
             fi
@@ -143,8 +143,8 @@ setup_full_update() {
 
     # Fallback: standard package update
     info "Performing package updates..."
-    pkg_full_upgrade
-    pkg_cleanup_thorough
+    pkg_full_upgrade_interactive
+    pkg_cleanup_thorough_interactive
     info "System update completed."
     return 0
 }

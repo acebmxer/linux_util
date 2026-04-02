@@ -154,6 +154,32 @@ run_with_spinner() {
 }
 
 # ============================================================================
+# Direct Runner (Interactive)
+# Runs a command directly in the foreground with full stdin/stdout/stderr.
+# Use this instead of run_with_spinner when the command may prompt the user
+# (e.g., dpkg config file conflicts, needrestart dialogs).
+# Usage: run_direct "Label" command [args...]
+# ============================================================================
+
+run_direct() {
+    local label="$1"
+    shift
+
+    printf "  %s ...\n" "$label"
+
+    "$@"
+    local _rc=$?
+
+    if [[ $_rc -eq 0 ]]; then
+        printf "  ${GREEN}✓${RESET}  %s\n" "$label"
+    else
+        printf "  ${RED}✗${RESET}  %s\n" "$label"
+    fi
+
+    return $_rc
+}
+
+# ============================================================================
 # Performance Metrics
 # Tracks per-operation timing and saves to a persistent metrics log.
 # ============================================================================
