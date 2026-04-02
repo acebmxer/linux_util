@@ -19,7 +19,6 @@ setup_full_update() {
         # Determine LTS/normal labels for current and target versions
         # Ubuntu/Kubuntu LTS: XX.04 where XX is even
         local current_label="" target_label=""
-        local upgrade_path=""
         if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ]]; then
             local cur_year cur_month
             cur_year=$(echo "$DISTRO_VERSION_ID" | cut -d. -f1)
@@ -42,43 +41,6 @@ setup_full_update() {
                 target_label=" (non-LTS)"
             fi
 
-            # Build sequential upgrade path for non-LTS targets
-            # Ubuntu upgrades one release at a time: XX.04 → XX.10 → (XX+1).04 → ...
-            if [[ -n "$tgt_year" && -n "$tgt_month" && "$tgt_ver_num" != "$DISTRO_VERSION_ID" ]]; then
-                local path_steps=()
-                local step_year="$cur_year" step_month="$cur_month"
-                while true; do
-                    # Compute next version: .04 → .10, .10 → (year+1).04
-                    if (( step_month == 4 )); then
-                        step_month=10
-                    else
-                        step_year=$(( step_year + 1 ))
-                        step_month=4
-                    fi
-                    local next_ver
-                    next_ver=$(printf "%d.%02d" "$step_year" "$step_month")
-                    # Label each step
-                    local step_label=""
-                    if (( step_month == 4 && step_year % 2 == 0 )); then
-                        step_label=" (LTS)"
-                    fi
-                    path_steps+=("${next_ver}${step_label}")
-                    if [[ "$next_ver" == "$tgt_ver_num" ]]; then
-                        break
-                    fi
-                    # Safety: stop after 20 steps to avoid infinite loop
-                    if (( ${#path_steps[@]} >= 20 )); then
-                        break
-                    fi
-                done
-                # Only show path if there are intermediate steps (more than 1 step)
-                if (( ${#path_steps[@]} > 1 )); then
-                    upgrade_path="${DISTRO_VERSION_ID}${current_label}"
-                    for step in "${path_steps[@]}"; do
-                        upgrade_path+=" → ${step}"
-                    done
-                fi
-            fi
         fi
 
         # Display confirmation prompt
@@ -88,12 +50,10 @@ setup_full_update() {
         echo ""
         echo "  Current: ${DISTRO_NAME} ${DISTRO_VERSION_ID}${current_label}"
         echo "  Target:  ${target_version}${target_label}"
-        if [[ -n "$upgrade_path" ]]; then
-            echo ""
-            echo "  Upgrade path: ${upgrade_path}"
-            echo "  Each step requires a reboot. Re-run this script after each reboot"
-            echo "  to continue to the next version."
-        fi
+        echo ""
+        echo "  The upgrade tool will determine the path automatically."
+        echo "  A reboot may be required afterward. If intermediate steps are needed,"
+        echo "  re-run this script after each reboot to continue."
         echo ""
         echo "  This is a major operation and may take some time."
         # Extra note for RHEL family — leapp preupgrade will run first

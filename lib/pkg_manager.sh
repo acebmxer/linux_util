@@ -952,7 +952,12 @@ pkg_distro_upgrade() {
             fi
 
             if (( rc == 0 )); then
-                info "Distribution upgrade to ${target_version} completed successfully."
+                # Report the actual version the system was upgraded to
+                local actual_version=""
+                if [[ -f /etc/os-release ]]; then
+                    actual_version=$(. /etc/os-release && echo "$VERSION_ID")
+                fi
+                info "Distribution upgrade to ${actual_version:-${target_version}} completed successfully."
                 return 0
             else
                 error "Distribution upgrade to ${target_version} failed."
