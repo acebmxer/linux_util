@@ -7,7 +7,7 @@ check_xen_guest_utilities() {
 }
 
 uninstall_xen_guest_utilities() {
-    echo "Uninstalling XEN Guest Utilities..."
+    info "Uninstalling XEN Guest Utilities..."
 
     # Stop and disable known XEN guest services
     for svc in xe-linux-distribution xe-daemon; do
