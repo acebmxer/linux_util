@@ -319,7 +319,12 @@ process_selected() {
         for _st in "${SYSTEM_TASKS[@]}"; do
             [[ "$_st" == "$util" ]] && _is_system_task=true && break
         done
-        local _verb="$op_type" _past="${op_type}ed"
+        local _verb="$op_type" _past
+        if [[ "$op_type" == *e ]]; then
+            _past="${op_type}d"
+        else
+            _past="${op_type}ed"
+        fi
         if [[ "$_is_system_task" == "true" && "$op_type" == "install" ]]; then
             _verb="run"
             _past="completed"

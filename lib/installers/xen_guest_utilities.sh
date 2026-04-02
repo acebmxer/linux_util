@@ -9,9 +9,11 @@ check_xen_guest_utilities() {
 uninstall_xen_guest_utilities() {
     echo "Uninstalling XEN Guest Utilities..."
 
-    # Stop and disable the service
-    sudo systemctl stop xe-linux-distribution 2>/dev/null || true
-    sudo systemctl disable xe-linux-distribution 2>/dev/null || true
+    # Stop and disable known XEN guest services
+    for svc in xe-linux-distribution xe-daemon; do
+        sudo systemctl stop "$svc" 2>/dev/null || true
+        sudo systemctl disable "$svc" 2>/dev/null || true
+    done
 
     # Remove all known package variants
     if pkg_check_installed xe-guest-utilities; then
@@ -231,11 +233,27 @@ _install_from_iso_tgz() {
     return 0
 }
 
-# Verify that the xe-linux-distribution service is running after installation.
+# Verify that XEN guest services are running after installation.
+# The ISO installs xe-linux-distribution; the apt package installs xe-daemon.
 _verify_xen_services() {
-    local svc="xe-linux-distribution"
+    local services=("xe-linux-distribution" "xe-daemon")
     local max_attempts=6
     local wait_seconds=5
+
+    # Find which service exists on this system
+    local svc=""
+    for s in "${services[@]}"; do
+        if systemctl list-unit-files "${s}.service" &>/dev/null && \
+           systemctl list-unit-files "${s}.service" 2>/dev/null | grep -q "${s}"; then
+            svc="$s"
+            break
+        fi
+    done
+
+    if [[ -z "$svc" ]]; then
+        warn "No XEN guest service unit found (checked: ${services[*]})."
+        return 1
+    fi
 
     info "Verifying ${svc} service started..."
     local attempt=0
