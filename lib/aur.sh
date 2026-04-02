@@ -57,7 +57,7 @@ aur_build() {
     [[ "$pkg_name" =~ ^[a-zA-Z0-9._-]+$ ]] || { warn "Invalid package name: $pkg_name"; return 1; }
     ensure_aur_build_deps
     local build_dir
-    build_dir=$(mktemp -d)
+    build_dir=$(mktemp -d) || { warn "Failed to create temp build directory"; return 1; }
     CLEANUP_FILES+=("$build_dir")
     git clone "https://aur.archlinux.org/${pkg_name}.git" "$build_dir/${pkg_name}"
     (cd "$build_dir/${pkg_name}" && makepkg -si --noconfirm)

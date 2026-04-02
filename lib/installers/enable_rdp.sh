@@ -64,6 +64,10 @@ update_krdp() {
         arch)
             run_as_root pacman -S --noconfirm krdp
             ;;
+        *)
+            warn "krdp update not supported for ${DISTRO_ID}"
+            return 1
+            ;;
     esac
 }
 
@@ -83,8 +87,8 @@ install_enable_rdp() {
     echo ""
     echo "${BOLD}${CYAN}Select RDP Server to Install:${RESET}"
     echo ""
-    echo "  1) xrdp  — traditional, X11-based, works on most distros (currenlty recommended)"
-    echo "  2) krdp  — KDE-native, Wayland-based (currenlty not recommended)"
+    echo "  1) xrdp  — traditional, X11-based, works on most distros (currently recommended)"
+    echo "  2) krdp  — KDE-native, Wayland-based (currently not recommended)"
     echo ""
 
     local choice
@@ -113,11 +117,17 @@ uninstall_enable_rdp() {
 }
 
 update_enable_rdp() {
+    local updated=false
     if check_xrdp; then
         update_xrdp
+        updated=true
     fi
     if check_krdp; then
         update_krdp
+        updated=true
+    fi
+    if [[ "$updated" == "false" ]]; then
+        info "No RDP server found to update."
     fi
 }
 

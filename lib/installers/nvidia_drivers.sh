@@ -231,7 +231,7 @@ install_nvidia_drivers() {
                 echo ""
                 echo "[!] RPM Fusion (nonfree) repository is required for NVIDIA drivers on Fedora/RHEL."
                 echo ""
-                read -rp "Would you like to enable RPM Fusion repositories now? (y/N): " enable_rpmfusion
+                read -rp "Would you like to enable RPM Fusion repositories now? (y/N): " enable_rpmfusion < /dev/tty
                 
                 if [[ "$enable_rpmfusion" =~ ^[Yy]$ ]]; then
                     echo "Enabling RPM Fusion repositories..."
@@ -315,7 +315,7 @@ install_nvidia_drivers() {
     echo "────────────────────────────────────────────────────────────────"
     
     local choice
-    read -rp "Select driver version to install (1-${#available_drivers[@]}, or 0 to cancel): " choice
+    read -rp "Select driver version to install (1-${#available_drivers[@]}, or 0 to cancel): " choice < /dev/tty
     
     if [[ "$choice" == "0" ]] || [[ -z "$choice" ]]; then
         warn "Installation cancelled."
@@ -397,7 +397,7 @@ install_nvidia_drivers() {
 }
 
 uninstall_nvidia_drivers() {
-    echo "Uninstalling NVIDIA drivers..."
+    info "Uninstalling NVIDIA drivers..."
     case "$PKG_MGR" in
         apt)
             sudo apt-get purge --autoremove -y 'nvidia-driver-*' nvtop

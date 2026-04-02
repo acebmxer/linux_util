@@ -43,27 +43,27 @@ init_error_log() {
 # Logging functions
 log_success() {
     local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     echo "[${timestamp}] [SUCCESS] ${message}" >> "$SUCCESS_LOG"
 }
 
 log_error() {
     local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     init_error_log
     echo "[${timestamp}] [ERROR] ${message}" | tee -a "$ERROR_LOG" >&2
 }
 
 log_warning() {
     local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     init_error_log
     echo "[${timestamp}] [WARNING] ${message}" | tee -a "$ERROR_LOG"
 }
 
 log_info() {
     local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     echo "[${timestamp}] [INFO] ${message}" >> "$SUCCESS_LOG"
 }
 
@@ -119,7 +119,7 @@ run_with_spinner() {
     fi
 
     local _tmp
-    _tmp=$(mktemp)
+    _tmp=$(mktemp) || { error "Failed to create temp file"; return 1; }
     CLEANUP_FILES+=("$_tmp")
 
     # Run command in background, capturing all output
@@ -150,6 +150,32 @@ run_with_spinner() {
     fi
 
     rm -f "$_tmp"
+    return $_rc
+}
+
+# ============================================================================
+# Direct Runner (Interactive)
+# Runs a command directly in the foreground with full stdin/stdout/stderr.
+# Use this instead of run_with_spinner when the command may prompt the user
+# (e.g., dpkg config file conflicts, needrestart dialogs).
+# Usage: run_direct "Label" command [args...]
+# ============================================================================
+
+run_direct() {
+    local label="$1"
+    shift
+
+    printf "  %s ...\n" "$label"
+
+    "$@"
+    local _rc=$?
+
+    if [[ $_rc -eq 0 ]]; then
+        printf "  ${GREEN}✓${RESET}  %s\n" "$label"
+    else
+        printf "  ${RED}✗${RESET}  %s\n" "$label"
+    fi
+
     return $_rc
 }
 

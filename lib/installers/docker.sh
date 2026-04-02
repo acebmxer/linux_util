@@ -19,7 +19,7 @@ setup_install_docker() {
             local docker_codename="${DISTRO_VERSION_CODENAME:-stable}"
             if [[ "$DISTRO_ID" == "linuxmint" || "$DISTRO_ID" == "pop" || "$DISTRO_ID" == "neon" || "$DISTRO_ID" == "kubuntu" ]]; then
                 docker_dist="ubuntu"
-                if [[ "$DISTRO_ID" == "neon" && -z "$docker_codename" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
+                if [[ "$DISTRO_ID" == "neon" ]]; then
                     if [[ -f /etc/upstream-release/lsb-release ]]; then
                         docker_codename=$(grep -oP '(?<=DISTRIB_CODENAME=).+' /etc/upstream-release/lsb-release)
                     fi
@@ -66,7 +66,7 @@ setup_install_docker() {
     esac
 
     run_as_root_sh "groupadd docker 2>/dev/null || true"
-    run_as_root usermod -aG docker "${USER}"
+    run_as_root usermod -aG docker "${USER}" || warn "Failed to add ${USER} to docker group — you may need to run docker with sudo."
 
     info "Docker installed successfully. You may need to log out and back in for group membership to take effect."
 
@@ -78,46 +78,46 @@ setup_install_docker() {
 check_docker() {
     command -v docker &>/dev/null && docker --version &>/dev/null
 }
+
 uninstall_docker() {
-    echo "Uninstalling Docker..."
-    sudo systemctl stop docker 2>/dev/null || true
-    sudo systemctl disable docker 2>/dev/null || true
+    info "Uninstalling Docker..."
+    run_as_root systemctl stop docker 2>/dev/null || true
+    run_as_root systemctl disable docker 2>/dev/null || true
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-            sudo apt autoclean
-            sudo rm -f /etc/apt/sources.list.d/docker.list
-            sudo rm -f /usr/share/keyrings/docker-archive-keyring.gpg
-            sudo rm -f /etc/apt/keyrings/docker.gpg
+            pkg_remove docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            run_as_root rm -f /etc/apt/sources.list.d/docker.list
+            run_as_root rm -f /usr/share/keyrings/docker-archive-keyring.gpg
+            run_as_root rm -f /etc/apt/keyrings/docker.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            pkg_remove docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             ;;
         arch)
-            sudo pacman -Rs --noconfirm docker docker-compose docker-buildx 2>/dev/null || true
+            pkg_remove docker docker-compose docker-buildx
             ;;
         suse)
-            sudo zypper remove -y docker docker-compose docker-buildx
+            pkg_remove docker docker-compose docker-buildx
             ;;
     esac
     rm -rf ~/.config/docker
     rm -rf ~/.docker
 }
+
 update_docker() {
-    echo "Updating Docker..."
+    info "Updating Docker..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt update
-            sudo apt upgrade -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            pkg_upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            pkg_upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             ;;
         arch)
-            sudo pacman -S --noconfirm docker docker-compose docker-buildx
+            pkg_upgrade docker docker-compose docker-buildx
             ;;
         suse)
-            sudo zypper update -y docker docker-compose docker-buildx
+            pkg_upgrade docker docker-compose docker-buildx
             ;;
     esac
 }

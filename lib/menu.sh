@@ -50,6 +50,79 @@ clear_line() { printf "${CSI}2K"; }
 # │
 # └─ Item position calculation: idx = col * rows_per_column + row
 #    LEFT (col=0):  0, 1, 2, 3...  RIGHT (col=1): 7, 8, 9...
+
+# Render one section's grid of items into the caller's _buf variable.
+# Relies on Bash dynamic scoping: _buf, col_width, pad, eol, CURSOR and all
+# UTILITIES/SELECTED/INSTALLED arrays are visible from draw_menu's frame.
+# Usage: _draw_items start_idx item_limit rows_per_col num_cols
+_draw_items() {
+    local _di_start="$1"
+    local _di_limit="$2"
+    local _di_rpc="$3"
+    local _di_cols="$4"
+
+    local _di_row _di_col
+    for (( _di_row=0; _di_row<_di_rpc; _di_row++ )); do
+        local line=""
+        for (( _di_col=0; _di_col<_di_cols; _di_col++ )); do
+            local i=$(( _di_start + _di_col * _di_rpc + _di_row ))
+            [[ $i -ge $_di_limit ]] && continue
+
+            local prefix="  "
+            local checkbox="[ ]"
+            local name="${UTILITIES[$i]}"
+            local status_tag=""
+
+            if [[ $i -eq $CURSOR ]]; then
+                prefix="${BOLD}${BLUE}▸ ${RESET}"
+            fi
+
+            if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
+                checkbox="${YELLOW}[U]${RESET}"
+            elif [[ ${SELECTED[$i]} -eq 1 ]]; then
+                checkbox="${GREEN}[✓]${RESET}"
+            fi
+
+            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
+                local ver="${INSTALLED_VERSIONS[$i]:-}"
+                if [[ -n "$ver" ]]; then
+                    status_tag=" ${MAGENTA}(v${ver})${RESET}"
+                else
+                    status_tag=" ${MAGENTA}(installed)${RESET}"
+                fi
+            fi
+
+            local item=""
+            if [[ $i -eq $CURSOR ]]; then
+                item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
+            else
+                item="${prefix}${checkbox} ${name}${status_tag}"
+            fi
+
+            # Add column padding using visible width (no ANSI codes)
+            if [[ $_di_col -lt $(( _di_cols - 1 )) ]]; then
+                local plain_status=""
+                if [[ ${INSTALLED[$i]} -eq 1 ]]; then
+                    local pver="${INSTALLED_VERSIONS[$i]:-}"
+                    if [[ -n "$pver" ]]; then
+                        plain_status=" (v${pver})"
+                    else
+                        plain_status=" (installed)"
+                    fi
+                fi
+                # Visible chars: prefix (2), checkbox (3), space (1), name, status text
+                local visible_len=$(( 2 + 3 + 1 + ${#name} + ${#plain_status} ))
+                local padding=$(( col_width - visible_len ))
+                [[ $padding -lt 2 ]] && padding=2
+                item="${item}$(printf '%*s' $padding '')"
+            fi
+
+            line="${line}${item}"
+        done
+        _buf+="${pad}${line}${eol}"$'\n'
+    done
+}
+
 draw_menu() {
     local total=${#UTILITIES[@]}
     local system_tasks=${#SYSTEM_TASKS[@]}
@@ -192,151 +265,15 @@ draw_menu() {
 
     # Display System Tasks section
     _buf+="${pad}${BOLD}${CYAN}System Tasks:${RESET}${eol}"$'\n'
-    for ((row=0; row<system_rows_per_column; row++)); do
-        local line=""
-        for ((col=0; col<system_num_columns; col++)); do
-            local task_idx=$((col * system_rows_per_column + row))
-            local i=$task_idx
-
-            # Skip if index is beyond system tasks
-            if [[ $i -ge $system_tasks ]]; then
-                continue
-            fi
-
-            local prefix="  "
-            local checkbox="[ ]"
-            local name="${UTILITIES[$i]}"
-            local status_tag=""
-
-            # Highlight current item
-            if [[ $i -eq $CURSOR ]]; then
-                prefix="${BOLD}${BLUE}▸ ${RESET}"
-            fi
-
-            # Show selection / update-queued state
-            if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
-                checkbox="${YELLOW}[U]${RESET}"
-            elif [[ ${SELECTED[$i]} -eq 1 ]]; then
-                checkbox="${GREEN}[✓]${RESET}"
-            fi
-
-            # Show installed status (with version if available)
-            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                local ver="${INSTALLED_VERSIONS[$i]:-}"
-                if [[ -n "$ver" ]]; then
-                    status_tag=" ${MAGENTA}(v${ver})${RESET}"
-                else
-                    status_tag=" ${MAGENTA}(installed)${RESET}"
-                fi
-            fi
-
-            local item=""
-            if [[ $i -eq $CURSOR ]]; then
-                item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
-            else
-                item="${prefix}${checkbox} ${name}${status_tag}"
-            fi
-
-            # Add padding for columns using visible width (no ANSI codes)
-            if [[ $col -lt $((system_num_columns - 1)) ]]; then
-                local plain_status=""
-                if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                    local pver="${INSTALLED_VERSIONS[$i]:-}"
-                    if [[ -n "$pver" ]]; then
-                        plain_status=" (v${pver})"
-                    else
-                        plain_status=" (installed)"
-                    fi
-                fi
-                # Visible chars: prefix (2), checkbox (3), space (1), name, status text
-                local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local padding=$((col_width - visible_len))
-                [[ $padding -lt 2 ]] && padding=2
-                item="${item}$(printf '%*s' $padding '')"
-            fi
-
-            line="${line}${item}"
-        done
-        _buf+="${pad}${line}${eol}"$'\n'
-    done
+    _draw_items 0 "$system_tasks" "$system_rows_per_column" "$system_num_columns"
 
     _buf+="${pad}${eol}"$'\n'
     _buf+="${pad}${DIM}${sep_fill}${RESET}${eol}"$'\n'
     _buf+="${pad}${eol}"$'\n'
     _buf+="${pad}${BOLD}${CYAN}Utilities:${RESET}${eol}"$'\n'
 
-    # Build items for utilities in columns
-    # RENDERING LOGIC IDENTICAL TO SYSTEM TASKS SECTION ABOVE:
-    # Loop through rows (0 to rows_per_column-1), then columns (left=0, right=1)
-    # Calculate array index: utilities_start + (col * rows_per_column + row)
-    # This produces left column top-to-bottom, then right column top-to-bottom
-    for ((row=0; row<rows_per_column; row++)); do
-        local line=""
-        for ((col=0; col<num_columns; col++)); do
-            local util_idx=$((col * rows_per_column + row))
-            local i=$((utilities_start + util_idx))
-
-            # Skip if index is beyond total items
-            if [[ $i -ge $total ]]; then
-                continue
-            fi
-
-            local prefix="  "
-            local checkbox="[ ]"
-            local name="${UTILITIES[$i]}"
-            local status_tag=""
-
-            # Highlight current item
-            if [[ $i -eq $CURSOR ]]; then
-                prefix="${BOLD}${BLUE}▸ ${RESET}"
-            fi
-
-            # Show selection / update-queued state
-            if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
-                checkbox="${YELLOW}[U]${RESET}"
-            elif [[ ${SELECTED[$i]} -eq 1 ]]; then
-                checkbox="${GREEN}[✓]${RESET}"
-            fi
-
-            # Show installed status (with version if available)
-            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                local ver="${INSTALLED_VERSIONS[$i]:-}"
-                if [[ -n "$ver" ]]; then
-                    status_tag=" ${MAGENTA}(v${ver})${RESET}"
-                else
-                    status_tag=" ${MAGENTA}(installed)${RESET}"
-                fi
-            fi
-
-            local item=""
-            if [[ $i -eq $CURSOR ]]; then
-                item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
-            else
-                item="${prefix}${checkbox} ${name}${status_tag}"
-            fi
-
-            # Add padding for columns using visible width (no ANSI codes)
-            if [[ $col -lt $((num_columns - 1)) ]]; then
-                local plain_status=""
-                if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                    local pver="${INSTALLED_VERSIONS[$i]:-}"
-                    if [[ -n "$pver" ]]; then
-                        plain_status=" (v${pver})"
-                    else
-                        plain_status=" (installed)"
-                    fi
-                fi
-                # Visible chars: prefix (2), checkbox (3), space (1), name, status text
-                local visible_len=$((2 + 3 + 1 + ${#name} + ${#plain_status}))
-                local padding=$((col_width - visible_len))
-                [[ $padding -lt 2 ]] && padding=2
-                item="${item}$(printf '%*s' $padding '')"
-            fi
-
-            line="${line}${item}"
-        done
-        _buf+="${pad}${line}${eol}"$'\n'
-    done
+    # Build items for utilities in columns (same layout logic as System Tasks above)
+    _draw_items "$utilities_start" "$total" "$rows_per_column" "$num_columns"
 
     _buf+="${pad}${eol}"$'\n'
     _buf+="${pad}${sep_fill}${eol}"$'\n'
@@ -521,7 +458,11 @@ run_selection_menu() {
     CACHED_LOCAL_COMMIT=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
     CACHED_LOCAL_BRANCH=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     local _remote_full
-    _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin HEAD 2>/dev/null | awk '{print $1}')
+    # Check against the remote tip of the current branch; fall back to origin HEAD (main)
+    _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin "refs/heads/${CACHED_LOCAL_BRANCH}" 2>/dev/null | awk '{print $1}')
+    if [[ -z "$_remote_full" ]]; then
+        _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin HEAD 2>/dev/null | awk '{print $1}')
+    fi
     if [[ -n "$_remote_full" ]]; then
         CACHED_REMOTE_COMMIT="${_remote_full:0:7}"
     else

@@ -217,6 +217,133 @@ pkg_clean() {
     esac
 }
 
+# ============================================================================
+# Interactive variants
+# These run commands in the foreground with full terminal access so that
+# dpkg config-file prompts, needrestart dialogs, and any other interactive
+# questions are presented to the user unmodified.
+# Used exclusively by full_update.sh and system_updates.sh.
+# ============================================================================
+
+pkg_refresh_interactive() {
+    [[ "${_PKG_REFRESHED:-}" == "true" ]] && return 0
+    case "$PKG_MGR" in
+        apt)     run_direct "Refreshing package cache"             sudo apt update ;;
+        dnf|yum) run_direct "Refreshing package cache"             sudo "$PKG_MGR" makecache ;;
+        pacman)  run_direct "Refreshing package cache & upgrading" sudo pacman -Syu ;;
+        zypper)  run_direct "Refreshing package cache"             sudo zypper refresh ;;
+    esac
+    _PKG_REFRESHED=true
+}
+
+pkg_full_upgrade_interactive() {
+    case "$PKG_MGR" in
+        apt)     run_direct "Running full system upgrade" sudo apt full-upgrade ;;
+        dnf|yum) run_direct "Running full system upgrade" sudo "$PKG_MGR" upgrade ;;
+        pacman)  if command -v yay &>/dev/null; then
+                     run_direct "Running full system upgrade (yay)"  yay  -Syu
+                 elif command -v paru &>/dev/null; then
+                     run_direct "Running full system upgrade (paru)" paru -Syu
+                 else
+                     run_direct "Running full system upgrade"        sudo pacman -Syu
+                 fi ;;
+        zypper)  run_direct "Running full system upgrade" sudo zypper update ;;
+    esac
+}
+
+pkg_autoremove_interactive() {
+    case "$PKG_MGR" in
+        apt)     run_direct "Removing orphaned packages" sudo apt autoremove ;;
+        dnf|yum) run_direct "Removing orphaned packages" sudo "$PKG_MGR" autoremove ;;
+        pacman)  run_direct "Removing orphaned packages" \
+                     bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && echo "$pkgs" | sudo pacman -Rs - || true' ;;
+        zypper)  true ;;
+    esac
+}
+
+pkg_clean_interactive() {
+    case "$PKG_MGR" in
+        apt)     run_direct "Cleaning package cache" sudo apt clean
+                 run_direct "Running apt autoclean"  sudo apt autoclean ;;
+        dnf|yum) run_direct "Cleaning package cache" sudo "$PKG_MGR" clean all ;;
+        pacman)  run_direct "Cleaning package cache" \
+                     bash -c 'sudo find /var/cache/pacman/pkg -maxdepth 1 -name "download-*" -delete 2>/dev/null; sudo pacman -Sc' ;;
+        zypper)  run_direct "Cleaning package cache" sudo zypper clean -a ;;
+    esac
+}
+
+pkg_cleanup_thorough_interactive() {
+    info "Running thorough system cleanup..."
+
+    # Step 1: Remove orphaned dependencies
+    pkg_autoremove_interactive
+
+    # Step 2: Remove old kernels (keep current + one previous)
+    local current_kernel
+    current_kernel=$(uname -r)
+    info "Current kernel: ${current_kernel} (will be preserved)"
+
+    case "$PKG_MGR" in
+        apt)
+            local kernels_to_remove=""
+            local installed_kernels
+            installed_kernels=$(dpkg -l 'linux-image-*' 2>/dev/null | awk '/^ii.*linux-image-[0-9]/ {print $2}' | sort -V)
+            if [[ -n "$installed_kernels" ]]; then
+                local keep_count=2
+                local total
+                total=$(echo "$installed_kernels" | wc -l)
+                if (( total > keep_count )); then
+                    kernels_to_remove=$(echo "$installed_kernels" | head -n -${keep_count} | grep -Fv "$current_kernel" || true)
+                fi
+            fi
+            if [[ -n "$kernels_to_remove" ]]; then
+                info "Removing old kernels: $(echo "$kernels_to_remove" | tr '\n' ' ')"
+                local headers_to_remove=""
+                for kern in $kernels_to_remove; do
+                    local ver
+                    ver=$(echo "$kern" | sed 's/linux-image-\(unsigned-\)\?//')
+                    if dpkg -l "linux-headers-${ver}" 2>/dev/null | grep -q "^ii"; then
+                        headers_to_remove+="linux-headers-${ver} "
+                    fi
+                done
+                # shellcheck disable=SC2086
+                run_direct "Removing old kernels" sudo apt-get purge $kernels_to_remove $headers_to_remove || true
+            else
+                info "No old kernels to remove."
+            fi
+            ;;
+        dnf|yum)
+            run_direct "Removing old kernels" sudo "$PKG_MGR" remove --oldinstallonly --setopt installonly_limit=2 || true
+            ;;
+        pacman)
+            # Arch doesn't accumulate old kernels the same way; skip
+            ;;
+        zypper)
+            run_direct "Removing old kernels" sudo zypper purge-kernels --keep 2 || true
+            ;;
+    esac
+
+    # Step 3: Purge removed package configs (Debian family only)
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        local rc_packages
+        rc_packages=$(dpkg -l 2>/dev/null | awk '/^rc/ {print $2}')
+        if [[ -n "$rc_packages" ]]; then
+            # shellcheck disable=SC2086
+            run_direct "Purging removed package configs" sudo dpkg --purge $rc_packages || true
+        fi
+    fi
+
+    # Step 4: Clean package cache
+    pkg_clean_interactive
+
+    # Step 5: Clean apt lists partial files (Debian family only)
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        sudo rm -f /var/lib/apt/lists/partial/* 2>/dev/null || true
+    fi
+
+    info "System cleanup completed."
+}
+
 # Thorough cleanup: autoremove, old kernels, purge configs, clean cache
 pkg_cleanup_thorough() {
     info "Running thorough system cleanup..."
@@ -825,7 +952,12 @@ pkg_distro_upgrade() {
             fi
 
             if (( rc == 0 )); then
-                info "Distribution upgrade to ${target_version} completed successfully."
+                # Report the actual version the system was upgraded to
+                local actual_version=""
+                if [[ -f /etc/os-release ]]; then
+                    actual_version=$(. /etc/os-release && echo "$VERSION_ID")
+                fi
+                info "Distribution upgrade to ${actual_version:-${target_version}} completed successfully."
                 return 0
             else
                 error "Distribution upgrade to ${target_version} failed."
