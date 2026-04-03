@@ -4,6 +4,8 @@
 # --- Full System Upgrade/Update ---
 setup_full_update() {
     info "Starting full system upgrade/update..."
+    local _snap_before
+    _snap_before=$(pkg_snapshot)
 
     # Step 1: Refresh repos
     pkg_refresh_interactive
@@ -106,5 +108,11 @@ setup_full_update() {
     pkg_full_upgrade_interactive
     pkg_cleanup_thorough_interactive
     info "System update completed."
+    local _snap_after
+    _snap_after=$(pkg_snapshot)
+    if [[ "$_snap_before" == "$_snap_after" ]]; then
+        info "No package changes were made."
+        return 3
+    fi
     return 0
 }

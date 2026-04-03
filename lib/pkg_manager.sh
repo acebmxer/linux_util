@@ -1268,3 +1268,14 @@ download_file() {
     error "Failed to download after $retries attempts: $url"
     return 1
 }
+
+# Returns a hash of the current installed-package state.
+# Used to detect whether updates actually changed anything.
+pkg_snapshot() {
+    case "$PKG_MGR" in
+        apt)     dpkg -l 2>/dev/null | md5sum | awk '{print $1}' ;;
+        dnf|yum) rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' 2>/dev/null | sort | md5sum | awk '{print $1}' ;;
+        pacman)  pacman -Q 2>/dev/null | md5sum | awk '{print $1}' ;;
+        zypper)  rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' 2>/dev/null | sort | md5sum | awk '{print $1}' ;;
+    esac
+}
