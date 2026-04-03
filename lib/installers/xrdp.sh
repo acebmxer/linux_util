@@ -51,7 +51,14 @@ EOF
             run_as_root systemctl enable xrdp
             run_as_root systemctl restart xrdp
             ;;
-        fedora|rhel)
+        fedora)
+            run_as_root "$PKG_MGR" install -y xrdp
+            run_as_root systemctl enable xrdp
+            run_as_root systemctl start xrdp
+            ;;
+        rhel)
+            # xrdp is in EPEL, not the base RHEL/Alma/Rocky repos
+            run_as_root "$PKG_MGR" install -y epel-release 2>/dev/null || true
             run_as_root "$PKG_MGR" install -y xrdp
             run_as_root systemctl enable xrdp
             run_as_root systemctl start xrdp

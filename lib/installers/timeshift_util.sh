@@ -38,7 +38,12 @@ install_timeshift() {
         debian)
             sudo apt install timeshift -y || return 1
             ;;
-        fedora|rhel)
+        fedora)
+            sudo "$PKG_MGR" install -y timeshift || return 1
+            ;;
+        rhel)
+            # Timeshift is in EPEL, not the base RHEL/Alma/Rocky repos
+            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
             sudo "$PKG_MGR" install -y timeshift || return 1
             ;;
         suse)

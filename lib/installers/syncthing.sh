@@ -24,8 +24,13 @@ install_syncthing() {
             sudo apt update
             sudo apt install -y syncthing
             ;;
-        fedora|rhel)
-            # Install from official Fedora repos (Syncthing is included by default)
+        fedora)
+            # Syncthing is included in official Fedora repos by default
+            sudo "$PKG_MGR" install -y syncthing
+            ;;
+        rhel)
+            # Syncthing is in EPEL, not the base RHEL/Alma/Rocky repos
+            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
             sudo "$PKG_MGR" install -y syncthing
             ;;
         arch)
