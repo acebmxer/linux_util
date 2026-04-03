@@ -115,7 +115,7 @@ install_steam() {
             sudo dpkg --add-architecture i386
             sudo apt update
 
-            if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+            if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ]]; then
                 # Ubuntu / Kubuntu: install Steam via the multiverse repository
                 echo "Enabling multiverse repository..."
                 sudo add-apt-repository multiverse -y

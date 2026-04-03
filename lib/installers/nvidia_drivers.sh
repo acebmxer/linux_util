@@ -93,6 +93,17 @@ get_nvidia_installed_version() {
             dpkg -l 'nvidia-driver-*' 2>/dev/null | grep '^ii' | \
                 grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | head -1
             ;;
+        fedora|rhel)
+            rpm -qa 'akmod-nvidia*' 'kmod-nvidia*' 2>/dev/null | \
+                grep -oP '(?:akmod|kmod)-nvidia-\K[0-9]+' | sort -rn | head -1
+            ;;
+        arch)
+            pacman -Q nvidia-utils 2>/dev/null | awk '{print $2}' | cut -d- -f1
+            ;;
+        suse)
+            rpm -qa 'nvidia-driver*' 2>/dev/null | \
+                grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | head -1
+            ;;
         *)
             echo ""
             ;;
