@@ -186,22 +186,11 @@ declare -A HEALTH_CHECK_CMDS
 # Register health check commands for utilities.
 # Format: HEALTH_CHECK_CMDS["Utility Name"]="command_to_verify"
 _init_health_checks() {
-    HEALTH_CHECK_CMDS["Docker"]="docker --version"
-    HEALTH_CHECK_CMDS["Brave Browser"]="brave-browser --version"
-    HEALTH_CHECK_CMDS["Visual Studio Code"]="code --version"
-    HEALTH_CHECK_CMDS["Syncthing"]="syncthing --version"
-    HEALTH_CHECK_CMDS["PIA VPN"]="piactl --version 2>/dev/null || /opt/piavpn/bin/piactl --version 2>/dev/null"
-    HEALTH_CHECK_CMDS["Bitwarden Client"]="command -v bitwarden"
-    HEALTH_CHECK_CMDS["QBittorrent"]="command -v qbittorrent"
-    HEALTH_CHECK_CMDS["OpenSSH Server"]="systemctl is-active ssh 2>/dev/null || systemctl is-active sshd 2>/dev/null"
-    HEALTH_CHECK_CMDS["Timeshift"]="timeshift --version"
-    HEALTH_CHECK_CMDS["LibreOffice"]="libreoffice --version 2>/dev/null || soffice --version 2>/dev/null"
-    # Termius does not install a CLI binary in PATH when installed via .deb.
-    # Fall through to check_termius() which uses pkg_check_installed.
-    HEALTH_CHECK_CMDS["NVIDIA Drivers"]="nvidia-smi"
-    HEALTH_CHECK_CMDS["Feral Gamemode"]="gamemoded --version"
-    HEALTH_CHECK_CMDS["KDE Desktop"]="command -v plasmashell"
-    HEALTH_CHECK_CMDS["XEN Guest Utilities"]="command -v xe-daemon || systemctl is-active xe-linux-distribution 2>/dev/null"
+    # All utilities fall through to their check_*() functions, which are
+    # more robust (cover multiple package names, install methods, and paths).
+    # Only register an explicit command here when a utility has no check_*()
+    # function or the check function is insufficient.
+    :
 }
 
 # Run a health check for a utility after install/update.
