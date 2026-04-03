@@ -918,6 +918,7 @@ timeshift_create_snapshot() {
         echo "${YELLOW}⚠ Timeshift snapshot creation failed (continuing anyway)${RESET}"
         log_warning "Timeshift snapshot creation failed"
     fi
+    unset -f _timeshift_do_create
     echo ""
     # Always return 0 — don't block the script on snapshot failure
     return 0

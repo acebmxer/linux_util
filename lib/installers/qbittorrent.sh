@@ -14,7 +14,12 @@ install_qbittorrent() {
             sudo apt update
             sudo apt install -y qbittorrent
             ;;
-        fedora|rhel)
+        fedora)
+            sudo "$PKG_MGR" install -y qbittorrent
+            ;;
+        rhel)
+            # qbittorrent is in EPEL, not the base RHEL/Alma/Rocky repos
+            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
             sudo "$PKG_MGR" install -y qbittorrent
             ;;
         arch)

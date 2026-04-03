@@ -47,12 +47,11 @@ install_gamemode() {
                 dbus-devel inih-devel
             ;;
         rhel)
-            echo "Warning: RHEL requires EPEL to be enabled for some dependencies."
-            echo "Older RHEL versions may fail due to libdbus-1 unavailability in pkg-config."
+            # Build deps like inih-devel are in EPEL, not the base RHEL/Alma/Rocky repos
+            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
             sudo "$PKG_MGR" install -y meson systemd-devel pkg-config git \
                 dbus-devel inih-devel || {
                 echo "Error: Failed to install build dependencies on RHEL."
-                echo "Ensure EPEL is enabled: sudo dnf install epel-release"
                 return 1
             }
             ;;

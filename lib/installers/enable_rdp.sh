@@ -72,9 +72,14 @@ update_krdp() {
 }
 
 get_version_krdp() {
-    dpkg-query -W -f='${Version}' krdp 2>/dev/null | grep -oP '[0-9]+\.[0-9]+[0-9.]*' | head -1 \
-        || pacman -Q krdp 2>/dev/null | awk '{print $2}' \
-        || echo ""
+    local ver=""
+    ver=$(dpkg-query -W -f='${Version}' krdp 2>/dev/null | grep -oP '[0-9]+\.[0-9]+[0-9.]*' | head -1)
+    if [[ -n "$ver" ]]; then
+        echo "$ver"
+        return
+    fi
+    ver=$(pacman -Q krdp 2>/dev/null | awk '{print $2}')
+    echo "${ver:-}"
 }
 
 # --- Enable RDP (unified dispatcher) ---
@@ -84,6 +89,7 @@ check_enable_rdp() {
 }
 
 install_enable_rdp() {
+    # Styled menu output — intentionally uses echo, not info/warn
     echo ""
     echo "${BOLD}${CYAN}Select RDP Server to Install:${RESET}"
     echo ""

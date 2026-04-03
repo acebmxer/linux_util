@@ -53,8 +53,9 @@ EOF
 setup_install_dotfiles() {
     info "Installing dotfiles..."
 
-    if [[ "$DISTRO_ID" == "fedora" || "$DISTRO_ID" == "rhel" || "$DISTRO_ID" == "centos" || "$DISTRO_ID" == "rocky" || "$DISTRO_ID" == "almalinux" ]]; then
-        warn "Dotfiles installation not supported for Fedora-based distros."
+    # Dotfiles are only tested on Debian-family distros (Ubuntu, Kubuntu, Debian, etc.)
+    if [[ "$DISTRO_FAMILY" != "debian" ]]; then
+        warn "Dotfiles installation is only supported on Debian-family distros (current: ${DISTRO_NAME})."
         return 1
     fi
 
@@ -76,7 +77,7 @@ setup_install_dotfiles() {
         ./install.sh
     ) || { warn "Dotfiles install.sh failed"; return 1; }
     if ! command -v zsh &>/dev/null; then
-        sudo apt-get install -y zsh 2>/dev/null || sudo "$PKG_MGR" install -y zsh 2>/dev/null || warn "Could not install zsh automatically."
+        pkg_install zsh 2>/dev/null || warn "Could not install zsh automatically."
     fi
     chsh -s /bin/zsh || warn "Failed to change shell to zsh for current user."
 

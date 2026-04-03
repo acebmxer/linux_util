@@ -99,8 +99,11 @@ preflight_checks() {
     local repo_ok=false
     case "$PKG_MGR" in
         apt)
-            # Verify repos are configured and the local package cache is populated.
-            if apt-cache policy 2>/dev/null | grep -q 'http'; then
+            # Verify repos are configured in source lists (cache may not be
+            # populated yet — pkg_refresh runs immediately after preflight).
+            # Check both traditional format (deb ...) and deb822 format (Types: deb).
+            if grep -rqh '^deb ' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null \
+               || grep -rqh '^Types:.*deb' /etc/apt/sources.list.d/*.sources 2>/dev/null; then
                 repo_ok=true
             fi
             ;;

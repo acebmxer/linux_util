@@ -186,7 +186,7 @@ pkg_autoremove() {
         apt)     run_with_spinner "Removing orphaned packages" sudo apt autoremove -y ;;
         dnf|yum) run_with_spinner "Removing orphaned packages" sudo "$PKG_MGR" autoremove -y ;;
         pacman)  run_with_spinner "Removing orphaned packages" \
-                     bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && echo "$pkgs" | sudo pacman -Rs --noconfirm - || true' ;;
+                     bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && sudo pacman -Rs --noconfirm $pkgs || true' ;;
         zypper)  true ;;
     esac
 }
@@ -256,7 +256,7 @@ pkg_autoremove_interactive() {
         apt)     run_direct "Removing orphaned packages" sudo apt autoremove ;;
         dnf|yum) run_direct "Removing orphaned packages" sudo "$PKG_MGR" autoremove ;;
         pacman)  run_direct "Removing orphaned packages" \
-                     bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && echo "$pkgs" | sudo pacman -Rs - || true' ;;
+                     bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && sudo pacman -Rs $pkgs || true' ;;
         zypper)  true ;;
     esac
 }
@@ -272,11 +272,27 @@ pkg_clean_interactive() {
     esac
 }
 
-pkg_cleanup_thorough_interactive() {
+# Shared implementation for thorough cleanup.
+# Accepts a "mode" argument: "spinner" (non-interactive) or "direct" (interactive).
+_pkg_cleanup_thorough_impl() {
+    local mode="${1:-spinner}"
+    local _runner _autoremove_fn _clean_fn _confirm_flag
+    if [[ "$mode" == "direct" ]]; then
+        _runner="run_direct"
+        _autoremove_fn="pkg_autoremove_interactive"
+        _clean_fn="pkg_clean_interactive"
+        _confirm_flag=""
+    else
+        _runner="run_with_spinner"
+        _autoremove_fn="pkg_autoremove"
+        _clean_fn="pkg_clean"
+        _confirm_flag="-y"
+    fi
+
     info "Running thorough system cleanup..."
 
     # Step 1: Remove orphaned dependencies
-    pkg_autoremove_interactive
+    "$_autoremove_fn"
 
     # Step 2: Remove old kernels (keep current + one previous)
     local current_kernel
@@ -307,19 +323,19 @@ pkg_cleanup_thorough_interactive() {
                     fi
                 done
                 # shellcheck disable=SC2086
-                run_direct "Removing old kernels" sudo apt-get purge $kernels_to_remove $headers_to_remove || true
+                "$_runner" "Removing old kernels" sudo apt-get purge ${_confirm_flag} $kernels_to_remove $headers_to_remove || true
             else
                 info "No old kernels to remove."
             fi
             ;;
         dnf|yum)
-            run_direct "Removing old kernels" sudo "$PKG_MGR" remove --oldinstallonly --setopt installonly_limit=2 || true
+            "$_runner" "Removing old kernels" sudo "$PKG_MGR" remove ${_confirm_flag} --oldinstallonly --setopt installonly_limit=2 || true
             ;;
         pacman)
             # Arch doesn't accumulate old kernels the same way; skip
             ;;
         zypper)
-            run_direct "Removing old kernels" sudo zypper purge-kernels --keep 2 || true
+            "$_runner" "Removing old kernels" sudo zypper purge-kernels --keep 2 || true
             ;;
     esac
 
@@ -329,12 +345,12 @@ pkg_cleanup_thorough_interactive() {
         rc_packages=$(dpkg -l 2>/dev/null | awk '/^rc/ {print $2}')
         if [[ -n "$rc_packages" ]]; then
             # shellcheck disable=SC2086
-            run_direct "Purging removed package configs" sudo dpkg --purge $rc_packages || true
+            "$_runner" "Purging removed package configs" sudo dpkg --purge $rc_packages || true
         fi
     fi
 
     # Step 4: Clean package cache
-    pkg_clean_interactive
+    "$_clean_fn"
 
     # Step 5: Clean apt lists partial files (Debian family only)
     if [[ "$PKG_MGR" == "apt" ]]; then
@@ -344,80 +360,13 @@ pkg_cleanup_thorough_interactive() {
     info "System cleanup completed."
 }
 
+pkg_cleanup_thorough_interactive() {
+    _pkg_cleanup_thorough_impl "direct"
+}
+
 # Thorough cleanup: autoremove, old kernels, purge configs, clean cache
 pkg_cleanup_thorough() {
-    info "Running thorough system cleanup..."
-
-    # Step 1: Remove orphaned dependencies
-    pkg_autoremove
-
-    # Step 2: Remove old kernels (keep current + one previous)
-    local current_kernel
-    current_kernel=$(uname -r)
-    info "Current kernel: ${current_kernel} (will be preserved)"
-
-    case "$PKG_MGR" in
-        apt)
-            # List installed kernels, exclude current and latest, purge the rest
-            local kernels_to_remove=""
-            local installed_kernels
-            installed_kernels=$(dpkg -l 'linux-image-*' 2>/dev/null | awk '/^ii.*linux-image-[0-9]/ {print $2}' | sort -V)
-            if [[ -n "$installed_kernels" ]]; then
-                # Keep the two newest and the currently running kernel
-                local keep_count=2
-                local total
-                total=$(echo "$installed_kernels" | wc -l)
-                if (( total > keep_count )); then
-                    kernels_to_remove=$(echo "$installed_kernels" | head -n -${keep_count} | grep -Fv "$current_kernel" || true)
-                fi
-            fi
-            if [[ -n "$kernels_to_remove" ]]; then
-                info "Removing old kernels: $(echo "$kernels_to_remove" | tr '\n' ' ')"
-                # Also remove matching headers
-                local headers_to_remove=""
-                for kern in $kernels_to_remove; do
-                    local ver
-                    ver=$(echo "$kern" | sed 's/linux-image-\(unsigned-\)\?//')
-                    if dpkg -l "linux-headers-${ver}" 2>/dev/null | grep -q "^ii"; then
-                        headers_to_remove+="linux-headers-${ver} "
-                    fi
-                done
-                # shellcheck disable=SC2086
-                run_with_spinner "Removing old kernels" sudo apt-get purge -y $kernels_to_remove $headers_to_remove || true
-            else
-                info "No old kernels to remove."
-            fi
-            ;;
-        dnf|yum)
-            run_with_spinner "Removing old kernels" sudo "$PKG_MGR" remove -y --oldinstallonly --setopt installonly_limit=2 || true
-            ;;
-        pacman)
-            # Arch doesn't accumulate old kernels the same way; skip
-            ;;
-        zypper)
-            run_with_spinner "Removing old kernels" sudo zypper purge-kernels --keep 2 || true
-            ;;
-    esac
-
-    # Step 3: Purge removed package configs (Debian family only)
-    if [[ "$PKG_MGR" == "apt" ]]; then
-        local rc_packages
-        rc_packages=$(dpkg -l 2>/dev/null | awk '/^rc/ {print $2}')
-        if [[ -n "$rc_packages" ]]; then
-            # shellcheck disable=SC2086
-            run_with_spinner "Purging removed package configs" sudo dpkg --purge $rc_packages || true
-        fi
-    fi
-
-    # Step 4: Clean package cache
-    pkg_clean
-
-    # Step 5: Clean apt lists partial files (Debian family only)
-    if [[ "$PKG_MGR" == "apt" ]]; then
-        sudo rm -f /var/lib/apt/lists/partial/* 2>/dev/null || true
-    fi
-
-    info "System cleanup completed."
+    _pkg_cleanup_thorough_impl "spinner"
 }
 
 # Shared helper for Debian-family distro upgrades via codename swap.

@@ -95,10 +95,10 @@ load_config() {
         key="${line%%=*}"
         value="${line#*=}"
 
-        # Trim whitespace
+        # Trim whitespace (spaces and tabs)
         key="${key//[[:space:]]/}"
-        value="${value#"${value%%[! ]*}"}"   # ltrim
-        value="${value%"${value##*[! ]}"}"   # rtrim
+        value="${value#"${value%%[! 	]*}"}"   # ltrim (space + tab in bracket)
+        value="${value%"${value##*[! 	]}"}"   # rtrim (space + tab in bracket)
 
         # Map config keys to CFG_ variables (whitelist)
         case "$key" in
