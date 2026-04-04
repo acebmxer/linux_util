@@ -565,7 +565,7 @@ EOF
                 ;;
             --no-color)
                 NO_COLOR_FLAG=true
-                BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN=""
+                BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN="" WHITE="" BG_BLUE="" BG_CYAN=""
                 shift
                 ;;
             --setup-logrotate)

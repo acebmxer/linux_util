@@ -14,6 +14,8 @@ declare -A UNINSTALL_FUNCS
 declare -A UPDATE_FUNCS
 declare -A VERSION_FUNCS
 declare -A NO_RETRY
+declare -A UTILITY_CATEGORY  # maps utility name → category tab label
+declare -a CATEGORIES=()     # ordered list of category tab names (populated by installers.sh)
 
 # Internal helper — shared registration logic for both system tasks and utilities.
 _register_entry() {

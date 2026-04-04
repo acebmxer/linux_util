@@ -84,3 +84,26 @@ register_utility "Syncthing"           install_syncthing       check_syncthing  
 register_utility "Termius SSH Client"  install_termius         check_termius         uninstall_termius         update_termius            get_version_termius
 register_utility "Timeshift"           install_timeshift       check_timeshift       uninstall_timeshift       update_timeshift          get_version_timeshift
 register_utility "Visual Studio Code"  install_vscode          check_vscode          uninstall_vscode          update_vscode             get_version_vscode
+
+# --- Category definitions ---
+# The order here determines the tab order in the left panel.
+CATEGORIES=("System Tasks" "Development" "Gaming" "Internet" "Productivity" "System Tools")
+
+# Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
+UTILITY_CATEGORY["Brave Browser"]="Internet"
+UTILITY_CATEGORY["Claude Code"]="Development"
+UTILITY_CATEGORY["Devolutions RDM"]="Productivity"
+UTILITY_CATEGORY["Docker"]="Development"
+UTILITY_CATEGORY["Dotfiles"]="System Tools"
+UTILITY_CATEGORY["Feral Gamemode"]="Gaming"
+UTILITY_CATEGORY["Joplin Client"]="Productivity"
+UTILITY_CATEGORY["LibreOffice"]="Productivity"
+UTILITY_CATEGORY["OpenSSH Server"]="Internet"
+UTILITY_CATEGORY["PIA VPN"]="Internet"
+UTILITY_CATEGORY["QBittorrent"]="Internet"
+UTILITY_CATEGORY["Steam App"]="Gaming"
+UTILITY_CATEGORY["Syncthing"]="Internet"
+UTILITY_CATEGORY["Termius SSH Client"]="Internet"
+UTILITY_CATEGORY["Timeshift"]="System Tools"
+UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
+UTILITY_CATEGORY["Visual Studio Code"]="Development"
