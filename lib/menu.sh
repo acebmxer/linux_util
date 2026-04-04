@@ -92,6 +92,9 @@ _ITEMS_H=0
 # Global flag: true while the TUI menu is actively displayed
 _MENU_ACTIVE=false
 
+# Flag: set to true by WINCH trap so _calc_layout re-queries the terminal size
+_NEEDS_SIZE_REFRESH=true
+
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
@@ -165,32 +168,64 @@ _hline() {
 # CATEGORY FILTER
 # ============================================================================
 
-# Rebuild the filtered item list based on active tab and search query
+# Rebuild the filtered item list based on active tab and search query.
+# When a search query is active, search ALL categories and auto-switch
+# _ACTIVE_TAB to the category containing the first/best match.
 _rebuild_filtered() {
     _SEARCH_FILTERED=()
-    local category="${_TAB_NAMES[$_ACTIVE_TAB]:-System Tasks}"
     local i total=${#UTILITIES[@]}
     local query_lower="${_SEARCH_QUERY,,}"
 
-    for (( i=0; i<total; i++ )); do
-        local name="${UTILITIES[$i]}"
-        local match=false
-        if [[ "$category" == "System Tasks" ]]; then
-            # System Tasks: check SYSTEM_TASKS array membership
+    if [[ -n "$_SEARCH_QUERY" ]]; then
+        # Search mode: scan every utility regardless of category
+        for (( i=0; i<total; i++ )); do
+            local name="${UTILITIES[$i]}"
+            if [[ "${name,,}" == *"$query_lower"* ]]; then
+                _SEARCH_FILTERED+=("$i")
+            fi
+        done
+
+        # Auto-switch active tab to the category of the first match
+        if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
+            local first_idx=${_SEARCH_FILTERED[0]}
+            local first_name="${UTILITIES[$first_idx]}"
+            local first_cat=""
+            # Check if it's a system task
             local _st
             for _st in "${SYSTEM_TASKS[@]}"; do
-                [[ "$_st" == "$name" ]] && match=true && break
+                if [[ "$_st" == "$first_name" ]]; then
+                    first_cat="System Tasks"
+                    break
+                fi
             done
-        else
-            # Other categories: look up UTILITY_CATEGORY map
-            [[ "${UTILITY_CATEGORY[$name]:-}" == "$category" ]] && match=true
+            # Otherwise look up UTILITY_CATEGORY
+            [[ -z "$first_cat" ]] && first_cat="${UTILITY_CATEGORY[$first_name]:-}"
+            # Find the tab index for that category
+            local t
+            for (( t=0; t<${#_TAB_NAMES[@]}; t++ )); do
+                if [[ "${_TAB_NAMES[$t]}" == "$first_cat" ]]; then
+                    _ACTIVE_TAB=$t
+                    break
+                fi
+            done
         fi
-        [[ "$match" == false ]] && continue
-
-        if [[ -z "$_SEARCH_QUERY" ]] || [[ "${name,,}" == *"$query_lower"* ]]; then
-            _SEARCH_FILTERED+=("$i")
-        fi
-    done
+    else
+        # Normal mode: filter by active category only
+        local category="${_TAB_NAMES[$_ACTIVE_TAB]:-System Tasks}"
+        for (( i=0; i<total; i++ )); do
+            local name="${UTILITIES[$i]}"
+            local match=false
+            if [[ "$category" == "System Tasks" ]]; then
+                local _st
+                for _st in "${SYSTEM_TASKS[@]}"; do
+                    [[ "$_st" == "$name" ]] && match=true && break
+                done
+            else
+                [[ "${UTILITY_CATEGORY[$name]:-}" == "$category" ]] && match=true
+            fi
+            [[ "$match" == true ]] && _SEARCH_FILTERED+=("$i")
+        done
+    fi
 
     # Clamp cursor
     local max=$(( ${#_SEARCH_FILTERED[@]} - 1 ))
@@ -273,8 +308,22 @@ _gather_sysinfo() {
 # ============================================================================
 
 _calc_layout() {
-    _TERM_ROWS=${LINES:-$(tput lines 2>/dev/null || echo 24)}
-    _TERM_COLS=${COLUMNS:-$(tput cols 2>/dev/null || echo 80)}
+    # On first call and after every WINCH signal, re-query the actual terminal
+    # size directly from the kernel (TIOCGWINSZ via stty) rather than trusting
+    # the LINES/COLUMNS env vars, which can be stale during and after resize.
+    if [[ "$_NEEDS_SIZE_REFRESH" == "true" ]]; then
+        local _stty
+        _stty=$(stty size 2>/dev/null)
+        if [[ "$_stty" =~ ^([0-9]+)[[:space:]]([0-9]+)$ ]]; then
+            _TERM_ROWS="${BASH_REMATCH[1]}"
+            _TERM_COLS="${BASH_REMATCH[2]}"
+        else
+            # Non-tty fallback (pipes, test harness, CI)
+            _TERM_ROWS=${LINES:-24}
+            _TERM_COLS=${COLUMNS:-80}
+        fi
+        _NEEDS_SIZE_REFRESH=false
+    fi
 
     # Left panel width: content-aware, percentage-capped.
     #
@@ -314,8 +363,8 @@ _calc_layout() {
     _MAIN_H=$(( _TERM_ROWS - 3 - 4 ))
     (( _MAIN_H < 5 )) && _MAIN_H=5
 
-    # Items viewport height = main height - search header(1) - search input(1) - items header(1)
-    _ITEMS_H=$(( _MAIN_H - 3 ))
+    # Items viewport height = main height - category label header (1)
+    _ITEMS_H=$(( _MAIN_H - 1 ))
     (( _ITEMS_H < 3 )) && _ITEMS_H=3
 }
 
@@ -355,36 +404,62 @@ _update_scroll() {
 declare -a _TITLE_LINES=()
 _render_title() {
     _TITLE_LINES=()
-    local w=$(( _TERM_COLS - 2 ))  # inner width (minus 2 border chars)
     local eol=$'\033[K'
 
-    # Title text
+    # Left cell inner width (between left border │ and divider │)
+    local left_inner=$(( _LEFT_W - 2 ))
+    # Right cell inner width (between divider │ and right border │)
+    # Must be _RIGHT_W - 1 so the title bar is _TERM_COLS wide, matching main panel rows.
+    local right_inner=$(( _RIGHT_W - 1 ))
+
+    # --- Line 1: top border ---
+    _hline "$left_inner"
+    local left_top="$_HLINE_RESULT"
+    _hline "$right_inner"
+    local right_top="$_HLINE_RESULT"
+    _TITLE_LINES+=("${CYAN}${_BD_TL}${left_top}${_BD_TJ}${right_top}${_BD_TR}${RESET}${eol}")
+
+    # --- Line 2: title (left) | search (right) ---
+    # Left: app title
     local title_text=" linux_util (${CACHED_LOCAL_BRANCH}: ${CACHED_LOCAL_COMMIT})"
-    local dry_run_tag=""
-    [[ "$DRY_RUN" == "true" ]] && dry_run_tag=" ${BOLD}${YELLOW}[DRY RUN]${RESET}"
-
-    # Out of date warning
-    local ood_tag=""
-    if [[ "$CACHED_LOCAL_COMMIT" != "unknown" && "$CACHED_REMOTE_COMMIT" != "unknown" && "$CACHED_LOCAL_COMMIT" != "$CACHED_REMOTE_COMMIT" ]]; then
-        ood_tag=" ${YELLOW}(out of date)${RESET}"
+    [[ "$DRY_RUN" == "true" ]] && title_text+=" ${BOLD}${YELLOW}[DRY RUN]${RESET}"
+    if [[ "$CACHED_LOCAL_COMMIT" != "unknown" && "$CACHED_REMOTE_COMMIT" != "unknown" && \
+          "$CACHED_LOCAL_COMMIT" != "$CACHED_REMOTE_COMMIT" ]]; then
+        title_text+=" ${YELLOW}(out of date)${RESET}"
     fi
+    _pad_or_truncate "$title_text" "$left_inner"
+    local left_cell="${RESET}${BOLD}${_POT_RESULT}${RESET}"
 
-    local display_title="${title_text}${ood_tag}${dry_run_tag}"
+    # Right: search input
+    local search_text=""
+    if [[ "$_SEARCH_ACTIVE" == true ]]; then
+        search_text="${_SEARCH_QUERY}_"
+        local max_sw=$(( right_inner - 3 ))
+        (( ${#search_text} > max_sw )) && search_text="${search_text: -$max_sw}"
+        search_text=" ${BOLD}${WHITE}${search_text}${RESET}"
+    elif [[ -n "$_SEARCH_QUERY" ]]; then
+        search_text=" ${WHITE}${_SEARCH_QUERY}${RESET}"
+    else
+        search_text=" ${DIM}Type to search (/)${RESET}"
+    fi
+    # Search label + input on right side
+    local search_label="${BOLD}${CYAN}SEARCH${RESET} "
+    local search_content="${search_label}${search_text}"
+    _pad_or_truncate "$search_content" "$right_inner"
+    local right_cell="${_POT_RESULT}"
 
-    # Line 1: top border
-    _hline "$w"
-    _TITLE_LINES+=("${CYAN}${_BD_TL}${_HLINE_RESULT}${_BD_TR}${RESET}${eol}")
+    # Search border color: bright when active, dimmed otherwise
+    local sbc="${CYAN}"
+    [[ "$_SEARCH_ACTIVE" == true ]] && sbc="${BOLD}${CYAN}"
 
-    # Line 2: title text
-    _pad_or_truncate "$display_title" "$w"
-    _TITLE_LINES+=("${CYAN}${_BD_V}${RESET}${BOLD}${_POT_RESULT}${RESET}${CYAN}${_BD_V}${RESET}${eol}")
+    _TITLE_LINES+=("${CYAN}${_BD_V}${left_cell}${sbc}${_BD_V}${RESET}${right_cell}${CYAN}${_BD_V}${RESET}${eol}")
 
-    # Line 3: separator with T-junction
-    _hline $(( _LEFT_W - 2 ))
-    local left_border="$_HLINE_RESULT"
-    _hline $(( _RIGHT_W - 1 ))
-    local right_border="$_HLINE_RESULT"
-    _TITLE_LINES+=("${CYAN}${_BD_LJ}${left_border}${_BD_TJ}${right_border}${_BD_RJ}${RESET}${eol}")
+    # --- Line 3: separator row connecting title to panels ---
+    _hline "$left_inner"
+    local left_sep="$_HLINE_RESULT"
+    _hline "$right_inner"
+    local right_sep="$_HLINE_RESULT"
+    _TITLE_LINES+=("${CYAN}${_BD_LJ}${left_sep}${_BD_X}${right_sep}${_BD_RJ}${RESET}${eol}")
 }
 
 # --- Left Panel (main_height lines) ---
@@ -395,20 +470,16 @@ _render_left() {
     local eol=$'\033[K'
     local row=0
 
-    # Border color based on focus
-    local bc="$CYAN"
-    [[ "$_FOCUS" == "items" ]] && bc="${DIM}${CYAN}"
-
-    # --- Tabs Section ---
-    # Tab header
-    local header=" TABS"
+    # --- Categories Section ---
+    # Category header
+    local header=" CATEGORIES"
     _pad_or_truncate "$header" "$inner_w"
-    _LEFT_LINES+=("${bc}${_BD_V}${RESET}${BOLD}${CYAN}${_POT_RESULT}${RESET}${bc}${_BD_V}${RESET}")
+    _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${BOLD}${CYAN}${_POT_RESULT}${RESET}${CYAN}${_BD_V}${RESET}")
     (( row++ ))
 
     # Separator under header
     _hline "$inner_w"
-    _LEFT_LINES+=("${bc}${_BD_V}${DIM}${_HLINE_RESULT}${RESET}${bc}${_BD_V}${RESET}")
+    _LEFT_LINES+=("${CYAN}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
     (( row++ ))
 
     # Tab entries
@@ -425,45 +496,28 @@ _render_left() {
             tab_text="   ${DIM}${_TAB_NAMES[$t]}${RESET}"
         fi
         _pad_or_truncate "$tab_text" "$inner_w"
-        _LEFT_LINES+=("${bc}${_BD_V}${RESET}${_POT_RESULT}${bc}${_BD_V}${RESET}")
+        _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
         (( row++ ))
     done
 
     # Separator between tabs and sysinfo
     _hline "$inner_w"
-    _LEFT_LINES+=("${bc}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
+    _LEFT_LINES+=("${CYAN}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
     (( row++ ))
 
     # --- System Info Section ---
     local sysinfo_header=" SYSTEM INFO"
     _pad_or_truncate "$sysinfo_header" "$inner_w"
-    _LEFT_LINES+=("${bc}${_BD_V}${RESET}${BOLD}${CYAN}${_POT_RESULT}${RESET}${bc}${_BD_V}${RESET}")
+    _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${BOLD}${CYAN}${_POT_RESULT}${RESET}${CYAN}${_BD_V}${RESET}")
     (( row++ ))
 
     _hline "$inner_w"
-    _LEFT_LINES+=("${bc}${_BD_V}${DIM}${_HLINE_RESULT}${RESET}${bc}${_BD_V}${RESET}")
+    _LEFT_LINES+=("${CYAN}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
     (( row++ ))
 
     # Sysinfo entries: label + value
     local -a _si_labels=("Host" "OS" "Kernel" "CPU" "Mem" "Disk" "Uptime")
     local -a _si_values=("$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" "$_SYSINFO_CPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" "$_SYSINFO_UPTIME")
-
-    # Add snapshot info if available
-    if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" ]]; then
-        local _snap_label="Snap"
-        [[ "${SNAPSHOT_BACKEND:-}" == "snapper" ]] && _snap_label="Snap"
-        local _snap_val="${TIMESHIFT_LAST_SNAPSHOT:-None}"
-        # Simplify: just show date portion if available
-        if [[ -n "${TIMESHIFT_LAST_SNAPSHOT:-}" ]]; then
-            local _snap_name="${TIMESHIFT_LAST_SNAPSHOT%%[[:space:]]*}"
-            local _snap_date="${_snap_name%%_*}"
-            local _snap_time="${_snap_name##*_}"
-            _snap_time="${_snap_time//-/:}"
-            _snap_val="${_snap_date} ${_snap_time}"
-        fi
-        _si_labels+=("$_snap_label")
-        _si_values+=("$_snap_val")
-    fi
 
     local label_w=8  # fixed label column width (includes leading space)
     local val_w=$(( inner_w - label_w - 2 ))  # -2 for ": " separator
@@ -485,67 +539,108 @@ _render_left() {
         line_text+="${val}"
 
         _pad_or_truncate "$line_text" "$inner_w"
-        _LEFT_LINES+=("${bc}${_BD_V}${RESET}${_POT_RESULT}${bc}${_BD_V}${RESET}")
+        _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
         (( row++ ))
     done
+
+    # --- Snapshot section (multi-line, word-wrapped) ---
+    # Rendered separately so it can span multiple rows rather than truncating.
+    if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" ]] && (( row < _MAIN_H )); then
+        local _snap_full="${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}"
+
+        # Reformat timestamp "YYYY-MM-DD_HH-MM-SS" → "DD Mon YYYY HH:MM AM/PM"
+        local _snap_display
+        if [[ "$_snap_full" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})_([0-9]{2})-([0-9]{2})-([0-9]{2})(.*) ]]; then
+            local _yr="${BASH_REMATCH[1]}" _mo="${BASH_REMATCH[2]}" _dy="${BASH_REMATCH[3]}"
+            local _hr="${BASH_REMATCH[4]}" _mi="${BASH_REMATCH[5]}" _rest="${BASH_REMATCH[7]}"
+            local -a _mn=(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+            local _ampm="AM" _h12=$(( 10#$_hr ))
+            (( _h12 >= 12 )) && _ampm="PM"
+            (( _h12 > 12 ))  && _h12=$(( _h12 - 12 ))
+            (( _h12 == 0 ))  && _h12=12
+            printf -v _h12 '%02d' "$_h12"
+            _snap_display="${_dy} ${_mn[$(( 10#$_mo - 1 ))]} ${_yr} ${_h12}:${_mi} ${_ampm}${_rest}"
+        else
+            _snap_display="$_snap_full"
+        fi
+
+        # Label is " Snapshot" (9 chars); prefix with ": " = 11 chars before value.
+        local _snap_lbl=" Snapshot"
+        local _snap_val_w=$(( inner_w - ${#_snap_lbl} - 2 ))
+        local _snap_indent
+        printf -v _snap_indent '%*s' "$(( ${#_snap_lbl} + 2 ))" ''
+
+        # Word-wrap _snap_display into _snap_val_w-wide chunks
+        local -a _snap_words
+        read -ra _snap_words <<< "$_snap_display"
+        local _snap_cur="" _snap_first=true
+        for _snapw in "${_snap_words[@]}"; do
+            local _snap_test
+            if [[ -z "$_snap_cur" ]]; then
+                _snap_test="$_snapw"
+            else
+                _snap_test="${_snap_cur} ${_snapw}"
+            fi
+            if (( ${#_snap_test} <= _snap_val_w )); then
+                _snap_cur="$_snap_test"
+            else
+                # Emit accumulated line
+                if (( row < _MAIN_H )); then
+                    local _snap_lt
+                    if [[ "$_snap_first" == true ]]; then
+                        _snap_lt="${BOLD}${CYAN}${_snap_lbl}${RESET}${DIM}:${RESET} ${_snap_cur}"
+                        _snap_first=false
+                    else
+                        _snap_lt="${_snap_indent}${_snap_cur}"
+                    fi
+                    _pad_or_truncate "$_snap_lt" "$inner_w"
+                    _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
+                    (( row++ ))
+                fi
+                _snap_cur="$_snapw"
+            fi
+        done
+        # Emit the final accumulated line
+        if [[ -n "$_snap_cur" ]] && (( row < _MAIN_H )); then
+            local _snap_lt
+            if [[ "$_snap_first" == true ]]; then
+                _snap_lt="${BOLD}${CYAN}${_snap_lbl}${RESET}${DIM}:${RESET} ${_snap_cur}"
+            else
+                _snap_lt="${_snap_indent}${_snap_cur}"
+            fi
+            _pad_or_truncate "$_snap_lt" "$inner_w"
+            _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
+            (( row++ ))
+        fi
+    fi
 
     # Fill remaining rows with empty lines
     while (( row < _MAIN_H )); do
         _pad_or_truncate "" "$inner_w"
-        _LEFT_LINES+=("${bc}${_BD_V}${RESET}${_POT_RESULT}${bc}${_BD_V}${RESET}")
+        _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
         (( row++ ))
     done
 }
 
 # --- Right Panel (main_height lines) ---
-# The right panel uses the outer frame's right │ as its right border.
 # Content is padded to fill inner_w (= _RIGHT_W - 1), then the outer │ is appended.
+# The left divider │ is provided by the left panel's trailing character.
 declare -a _RIGHT_LINES=()
 _render_right() {
     _RIGHT_LINES=()
-    local inner_w=$(( _RIGHT_W - 1 ))  # content width (outer │ appended separately)
+    local inner_w=$(( _RIGHT_W - 1 ))  # content width; outer │ appended separately
     local eol=$'\033[K'
     local row=0
 
-    # Border color based on focus
-    local bc="$CYAN"
-    [[ "$_FOCUS" == "tabs" ]] && bc="${DIM}${CYAN}"
     local outer_bc="${CYAN}"  # outer frame always full color
 
-    # --- Search Bar (3 lines) ---
-    # Search header with label in border
-    local search_label=" SEARCH "
-    _hline $(( inner_w - ${#search_label} - 1 ))
-    local search_hdr=" ${BOLD}${CYAN}${search_label}${RESET}${bc}${_HLINE_RESULT}${RESET}"
-    _pad_or_truncate "$search_hdr" "$inner_w"
-    _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
-    (( row++ ))
-
-    # Search input line
-    local search_text=""
-    if [[ "$_SEARCH_ACTIVE" == true ]]; then
-        search_text="${_SEARCH_QUERY}_"
-        local max_sw=$(( inner_w - 3 ))
-        if (( ${#search_text} > max_sw )); then
-            search_text="${search_text: -$max_sw}"
-        fi
-    else
-        if [[ -n "$_SEARCH_QUERY" ]]; then
-            search_text="$_SEARCH_QUERY"
-        else
-            search_text="${DIM}Type to search (/)${RESET}"
-        fi
-    fi
-    _pad_or_truncate "  ${search_text}" "$inner_w"
-    _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
-    (( row++ ))
-
-    # Search/items separator with label
+    # --- Category label header (1 line) ---
+    # Use _BD_RJ (┤) so the trailing dashes visually connect to the right border.
     local items_label=" ${_TAB_NAMES[$_ACTIVE_TAB]} "
     _hline $(( inner_w - ${#items_label} - 1 ))
-    local items_hdr=" ${BOLD}${CYAN}${items_label}${RESET}${bc}${_HLINE_RESULT}${RESET}"
+    local items_hdr=" ${BOLD}${CYAN}${items_label}${RESET}${CYAN}${_HLINE_RESULT}${RESET}"
     _pad_or_truncate "$items_hdr" "$inner_w"
-    _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
+    _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_RJ}${RESET}")
     (( row++ ))
 
     # --- Items List ---
@@ -629,13 +724,10 @@ _render_right() {
                 line_content="${prefix}${checkbox} ${display_name}"
             fi
 
-            # Apply highlight background if cursor is on this item and focus is items
-            if [[ "$is_cursor" == true && "$_FOCUS" == "items" ]]; then
-                line_content="${BG_BLUE}${line_content}${RESET}"
-            fi
+
         fi
 
-        # Build full line: 1 space left margin + content, padded to inner_w
+        # Build full line: content padded to inner_w + outer border
         if [[ -n "$scroll_indicator" ]]; then
             _pad_or_truncate " ${line_content}" "$(( inner_w - 1 ))"
             _RIGHT_LINES+=("${_POT_RESULT}${scroll_indicator}${outer_bc}${_BD_V}${RESET}")
@@ -691,7 +783,7 @@ _render_status() {
     # Line 3: keybindings
     local keys=""
     if [[ "$_SEARCH_ACTIVE" == true ]]; then
-        keys=" ${BOLD}[Esc]${RESET} Clear  ${BOLD}[↑↓]${RESET} Navigate  ${BOLD}[Enter]${RESET} Accept search  ${BOLD}[BS]${RESET} Delete"
+        keys=" ${BOLD}[Esc]${RESET} Clear  ${BOLD}[↑↓]${RESET} Navigate  ${BOLD}[Enter]${RESET} Accept  ${BOLD}[BS]${RESET} Delete"
     else
         keys=" ${BOLD}[↑↓]${RESET} Navigate  ${BOLD}[Space]${RESET} Select  ${BOLD}[U]${RESET} Update  ${BOLD}[/]${RESET} Search  ${BOLD}[Enter]${RESET} Confirm  ${BOLD}[Tab]${RESET} Focus  ${BOLD}[Q]${RESET} Quit"
     fi
@@ -737,8 +829,10 @@ _compose_frame() {
     done
 
     # Main area: merge left + right
+    # \033[K (erase to end of line) after each row clears stale characters
+    # that remain when the terminal is resized narrower.
     for (( r=0; r<_MAIN_H; r++ )); do
-        _buf+="${_LEFT_LINES[$r]}${_RIGHT_LINES[$r]}"$'\n'
+        _buf+="${_LEFT_LINES[$r]}${_RIGHT_LINES[$r]}"$'\033[K\n'
     done
 
     # Status lines — all but the last get \n; omit \n on last line to prevent terminal scroll
@@ -888,7 +982,9 @@ run_selection_menu() {
     trap 'echo ""; _MENU_ACTIVE=false; show_cursor; stty echo; exit 130' INT TERM
 
     # Redraw on terminal resize
-    trap 'LINES=$(tput lines 2>/dev/null || echo 24); COLUMNS=$(tput cols 2>/dev/null || echo 80); _compose_frame' WINCH
+    # On resize: mark dimensions stale, clear the screen to remove any
+    # leftover content from the previous (wider) render, then redraw.
+    trap '_NEEDS_SIZE_REFRESH=true; printf "\033[2J"; _compose_frame' WINCH
 
     # Initial draw
     clear
@@ -974,6 +1070,38 @@ run_selection_menu() {
                     _compose_frame
                     continue
                     ;;
+                QUIT)
+                    _SEARCH_QUERY+="q"
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
+                SELECT_ALL)
+                    _SEARCH_QUERY+="a"
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
+                DESELECT_ALL)
+                    _SEARCH_QUERY+="d"
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
+                UPDATE)
+                    _SEARCH_QUERY+="u"
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
                 TAB)
                     _SEARCH_ACTIVE=false
                     _FOCUS="items"
@@ -989,6 +1117,15 @@ run_selection_menu() {
 
         # --- Normal mode input handling ---
         case "$key" in
+            ESCAPE)
+                if [[ -n "$_SEARCH_QUERY" ]]; then
+                    _SEARCH_QUERY=""
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                fi
+                ;;
             TAB|SHIFT_TAB)
                 if [[ "$_FOCUS" == "tabs" ]]; then
                     _FOCUS="items"
@@ -999,7 +1136,6 @@ run_selection_menu() {
                 ;;
             SLASH)
                 _SEARCH_ACTIVE=true
-                _SEARCH_QUERY=""
                 _FOCUS="items"
                 _compose_frame
                 ;;
