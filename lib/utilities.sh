@@ -14,8 +14,9 @@ declare -A UNINSTALL_FUNCS
 declare -A UPDATE_FUNCS
 declare -A VERSION_FUNCS
 declare -A NO_RETRY
-declare -A UTILITY_CATEGORY  # maps utility name → category tab label
-declare -a CATEGORIES=()     # ordered list of category tab names (populated by installers.sh)
+declare -A UTILITY_CATEGORY     # maps utility name → category tab label
+declare -A UTILITY_SUBCATEGORY  # maps utility name → subcategory name (optional)
+declare -a CATEGORIES=()        # ordered list of category tab names (populated by installers.sh)
 
 # Internal helper — shared registration logic for both system tasks and utilities.
 _register_entry() {
@@ -126,6 +127,7 @@ declare -A DEPS_MAP
 _init_deps_map() {
     DEPS_MAP["Docker"]="curl:curl ca-certificates:ca-certificates"
     DEPS_MAP["Brave Browser"]="curl:curl gpg:gnupg"
+    DEPS_MAP["Firefox"]="curl:curl gpg:gnupg"
     DEPS_MAP["Visual Studio Code"]="curl:curl gpg:gnupg wget:wget"
     DEPS_MAP["Syncthing"]="curl:curl"
     DEPS_MAP["PIA VPN"]="curl:curl wget:wget"

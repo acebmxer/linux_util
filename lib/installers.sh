@@ -69,6 +69,7 @@ NO_RETRY["Restore Snapshot"]=1
 # --- Utilities (alphabetical order) ---
 register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden
 register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave              get_version_brave
+register_utility "Firefox"             install_firefox         check_firefox         uninstall_firefox         update_firefox            get_version_firefox
 register_utility "Claude Code"         install_claude_code     check_claude_code     uninstall_claude_code     update_claude_code        get_version_claude_code
 register_utility "Devolutions RDM"     install_devolutions_rdm check_devolutions_rdm uninstall_devolutions_rdm update_devolutions_rdm    get_version_devolutions_rdm
 register_utility "Docker"              setup_install_docker    check_docker          uninstall_docker          update_docker             get_version_docker
@@ -91,6 +92,7 @@ CATEGORIES=("System Tasks" "Development" "Gaming" "Internet" "Productivity" "Sys
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Brave Browser"]="Internet"
+UTILITY_CATEGORY["Firefox"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
 UTILITY_CATEGORY["Devolutions RDM"]="Productivity"
 UTILITY_CATEGORY["Docker"]="Development"
@@ -107,3 +109,7 @@ UTILITY_CATEGORY["Termius SSH Client"]="Internet"
 UTILITY_CATEGORY["Timeshift"]="System Tools"
 UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
+
+# Subcategory assignments — utility name → subcategory label within the parent category
+UTILITY_SUBCATEGORY["Brave Browser"]="Web Browsers"
+UTILITY_SUBCATEGORY["Firefox"]="Web Browsers"

@@ -67,6 +67,12 @@ _TAB_CURSOR=()
 # Per-tab scroll offset (viewport top)
 _TAB_SCROLL=()
 
+# Per-tab active subcategory (empty string = top level, non-empty = inside a subcategory)
+_TAB_SUBCAT=()
+
+# Sentinel value used as the index for the ".." (go-up) entry
+_SUBCAT_UP_SENTINEL=-1
+
 # Search state
 _SEARCH_ACTIVE=false
 _SEARCH_QUERY=""
@@ -168,20 +174,31 @@ _hline() {
 # CATEGORY FILTER
 # ============================================================================
 
-# Rebuild the filtered item list based on active tab and search query.
-# When a search query is active, search ALL categories and auto-switch
-# _ACTIVE_TAB to the category containing the first/best match.
+# Parallel arrays describing each entry in the filtered list:
+#   _SEARCH_FILTERED    — utility index (only valid when type == "utility")
+#   _SEARCH_ITEM_TYPE   — "utility" | "subcat" | "up"
+#   _SEARCH_ITEM_LABEL  — display label (subcategory name for "subcat", ".." for "up")
+declare -a _SEARCH_ITEM_TYPE=()
+declare -a _SEARCH_ITEM_LABEL=()
+
+# Rebuild the filtered item list based on active tab, subcategory, and search query.
+# When a search query is active, search ALL categories (flat, no subcategory drilling)
+# and auto-switch _ACTIVE_TAB to the category containing the first/best match.
 _rebuild_filtered() {
     _SEARCH_FILTERED=()
+    _SEARCH_ITEM_TYPE=()
+    _SEARCH_ITEM_LABEL=()
     local i total=${#UTILITIES[@]}
     local query_lower="${_SEARCH_QUERY,,}"
 
     if [[ -n "$_SEARCH_QUERY" ]]; then
-        # Search mode: scan every utility regardless of category
+        # Search mode: scan every utility regardless of category/subcategory
         for (( i=0; i<total; i++ )); do
             local name="${UTILITIES[$i]}"
             if [[ "${name,,}" == *"$query_lower"* ]]; then
                 _SEARCH_FILTERED+=("$i")
+                _SEARCH_ITEM_TYPE+=("utility")
+                _SEARCH_ITEM_LABEL+=("$name")
             fi
         done
 
@@ -210,21 +227,87 @@ _rebuild_filtered() {
             done
         fi
     else
-        # Normal mode: filter by active category only
+        # Normal mode: filter by active category and active subcategory
         local category="${_TAB_NAMES[$_ACTIVE_TAB]:-System Tasks}"
-        for (( i=0; i<total; i++ )); do
-            local name="${UTILITIES[$i]}"
-            local match=false
-            if [[ "$category" == "System Tasks" ]]; then
-                local _st
-                for _st in "${SYSTEM_TASKS[@]}"; do
-                    [[ "$_st" == "$name" ]] && match=true && break
-                done
-            else
-                [[ "${UTILITY_CATEGORY[$name]:-}" == "$category" ]] && match=true
-            fi
-            [[ "$match" == true ]] && _SEARCH_FILTERED+=("$i")
-        done
+        local active_subcat="${_TAB_SUBCAT[$_ACTIVE_TAB]:-}"
+
+        if [[ -n "$active_subcat" ]]; then
+            # --- Inside a subcategory: show ".." then items belonging to this subcategory ---
+            _SEARCH_FILTERED+=("-1")      # ".." entry uses sentinel index
+            _SEARCH_ITEM_TYPE+=("up")
+            _SEARCH_ITEM_LABEL+=("..")
+
+            for (( i=0; i<total; i++ )); do
+                local name="${UTILITIES[$i]}"
+                local item_cat=""
+                if [[ "$category" == "System Tasks" ]]; then
+                    local _st
+                    for _st in "${SYSTEM_TASKS[@]}"; do
+                        [[ "$_st" == "$name" ]] && item_cat="System Tasks" && break
+                    done
+                else
+                    item_cat="${UTILITY_CATEGORY[$name]:-}"
+                fi
+                local item_subcat="${UTILITY_SUBCATEGORY[$name]:-}"
+                if [[ "$item_cat" == "$category" && "$item_subcat" == "$active_subcat" ]]; then
+                    _SEARCH_FILTERED+=("$i")
+                    _SEARCH_ITEM_TYPE+=("utility")
+                    _SEARCH_ITEM_LABEL+=("$name")
+                fi
+            done
+        else
+            # --- Top level of a category: show subcategory folders, then uncategorised items ---
+
+            # Collect distinct subcategory names present in this category
+            declare -A _seen_subcats=()
+            local -a _ordered_subcats=()
+            for (( i=0; i<total; i++ )); do
+                local name="${UTILITIES[$i]}"
+                local item_cat=""
+                if [[ "$category" == "System Tasks" ]]; then
+                    local _st
+                    for _st in "${SYSTEM_TASKS[@]}"; do
+                        [[ "$_st" == "$name" ]] && item_cat="System Tasks" && break
+                    done
+                else
+                    item_cat="${UTILITY_CATEGORY[$name]:-}"
+                fi
+                if [[ "$item_cat" == "$category" ]]; then
+                    local sc="${UTILITY_SUBCATEGORY[$name]:-}"
+                    if [[ -n "$sc" && -z "${_seen_subcats[$sc]:-}" ]]; then
+                        _seen_subcats["$sc"]=1
+                        _ordered_subcats+=("$sc")
+                    fi
+                fi
+            done
+
+            # Emit subcategory folder entries
+            local sc
+            for sc in "${_ordered_subcats[@]}"; do
+                _SEARCH_FILTERED+=("-1")   # sentinel; no real utility index
+                _SEARCH_ITEM_TYPE+=("subcat")
+                _SEARCH_ITEM_LABEL+=("$sc")
+            done
+
+            # Emit items that have NO subcategory
+            for (( i=0; i<total; i++ )); do
+                local name="${UTILITIES[$i]}"
+                local item_cat=""
+                if [[ "$category" == "System Tasks" ]]; then
+                    local _st
+                    for _st in "${SYSTEM_TASKS[@]}"; do
+                        [[ "$_st" == "$name" ]] && item_cat="System Tasks" && break
+                    done
+                else
+                    item_cat="${UTILITY_CATEGORY[$name]:-}"
+                fi
+                if [[ "$item_cat" == "$category" && -z "${UTILITY_SUBCATEGORY[$name]:-}" ]]; then
+                    _SEARCH_FILTERED+=("$i")
+                    _SEARCH_ITEM_TYPE+=("utility")
+                    _SEARCH_ITEM_LABEL+=("$name")
+                fi
+            done
+        fi
     fi
 
     # Clamp cursor
@@ -234,9 +317,13 @@ _rebuild_filtered() {
         _TAB_CURSOR[$_ACTIVE_TAB]=$max
     fi
 
-    # Sync CURSOR global
+    # Sync CURSOR global (only meaningful for utility entries)
+    local cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
     if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
-        CURSOR=${_SEARCH_FILTERED[${_TAB_CURSOR[$_ACTIVE_TAB]}]}
+        local cur_idx=${_SEARCH_FILTERED[$cur_pos]}
+        if [[ "${_SEARCH_ITEM_TYPE[$cur_pos]:-utility}" == "utility" && "$cur_idx" -ge 0 ]]; then
+            CURSOR=$cur_idx
+        fi
     fi
 }
 
@@ -635,10 +722,16 @@ _render_right() {
     local outer_bc="${CYAN}"  # outer frame always full color
 
     # --- Category label header (1 line) ---
-    # Use _BD_RJ (┤) so the trailing dashes visually connect to the right border.
-    local items_label=" ${_TAB_NAMES[$_ACTIVE_TAB]} "
-    _hline $(( inner_w - ${#items_label} - 1 ))
-    local items_hdr=" ${BOLD}${CYAN}${items_label}${RESET}${CYAN}${_HLINE_RESULT}${RESET}"
+    # Show "Category > Subcategory" breadcrumb when inside a subcategory.
+    local active_subcat="${_TAB_SUBCAT[$_ACTIVE_TAB]:-}"
+    local header_label
+    if [[ -n "$active_subcat" ]]; then
+        header_label=" ${_TAB_NAMES[$_ACTIVE_TAB]} > ${active_subcat} "
+    else
+        header_label=" ${_TAB_NAMES[$_ACTIVE_TAB]} "
+    fi
+    _hline $(( inner_w - ${#header_label} - 1 ))
+    local items_hdr=" ${BOLD}${CYAN}${header_label}${RESET}${CYAN}${_HLINE_RESULT}${RESET}"
     _pad_or_truncate "$items_hdr" "$inner_w"
     _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_RJ}${RESET}")
     (( row++ ))
@@ -669,7 +762,7 @@ _render_right() {
 
         if (( item_idx < total_items )); then
             local real_idx=${_SEARCH_FILTERED[$item_idx]}
-            local name="${UTILITIES[$real_idx]}"
+            local entry_type="${_SEARCH_ITEM_TYPE[$item_idx]:-utility}"
             local is_cursor=false
             (( item_idx == _TAB_CURSOR[_ACTIVE_TAB] )) && is_cursor=true
 
@@ -681,50 +774,69 @@ _render_right() {
                 prefix="${DIM}> ${RESET}"
             fi
 
-            # Build checkbox (3 chars visible)
-            local checkbox="[ ]"
-            if [[ ${UPDATE_SELECTED[$real_idx]} -eq 1 ]]; then
-                checkbox="${YELLOW}[U]${RESET}"
-            elif [[ ${SELECTED[$real_idx]} -eq 1 ]]; then
-                checkbox="${GREEN}[✓]${RESET}"
-            fi
+            if [[ "$entry_type" == "subcat" ]]; then
+                # Subcategory folder entry: [D]  Name
+                local sc_name="${_SEARCH_ITEM_LABEL[$item_idx]}"
+                local dir_tag="${CYAN}[D]${RESET}"
+                local name_avail=$(( item_w - 2 - 3 - 2 ))  # prefix(2) + "[D]"(3) + "  "(2)
+                local display_sc="$sc_name"
+                if (( ${#sc_name} > name_avail && name_avail > 3 )); then
+                    display_sc="${sc_name:0:$((name_avail - 3))}..."
+                fi
+                line_content="${prefix}${dir_tag}  ${display_sc}"
 
-            # Build status tag
-            local status_tag=""
-            local status_plain=""
-            if [[ ${INSTALLED[$real_idx]} -eq 1 ]]; then
-                local ver="${INSTALLED_VERSIONS[$real_idx]:-}"
-                if [[ -n "$ver" ]]; then
-                    status_tag="${MAGENTA}(v${ver})${RESET}"
-                    status_plain="(v${ver})"
+            elif [[ "$entry_type" == "up" ]]; then
+                # Go-up ".." entry
+                local dir_tag="${CYAN}[D]${RESET}"
+                line_content="${prefix}${dir_tag}  ${DIM}..${RESET}"
+
+            else
+                # Regular utility entry
+                local name="${UTILITIES[$real_idx]}"
+
+                # Build checkbox (3 chars visible)
+                local checkbox="[ ]"
+                if [[ ${UPDATE_SELECTED[$real_idx]} -eq 1 ]]; then
+                    checkbox="${YELLOW}[U]${RESET}"
+                elif [[ ${SELECTED[$real_idx]} -eq 1 ]]; then
+                    checkbox="${GREEN}[✓]${RESET}"
+                fi
+
+                # Build status tag
+                local status_tag=""
+                local status_plain=""
+                if [[ ${INSTALLED[$real_idx]} -eq 1 ]]; then
+                    local ver="${INSTALLED_VERSIONS[$real_idx]:-}"
+                    if [[ -n "$ver" ]]; then
+                        status_tag="${MAGENTA}(v${ver})${RESET}"
+                        status_plain="(v${ver})"
+                    else
+                        status_tag="${MAGENTA}(installed)${RESET}"
+                        status_plain="(installed)"
+                    fi
+                fi
+
+                # Calculate available width for name
+                # Layout: prefix(2) + checkbox(3) + space(1) + name + gap + status
+                local name_avail=$(( item_w - 2 - 3 - 1 - ${#status_plain} ))
+                (( ${#status_plain} > 0 )) && name_avail=$(( name_avail - 1 ))  # space before status
+
+                local display_name="$name"
+                if (( ${#name} > name_avail && name_avail > 3 )); then
+                    display_name="${name:0:$((name_avail - 3))}..."
+                fi
+
+                # Build the item line
+                if [[ -n "$status_plain" ]]; then
+                    local name_pad=$(( name_avail - ${#display_name} ))
+                    (( name_pad < 1 )) && name_pad=1
+                    local gap=""
+                    printf -v gap '%*s' "$name_pad" ''
+                    line_content="${prefix}${checkbox} ${display_name}${gap} ${status_tag}"
                 else
-                    status_tag="${MAGENTA}(installed)${RESET}"
-                    status_plain="(installed)"
+                    line_content="${prefix}${checkbox} ${display_name}"
                 fi
             fi
-
-            # Calculate available width for name
-            # Layout: prefix(2) + checkbox(3) + space(1) + name + gap + status
-            local name_avail=$(( item_w - 2 - 3 - 1 - ${#status_plain} ))
-            (( ${#status_plain} > 0 )) && name_avail=$(( name_avail - 1 ))  # space before status
-
-            local display_name="$name"
-            if (( ${#name} > name_avail && name_avail > 3 )); then
-                display_name="${name:0:$((name_avail - 3))}..."
-            fi
-
-            # Build the item line
-            if [[ -n "$status_plain" ]]; then
-                local name_pad=$(( name_avail - ${#display_name} ))
-                (( name_pad < 1 )) && name_pad=1
-                local gap=""
-                printf -v gap '%*s' "$name_pad" ''
-                line_content="${prefix}${checkbox} ${display_name}${gap} ${status_tag}"
-            else
-                line_content="${prefix}${checkbox} ${display_name}"
-            fi
-
-
         fi
 
         # Build full line: content padded to inner_w + outer border
@@ -965,10 +1077,12 @@ run_selection_menu() {
     _SEARCH_ACTIVE=false
     _TAB_CURSOR=()
     _TAB_SCROLL=()
+    _TAB_SUBCAT=()
     local _ti
     for (( _ti=0; _ti<${#_TAB_NAMES[@]}; _ti++ )); do
         _TAB_CURSOR[$_ti]=0
         _TAB_SCROLL[$_ti]=0
+        _TAB_SUBCAT[$_ti]=""
     done
     _rebuild_filtered
 
@@ -1027,7 +1141,10 @@ run_selection_menu() {
                     if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
                         local max=$(( ${#_SEARCH_FILTERED[@]} - 1 ))
                         _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] - 1 + ${#_SEARCH_FILTERED[@]}) % ${#_SEARCH_FILTERED[@]} ))
-                        CURSOR=${_SEARCH_FILTERED[${_TAB_CURSOR[$_ACTIVE_TAB]}]}
+                        local _np=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_np]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_np]}
+                        fi
                         _update_scroll
                     fi
                     _compose_frame
@@ -1036,26 +1153,32 @@ run_selection_menu() {
                 DOWN)
                     if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
                         _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] + 1) % ${#_SEARCH_FILTERED[@]} ))
-                        CURSOR=${_SEARCH_FILTERED[${_TAB_CURSOR[$_ACTIVE_TAB]}]}
+                        local _np=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_np]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_np]}
+                        fi
                         _update_scroll
                     fi
                     _compose_frame
                     continue
                     ;;
                 SPACE)
-                    # Allow selection while searching
+                    # Allow selection while searching (only for real utility entries)
                     if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
-                        CURSOR=${_SEARCH_FILTERED[${_TAB_CURSOR[$_ACTIVE_TAB]}]}
-                        if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 1 ]]; then
-                            UPDATE_SELECTED[$CURSOR]=0
-                            SELECTED[$CURSOR]=0
-                        elif [[ ${SELECTED[$CURSOR]} -eq 1 ]]; then
-                            SELECTED[$CURSOR]=0
-                            if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
-                                UPDATE_SELECTED[$CURSOR]=1
+                        local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_cur_pos]}
+                            if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 1 ]]; then
+                                UPDATE_SELECTED[$CURSOR]=0
+                                SELECTED[$CURSOR]=0
+                            elif [[ ${SELECTED[$CURSOR]} -eq 1 ]]; then
+                                SELECTED[$CURSOR]=0
+                                if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                                    UPDATE_SELECTED[$CURSOR]=1
+                                fi
+                            else
+                                SELECTED[$CURSOR]=1
                             fi
-                        else
-                            SELECTED[$CURSOR]=1
                         fi
                     fi
                     _compose_frame
@@ -1148,7 +1271,10 @@ run_selection_menu() {
                 else
                     if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
                         _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] - 1 + ${#_SEARCH_FILTERED[@]}) % ${#_SEARCH_FILTERED[@]} ))
-                        CURSOR=${_SEARCH_FILTERED[${_TAB_CURSOR[$_ACTIVE_TAB]}]}
+                        local _np=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_np]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_np]}
+                        fi
                         _update_scroll
                     fi
                 fi
@@ -1163,7 +1289,10 @@ run_selection_menu() {
                 else
                     if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
                         _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] + 1) % ${#_SEARCH_FILTERED[@]} ))
-                        CURSOR=${_SEARCH_FILTERED[${_TAB_CURSOR[$_ACTIVE_TAB]}]}
+                        local _np=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_np]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_np]}
+                        fi
                         _update_scroll
                     fi
                 fi
@@ -1171,7 +1300,15 @@ run_selection_menu() {
                 ;;
             LEFT)
                 if [[ "$_FOCUS" == "items" ]]; then
-                    _FOCUS="tabs"
+                    # If inside a subcategory, LEFT goes up to the parent level
+                    if [[ -n "${_TAB_SUBCAT[$_ACTIVE_TAB]:-}" ]]; then
+                        _TAB_SUBCAT[$_ACTIVE_TAB]=""
+                        _TAB_CURSOR[$_ACTIVE_TAB]=0
+                        _TAB_SCROLL[$_ACTIVE_TAB]=0
+                        _rebuild_filtered
+                    else
+                        _FOCUS="tabs"
+                    fi
                     _compose_frame
                 fi
                 ;;
@@ -1183,54 +1320,86 @@ run_selection_menu() {
                 ;;
             SPACE)
                 if [[ "$_FOCUS" == "items" && ${#_SEARCH_FILTERED[@]} -gt 0 ]]; then
-                    CURSOR=${_SEARCH_FILTERED[${_TAB_CURSOR[$_ACTIVE_TAB]}]}
-                    # Cycle: [ ] -> [✓] -> [U] (if installed) -> [ ]
-                    if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 1 ]]; then
-                        UPDATE_SELECTED[$CURSOR]=0
-                        SELECTED[$CURSOR]=0
-                    elif [[ ${SELECTED[$CURSOR]} -eq 1 ]]; then
-                        SELECTED[$CURSOR]=0
-                        if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
-                            UPDATE_SELECTED[$CURSOR]=1
-                        fi
-                    else
-                        SELECTED[$CURSOR]=1
-                    fi
-                    _compose_frame
-                fi
-                ;;
-            UPDATE)
-                if [[ "$_FOCUS" == "items" && ${#_SEARCH_FILTERED[@]} -gt 0 ]]; then
-                    CURSOR=${_SEARCH_FILTERED[${_TAB_CURSOR[$_ACTIVE_TAB]}]}
-                    if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
-                        SELECTED[$CURSOR]=0
-                        if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 0 ]]; then
-                            UPDATE_SELECTED[$CURSOR]=1
-                        else
+                    local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                    local _cur_type="${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}"
+                    # [D] entries are not selectable
+                    if [[ "$_cur_type" == "utility" ]]; then
+                        CURSOR=${_SEARCH_FILTERED[$_cur_pos]}
+                        # Cycle: [ ] -> [✓] -> [U] (if installed) -> [ ]
+                        if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 1 ]]; then
                             UPDATE_SELECTED[$CURSOR]=0
+                            SELECTED[$CURSOR]=0
+                        elif [[ ${SELECTED[$CURSOR]} -eq 1 ]]; then
+                            SELECTED[$CURSOR]=0
+                            if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                                UPDATE_SELECTED[$CURSOR]=1
+                            fi
+                        else
+                            SELECTED[$CURSOR]=1
                         fi
                         _compose_frame
                     fi
                 fi
                 ;;
+            UPDATE)
+                if [[ "$_FOCUS" == "items" && ${#_SEARCH_FILTERED[@]} -gt 0 ]]; then
+                    local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                    if [[ "${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}" == "utility" ]]; then
+                        CURSOR=${_SEARCH_FILTERED[$_cur_pos]}
+                        if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                            SELECTED[$CURSOR]=0
+                            if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 0 ]]; then
+                                UPDATE_SELECTED[$CURSOR]=1
+                            else
+                                UPDATE_SELECTED[$CURSOR]=0
+                            fi
+                            _compose_frame
+                        fi
+                    fi
+                fi
+                ;;
             SELECT_ALL)
-                # Select all in current filtered view
-                for idx in "${_SEARCH_FILTERED[@]}"; do
-                    SELECTED[$idx]=1
-                    UPDATE_SELECTED[$idx]=0
+                # Select all utilities in current filtered view (skip [D] entries)
+                for (( _sa_i=0; _sa_i<${#_SEARCH_FILTERED[@]}; _sa_i++ )); do
+                    [[ "${_SEARCH_ITEM_TYPE[$_sa_i]:-utility}" != "utility" ]] && continue
+                    local _sa_idx=${_SEARCH_FILTERED[$_sa_i]}
+                    SELECTED[$_sa_idx]=1
+                    UPDATE_SELECTED[$_sa_idx]=0
                 done
                 _compose_frame
                 ;;
             DESELECT_ALL)
-                # Deselect all in current filtered view
-                for idx in "${_SEARCH_FILTERED[@]}"; do
-                    SELECTED[$idx]=0
-                    UPDATE_SELECTED[$idx]=0
+                # Deselect all utilities in current filtered view (skip [D] entries)
+                for (( _da_i=0; _da_i<${#_SEARCH_FILTERED[@]}; _da_i++ )); do
+                    [[ "${_SEARCH_ITEM_TYPE[$_da_i]:-utility}" != "utility" ]] && continue
+                    local _da_idx=${_SEARCH_FILTERED[$_da_i]}
+                    SELECTED[$_da_idx]=0
+                    UPDATE_SELECTED[$_da_idx]=0
                 done
                 _compose_frame
                 ;;
             ENTER)
-                # Confirm selections and exit menu
+                # If focused on a [D] entry, navigate into/out of subcategory
+                if [[ "$_FOCUS" == "items" && ${#_SEARCH_FILTERED[@]} -gt 0 ]]; then
+                    local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                    local _cur_type="${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}"
+                    if [[ "$_cur_type" == "subcat" ]]; then
+                        _TAB_SUBCAT[$_ACTIVE_TAB]="${_SEARCH_ITEM_LABEL[$_cur_pos]}"
+                        _TAB_CURSOR[$_ACTIVE_TAB]=0
+                        _TAB_SCROLL[$_ACTIVE_TAB]=0
+                        _rebuild_filtered
+                        _compose_frame
+                        continue
+                    elif [[ "$_cur_type" == "up" ]]; then
+                        _TAB_SUBCAT[$_ACTIVE_TAB]=""
+                        _TAB_CURSOR[$_ACTIVE_TAB]=0
+                        _TAB_SCROLL[$_ACTIVE_TAB]=0
+                        _rebuild_filtered
+                        _compose_frame
+                        continue
+                    fi
+                fi
+                # Otherwise confirm selections and exit menu
                 show_cursor
                 stty echo
                 _MENU_ACTIVE=false
