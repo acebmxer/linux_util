@@ -183,8 +183,20 @@ pkg_install_local() {
 
 pkg_autoremove() {
     case "$PKG_MGR" in
-        apt)     run_with_spinner "Removing orphaned packages" sudo apt autoremove -y ;;
-        dnf|yum) run_with_spinner "Removing orphaned packages" sudo "$PKG_MGR" autoremove -y ;;
+        apt)
+            if apt-get --dry-run autoremove 2>/dev/null | grep -q "^Remv "; then
+                run_with_spinner "Removing orphaned packages" sudo apt autoremove -y
+            else
+                info "No orphaned packages to remove."
+            fi
+            ;;
+        dnf|yum)
+            if "$PKG_MGR" autoremove --assumeno 2>/dev/null | grep -qE "^Remove "; then
+                run_with_spinner "Removing orphaned packages" sudo "$PKG_MGR" autoremove -y
+            else
+                info "No orphaned packages to remove."
+            fi
+            ;;
         pacman)  run_with_spinner "Removing orphaned packages" \
                      bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && sudo pacman -Rs --noconfirm $pkgs || true' ;;
         zypper)  true ;;
@@ -253,8 +265,20 @@ pkg_full_upgrade_interactive() {
 
 pkg_autoremove_interactive() {
     case "$PKG_MGR" in
-        apt)     run_direct "Removing orphaned packages" sudo apt autoremove ;;
-        dnf|yum) run_direct "Removing orphaned packages" sudo "$PKG_MGR" autoremove ;;
+        apt)
+            if apt-get --dry-run autoremove 2>/dev/null | grep -q "^Remv "; then
+                run_direct "Removing orphaned packages" sudo apt autoremove
+            else
+                info "No orphaned packages to remove."
+            fi
+            ;;
+        dnf|yum)
+            if "$PKG_MGR" autoremove --assumeno 2>/dev/null | grep -qE "^Remove "; then
+                run_direct "Removing orphaned packages" sudo "$PKG_MGR" autoremove
+            else
+                info "No orphaned packages to remove."
+            fi
+            ;;
         pacman)  run_direct "Removing orphaned packages" \
                      bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && sudo pacman -Rs $pkgs || true' ;;
         zypper)  true ;;
