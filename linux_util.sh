@@ -353,7 +353,7 @@ process_selected() {
                 echo ""
                 echo "${YELLOW}⊘ Cancelled: $util${RESET} ${DIM}(${_duration}s)${RESET}"
                 log_info "Cancelled by user: $util"
-            elif [[ $_exit_code -eq 0 ]]; then
+            elif [[ $_exit_code -eq 0 || $_exit_code -eq 3 ]]; then
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
                 echo "${GREEN}✓ Successfully ${_past}: $util${RESET} ${DIM}(${_duration}s)${RESET}"
@@ -368,7 +368,8 @@ process_selected() {
                 (( success_count += 1 ))
 
                 # Reboot required for system tasks (except no-reboot list) and Docker
-                if [[ -z "${NO_REBOOT[$util]:-}" ]]; then
+                # Exit code 3 = success with no changes — skip reboot prompt
+                if [[ $_exit_code -ne 3 && -z "${NO_REBOOT[$util]:-}" ]]; then
                     if [[ "$_is_system_task" == "true" || "$util" == "Docker" ]]; then
                         needs_reboot=true
                     fi
