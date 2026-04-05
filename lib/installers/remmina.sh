@@ -3,11 +3,7 @@
 
 # --- Remmina ---
 
-check_remmina() {
-    command -v remmina &>/dev/null || \
-        pkg_check_installed remmina || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "org.remmina.Remmina")
-}
+check_remmina() { _check_standard remmina remmina org.remmina.Remmina; }
 
 install_remmina() {
     info "Installing Remmina..."
@@ -19,7 +15,9 @@ install_remmina() {
                 sudo add-apt-repository -y ppa:remmina-ppa-team/remmina-next
                 sudo apt update
             fi
-            sudo apt install -y remmina remmina-plugin-rdp remmina-plugin-vnc remmina-plugin-ssh
+            sudo apt install -y remmina remmina-plugin-rdp remmina-plugin-vnc
+            # remmina-plugin-ssh is bundled into remmina on modern Ubuntu; skip if absent
+            sudo apt install -y remmina-plugin-ssh 2>/dev/null || true
             ;;
         fedora)
             sudo "$PKG_MGR" install -y remmina remmina-plugins-rdp remmina-plugins-vnc
@@ -44,12 +42,13 @@ install_remmina() {
 
 uninstall_remmina() {
     info "Uninstalling Remmina..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.remmina.Remmina"; then
+    if flatpak_is_installed "org.remmina.Remmina"; then
         flatpak uninstall -y org.remmina.Remmina
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y remmina remmina-plugin-rdp remmina-plugin-vnc remmina-plugin-ssh
+                sudo apt purge --autoremove -y remmina remmina-plugin-rdp remmina-plugin-vnc
+                sudo apt purge -y remmina-plugin-ssh 2>/dev/null || true
                 sudo add-apt-repository -y --remove ppa:remmina-ppa-team/remmina-next 2>/dev/null || true
                 ;;
             fedora|rhel)
@@ -69,7 +68,7 @@ uninstall_remmina() {
 
 update_remmina() {
     info "Updating Remmina..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.remmina.Remmina"; then
+    if flatpak_is_installed "org.remmina.Remmina"; then
         flatpak update -y org.remmina.Remmina
     else
         case "$DISTRO_FAMILY" in
@@ -82,7 +81,5 @@ update_remmina() {
 }
 
 get_version_remmina() {
-    remmina --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    pkg_get_version remmina 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    _ver_from_cmd remmina || _ver_from_pkg remmina || echo ""
 }

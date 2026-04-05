@@ -12,7 +12,7 @@ check_libreoffice() {
         pkg_check_installed libreoffice-fresh || \
         pkg_check_installed libreoffice-still || \
         dpkg -l 'libreoffice[0-9]*' 2>/dev/null | grep -q "^ii" || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice)
+        (flatpak_is_installed libreoffice)
 }
 _libreoffice_install_from_site() {
     # Download and install LibreOffice .deb packages directly from the official site.
@@ -109,7 +109,7 @@ uninstall_libreoffice() {
             sudo zypper remove -y libreoffice
             ;;
         *)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice; then
+            if flatpak_is_installed libreoffice; then
                 flatpak uninstall -y org.libreoffice.LibreOffice
             fi
             ;;
@@ -139,7 +139,7 @@ update_libreoffice() {
             sudo zypper update -y libreoffice
             ;;
         *)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi libreoffice; then
+            if flatpak_is_installed libreoffice; then
                 flatpak update -y org.libreoffice.LibreOffice
             fi
             ;;

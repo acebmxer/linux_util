@@ -7,7 +7,7 @@ check_steam() {
     command -v steam &>/dev/null || \
         pkg_check_installed steam-installer || \
         pkg_check_installed steam-launcher || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "com.valvesoftware.Steam")
+        (flatpak_is_installed "com.valvesoftware.Steam")
 }
 
 # Helper function to ensure contrib component is enabled for Debian
@@ -213,7 +213,7 @@ install_steam() {
 }
 uninstall_steam() {
     echo "Uninstalling Steam..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.valvesoftware.Steam"; then
+    if flatpak_is_installed "com.valvesoftware.Steam"; then
         flatpak uninstall -y com.valvesoftware.Steam
     else
         case "$DISTRO_FAMILY" in
@@ -229,7 +229,7 @@ uninstall_steam() {
 }
 update_steam() {
     echo "Updating Steam..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.valvesoftware.Steam"; then
+    if flatpak_is_installed "com.valvesoftware.Steam"; then
         flatpak update -y com.valvesoftware.Steam
     else
         case "$DISTRO_FAMILY" in
@@ -244,7 +244,7 @@ update_steam() {
     fi
 }
 get_version_steam() {
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.valvesoftware.Steam"; then
+    if flatpak_is_installed "com.valvesoftware.Steam"; then
         flatpak list 2>/dev/null | grep -i "com.valvesoftware.Steam" | awk -F'\t' '{print $3}'
     elif pkg_check_installed steam-installer; then
         pkg_get_version steam-installer | sed 's/^[0-9]*://; s/-.*//'

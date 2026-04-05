@@ -23,16 +23,18 @@ setup_system_updates() {
 # Returns pending update count for display in the menu.
 # Uses cached MOTD data on Ubuntu or package manager queries as fallback.
 get_version_system_updates() {
-    local total=0 kernel=0
+    local total=0 security=0 kernel=0
 
     case "${PKG_MGR:-}" in
         apt)
             # Try Ubuntu/Debian cached MOTD update count (instant, no sudo)
             local _motd="/var/lib/update-notifier/updates-available"
             if [[ -f "$_motd" ]]; then
-                local _line
+                local _line _sec_line
                 _line=$(grep 'updates\? can be applied' "$_motd" 2>/dev/null | head -1 || true)
                 [[ "$_line" =~ ^([0-9]+) ]] && total="${BASH_REMATCH[1]}"
+                _sec_line=$(grep 'standard security updates' "$_motd" 2>/dev/null | head -1 || true)
+                [[ "$_sec_line" =~ ^([0-9]+) ]] && security="${BASH_REMATCH[1]}"
             fi
             # Fallback: count from local apt cache
             if [[ "$total" -eq 0 ]]; then
@@ -62,9 +64,8 @@ get_version_system_updates() {
     [[ "$total" -le 0 ]] && return 0
 
     # Build display string
-    if [[ "$kernel" -gt 0 ]]; then
-        echo "${total} updates, ${kernel} kernel"
-    else
-        echo "${total} updates"
-    fi
+    local _out="${total} updates"
+    [[ "$security" -gt 0 ]] && _out+=", ${security} security"
+    [[ "$kernel"   -gt 0 ]] && _out+=", ${kernel} kernel"
+    echo "$_out"
 }

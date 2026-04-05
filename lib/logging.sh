@@ -118,22 +118,39 @@ run_with_spinner() {
         return $?
     fi
 
-    local _tmp
+    local _tmp _fifo _fd
     _tmp=$(mktemp) || { error "Failed to create temp file"; return 1; }
     CLEANUP_FILES+=("$_tmp")
+
+    # Open a FIFO for reliable 0.1s frame-rate timing.
+    # read -rt 0.1 <>/dev/null returns immediately because /dev/null gives EOF
+    # instantly — it does not honor the timeout. A FIFO with both ends held open
+    # has no EOF, so read blocks for exactly the timeout duration on every system
+    # and terminal, regardless of speed. The path is unlinked immediately after
+    # open; the fd keeps the pipe alive until we close it.
+    _fifo=$(mktemp -u /tmp/.spin_XXXXXX)
+    mkfifo "$_fifo" 2>/dev/null
+    exec {_fd}<>"$_fifo"
+    rm -f "$_fifo"
 
     # Run command in background, capturing all output
     "$@" >"$_tmp" 2>&1 &
     local _pid=$!
 
-    # Animate spinner until the command completes
+    # Animate spinner until the command completes.
+    # Print the first frame before the loop so a fast-completing command still
+    # shows one frame rather than no spinner at all (race-condition guard).
     local _frames=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
     local _i=0
+    printf "\r  ${CYAN}%s${RESET}  %s" "${_frames[0]}" "$label"
+    (( _i++ )) || true
     while kill -0 "$_pid" 2>/dev/null; do
+        read -rt 0.1 <&"$_fd" || true
         printf "\r  ${CYAN}%s${RESET}  %s" "${_frames[$(( _i % 10 ))]}" "$label"
         (( _i++ )) || true
-        sleep 0.1
     done
+
+    exec {_fd}>&-
 
     wait "$_pid"
     local _rc=$?

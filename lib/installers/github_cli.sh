@@ -12,13 +12,11 @@ install_github_cli() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo mkdir -p /etc/apt/keyrings
-            sudo curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-                -o /etc/apt/keyrings/githubcli-archive-keyring.gpg
-            sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
-                sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt update
+            _add_apt_repo \
+                "https://cli.github.com/packages/githubcli-archive-keyring.gpg" \
+                "/etc/apt/keyrings/githubcli-archive-keyring.gpg" \
+                "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+                "/etc/apt/sources.list.d/github-cli.list"
             sudo apt install -y gh
             ;;
         fedora|rhel)

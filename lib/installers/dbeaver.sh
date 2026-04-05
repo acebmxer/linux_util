@@ -3,9 +3,7 @@
 
 # --- DBeaver ---
 
-check_dbeaver() {
-    command -v dbeaver &>/dev/null || pkg_check_installed dbeaver-ce
-}
+check_dbeaver() { _check_standard dbeaver dbeaver-ce ""; }
 
 install_dbeaver() {
     info "Installing DBeaver Community Edition..."
@@ -96,7 +94,6 @@ update_dbeaver() {
 }
 
 get_version_dbeaver() {
-    dbeaver --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    pkg_get_version dbeaver-ce 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    # Do NOT call dbeaver --version — Java GUI apps launch a full window.
+    _ver_from_pkg dbeaver-ce || echo ""
 }

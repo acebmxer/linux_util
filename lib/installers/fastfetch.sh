@@ -3,9 +3,7 @@
 
 # --- Fastfetch ---
 
-check_fastfetch() {
-    command -v fastfetch &>/dev/null || pkg_check_installed fastfetch
-}
+check_fastfetch() { _check_standard fastfetch fastfetch ""; }
 
 _fastfetch_latest_url() {
     local ext="$1"
@@ -97,5 +95,5 @@ update_fastfetch() {
 }
 
 get_version_fastfetch() {
-    fastfetch --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo ""
+    _ver_from_cmd fastfetch || echo ""
 }

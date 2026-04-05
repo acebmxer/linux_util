@@ -94,13 +94,5 @@ update_timeshift() {
     esac
 }
 get_version_timeshift() {
-    # Try to extract version from timeshift --version output
-    local version
-    version=$(timeshift --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
-    if [[ -n "$version" ]]; then
-        echo "$version"
-    else
-        # Fallback: try package manager
-        pkg_get_version timeshift 2>/dev/null | sed 's/^[0-9]*://; s/-.*//' || echo ""
-    fi
+    _ver_from_cmd timeshift || _ver_from_pkg timeshift || echo ""
 }

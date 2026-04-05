@@ -7,12 +7,12 @@ check_protonvpn() {
     command -v protonvpn-cli &>/dev/null || \
         command -v protonvpn &>/dev/null || \
         pkg_check_installed proton-vpn-gnome-desktop || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "com.protonvpn.www")
+        (flatpak_is_installed "com.protonvpn.www")
 }
 
 _protonvpn_get_deb_url() {
-    # Scrape the current .deb URL from the ProtonVPN download page
-    curl -fsSL "https://protonvpn.com/download/linux" \
+    # Scrape the official Ubuntu setup guide for the current repo-setup .deb URL
+    curl -fsSL "https://protonvpn.com/support/official-linux-vpn-ubuntu/" \
         | grep -oP 'https://repo\.protonvpn\.com/debian/dists/stable/[^"]+\.deb' | head -1
 }
 
@@ -28,16 +28,17 @@ install_protonvpn() {
             local deb_url
             deb_url=$(_protonvpn_get_deb_url)
             if [[ -z "$deb_url" ]]; then
-                # Fallback to known stable URL
-                deb_url="https://repo.protonvpn.com/debian/dists/stable/main/binary-$(dpkg --print-architecture)/proton-vpn-gnome-desktop_latest_$(dpkg --print-architecture).deb"
+                # Fallback: arch-independent repo-setup package (adds the ProtonVPN apt repo + key)
+                deb_url="https://repo.protonvpn.com/debian/dists/stable/main/binary-all/protonvpn-stable-release_1.0.8_all.deb"
             fi
             if ! wget -qO "$tmpfile" "$deb_url"; then
                 error "Failed to download ProtonVPN .deb package."
                 return 1
             fi
+            # Install the repo-setup package (adds ProtonVPN apt repo + GPG key)
             sudo apt install -y "$tmpfile"
             sudo apt update
-            sudo apt upgrade -y proton-vpn-gnome-desktop 2>/dev/null || true
+            sudo apt install -y proton-vpn-gnome-desktop
             ;;
         fedora)
             # Official ProtonVPN repo for Fedora
@@ -58,11 +59,7 @@ install_protonvpn() {
             fi
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install protonvpn
-            else
-                aur_build protonvpn
-            fi
+            aur_ensure protonvpn
             ;;
         suse)
             if has_flatpak; then
@@ -78,7 +75,7 @@ install_protonvpn() {
 
 uninstall_protonvpn() {
     info "Uninstalling ProtonVPN..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.protonvpn.www"; then
+    if flatpak_is_installed "com.protonvpn.www"; then
         flatpak uninstall -y com.protonvpn.www
     else
         case "$DISTRO_FAMILY" in
@@ -100,18 +97,14 @@ uninstall_protonvpn() {
 
 update_protonvpn() {
     info "Updating ProtonVPN..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.protonvpn.www"; then
+    if flatpak_is_installed "com.protonvpn.www"; then
         flatpak update -y com.protonvpn.www
     else
         case "$DISTRO_FAMILY" in
             debian)   sudo apt update && sudo apt upgrade -y proton-vpn-gnome-desktop ;;
             fedora)   sudo "$PKG_MGR" upgrade -y proton-vpn-gnome-desktop ;;
             arch)
-                if has_aur_helper; then
-                    aur_upgrade protonvpn
-                else
-                    aur_build protonvpn
-                fi
+                aur_ensure protonvpn
                 ;;
         esac
     fi

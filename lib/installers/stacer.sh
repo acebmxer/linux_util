@@ -3,9 +3,7 @@
 
 # --- Stacer ---
 
-check_stacer() {
-    command -v stacer &>/dev/null || pkg_check_installed stacer
-}
+check_stacer() { _check_standard stacer stacer ""; }
 
 _stacer_latest_url() {
     local ext="$1"
@@ -44,11 +42,7 @@ install_stacer() {
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install stacer-bin
-            else
-                aur_build stacer-bin
-            fi
+            aur_ensure stacer-bin
             ;;
         suse)
             if has_flatpak; then
@@ -75,7 +69,7 @@ install_stacer() {
 
 uninstall_stacer() {
     info "Uninstalling Stacer..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.oguzhaninan.Stacer"; then
+    if flatpak_is_installed "com.oguzhaninan.Stacer"; then
         flatpak uninstall -y com.oguzhaninan.Stacer
     else
         case "$DISTRO_FAMILY" in
@@ -90,24 +84,19 @@ uninstall_stacer() {
 
 update_stacer() {
     info "Updating Stacer..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.oguzhaninan.Stacer"; then
+    if flatpak_is_installed "com.oguzhaninan.Stacer"; then
         flatpak update -y com.oguzhaninan.Stacer
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_stacer ;;
             arch)
-                if has_aur_helper; then
-                    aur_upgrade stacer-bin
-                else
-                    aur_build stacer-bin
-                fi
+                aur_ensure stacer-bin
                 ;;
         esac
     fi
 }
 
 get_version_stacer() {
-    stacer --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    pkg_get_version stacer 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    # Do NOT call stacer --version — Electron apps launch a full GUI window.
+    _ver_from_pkg stacer || echo ""
 }

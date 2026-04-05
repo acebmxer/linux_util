@@ -4,9 +4,7 @@
 # --- KMail (KDE Mail Client) ---
 # KMail is part of the KDE Kontact PIM suite.
 
-check_kmail() {
-    command -v kmail &>/dev/null || pkg_check_installed kmail
-}
+check_kmail() { _check_standard kmail kmail ""; }
 
 install_kmail() {
     info "Installing KMail..."
@@ -67,7 +65,6 @@ update_kmail() {
 }
 
 get_version_kmail() {
-    kmail --version 2>/dev/null | grep -oP 'kmail\s+\K[0-9]+\.[0-9]+(\.[0-9]+)?' || \
-        dpkg -s kmail 2>/dev/null | grep -oP '^Version:\s+\K[0-9]+\.[0-9]+(\.[0-9]+)?' || \
-        rpm -q --queryformat '%{VERSION}' kmail 2>/dev/null || echo ""
+    # Do NOT call kmail --version — KDE apps may launch a full window.
+    _ver_from_pkg kmail || echo ""
 }

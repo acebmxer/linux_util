@@ -3,11 +3,7 @@
 
 # --- Signal Desktop ---
 
-check_signal() {
-    command -v signal-desktop &>/dev/null || \
-        pkg_check_installed signal-desktop || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "org.signal.Signal")
-}
+check_signal() { _check_standard signal-desktop signal-desktop org.signal.Signal; }
 
 install_signal() {
     info "Installing Signal Desktop..."
@@ -15,13 +11,11 @@ install_signal() {
     case "$DISTRO_FAMILY" in
         debian)
             # Official Signal apt repository
-            sudo mkdir -p /etc/apt/keyrings
-            wget -qO- https://updates.signal.org/desktop/apt/keys.asc | \
-                gpg --dearmor | \
-                sudo tee /etc/apt/keyrings/signal-desktop-keyring.gpg > /dev/null
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/signal-desktop-keyring.gpg] https://updates.signal.org/desktop/apt xenial main" | \
-                sudo tee /etc/apt/sources.list.d/signal-xenial.list > /dev/null
-            sudo apt update
+            _add_apt_repo \
+                "https://updates.signal.org/desktop/apt/keys.asc" \
+                "/etc/apt/keyrings/signal-desktop-keyring.gpg" \
+                "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/signal-desktop-keyring.gpg] https://updates.signal.org/desktop/apt xenial main" \
+                "/etc/apt/sources.list.d/signal-xenial.list"
             sudo apt install -y signal-desktop
             ;;
         fedora|rhel|suse)
@@ -33,11 +27,7 @@ install_signal() {
             fi
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install signal-desktop
-            else
-                aur_build signal-desktop
-            fi
+            aur_ensure signal-desktop
             ;;
     esac
     info "Signal Desktop installed."
@@ -45,7 +35,7 @@ install_signal() {
 
 uninstall_signal() {
     info "Uninstalling Signal Desktop..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.signal.Signal"; then
+    if flatpak_is_installed "org.signal.Signal"; then
         flatpak uninstall -y org.signal.Signal
     else
         case "$DISTRO_FAMILY" in
@@ -65,25 +55,19 @@ uninstall_signal() {
 
 update_signal() {
     info "Updating Signal Desktop..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.signal.Signal"; then
+    if flatpak_is_installed "org.signal.Signal"; then
         flatpak update -y org.signal.Signal
     else
         case "$DISTRO_FAMILY" in
             debian)   sudo apt update && sudo apt upgrade -y signal-desktop ;;
             arch)
-                if has_aur_helper; then
-                    aur_upgrade signal-desktop
-                else
-                    aur_build signal-desktop
-                fi
+                aur_ensure signal-desktop
                 ;;
         esac
     fi
 }
 
 get_version_signal() {
-    signal-desktop --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    (has_flatpak && flatpak list 2>/dev/null | grep -i "org.signal.Signal" | awk -F'\t' '{print $3}') || \
-    pkg_get_version signal-desktop 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    # Do NOT call signal-desktop --version — Electron apps launch a full GUI window.
+    _ver_from_pkg signal-desktop || _ver_from_flatpak org.signal.Signal || echo ""
 }

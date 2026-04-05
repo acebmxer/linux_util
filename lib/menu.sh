@@ -103,6 +103,9 @@ _MENU_ACTIVE=false
 # Flag: set to true by WINCH trap so _calc_layout re-queries the terminal size
 _NEEDS_SIZE_REFRESH=true
 
+# Flag: set to true by WINCH trap; main loop performs the actual redraw
+_NEEDS_REDRAW=false
+
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
@@ -1087,7 +1090,7 @@ _compose_frame() {
 
 read_key() {
     local key
-    IFS= read -rsn1 key
+    IFS= read -rsn1 -t 0.15 key || return 0
 
     # Escape sequence handling (arrow keys, etc.)
     if [[ "$key" == "$ESC" ]]; then
@@ -1155,6 +1158,7 @@ read_key() {
 # original cleanup_on_exit defined in logging.sh.
 _menu_cleanup_on_exit() {
     if [[ "$_MENU_ACTIVE" == "true" ]]; then
+        printf '\033[?1049l'  # leave alternate screen
         show_cursor
         stty echo 2>/dev/null
         _MENU_ACTIVE=false
@@ -1206,28 +1210,40 @@ run_selection_menu() {
     done
     _rebuild_filtered
 
-    # Setup terminal
+    # Setup terminal — enter alternate screen buffer (separate from main screen,
+    # no scrollback, so resize redraws never pollute terminal history)
+    printf '\033[?1049h'
     hide_cursor
     stty -echo
     _MENU_ACTIVE=true
 
     # Cleanup on exit
     trap '_menu_cleanup_on_exit' EXIT
-    trap 'echo ""; _MENU_ACTIVE=false; show_cursor; stty echo; exit 130' INT TERM
+    trap 'printf "\033[?1049l"; echo ""; _MENU_ACTIVE=false; show_cursor; stty echo; exit 130' INT TERM
 
     # Redraw on terminal resize
-    # On resize: mark dimensions stale, clear the screen to remove any
-    # leftover content from the previous (wider) render, then redraw.
-    trap '_NEEDS_SIZE_REFRESH=true; printf "\033[2J"; _compose_frame' WINCH
+    # Only set flags here — never call _compose_frame inside the signal handler,
+    # as it races with the active read in read_key and renders at a transitional size.
+    trap '_NEEDS_SIZE_REFRESH=true; _NEEDS_REDRAW=true' WINCH
 
     # Initial draw
     clear
     _calc_layout
     _compose_frame
 
+    _NEEDS_REDRAW=false
+
     while true; do
+        # Handle pending resize — redraw here instead of inside the WINCH handler
+        if [[ "$_NEEDS_REDRAW" == "true" ]]; then
+            _NEEDS_REDRAW=false
+            printf '\033[2J'
+            _compose_frame
+        fi
+
         local key
         key=$(read_key)
+        [[ -z "$key" ]] && continue
 
         # --- Search mode input handling ---
         if [[ "$_SEARCH_ACTIVE" == true ]]; then
@@ -1520,6 +1536,7 @@ run_selection_menu() {
                     fi
                 fi
                 # Otherwise confirm selections and exit menu
+                printf '\033[?1049l'  # leave alternate screen
                 show_cursor
                 stty echo
                 _MENU_ACTIVE=false
@@ -1528,6 +1545,7 @@ run_selection_menu() {
                 return 0
                 ;;
             QUIT)
+                printf '\033[?1049l'  # leave alternate screen
                 show_cursor
                 stty echo
                 _MENU_ACTIVE=false

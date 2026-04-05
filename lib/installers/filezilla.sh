@@ -3,9 +3,7 @@
 
 # --- FileZilla ---
 
-check_filezilla() {
-    command -v filezilla &>/dev/null || pkg_check_installed filezilla
-}
+check_filezilla() { _check_standard filezilla filezilla ""; }
 
 install_filezilla() {
     info "Installing FileZilla..."
@@ -44,7 +42,5 @@ update_filezilla() {
 }
 
 get_version_filezilla() {
-    filezilla --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    pkg_get_version filezilla 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    _ver_from_cmd filezilla || _ver_from_pkg filezilla || echo ""
 }

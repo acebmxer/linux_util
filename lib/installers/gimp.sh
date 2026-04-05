@@ -3,11 +3,7 @@
 
 # --- GIMP ---
 
-check_gimp() {
-    command -v gimp &>/dev/null || \
-        pkg_check_installed gimp || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "org.gimp.GIMP")
-}
+check_gimp() { _check_standard gimp gimp org.gimp.GIMP; }
 
 install_gimp() {
     info "Installing GIMP..."
@@ -26,7 +22,7 @@ install_gimp() {
 
 uninstall_gimp() {
     info "Uninstalling GIMP..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.gimp.GIMP"; then
+    if flatpak_is_installed "org.gimp.GIMP"; then
         flatpak uninstall -y org.gimp.GIMP
     else
         case "$DISTRO_FAMILY" in
@@ -41,7 +37,7 @@ uninstall_gimp() {
 
 update_gimp() {
     info "Updating GIMP..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.gimp.GIMP"; then
+    if flatpak_is_installed "org.gimp.GIMP"; then
         flatpak update -y org.gimp.GIMP
     else
         case "$DISTRO_FAMILY" in
@@ -54,7 +50,5 @@ update_gimp() {
 }
 
 get_version_gimp() {
-    gimp --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    pkg_get_version gimp 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    _ver_from_cmd gimp || _ver_from_pkg gimp || echo ""
 }

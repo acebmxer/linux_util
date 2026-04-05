@@ -3,9 +3,7 @@
 
 # --- Mozilla Thunderbird ---
 
-check_thunderbird() {
-    command -v thunderbird &>/dev/null || pkg_check_installed thunderbird
-}
+check_thunderbird() { _check_standard thunderbird thunderbird ""; }
 
 install_thunderbird() {
     info "Installing Mozilla Thunderbird..."
@@ -13,16 +11,14 @@ install_thunderbird() {
     case "$DISTRO_FAMILY" in
         debian)
             # Prefer the official Mozilla-signed APT repository over distro or snap packages
-            local key_path="/usr/share/keyrings/mozilla-thunderbird-keyring.gpg"
-            sudo install -d -m 0755 /usr/share/keyrings
-            sudo curl -fsSL "https://packages.mozilla.org/apt/repo-signing-key.gpg" \
-                -o "$key_path"
-            echo "deb [signed-by=${key_path}] https://packages.mozilla.org/apt mozilla main" | \
-                sudo tee /etc/apt/sources.list.d/mozilla.list > /dev/null 2>&1 || true
+            _add_apt_repo \
+                "https://packages.mozilla.org/apt/repo-signing-key.gpg" \
+                "/usr/share/keyrings/mozilla-thunderbird-keyring.gpg" \
+                "deb [signed-by=/usr/share/keyrings/mozilla-thunderbird-keyring.gpg] https://packages.mozilla.org/apt mozilla main" \
+                "/etc/apt/sources.list.d/mozilla.list"
             # Pin so the Mozilla repo takes precedence over distro packages
             printf 'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1001\n' | \
                 sudo tee /etc/apt/preferences.d/mozilla > /dev/null
-            sudo apt update
             sudo apt install -y thunderbird
             ;;
         fedora|rhel)

@@ -10,7 +10,7 @@ check_standard_notes() {
     command -v standard-notes &>/dev/null || \
         [[ -f "$_SN_APPIMAGE" ]] || \
         pkg_check_installed standard-notes || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "org.standardnotes.standardnotes")
+        (flatpak_is_installed "org.standardnotes.standardnotes")
 }
 
 _sn_latest_url() {
@@ -46,11 +46,7 @@ install_standard_notes() {
             fi
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install standard-notes-bin
-            else
-                aur_build standard-notes-bin
-            fi
+            aur_ensure standard-notes-bin
             ;;
         suse)
             if has_flatpak; then
@@ -91,7 +87,7 @@ EOF
 
 uninstall_standard_notes() {
     info "Uninstalling Standard Notes..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.standardnotes.standardnotes"; then
+    if flatpak_is_installed "org.standardnotes.standardnotes"; then
         flatpak uninstall -y org.standardnotes.standardnotes
     else
         case "$DISTRO_FAMILY" in
@@ -109,7 +105,7 @@ uninstall_standard_notes() {
 
 update_standard_notes() {
     info "Updating Standard Notes..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.standardnotes.standardnotes"; then
+    if flatpak_is_installed "org.standardnotes.standardnotes"; then
         flatpak update -y org.standardnotes.standardnotes
     elif [[ -f "$_SN_APPIMAGE" ]]; then
         _sn_install_appimage
@@ -117,18 +113,12 @@ update_standard_notes() {
         case "$DISTRO_FAMILY" in
             debian)   install_standard_notes ;;
             arch)
-                if has_aur_helper; then
-                    aur_upgrade standard-notes-bin
-                else
-                    aur_build standard-notes-bin
-                fi
+                aur_ensure standard-notes-bin
                 ;;
         esac
     fi
 }
 
 get_version_standard_notes() {
-    (has_flatpak && flatpak list 2>/dev/null | grep -i "org.standardnotes" | awk -F'\t' '{print $3}') || \
-    pkg_get_version standard-notes 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    _ver_from_flatpak org.standardnotes || _ver_from_pkg standard-notes || echo ""
 }

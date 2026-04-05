@@ -3,21 +3,14 @@
 
 # --- ProtonUp-Qt ---
 
-check_protonup_qt() {
-    command -v protonup-qt &>/dev/null || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "net.davidotek.pupgui2")
-}
+check_protonup_qt() { _check_standard protonup-qt "" net.davidotek.pupgui2; }
 
 install_protonup_qt() {
     info "Installing ProtonUp-Qt..."
     ensure_tools
     case "$DISTRO_FAMILY" in
         arch)
-            if has_aur_helper; then
-                aur_install protonup-qt
-            else
-                aur_build protonup-qt
-            fi
+            aur_ensure protonup-qt
             ;;
         *)
             # Flatpak is the primary distribution method on all other distros
@@ -34,7 +27,7 @@ install_protonup_qt() {
 
 uninstall_protonup_qt() {
     info "Uninstalling ProtonUp-Qt..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "net.davidotek.pupgui2"; then
+    if flatpak_is_installed "net.davidotek.pupgui2"; then
         flatpak uninstall -y net.davidotek.pupgui2
     else
         case "$DISTRO_FAMILY" in
@@ -48,23 +41,17 @@ uninstall_protonup_qt() {
 
 update_protonup_qt() {
     info "Updating ProtonUp-Qt..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "net.davidotek.pupgui2"; then
+    if flatpak_is_installed "net.davidotek.pupgui2"; then
         flatpak update -y net.davidotek.pupgui2
     else
         case "$DISTRO_FAMILY" in
             arch)
-                if has_aur_helper; then
-                    aur_upgrade protonup-qt
-                else
-                    aur_build protonup-qt
-                fi
+                aur_ensure protonup-qt
                 ;;
         esac
     fi
 }
 
 get_version_protonup_qt() {
-    protonup-qt --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    (has_flatpak && flatpak list 2>/dev/null | grep -i "net.davidotek.pupgui2" | awk -F'\t' '{print $3}') || \
-    echo ""
+    _ver_from_cmd protonup-qt || _ver_from_flatpak net.davidotek.pupgui2 || echo ""
 }

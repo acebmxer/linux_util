@@ -6,7 +6,7 @@
 check_bitwarden() {
     command -v bitwarden &>/dev/null || \
         (has_snap && snap list bitwarden &>/dev/null) || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden) || \
+        (flatpak_is_installed bitwarden) || \
         pkg_check_installed bitwarden-bin || \
         pkg_check_installed bitwarden
 }
@@ -52,11 +52,7 @@ install_bitwarden() {
             rm -f "$tmp_rpm"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install bitwarden-bin
-            else
-                aur_build bitwarden-bin
-            fi
+            aur_ensure bitwarden-bin
             ;;
         *)
             if has_snap; then
@@ -74,7 +70,7 @@ uninstall_bitwarden() {
     echo "Uninstalling Bitwarden Client..."
     if has_snap && snap list bitwarden &>/dev/null; then
         sudo snap remove bitwarden
-    elif has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden; then
+    elif flatpak_is_installed bitwarden; then
         flatpak uninstall -y com.bitwarden.desktop
     elif pkg_check_installed bitwarden-bin; then
         pkg_remove bitwarden-bin
@@ -90,7 +86,7 @@ update_bitwarden() {
     echo "Updating Bitwarden Client..."
     if has_snap && snap list bitwarden &>/dev/null; then
         sudo snap refresh bitwarden
-    elif has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden; then
+    elif flatpak_is_installed bitwarden; then
         flatpak update -y com.bitwarden.desktop
     elif [[ "$DISTRO_FAMILY" == "debian" ]]; then
         install_bitwarden
@@ -110,10 +106,10 @@ update_bitwarden() {
     fi
 }
 get_version_bitwarden() {
-    if has_snap && snap list bitwarden &>/dev/null; then
-        snap list bitwarden 2>/dev/null | awk 'NR==2{print $2}'
-    elif has_flatpak && flatpak list 2>/dev/null | grep -qi bitwarden; then
-        flatpak list 2>/dev/null | grep -i bitwarden | awk -F'\t' '{print $3}'
+    if _ver_from_snap bitwarden; then
+        return
+    elif flatpak_is_installed bitwarden; then
+        _ver_from_flatpak bitwarden
     elif pkg_check_installed bitwarden-bin; then
         pkg_get_version bitwarden-bin | sed 's/^[0-9]*://; s/-.*//'
     elif pkg_check_installed bitwarden; then

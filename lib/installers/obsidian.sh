@@ -3,11 +3,7 @@
 
 # --- Obsidian ---
 
-check_obsidian() {
-    command -v obsidian &>/dev/null || \
-        pkg_check_installed obsidian || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "md.obsidian.Obsidian")
-}
+check_obsidian() { _check_standard obsidian obsidian md.obsidian.Obsidian; }
 
 _obsidian_latest_url() {
     local ext="$1"
@@ -51,11 +47,7 @@ install_obsidian() {
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install obsidian
-            else
-                aur_build obsidian
-            fi
+            aur_ensure obsidian
             ;;
         suse)
             if has_flatpak; then
@@ -71,7 +63,7 @@ install_obsidian() {
 
 uninstall_obsidian() {
     info "Uninstalling Obsidian..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "md.obsidian.Obsidian"; then
+    if flatpak_is_installed "md.obsidian.Obsidian"; then
         flatpak uninstall -y md.obsidian.Obsidian
     else
         case "$DISTRO_FAMILY" in
@@ -86,25 +78,19 @@ uninstall_obsidian() {
 
 update_obsidian() {
     info "Updating Obsidian..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "md.obsidian.Obsidian"; then
+    if flatpak_is_installed "md.obsidian.Obsidian"; then
         flatpak update -y md.obsidian.Obsidian
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_obsidian ;;
             arch)
-                if has_aur_helper; then
-                    aur_upgrade obsidian
-                else
-                    aur_build obsidian
-                fi
+                aur_ensure obsidian
                 ;;
         esac
     fi
 }
 
 get_version_obsidian() {
-    obsidian --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    (has_flatpak && flatpak list 2>/dev/null | grep -i "md.obsidian.Obsidian" | awk -F'\t' '{print $3}') || \
-    pkg_get_version obsidian 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    # Do NOT call obsidian --version — Electron apps launch a full GUI window.
+    _ver_from_pkg obsidian || _ver_from_flatpak md.obsidian.Obsidian || echo ""
 }

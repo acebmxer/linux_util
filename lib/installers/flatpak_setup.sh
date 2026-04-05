@@ -71,5 +71,5 @@ update_flatpak_setup() {
 }
 
 get_version_flatpak_setup() {
-    flatpak --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo ""
+    _ver_from_cmd flatpak || echo ""
 }

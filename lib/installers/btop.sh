@@ -3,9 +3,7 @@
 
 # --- Btop ---
 
-check_btop() {
-    command -v btop &>/dev/null || pkg_check_installed btop
-}
+check_btop() { _check_standard btop btop ""; }
 
 install_btop() {
     info "Installing Btop++..."
@@ -85,5 +83,5 @@ update_btop() {
 }
 
 get_version_btop() {
-    btop --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo ""
+    _ver_from_cmd btop || echo ""
 }

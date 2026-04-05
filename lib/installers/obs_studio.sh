@@ -3,11 +3,7 @@
 
 # --- OBS Studio ---
 
-check_obs_studio() {
-    command -v obs &>/dev/null || \
-        pkg_check_installed obs-studio || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "com.obsproject.Studio")
-}
+check_obs_studio() { _check_standard obs obs-studio com.obsproject.Studio; }
 
 install_obs_studio() {
     info "Installing OBS Studio..."
@@ -61,7 +57,7 @@ install_obs_studio() {
 
 uninstall_obs_studio() {
     info "Uninstalling OBS Studio..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.obsproject.Studio"; then
+    if flatpak_is_installed "com.obsproject.Studio"; then
         flatpak uninstall -y com.obsproject.Studio
     else
         case "$DISTRO_FAMILY" in
@@ -79,7 +75,7 @@ uninstall_obs_studio() {
 
 update_obs_studio() {
     info "Updating OBS Studio..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.obsproject.Studio"; then
+    if flatpak_is_installed "com.obsproject.Studio"; then
         flatpak update -y com.obsproject.Studio
     else
         case "$DISTRO_FAMILY" in
@@ -92,8 +88,5 @@ update_obs_studio() {
 }
 
 get_version_obs_studio() {
-    obs --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    (has_flatpak && flatpak list 2>/dev/null | grep -i "com.obsproject.Studio" | awk -F'\t' '{print $3}') || \
-    pkg_get_version obs-studio 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    _ver_from_cmd obs || _ver_from_flatpak com.obsproject.Studio || _ver_from_pkg obs-studio || echo ""
 }
