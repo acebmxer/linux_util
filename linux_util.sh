@@ -214,8 +214,9 @@ process_selected() {
     # Check if there's anything to do
     if [[ ${#to_install[@]} -eq 0 ]] && [[ ${#to_uninstall[@]} -eq 0 ]] && [[ ${#to_update[@]} -eq 0 ]]; then
         echo ""
-        echo "${YELLOW}No changes to make. Exiting.${RESET}"
-        exit 0
+        echo "${YELLOW}No changes to make.${RESET}"
+        read -rp "Press ENTER to return to menu..." < /dev/tty
+        return 0
     fi
 
     echo ""
@@ -252,8 +253,9 @@ process_selected() {
     clear
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        echo "${YELLOW}[DRY RUN] No changes made. Exiting.${RESET}"
-        exit 0
+        echo "${YELLOW}[DRY RUN] No changes made.${RESET}"
+        read -rp "Press ENTER to return to menu..." < /dev/tty
+        return 0
     fi
 
     # Create a Timeshift snapshot before making any changes.
@@ -295,7 +297,8 @@ process_selected() {
         echo
         if [[ ! "$_pf_ans" =~ ^[Yy]$ ]]; then
             echo "${YELLOW}Aborted.${RESET}"
-            exit 1
+            read -rp "Press ENTER to return to menu..." < /dev/tty
+            return 0
         fi
     fi
 
@@ -524,8 +527,11 @@ process_selected() {
                 ;;
             *)
                 info "Remember to reboot later if needed."
+                read -rp "Press ENTER to return to menu..." < /dev/tty
                 ;;
         esac
+    else
+        read -rp "Press ENTER to return to menu..." < /dev/tty
     fi
 }
 
@@ -746,8 +752,12 @@ main() {
 
     self_update_script "$@"
     parse_args "$@"
-    run_selection_menu
-    process_selected
+
+    # Main loop: show menu, process selections, repeat
+    while true; do
+        run_selection_menu
+        process_selected
+    done
 }
 
 main "$@"
