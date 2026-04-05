@@ -103,13 +103,18 @@ check_installed_utilities() {
                 fi
             else
                 INSTALLED[$i]=0
+                INSTALLED_VERSIONS[$i]=""
                 # System tasks may provide status info even when not "installed"
                 # (e.g., System Updates shows pending update count)
-                local ver_func="${VERSION_FUNCS[$util]:-}"
-                if [[ -n "$ver_func" ]] && declare -f "$ver_func" &>/dev/null; then
-                    INSTALLED_VERSIONS[$i]=$($ver_func 2>/dev/null)
-                else
-                    INSTALLED_VERSIONS[$i]=""
+                local _is_systask=""
+                for _st in "${SYSTEM_TASKS[@]}"; do
+                    [[ "$_st" == "$util" ]] && _is_systask=1 && break
+                done
+                if [[ -n "$_is_systask" ]]; then
+                    local ver_func="${VERSION_FUNCS[$util]:-}"
+                    if [[ -n "$ver_func" ]] && declare -f "$ver_func" &>/dev/null; then
+                        INSTALLED_VERSIONS[$i]=$($ver_func 2>/dev/null)
+                    fi
                 fi
             fi
         else
