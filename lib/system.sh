@@ -19,8 +19,20 @@ run_as_root() { sudo "$@"; }
 # Usage: run_as_root_sh "cmd1 && cmd2" or run_as_root_sh "cmd | other"
 run_as_root_sh() { sudo sh -c "$*"; }
 info()  { printf '%s[INFO]%s %s\n' "${GREEN:-}" "${RESET:-}" "$*"; }
-warn()  { printf '%s[WARN]%s %s\n' "${YELLOW:-}" "${RESET:-}" "$*"; }
-error() { printf '%s[ERROR]%s %s\n' "${RED:-}" "${RESET:-}" "$*" >&2; }
+warn() {
+    printf '%s[WARN]%s %s\n' "${YELLOW:-}" "${RESET:-}" "$*"
+    if [[ -n "${ERROR_LOG:-}" ]]; then
+        init_error_log
+        printf '[%s] [WARNING] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$ERROR_LOG"
+    fi
+}
+error() {
+    printf '%s[ERROR]%s %s\n' "${RED:-}" "${RESET:-}" "$*" >&2
+    if [[ -n "${ERROR_LOG:-}" ]]; then
+        init_error_log
+        printf '[%s] [ERROR] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$ERROR_LOG"
+    fi
+}
 
 # ============================================================================
 # Pre-flight System Checks
