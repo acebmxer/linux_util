@@ -845,31 +845,40 @@ _render_right() {
                     display_name="${name:0:$((name_avail - 3))}..."
                 fi
 
-                # Build the item line
+                # Build the item line: prefix + checkbox are never underlined;
+                # name + gap + status get the underline on the cursor row.
+                local _ul=""
+                if [[ "${is_cursor:-false}" == true && "$_FOCUS" == "items" ]]; then
+                    _ul="${MAGENTA}${UNDERLINE}"
+                fi
+
                 if [[ -n "$status_plain" ]]; then
                     local name_pad=$(( name_avail - ${#display_name} ))
                     (( name_pad < 1 )) && name_pad=1
                     local gap=""
                     printf -v gap '%*s' "$name_pad" ''
-                    line_content="${prefix}${checkbox} ${display_name}${gap} ${status_tag}"
+                    # Re-apply underline after status_tag's embedded RESET
+                    local _ul_status="${status_tag}"
+                    [[ -n "$_ul" ]] && _ul_status="${status_tag//${RESET}/${RESET}${MAGENTA}${UNDERLINE}}"
+                    line_content="${prefix}${checkbox} ${_ul}${display_name}${gap} ${_ul_status}${RESET}"
                 else
-                    line_content="${prefix}${checkbox} ${display_name}"
+                    # Pad name to fill available width so the underline extends fully
+                    local name_pad=$(( item_w - 2 - 3 - 1 - ${#display_name} ))
+                    (( name_pad < 0 )) && name_pad=0
+                    local gap=""
+                    printf -v gap '%*s' "$name_pad" ''
+                    line_content="${prefix}${checkbox} ${_ul}${display_name}${gap}${RESET}"
                 fi
             fi
         fi
 
         # Build full line: content padded to inner_w + outer border
-        # Apply underline to the full cursor line for visual tracking
-        local ul_on="" ul_off=""
-        if [[ "${is_cursor:-false}" == true && "$_FOCUS" == "items" ]]; then
-            ul_on="$UNDERLINE" ul_off="$RESET"
-        fi
         if [[ -n "$scroll_indicator" ]]; then
             _pad_or_truncate " ${line_content}" "$(( inner_w - 1 ))"
-            _RIGHT_LINES+=("${ul_on}${_POT_RESULT}${scroll_indicator}${ul_off}${outer_bc}${_BD_V}${RESET}")
+            _RIGHT_LINES+=("${_POT_RESULT}${scroll_indicator}${outer_bc}${_BD_V}${RESET}")
         else
             _pad_or_truncate " ${line_content}" "$inner_w"
-            _RIGHT_LINES+=("${ul_on}${_POT_RESULT}${ul_off}${outer_bc}${_BD_V}${RESET}")
+            _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
         fi
         (( row++ ))
     done
