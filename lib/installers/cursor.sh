@@ -14,13 +14,13 @@ install_cursor() {
     info "Installing Cursor IDE..."
     ensure_tools
 
-    local api_url="https://www.cursor.com/api/download?platform=linux&releaseTrack=stable"
-    local download_url
-    download_url=$(curl -fsSL "$api_url" | grep -oP '"url"\s*:\s*"\K[^"]+') || {
-        error "Failed to retrieve Cursor download URL."
-        return 1
-    }
-    [[ -z "$download_url" ]] && { error "Cursor download URL is empty."; return 1; }
+    local arch
+    case "$(uname -m)" in
+        x86_64)  arch="x64" ;;
+        aarch64) arch="arm64" ;;
+        *) error "Unsupported architecture: $(uname -m)"; return 1 ;;
+    esac
+    local download_url="https://api2.cursor.sh/updates/download/golden/linux-${arch}/cursor/latest"
 
     mkdir -p "$(dirname "$_CURSOR_APPIMAGE")"
     info "Downloading Cursor AppImage..."
@@ -77,14 +77,13 @@ uninstall_cursor() {
 
 update_cursor() {
     info "Updating Cursor IDE..."
-    # Re-download latest AppImage
-    local api_url="https://www.cursor.com/api/download?platform=linux&releaseTrack=stable"
-    local download_url
-    download_url=$(curl -fsSL "$api_url" | grep -oP '"url"\s*:\s*"\K[^"]+') || {
-        error "Failed to retrieve Cursor download URL."
-        return 1
-    }
-    [[ -z "$download_url" ]] && { error "Cursor download URL is empty."; return 1; }
+    local arch
+    case "$(uname -m)" in
+        x86_64)  arch="x64" ;;
+        aarch64) arch="arm64" ;;
+        *) error "Unsupported architecture: $(uname -m)"; return 1 ;;
+    esac
+    local download_url="https://api2.cursor.sh/updates/download/golden/linux-${arch}/cursor/latest"
 
     info "Downloading latest Cursor AppImage..."
     if ! wget -qO "$_CURSOR_APPIMAGE" "$download_url"; then

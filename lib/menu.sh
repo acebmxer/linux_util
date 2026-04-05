@@ -94,6 +94,7 @@ _LEFT_W=0
 _RIGHT_W=0
 _MAIN_H=0
 _ITEMS_H=0
+_DESC_H=0
 
 # Global flag: true while the TUI menu is actively displayed
 _MENU_ACTIVE=false
@@ -450,8 +451,13 @@ _calc_layout() {
     _MAIN_H=$(( _TERM_ROWS - 3 - 4 ))
     (( _MAIN_H < 5 )) && _MAIN_H=5
 
-    # Items viewport height = main height - category label header (1)
-    _ITEMS_H=$(( _MAIN_H - 1 ))
+    # Description panel height: ~30% of main area, clamped to [4, 10]
+    _DESC_H=$(( _MAIN_H * 30 / 100 ))
+    (( _DESC_H < 4 )) && _DESC_H=4
+    (( _DESC_H > 10 )) && _DESC_H=10
+
+    # Items viewport height = main height - header(1) - description area
+    _ITEMS_H=$(( _MAIN_H - 1 - _DESC_H ))
     (( _ITEMS_H < 3 )) && _ITEMS_H=3
 }
 
@@ -850,7 +856,94 @@ _render_right() {
         (( row++ ))
     done
 
-    # Fill remaining rows
+    # Fill empty rows between items and description separator
+    local items_end=$(( 1 + _ITEMS_H ))  # header(1) + items
+    while (( row < items_end )); do
+        _pad_or_truncate "" "$inner_w"
+        _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
+        (( row++ ))
+    done
+
+    # --- Description panel separator ---
+    _hline "$inner_w"
+    _RIGHT_LINES+=("${CYAN}${_HLINE_RESULT}${_BD_RJ}${RESET}")
+    (( row++ ))
+
+    # --- Description content ---
+    local desc_content_h=$(( _DESC_H - 1 ))  # minus separator line
+    local desc_text=""
+
+    # Determine what is currently highlighted
+    local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+    if (( ${#_SEARCH_FILTERED[@]} > 0 && _cur_pos < ${#_SEARCH_FILTERED[@]} )); then
+        local _cur_type="${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}"
+        if [[ "$_cur_type" == "utility" ]]; then
+            local _cur_idx=${_SEARCH_FILTERED[$_cur_pos]}
+            local _cur_name="${UTILITIES[$_cur_idx]}"
+            desc_text="${UTILITY_DESCRIPTION[$_cur_name]:-}"
+        elif [[ "$_cur_type" == "subcat" ]]; then
+            local _sc_name="${_SEARCH_ITEM_LABEL[$_cur_pos]}"
+            # Count items in this subcategory
+            local _sc_count=0 _sc_i _sc_total=${#UTILITIES[@]}
+            local _sc_cat="${_TAB_NAMES[$_ACTIVE_TAB]:-}"
+            for (( _sc_i=0; _sc_i<_sc_total; _sc_i++ )); do
+                local _sc_uname="${UTILITIES[$_sc_i]}"
+                local _sc_ucat=""
+                if [[ "$_sc_cat" == "System Tasks" ]]; then
+                    local _sc_st
+                    for _sc_st in "${SYSTEM_TASKS[@]}"; do
+                        [[ "$_sc_st" == "$_sc_uname" ]] && _sc_ucat="System Tasks" && break
+                    done
+                else
+                    _sc_ucat="${UTILITY_CATEGORY[$_sc_uname]:-}"
+                fi
+                if [[ "$_sc_ucat" == "$_sc_cat" && "${UTILITY_SUBCATEGORY[$_sc_uname]:-}" == "$_sc_name" ]]; then
+                    (( _sc_count++ ))
+                fi
+            done
+            desc_text="Browse ${_sc_count} item(s) in the ${_sc_name} subcategory."
+        elif [[ "$_cur_type" == "up" ]]; then
+            desc_text="Return to the parent category."
+        fi
+    fi
+
+    # Word-wrap description text into desc_content_h lines
+    local desc_w=$(( inner_w - 3 ))  # 2 left padding + 1 right margin
+    local -a _desc_lines=()
+    if [[ -n "$desc_text" ]]; then
+        local -a _dwords
+        read -ra _dwords <<< "$desc_text"
+        local _dcur=""
+        for _dw in "${_dwords[@]}"; do
+            local _dtest
+            if [[ -z "$_dcur" ]]; then
+                _dtest="$_dw"
+            else
+                _dtest="${_dcur} ${_dw}"
+            fi
+            if (( ${#_dtest} <= desc_w )); then
+                _dcur="$_dtest"
+            else
+                _desc_lines+=("$_dcur")
+                _dcur="$_dw"
+            fi
+        done
+        [[ -n "$_dcur" ]] && _desc_lines+=("$_dcur")
+    fi
+
+    # Render description lines
+    local _dl=0
+    for (( _dl=0; _dl<desc_content_h; _dl++ )); do
+        local _dline=""
+        if (( _dl < ${#_desc_lines[@]} )); then
+            _dline="  ${_desc_lines[$_dl]}"
+        fi
+        _pad_or_truncate "$_dline" "$inner_w"
+        _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
+        (( row++ ))
+    done
+
+    # Fill any remaining rows (safety)
     while (( row < _MAIN_H )); do
         _pad_or_truncate "" "$inner_w"
         _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
