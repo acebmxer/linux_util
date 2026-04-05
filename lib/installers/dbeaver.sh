@@ -1,0 +1,102 @@
+#!/bin/bash
+# DBeaver Community Edition installer functions
+
+# --- DBeaver ---
+
+check_dbeaver() {
+    command -v dbeaver &>/dev/null || pkg_check_installed dbeaver-ce
+}
+
+install_dbeaver() {
+    info "Installing DBeaver Community Edition..."
+    ensure_tools
+    case "$DISTRO_FAMILY" in
+        debian)
+            local tmpfile
+            tmpfile=$(mktemp /tmp/dbeaver-XXXXXX.deb)
+            CLEANUP_FILES+=("$tmpfile")
+            if ! wget -qO "$tmpfile" "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb"; then
+                error "Failed to download DBeaver .deb package."
+                return 1
+            fi
+            sudo apt install -y "$tmpfile"
+            ;;
+        fedora|rhel)
+            local tmpfile
+            tmpfile=$(mktemp /tmp/dbeaver-XXXXXX.rpm)
+            CLEANUP_FILES+=("$tmpfile")
+            if ! wget -qO "$tmpfile" "https://dbeaver.io/files/dbeaver-ce_latest_x86_64.rpm"; then
+                error "Failed to download DBeaver .rpm package."
+                return 1
+            fi
+            sudo "$PKG_MGR" install -y "$tmpfile"
+            ;;
+        arch)
+            if has_aur_helper; then
+                aur_install dbeaver
+            else
+                sudo pacman -S --noconfirm dbeaver
+            fi
+            ;;
+        suse)
+            local tmpfile
+            tmpfile=$(mktemp /tmp/dbeaver-XXXXXX.rpm)
+            CLEANUP_FILES+=("$tmpfile")
+            if ! wget -qO "$tmpfile" "https://dbeaver.io/files/dbeaver-ce_latest_x86_64.rpm"; then
+                error "Failed to download DBeaver .rpm package."
+                return 1
+            fi
+            sudo zypper install -y "$tmpfile"
+            ;;
+    esac
+    info "DBeaver Community Edition installed."
+}
+
+uninstall_dbeaver() {
+    info "Uninstalling DBeaver..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt purge --autoremove -y dbeaver-ce
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" remove -y dbeaver-ce
+            ;;
+        arch)
+            sudo pacman -Rs --noconfirm dbeaver 2>/dev/null || true
+            ;;
+        suse)
+            sudo zypper remove -y dbeaver-ce
+            ;;
+    esac
+    rm -rf "$HOME/.local/share/DBeaverData"
+    rm -rf "$HOME/.dbeaver"
+}
+
+update_dbeaver() {
+    info "Updating DBeaver..."
+    case "$DISTRO_FAMILY" in
+        debian)
+            # Re-download latest .deb
+            install_dbeaver
+            ;;
+        fedora|rhel)
+            install_dbeaver
+            ;;
+        arch)
+            if has_aur_helper; then
+                aur_upgrade dbeaver
+            else
+                sudo pacman -S --noconfirm dbeaver
+            fi
+            ;;
+        suse)
+            install_dbeaver
+            ;;
+    esac
+}
+
+get_version_dbeaver() {
+    dbeaver --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
+    pkg_get_version dbeaver-ce 2>/dev/null | sed 's/-.*//' || \
+    echo ""
+}
