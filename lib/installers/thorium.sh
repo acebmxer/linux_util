@@ -6,20 +6,16 @@
 # Official APT repo: https://dl.thorium.rocks
 # GitHub releases: https://github.com/Alex313031/thorium/releases
 
-check_thorium() {
-    command -v thorium-browser &>/dev/null || pkg_check_installed thorium-browser
-}
+check_thorium() { _check_standard thorium-browser thorium-browser ""; }
 
 install_thorium() {
     info "Installing Thorium Browser..."
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo install -d -m 0755 /usr/share/keyrings
-            sudo curl -fsSL "https://dl.thorium.rocks/debian/dists/stable/public.key" | \
-                sudo gpg --dearmor -o /usr/share/keyrings/thorium-keyring.gpg
-            echo "deb [signed-by=/usr/share/keyrings/thorium-keyring.gpg] https://dl.thorium.rocks/debian/ stable main" | \
-                sudo tee /etc/apt/sources.list.d/thorium.list > /dev/null
+            # Thorium no longer distributes a GPG key; repo uses trusted=yes
+            echo "deb [trusted=yes arch=amd64] https://dl.thorium.rocks/debian/ stable main" \
+                | sudo tee /etc/apt/sources.list.d/thorium.list > /dev/null
             sudo apt update
             sudo apt install -y thorium-browser
             ;;
@@ -41,11 +37,7 @@ install_thorium() {
             rm -f "$tmp_rpm"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install thorium-browser-bin
-            else
-                aur_build thorium-browser-bin
-            fi
+            aur_ensure thorium-browser-bin
             ;;
         suse)
             # Install via GitHub release RPM (same approach as Fedora/RHEL)
@@ -101,11 +93,7 @@ update_thorium() {
             install_thorium
             ;;
         arch)
-            if has_aur_helper; then
-                aur_upgrade thorium-browser-bin
-            else
-                aur_build thorium-browser-bin
-            fi
+            aur_ensure thorium-browser-bin
             ;;
     esac
 }

@@ -13,12 +13,11 @@ install_google_chrome() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo install -d -m 0755 /usr/share/keyrings
-            sudo curl -fsSL "https://dl.google.com/linux/linux_signing_key.pub" | \
-                sudo gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg
-            echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] https://dl.google.com/linux/chrome/deb/ stable main" | \
-                sudo tee /etc/apt/sources.list.d/google-chrome.list > /dev/null
-            sudo apt update
+            _add_apt_repo \
+                "https://dl.google.com/linux/linux_signing_key.pub" \
+                "/usr/share/keyrings/google-chrome-keyring.gpg" \
+                "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
+                "/etc/apt/sources.list.d/google-chrome.list"
             sudo apt install -y google-chrome-stable
             ;;
         fedora|rhel)
@@ -33,11 +32,7 @@ EOF
             sudo "$PKG_MGR" install -y google-chrome-stable
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install google-chrome
-            else
-                aur_build google-chrome
-            fi
+            aur_ensure google-chrome
             ;;
         suse)
             sudo rpm --import https://dl.google.com/linux/linux_signing_key.pub
@@ -80,11 +75,7 @@ update_google_chrome() {
             sudo apt upgrade -y google-chrome-stable
             ;;
         arch)
-            if has_aur_helper; then
-                aur_upgrade google-chrome
-            else
-                aur_build google-chrome
-            fi
+            aur_ensure google-chrome
             ;;
         *)
             pkg_upgrade google-chrome-stable

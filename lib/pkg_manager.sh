@@ -118,14 +118,18 @@ detect_distro() {
 # --- Package Manager Wrappers ---
 
 pkg_refresh() {
+    local mode="${1:-spinner}"
+    local _run; [[ "$mode" == "direct" ]] && _run=run_direct || _run=run_with_spinner
+    local _nc;  [[ "$mode" != "direct" ]] && _nc="--noconfirm" || _nc=""
     [[ "${_PKG_REFRESHED:-}" == "true" ]] && return 0
     case "$PKG_MGR" in
-        apt)     run_with_spinner "Refreshing package cache"             sudo apt update ;;
-        dnf|yum) run_with_spinner "Refreshing package cache"             sudo "$PKG_MGR" makecache ;;
+        apt)     "$_run" "Refreshing package cache"             sudo apt update ;;
+        dnf|yum) "$_run" "Refreshing package cache"             sudo "$PKG_MGR" makecache ;;
         # NOTE: On Arch, -Sy without -u risks partial upgrades. We use -Syu
         # here so that any subsequent pkg_install calls have a consistent DB+system.
-        pacman)  run_with_spinner "Refreshing package cache & upgrading" sudo pacman -Syu --noconfirm ;;
-        zypper)  run_with_spinner "Refreshing package cache"             sudo zypper refresh ;;
+        # shellcheck disable=SC2086
+        pacman)  "$_run" "Refreshing package cache & upgrading" sudo pacman -Syu $_nc ;;
+        zypper)  "$_run" "Refreshing package cache"             sudo zypper refresh ;;
     esac
     _PKG_REFRESHED=true
 }
@@ -182,50 +186,71 @@ pkg_install_local() {
 }
 
 pkg_autoremove() {
+    local mode="${1:-spinner}"
+    local _run _y _nc
+    if [[ "$mode" == "direct" ]]; then
+        _run=run_direct;       _y="";   _nc=""
+    else
+        _run=run_with_spinner; _y="-y"; _nc="--noconfirm"
+    fi
     case "$PKG_MGR" in
         apt)
             if apt-get --dry-run autoremove 2>/dev/null | grep -q "^Remv "; then
-                run_with_spinner "Removing orphaned packages" sudo apt autoremove -y
+                # shellcheck disable=SC2086
+                "$_run" "Removing orphaned packages" sudo apt autoremove $_y
             else
                 info "No orphaned packages to remove."
             fi
             ;;
         dnf|yum)
             if "$PKG_MGR" autoremove --assumeno 2>/dev/null | grep -qE "^Remove "; then
-                run_with_spinner "Removing orphaned packages" sudo "$PKG_MGR" autoremove -y
+                # shellcheck disable=SC2086
+                "$_run" "Removing orphaned packages" sudo "$PKG_MGR" autoremove $_y
             else
                 info "No orphaned packages to remove."
             fi
             ;;
-        pacman)  run_with_spinner "Removing orphaned packages" \
-                     bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && sudo pacman -Rs --noconfirm $pkgs || true' ;;
-        zypper)  true ;;
+        pacman) "$_run" "Removing orphaned packages" \
+                    bash -c "pkgs=\$(pacman -Qdtq 2>/dev/null); [[ -n \"\$pkgs\" ]] && sudo pacman -Rs $_nc \$pkgs || true" ;;
+        zypper) true ;;
     esac
 }
 
 pkg_full_upgrade() {
+    local mode="${1:-spinner}"
+    local _run _y _nc
+    if [[ "$mode" == "direct" ]]; then
+        _run=run_direct;       _y="";   _nc=""
+    else
+        _run=run_with_spinner; _y="-y"; _nc="--noconfirm"
+    fi
+    # shellcheck disable=SC2086
     case "$PKG_MGR" in
-        apt)     run_with_spinner "Running full system upgrade" sudo apt full-upgrade -y ;;
-        dnf|yum) run_with_spinner "Running full system upgrade" sudo "$PKG_MGR" upgrade -y ;;
+        apt)     "$_run" "Running full system upgrade" sudo apt full-upgrade $_y ;;
+        dnf|yum) "$_run" "Running full system upgrade" sudo "$PKG_MGR" upgrade $_y ;;
         pacman)  if command -v yay &>/dev/null; then
-                     run_with_spinner "Running full system upgrade (yay)"  yay  -Syu --noconfirm
+                     "$_run" "Running full system upgrade (yay)"  yay  -Syu $_nc
                  elif command -v paru &>/dev/null; then
-                     run_with_spinner "Running full system upgrade (paru)" paru -Syu --noconfirm
+                     "$_run" "Running full system upgrade (paru)" paru -Syu $_nc
                  else
-                     run_with_spinner "Running full system upgrade"        sudo pacman -Syu --noconfirm
+                     "$_run" "Running full system upgrade"        sudo pacman -Syu $_nc
                  fi ;;
-        zypper)  run_with_spinner "Running full system upgrade" sudo zypper update -y ;;
+        zypper)  "$_run" "Running full system upgrade" sudo zypper update $_y ;;
     esac
 }
 
 pkg_clean() {
+    local mode="${1:-spinner}"
+    local _run; [[ "$mode" == "direct" ]] && _run=run_direct || _run=run_with_spinner
+    local _nc;  [[ "$mode" != "direct" ]] && _nc="--noconfirm" || _nc=""
     case "$PKG_MGR" in
-        apt)     run_with_spinner "Cleaning package cache" sudo apt clean
-                 run_with_spinner "Running apt autoclean"  sudo apt autoclean ;;
-        dnf|yum) run_with_spinner "Cleaning package cache" sudo "$PKG_MGR" clean all ;;
-        pacman)  run_with_spinner "Cleaning package cache" \
-                     bash -c 'sudo find /var/cache/pacman/pkg -maxdepth 1 -name "download-*" -delete 2>/dev/null; sudo pacman -Sc --noconfirm' ;;
-        zypper)  run_with_spinner "Cleaning package cache" sudo zypper clean -a ;;
+        apt)     "$_run" "Cleaning package cache" sudo apt clean
+                 "$_run" "Running apt autoclean"  sudo apt autoclean ;;
+        dnf|yum) "$_run" "Cleaning package cache" sudo "$PKG_MGR" clean all ;;
+        # shellcheck disable=SC2086
+        pacman)  "$_run" "Cleaning package cache" \
+                     bash -c "sudo find /var/cache/pacman/pkg -maxdepth 1 -name 'download-*' -delete 2>/dev/null; sudo pacman -Sc $_nc" ;;
+        zypper)  "$_run" "Cleaning package cache" sudo zypper clean -a ;;
     esac
 }
 
@@ -237,86 +262,28 @@ pkg_clean() {
 # Used exclusively by full_update.sh and system_updates.sh.
 # ============================================================================
 
-pkg_refresh_interactive() {
-    [[ "${_PKG_REFRESHED:-}" == "true" ]] && return 0
-    case "$PKG_MGR" in
-        apt)     run_direct "Refreshing package cache"             sudo apt update ;;
-        dnf|yum) run_direct "Refreshing package cache"             sudo "$PKG_MGR" makecache ;;
-        pacman)  run_direct "Refreshing package cache & upgrading" sudo pacman -Syu ;;
-        zypper)  run_direct "Refreshing package cache"             sudo zypper refresh ;;
-    esac
-    _PKG_REFRESHED=true
-}
-
-pkg_full_upgrade_interactive() {
-    case "$PKG_MGR" in
-        apt)     run_direct "Running full system upgrade" sudo apt full-upgrade ;;
-        dnf|yum) run_direct "Running full system upgrade" sudo "$PKG_MGR" upgrade ;;
-        pacman)  if command -v yay &>/dev/null; then
-                     run_direct "Running full system upgrade (yay)"  yay  -Syu
-                 elif command -v paru &>/dev/null; then
-                     run_direct "Running full system upgrade (paru)" paru -Syu
-                 else
-                     run_direct "Running full system upgrade"        sudo pacman -Syu
-                 fi ;;
-        zypper)  run_direct "Running full system upgrade" sudo zypper update ;;
-    esac
-}
-
-pkg_autoremove_interactive() {
-    case "$PKG_MGR" in
-        apt)
-            if apt-get --dry-run autoremove 2>/dev/null | grep -q "^Remv "; then
-                run_direct "Removing orphaned packages" sudo apt autoremove
-            else
-                info "No orphaned packages to remove."
-            fi
-            ;;
-        dnf|yum)
-            if "$PKG_MGR" autoremove --assumeno 2>/dev/null | grep -qE "^Remove "; then
-                run_direct "Removing orphaned packages" sudo "$PKG_MGR" autoremove
-            else
-                info "No orphaned packages to remove."
-            fi
-            ;;
-        pacman)  run_direct "Removing orphaned packages" \
-                     bash -c 'pkgs=$(pacman -Qdtq 2>/dev/null); [[ -n "$pkgs" ]] && sudo pacman -Rs $pkgs || true' ;;
-        zypper)  true ;;
-    esac
-}
-
-pkg_clean_interactive() {
-    case "$PKG_MGR" in
-        apt)     run_direct "Cleaning package cache" sudo apt clean
-                 run_direct "Running apt autoclean"  sudo apt autoclean ;;
-        dnf|yum) run_direct "Cleaning package cache" sudo "$PKG_MGR" clean all ;;
-        pacman)  run_direct "Cleaning package cache" \
-                     bash -c 'sudo find /var/cache/pacman/pkg -maxdepth 1 -name "download-*" -delete 2>/dev/null; sudo pacman -Sc' ;;
-        zypper)  run_direct "Cleaning package cache" sudo zypper clean -a ;;
-    esac
-}
+pkg_refresh_interactive()     { pkg_refresh     direct; }
+pkg_full_upgrade_interactive() { pkg_full_upgrade direct; }
+pkg_autoremove_interactive()   { pkg_autoremove   direct; }
+pkg_clean_interactive()        { pkg_clean        direct; }
 
 # Shared implementation for thorough cleanup.
 # Accepts a "mode" argument: "spinner" (non-interactive) or "direct" (interactive).
 _pkg_cleanup_thorough_impl() {
     local mode="${1:-spinner}"
-    local _runner _autoremove_fn _clean_fn _confirm_flag
+    local _runner _confirm_flag
     if [[ "$mode" == "direct" ]]; then
         _runner="run_direct"
-        _autoremove_fn="pkg_autoremove_interactive"
-        _clean_fn="pkg_clean_interactive"
         _confirm_flag=""
     else
         _runner="run_with_spinner"
-        _autoremove_fn="pkg_autoremove"
-        _clean_fn="pkg_clean"
         _confirm_flag="-y"
     fi
 
     info "Running thorough system cleanup..."
 
     # Step 1: Remove orphaned dependencies
-    "$_autoremove_fn"
+    pkg_autoremove "$mode"
 
     # Step 2: Remove old kernels (keep current + one previous)
     local current_kernel
@@ -374,7 +341,7 @@ _pkg_cleanup_thorough_impl() {
     fi
 
     # Step 4: Clean package cache
-    "$_clean_fn"
+    pkg_clean "$mode"
 
     # Step 5: Clean apt lists partial files (Debian family only)
     if [[ "$PKG_MGR" == "apt" ]]; then
@@ -1230,6 +1197,110 @@ has_snap() {
 
 has_flatpak() {
     command -v flatpak &>/dev/null
+}
+
+# Returns 0 if a Flatpak app matching the given ID (or grep pattern) is installed.
+flatpak_is_installed() {
+    has_flatpak && flatpak list 2>/dev/null | grep -qi "$1"
+}
+
+# Standard 3-way installation check used by most simple installers.
+# Usage: _check_standard binary pkg flatpak_id
+#   binary     — command name to test with "command -v"; pass "" to skip
+#   pkg        — package name for pkg_check_installed; pass "" to skip
+#   flatpak_id — Flatpak application ID for "flatpak list | grep -qi"; pass "" to skip
+_check_standard() {
+    local binary="$1" pkg="$2" flatpak_id="$3"
+    [[ -n "$binary"     ]] && command -v "$binary" &>/dev/null && return 0
+    [[ -n "$pkg"        ]] && pkg_check_installed "$pkg"       && return 0
+    [[ -n "$flatpak_id" ]] && has_flatpak && flatpak list 2>/dev/null | grep -qi "$flatpak_id" && return 0
+    return 1
+}
+
+# ─── Version helpers (used by get_version_XXX in installer scripts) ──────────
+
+# Extract the first X.Y.Z semver from a binary's version output.
+# Pass a subcommand as the second arg when the binary uses one (e.g. "version")
+# instead of the standard --version flag.
+# Usage: _ver_from_cmd binary [flag]
+_ver_from_cmd() {
+    local _cmd="$1" _flag="${2:---version}" v
+    command -v "$_cmd" &>/dev/null || return 1
+    v=$("$_cmd" "$_flag" 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    [[ -n "$v" ]] && printf '%s\n' "$v" || return 1
+}
+
+# Get the version string from the package manager and strip epoch prefix and
+# distro suffix so "1:3.5.7-2ubuntu1" becomes "3.5.7".
+# Returns 1 (and prints nothing) when the package is not installed.
+# Usage: _ver_from_pkg pkg_name
+_ver_from_pkg() {
+    local v
+    v=$(pkg_get_version "$1" 2>/dev/null | sed 's/^[0-9]*://; s/-.*//') || return 1
+    [[ -z "$v" || "$v" == "unknown" ]] && return 1
+    printf '%s\n' "$v"
+}
+
+# Get the version of an installed Flatpak by application ID substring (case-insensitive).
+# Returns 1 (and prints nothing) when the app is not installed.
+# Usage: _ver_from_flatpak flatpak_id
+_ver_from_flatpak() {
+    has_flatpak || return 1
+    local v
+    v=$(flatpak list 2>/dev/null | grep -i "$1" | awk -F'\t' '{print $3}' | head -1)
+    [[ -n "$v" ]] && printf '%s\n' "$v" || return 1
+}
+
+# Get the version of an installed snap package.
+# Returns 1 (and prints nothing) when the package is not installed.
+# Usage: _ver_from_snap pkg_name
+_ver_from_snap() {
+    has_snap || return 1
+    local v
+    v=$(snap list "$1" 2>/dev/null | awk 'NR==2{print $2}')
+    [[ -n "$v" ]] && printf '%s\n' "$v" || return 1
+}
+
+# ============================================================================
+# APT REPOSITORY HELPER
+# ============================================================================
+
+# Add an APT repository with a GPG keyring.
+# Usage: _add_apt_repo KEY_URL KEYRING_PATH SOURCES_LINE SOURCES_LIST_PATH
+#   KEY_URL          — URL to the GPG public key
+#                      .asc / .pub / .key  → piped through gpg --dearmor
+#                      .gpg                → downloaded as-is (already binary)
+#   KEYRING_PATH     — full destination path for the keyring (sudo-created)
+#   SOURCES_LINE     — complete "deb [signed-by=...] ..." line
+#   SOURCES_LIST_PATH — full path of the .list file under /etc/apt/sources.list.d/
+# Runs "sudo apt update" after writing the repo.
+_add_apt_repo() {
+    local key_url="$1"
+    local keyring_path="$2"
+    local sources_line="$3"
+    local sources_list_path="$4"
+
+    sudo install -d -m 0755 "$(dirname "$keyring_path")"
+
+    # Download to a user-owned temp file (no sudo — public key, no auth needed).
+    # Detect ASCII-armored vs binary regardless of URL file extension.
+    local _tmpkey
+    _tmpkey=$(mktemp)
+    if ! curl -fsSL "$key_url" -o "$_tmpkey"; then
+        rm -f "$_tmpkey"
+        error "Failed to download GPG key from: $key_url"
+        return 1
+    fi
+    if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "$_tmpkey" 2>/dev/null; then
+        gpg --dearmor < "$_tmpkey" | sudo tee "$keyring_path" > /dev/null
+    else
+        sudo install -m 0644 "$_tmpkey" "$keyring_path"
+    fi
+    rm -f "$_tmpkey"
+    sudo chmod go+r "$keyring_path"
+
+    echo "$sources_line" | sudo tee "$sources_list_path" > /dev/null
+    sudo apt update
 }
 
 # Ensure required tools are installed (gnupg, curl, wget)

@@ -3,19 +3,17 @@
 
 # --- Brave Browser ---
 
-check_brave() {
-    command -v brave-browser &>/dev/null || pkg_check_installed brave-browser
-}
+check_brave() { _check_standard brave-browser brave-browser ""; }
 install_brave() {
     info "Installing Brave Browser..."
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg \
-                https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
-            echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" | \
-                sudo tee /etc/apt/sources.list.d/brave-browser-release.list > /dev/null
-            sudo apt update
+            _add_apt_repo \
+                "https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg" \
+                "/usr/share/keyrings/brave-browser-archive-keyring.gpg" \
+                "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" \
+                "/etc/apt/sources.list.d/brave-browser-release.list"
             sudo apt install -y brave-browser
             ;;
         fedora|rhel)
@@ -25,11 +23,7 @@ install_brave() {
             sudo "$PKG_MGR" install -y brave-browser
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install brave-bin
-            else
-                aur_build brave-bin
-            fi
+            aur_ensure brave-bin
             ;;
         suse)
             sudo rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
@@ -71,11 +65,7 @@ update_brave() {
             sudo apt upgrade -y brave-browser
             ;;
         arch)
-            if has_aur_helper; then
-                aur_upgrade brave-bin
-            else
-                aur_build brave-bin
-            fi
+            aur_ensure brave-bin
             ;;
         *)
             pkg_upgrade brave-browser

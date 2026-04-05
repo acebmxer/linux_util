@@ -3,25 +3,18 @@
 
 # --- Syncthing ---
 
-check_syncthing() {
-    command -v syncthing &>/dev/null || pkg_check_installed syncthing
-}
+check_syncthing() { _check_standard syncthing syncthing ""; }
 
 install_syncthing() {
     echo "Installing Syncthing..."
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            # Add the Syncthing PGP key
-            sudo mkdir -p /etc/apt/keyrings
-            sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
-
-            # Add the Syncthing repository
-            echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | \
-                sudo tee /etc/apt/sources.list.d/syncthing.list > /dev/null
-
-            # Update and install
-            sudo apt update
+            _add_apt_repo \
+                "https://syncthing.net/release-key.gpg" \
+                "/etc/apt/keyrings/syncthing-archive-keyring.gpg" \
+                "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" \
+                "/etc/apt/sources.list.d/syncthing.list"
             sudo apt install -y syncthing
             ;;
         fedora)
@@ -102,5 +95,5 @@ update_syncthing() {
     esac
 }
 get_version_syncthing() {
-    syncthing --version 2>/dev/null | awk '{print $2}' | sed 's/^v//' || echo ""
+    _ver_from_cmd syncthing || echo ""
 }

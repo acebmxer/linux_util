@@ -4,10 +4,8 @@
 # --- Nextcloud Desktop ---
 
 check_nextcloud_desktop() {
-    command -v nextcloud &>/dev/null || \
-        pkg_check_installed nextcloud-desktop || \
-        pkg_check_installed nextcloud-client || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "com.nextcloud.desktopclient.nextcloud")
+    _check_standard nextcloud nextcloud-desktop com.nextcloud.desktopclient.nextcloud || \
+        pkg_check_installed nextcloud-client
 }
 
 install_nextcloud_desktop() {
@@ -52,7 +50,7 @@ install_nextcloud_desktop() {
 
 uninstall_nextcloud_desktop() {
     info "Uninstalling Nextcloud Desktop Client..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.nextcloud.desktopclient.nextcloud"; then
+    if flatpak_is_installed "com.nextcloud.desktopclient.nextcloud"; then
         flatpak uninstall -y com.nextcloud.desktopclient.nextcloud
     else
         case "$DISTRO_FAMILY" in
@@ -68,7 +66,7 @@ uninstall_nextcloud_desktop() {
 
 update_nextcloud_desktop() {
     info "Updating Nextcloud Desktop Client..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.nextcloud.desktopclient.nextcloud"; then
+    if flatpak_is_installed "com.nextcloud.desktopclient.nextcloud"; then
         flatpak update -y com.nextcloud.desktopclient.nextcloud
     else
         case "$DISTRO_FAMILY" in
@@ -81,9 +79,7 @@ update_nextcloud_desktop() {
 }
 
 get_version_nextcloud_desktop() {
-    nextcloud --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    (has_flatpak && flatpak list 2>/dev/null | grep -i "com.nextcloud.desktopclient" | awk -F'\t' '{print $3}') || \
-    pkg_get_version nextcloud-desktop 2>/dev/null | sed 's/-.*//' || \
-    pkg_get_version nextcloud-client 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    # Do NOT call nextcloud --version — Qt GUI apps may launch a full window.
+    _ver_from_pkg nextcloud-desktop || _ver_from_pkg nextcloud-client || \
+    _ver_from_flatpak com.nextcloud.desktopclient || echo ""
 }

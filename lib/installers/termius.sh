@@ -9,7 +9,7 @@ check_termius() {
         pkg_check_installed termius || \
         pkg_check_installed termius-app || \
         (has_snap && snap list termius-app &>/dev/null) || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi termius)
+        (flatpak_is_installed termius)
 }
 install_termius() {
     echo "Installing Termius SSH Client..."
@@ -23,11 +23,7 @@ install_termius() {
             rm -f "$tmp_deb"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install termius
-            else
-                aur_build termius
-            fi
+            aur_ensure termius
             ;;
         *)
             if has_snap; then
@@ -54,7 +50,7 @@ uninstall_termius() {
         pkg_remove termius-app
     elif has_snap && snap list termius-app &>/dev/null; then
         sudo snap remove termius-app
-    elif has_flatpak && flatpak list 2>/dev/null | grep -qi termius; then
+    elif flatpak_is_installed termius; then
         flatpak uninstall -y com.termius.Termius
     else
         echo "Termius installation not found."
@@ -74,16 +70,12 @@ update_termius() {
             rm -f "$tmp_deb"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_upgrade termius
-            else
-                aur_build termius
-            fi
+            aur_ensure termius
             ;;
         *)
             if has_snap && snap list termius-app &>/dev/null; then
                 sudo snap refresh termius-app
-            elif has_flatpak && flatpak list 2>/dev/null | grep -qi termius; then
+            elif flatpak_is_installed termius; then
                 flatpak update -y com.termius.Termius
             else
                 echo "Termius installation not found or no supported update method."
@@ -97,10 +89,10 @@ get_version_termius() {
         pkg_get_version termius | sed 's/^[0-9]*://; s/-.*//'
     elif pkg_check_installed termius-app; then
         pkg_get_version termius-app | sed 's/^[0-9]*://; s/-.*//'
-    elif has_snap && snap list termius-app &>/dev/null; then
-        snap list termius-app 2>/dev/null | awk 'NR==2{print $2}'
-    elif has_flatpak && flatpak list 2>/dev/null | grep -qi termius; then
-        flatpak list 2>/dev/null | grep -i termius | awk -F'\t' '{print $3}'
+    elif _ver_from_snap termius-app; then
+        return
+    elif flatpak_is_installed termius; then
+        _ver_from_flatpak termius
     else
         echo ""
     fi

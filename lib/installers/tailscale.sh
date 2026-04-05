@@ -3,9 +3,7 @@
 
 # --- Tailscale ---
 
-check_tailscale() {
-    command -v tailscale &>/dev/null || pkg_check_installed tailscale
-}
+check_tailscale() { _check_standard tailscale tailscale ""; }
 
 install_tailscale() {
     info "Installing Tailscale..."
@@ -98,5 +96,5 @@ update_tailscale() {
 }
 
 get_version_tailscale() {
-    tailscale version 2>/dev/null | head -1 | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' || echo ""
+    _ver_from_cmd tailscale version || echo ""
 }

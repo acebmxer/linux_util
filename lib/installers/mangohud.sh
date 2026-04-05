@@ -3,9 +3,7 @@
 
 # --- MangoHud ---
 
-check_mangohud() {
-    command -v mangohud &>/dev/null || pkg_check_installed mangohud
-}
+check_mangohud() { _check_standard mangohud mangohud ""; }
 
 install_mangohud() {
     info "Installing MangoHud..."
@@ -113,5 +111,5 @@ update_mangohud() {
 }
 
 get_version_mangohud() {
-    mangohud --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo ""
+    _ver_from_cmd mangohud || echo ""
 }

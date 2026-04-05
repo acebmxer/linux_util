@@ -4,11 +4,7 @@
 
 # --- WPS Office ---
 
-check_wps_office() {
-    command -v wps &>/dev/null || \
-        pkg_check_installed wps-office || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "com.wps.Office")
-}
+check_wps_office() { _check_standard wps wps-office com.wps.Office; }
 
 # Download and install WPS Office .deb or .rpm directly from linux.wps.com.
 # Usage: _wps_install_from_site <deb|rpm>
@@ -75,11 +71,7 @@ install_wps_office() {
             _wps_install_from_site "rpm"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install wps-office
-            else
-                aur_build wps-office
-            fi
+            aur_ensure wps-office
             ;;
         suse)
             if has_flatpak; then
@@ -114,14 +106,14 @@ uninstall_wps_office() {
             aur_remove wps-office 2>/dev/null || pkg_remove wps-office 2>/dev/null || true
             ;;
         suse)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.wps.Office"; then
+            if flatpak_is_installed "com.wps.Office"; then
                 flatpak uninstall -y com.wps.Office
             else
                 sudo zypper remove -y wps-office 2>/dev/null || true
             fi
             ;;
         *)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.wps.Office"; then
+            if flatpak_is_installed "com.wps.Office"; then
                 flatpak uninstall -y com.wps.Office
             fi
             ;;
@@ -142,14 +134,10 @@ update_wps_office() {
             _wps_install_from_site "rpm"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_upgrade wps-office
-            else
-                aur_build wps-office
-            fi
+            aur_ensure wps-office
             ;;
         *)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.wps.Office"; then
+            if flatpak_is_installed "com.wps.Office"; then
                 flatpak update -y com.wps.Office
             fi
             ;;
@@ -162,7 +150,7 @@ get_version_wps_office() {
             awk '/^ii/ { print $3 }' | grep -oP '^[0-9]+\.[0-9]+\.[0-9]+' | head -1
         return
     fi
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.wps.Office"; then
+    if flatpak_is_installed "com.wps.Office"; then
         flatpak list --app 2>/dev/null | grep -i "wps" | \
             grep -oP '\t[0-9]+\.[0-9]+\.[0-9]+' | tr -d '\t' | head -1
         return

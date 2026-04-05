@@ -3,11 +3,7 @@
 
 # --- Heroic Games Launcher ---
 
-check_heroic() {
-    command -v heroic &>/dev/null || \
-        pkg_check_installed heroic || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "com.heroicgameslauncher.hgl")
-}
+check_heroic() { _check_standard heroic heroic com.heroicgameslauncher.hgl; }
 
 _heroic_latest_url() {
     local ext="$1"  # deb or rpm
@@ -46,11 +42,7 @@ install_heroic() {
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install heroic-games-launcher-bin
-            else
-                aur_build heroic-games-launcher-bin
-            fi
+            aur_ensure heroic-games-launcher-bin
             ;;
         suse)
             if has_flatpak; then
@@ -66,7 +58,7 @@ install_heroic() {
 
 uninstall_heroic() {
     info "Uninstalling Heroic Games Launcher..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.heroicgameslauncher.hgl"; then
+    if flatpak_is_installed "com.heroicgameslauncher.hgl"; then
         flatpak uninstall -y com.heroicgameslauncher.hgl
     else
         case "$DISTRO_FAMILY" in
@@ -90,24 +82,19 @@ uninstall_heroic() {
 
 update_heroic() {
     info "Updating Heroic Games Launcher..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.heroicgameslauncher.hgl"; then
+    if flatpak_is_installed "com.heroicgameslauncher.hgl"; then
         flatpak update -y com.heroicgameslauncher.hgl
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_heroic ;;
             arch)
-                if has_aur_helper; then
-                    aur_upgrade heroic-games-launcher-bin
-                else
-                    aur_build heroic-games-launcher-bin
-                fi
+                aur_ensure heroic-games-launcher-bin
                 ;;
         esac
     fi
 }
 
 get_version_heroic() {
-    heroic --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    pkg_get_version heroic 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    # Do NOT call heroic --version — Electron apps launch a full GUI window.
+    _ver_from_pkg heroic || echo ""
 }

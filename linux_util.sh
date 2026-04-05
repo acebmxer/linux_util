@@ -536,6 +536,34 @@ process_selected() {
 }
 
 # ============================================================================
+# CLI OPERATION DISPATCHER
+# ============================================================================
+
+# _cli_op op util func
+#   op   — install | uninstall | update
+#   util — resolved utility name
+#   func — resolved function name (already validated by caller)
+_cli_op() {
+    local _op="$1" _util="$2" _func="$3"
+    [[ "$_op" == "install" || "$_op" == "update" ]] && pkg_refresh
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] Would ${_op}: ${_util}"; exit 0
+    fi
+    local _snap_msg
+    if [[ "$_op" == "install" && "${UNINSTALL_FUNCS[$_util]:-}" == "noop_function" ]]; then
+        _snap_msg="linux_util: Before running ${_util}"
+    else
+        _snap_msg="linux_util: Before ${_op}ing ${_util}"
+    fi
+    timeshift_create_snapshot "$_snap_msg"
+    if $_func; then
+        echo "${_op^}ed: ${_util}"; exit 0
+    else
+        echo "Failed: ${_util}"; exit 1
+    fi
+}
+
+# ============================================================================
 # COMMAND-LINE ARGUMENT PARSING
 # ============================================================================
 
@@ -615,66 +643,30 @@ EOF
                 ;;
             --install)
                 [[ -z "${2:-}" ]] && { echo "Error: --install requires a utility name."; exit 1; }
-                local _util
-                _util=$(resolve_utility_name "$2") || exit 1
-                shift 2
+                local _util; _util=$(resolve_utility_name "$2") || exit 1; shift 2
                 local _func="${INSTALL_FUNCS[$_util]:-}"
                 if [[ -z "$_func" ]] || ! declare -f "$_func" &>/dev/null; then
                     echo "Error: No install function found for: $_util"; exit 1
                 fi
-                pkg_refresh
-                if [[ "$DRY_RUN" == "true" ]]; then
-                    echo "[DRY RUN] Would install: $_util"; exit 0
-                fi
-                if [[ "${UNINSTALL_FUNCS[$_util]:-}" == "noop_function" ]]; then
-                    timeshift_create_snapshot "linux_util: Before running ${_util}"
-                else
-                    timeshift_create_snapshot "linux_util: Before installing ${_util}"
-                fi
-                if $_func; then
-                    echo "Installed: $_util"; exit 0
-                else
-                    echo "Failed: $_util"; exit 1
-                fi
+                _cli_op install "$_util" "$_func"
                 ;;
             --uninstall)
                 [[ -z "${2:-}" ]] && { echo "Error: --uninstall requires a utility name."; exit 1; }
-                local _util
-                _util=$(resolve_utility_name "$2") || exit 1
-                shift 2
+                local _util; _util=$(resolve_utility_name "$2") || exit 1; shift 2
                 local _func="${UNINSTALL_FUNCS[$_util]:-}"
                 if [[ -z "$_func" ]] || ! declare -f "$_func" &>/dev/null; then
                     echo "Error: No uninstall function found for: $_util"; exit 1
                 fi
-                if [[ "$DRY_RUN" == "true" ]]; then
-                    echo "[DRY RUN] Would uninstall: $_util"; exit 0
-                fi
-                timeshift_create_snapshot "linux_util: Before uninstalling ${_util}"
-                if $_func; then
-                    echo "Uninstalled: $_util"; exit 0
-                else
-                    echo "Failed: $_util"; exit 1
-                fi
+                _cli_op uninstall "$_util" "$_func"
                 ;;
             --update)
                 [[ -z "${2:-}" ]] && { echo "Error: --update requires a utility name."; exit 1; }
-                local _util
-                _util=$(resolve_utility_name "$2") || exit 1
-                shift 2
+                local _util; _util=$(resolve_utility_name "$2") || exit 1; shift 2
                 local _func="${UPDATE_FUNCS[$_util]:-}"
                 if [[ -z "$_func" ]] || ! declare -f "$_func" &>/dev/null; then
                     echo "Error: No update function found for: $_util"; exit 1
                 fi
-                pkg_refresh
-                if [[ "$DRY_RUN" == "true" ]]; then
-                    echo "[DRY RUN] Would update: $_util"; exit 0
-                fi
-                timeshift_create_snapshot "linux_util: Before updating ${_util}"
-                if $_func; then
-                    echo "Updated: $_util"; exit 0
-                else
-                    echo "Failed: $_util"; exit 1
-                fi
+                _cli_op update "$_util" "$_func"
                 ;;
             --update-all)
                 shift

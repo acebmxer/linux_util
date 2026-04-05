@@ -4,11 +4,7 @@
 
 # --- OnlyOffice Desktop Editors ---
 
-check_onlyoffice() {
-    command -v onlyoffice-desktopeditors &>/dev/null || \
-        pkg_check_installed onlyoffice-desktopeditors || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "org.onlyoffice.desktopeditors")
-}
+check_onlyoffice() { _check_standard onlyoffice-desktopeditors onlyoffice-desktopeditors org.onlyoffice.desktopeditors; }
 
 install_onlyoffice() {
     info "Installing OnlyOffice Desktop Editors..."
@@ -34,11 +30,7 @@ install_onlyoffice() {
             fi
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install onlyoffice-bin
-            else
-                aur_build onlyoffice-bin
-            fi
+            aur_ensure onlyoffice-bin
             ;;
         suse)
             if has_flatpak; then
@@ -69,7 +61,7 @@ uninstall_onlyoffice() {
             sudo rm -f /usr/share/keyrings/onlyoffice.gpg
             ;;
         fedora|rhel)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.onlyoffice.desktopeditors"; then
+            if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
                 flatpak uninstall -y org.onlyoffice.desktopeditors
             else
                 sudo "$PKG_MGR" remove -y onlyoffice-desktopeditors 2>/dev/null || true
@@ -79,14 +71,14 @@ uninstall_onlyoffice() {
             aur_remove onlyoffice-bin 2>/dev/null || pkg_remove onlyoffice-desktopeditors 2>/dev/null || true
             ;;
         suse)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.onlyoffice.desktopeditors"; then
+            if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
                 flatpak uninstall -y org.onlyoffice.desktopeditors
             else
                 sudo zypper remove -y onlyoffice-desktopeditors 2>/dev/null || true
             fi
             ;;
         *)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.onlyoffice.desktopeditors"; then
+            if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
                 flatpak uninstall -y org.onlyoffice.desktopeditors
             fi
             ;;
@@ -104,14 +96,10 @@ update_onlyoffice() {
             sudo apt upgrade -y onlyoffice-desktopeditors
             ;;
         arch)
-            if has_aur_helper; then
-                aur_upgrade onlyoffice-bin
-            else
-                aur_build onlyoffice-bin
-            fi
+            aur_ensure onlyoffice-bin
             ;;
         *)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.onlyoffice.desktopeditors"; then
+            if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
                 flatpak update -y org.onlyoffice.desktopeditors
             else
                 pkg_upgrade onlyoffice-desktopeditors
@@ -126,7 +114,7 @@ get_version_onlyoffice() {
             awk '/^ii/ { print $3 }' | grep -oP '^[0-9]+\.[0-9]+\.[0-9]+' | head -1
         return
     fi
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.onlyoffice.desktopeditors"; then
+    if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
         flatpak list --app 2>/dev/null | grep -i "onlyoffice" | \
             grep -oP '\t[0-9]+\.[0-9]+\.[0-9]+' | tr -d '\t' | head -1
         return

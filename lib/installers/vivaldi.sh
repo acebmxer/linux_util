@@ -14,12 +14,11 @@ install_vivaldi() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo install -d -m 0755 /usr/share/keyrings
-            sudo curl -fsSL "https://repo.vivaldi.com/archive/linux_signing_key.pub" | \
-                sudo gpg --dearmor -o /usr/share/keyrings/vivaldi-keyring.gpg
-            echo "deb [arch=amd64 signed-by=/usr/share/keyrings/vivaldi-keyring.gpg] https://repo.vivaldi.com/archive/deb/ stable main" | \
-                sudo tee /etc/apt/sources.list.d/vivaldi.list > /dev/null
-            sudo apt update
+            _add_apt_repo \
+                "https://repo.vivaldi.com/archive/linux_signing_key.pub" \
+                "/usr/share/keyrings/vivaldi-keyring.gpg" \
+                "deb [arch=amd64 signed-by=/usr/share/keyrings/vivaldi-keyring.gpg] https://repo.vivaldi.com/archive/deb/ stable main" \
+                "/etc/apt/sources.list.d/vivaldi.list"
             sudo apt install -y vivaldi-stable
             ;;
         fedora|rhel)
@@ -35,11 +34,7 @@ EOF
             sudo "$PKG_MGR" install -y vivaldi-stable
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install vivaldi
-            else
-                aur_build vivaldi
-            fi
+            aur_ensure vivaldi
             ;;
         suse)
             sudo rpm --import https://repo.vivaldi.com/archive/linux_signing_key.pub
@@ -82,11 +77,7 @@ update_vivaldi() {
             sudo apt upgrade -y vivaldi-stable
             ;;
         arch)
-            if has_aur_helper; then
-                aur_upgrade vivaldi
-            else
-                aur_build vivaldi
-            fi
+            aur_ensure vivaldi
             ;;
         *)
             pkg_upgrade vivaldi-stable

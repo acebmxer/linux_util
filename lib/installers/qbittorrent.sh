@@ -2,9 +2,7 @@
 # QBittorrent installer functions
 
 # --- QBittorrent ---
-check_qbittorrent() {
-    command -v qbittorrent &>/dev/null || pkg_check_installed qbittorrent
-}
+check_qbittorrent() { _check_standard qbittorrent qbittorrent ""; }
 
 install_qbittorrent() {
     echo "Installing QBittorrent..."
@@ -80,5 +78,5 @@ update_qbittorrent() {
 }
 
 get_version_qbittorrent() {
-    pkg_get_version qbittorrent | sed 's/^[0-9]*://; s/-.*//' || echo ""
+    _ver_from_pkg qbittorrent || echo ""
 }

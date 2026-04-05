@@ -3,11 +3,7 @@
 
 # --- Discord ---
 
-check_discord() {
-    command -v discord &>/dev/null || \
-        pkg_check_installed discord || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "com.discordapp.Discord")
-}
+check_discord() { _check_standard discord discord com.discordapp.Discord; }
 
 install_discord() {
     info "Installing Discord..."
@@ -58,7 +54,7 @@ install_discord() {
 
 uninstall_discord() {
     info "Uninstalling Discord..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.discordapp.Discord"; then
+    if flatpak_is_installed "com.discordapp.Discord"; then
         flatpak uninstall -y com.discordapp.Discord
     else
         case "$DISTRO_FAMILY" in
@@ -80,7 +76,7 @@ uninstall_discord() {
 
 update_discord() {
     info "Updating Discord..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.discordapp.Discord"; then
+    if flatpak_is_installed "com.discordapp.Discord"; then
         flatpak update -y com.discordapp.Discord
     else
         case "$DISTRO_FAMILY" in
@@ -92,9 +88,5 @@ update_discord() {
 }
 
 get_version_discord() {
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.discordapp.Discord"; then
-        flatpak list 2>/dev/null | grep -i "com.discordapp.Discord" | awk -F'\t' '{print $3}'
-    else
-        pkg_get_version discord 2>/dev/null | sed 's/-.*//' || echo ""
-    fi
+    _ver_from_flatpak com.discordapp.Discord || _ver_from_pkg discord || echo ""
 }

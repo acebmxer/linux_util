@@ -3,18 +3,25 @@
 
 # --- Telegram Desktop ---
 
-check_telegram() {
-    command -v telegram-desktop &>/dev/null || \
-        pkg_check_installed telegram-desktop || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "org.telegram.desktop")
-}
+check_telegram() { _check_standard telegram-desktop telegram-desktop org.telegram.desktop; }
 
 install_telegram() {
     info "Installing Telegram Desktop..."
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y telegram-desktop
+            if apt-cache show telegram-desktop &>/dev/null; then
+                sudo apt install -y telegram-desktop
+            elif has_snap; then
+                info "telegram-desktop not in apt repos. Installing via snap..."
+                sudo snap install telegram-desktop
+            elif has_flatpak; then
+                info "telegram-desktop not in apt repos. Installing via Flatpak..."
+                flatpak install -y flathub org.telegram.desktop
+            else
+                error "telegram-desktop not available via apt, snap, or Flatpak."
+                return 1
+            fi
             ;;
         fedora)
             sudo "$PKG_MGR" install -y telegram-desktop
@@ -50,8 +57,10 @@ install_telegram() {
 
 uninstall_telegram() {
     info "Uninstalling Telegram Desktop..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.telegram.desktop"; then
+    if flatpak_is_installed "org.telegram.desktop"; then
         flatpak uninstall -y org.telegram.desktop
+    elif has_snap && snap list telegram-desktop &>/dev/null 2>&1; then
+        sudo snap remove telegram-desktop
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt purge --autoremove -y telegram-desktop ;;
@@ -65,8 +74,10 @@ uninstall_telegram() {
 
 update_telegram() {
     info "Updating Telegram Desktop..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.telegram.desktop"; then
+    if flatpak_is_installed "org.telegram.desktop"; then
         flatpak update -y org.telegram.desktop
+    elif has_snap && snap list telegram-desktop &>/dev/null 2>&1; then
+        sudo snap refresh telegram-desktop
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt update && sudo apt upgrade -y telegram-desktop ;;
@@ -78,8 +89,6 @@ update_telegram() {
 }
 
 get_version_telegram() {
-    telegram-desktop --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    (has_flatpak && flatpak list 2>/dev/null | grep -i "org.telegram.desktop" | awk -F'\t' '{print $3}') || \
-    pkg_get_version telegram-desktop 2>/dev/null | sed 's/-.*//' || \
-    echo ""
+    # Do NOT call telegram-desktop --version — Qt GUI apps may launch a full window.
+    _ver_from_pkg telegram-desktop || _ver_from_snap telegram-desktop || _ver_from_flatpak org.telegram.desktop || echo ""
 }

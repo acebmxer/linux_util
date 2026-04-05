@@ -3,10 +3,7 @@
 
 # --- Bottles ---
 
-check_bottles() {
-    command -v bottles &>/dev/null || \
-        (has_flatpak && flatpak list 2>/dev/null | grep -qi "com.usebottles.bottles")
-}
+check_bottles() { _check_standard bottles "" com.usebottles.bottles; }
 
 install_bottles() {
     info "Installing Bottles..."
@@ -34,7 +31,7 @@ install_bottles() {
 
 uninstall_bottles() {
     info "Uninstalling Bottles..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.usebottles.bottles"; then
+    if flatpak_is_installed "com.usebottles.bottles"; then
         flatpak uninstall -y com.usebottles.bottles
     else
         case "$DISTRO_FAMILY" in
@@ -49,23 +46,17 @@ uninstall_bottles() {
 
 update_bottles() {
     info "Updating Bottles..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "com.usebottles.bottles"; then
+    if flatpak_is_installed "com.usebottles.bottles"; then
         flatpak update -y com.usebottles.bottles
     else
         case "$DISTRO_FAMILY" in
             arch)
-                if has_aur_helper; then
-                    aur_upgrade bottles
-                else
-                    aur_build bottles
-                fi
+                aur_ensure bottles
                 ;;
         esac
     fi
 }
 
 get_version_bottles() {
-    (has_flatpak && flatpak list 2>/dev/null | grep -i "com.usebottles.bottles" | awk -F'\t' '{print $3}') || \
-    bottles --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    echo ""
+    _ver_from_flatpak com.usebottles.bottles || _ver_from_cmd bottles || echo ""
 }

@@ -130,7 +130,7 @@ uninstall_devolutions_rdm() {
             aur_remove remote-desktop-manager 2>/dev/null || pkg_remove remote-desktop-manager 2>/dev/null || true
             ;;
         *)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi "remote.*desktop.*manager\|RemoteDesktopManager"; then
+            if flatpak_is_installed "remote.*desktop.*manager\|RemoteDesktopManager"; then
                 flatpak uninstall -y com.devolutions.RemoteDesktopManager || true
             elif has_snap && snap list 2>/dev/null | grep -qi "remote-desktop-manager"; then
                 sudo snap remove remote-desktop-manager || true
@@ -161,7 +161,7 @@ update_devolutions_rdm() {
             fi
             ;;
         *)
-            if has_flatpak && flatpak list 2>/dev/null | grep -qi "remote.*desktop.*manager\|RemoteDesktopManager"; then
+            if flatpak_is_installed "remote.*desktop.*manager\|RemoteDesktopManager"; then
                 flatpak update -y com.devolutions.RemoteDesktopManager
             elif has_snap && snap list 2>/dev/null | grep -qi "remote-desktop-manager"; then
                 sudo snap refresh remote-desktop-manager

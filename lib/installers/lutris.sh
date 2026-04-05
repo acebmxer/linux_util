@@ -3,9 +3,7 @@
 
 # --- Lutris ---
 
-check_lutris() {
-    command -v lutris &>/dev/null || pkg_check_installed lutris
-}
+check_lutris() { _check_standard lutris lutris ""; }
 
 install_lutris() {
     info "Installing Lutris..."
@@ -54,7 +52,7 @@ install_lutris() {
 
 uninstall_lutris() {
     info "Uninstalling Lutris..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "net.lutris.Lutris"; then
+    if flatpak_is_installed "net.lutris.Lutris"; then
         flatpak uninstall -y net.lutris.Lutris
     else
         case "$DISTRO_FAMILY" in
@@ -81,7 +79,7 @@ uninstall_lutris() {
 
 update_lutris() {
     info "Updating Lutris..."
-    if has_flatpak && flatpak list 2>/dev/null | grep -qi "net.lutris.Lutris"; then
+    if flatpak_is_installed "net.lutris.Lutris"; then
         flatpak update -y net.lutris.Lutris
     else
         case "$DISTRO_FAMILY" in
@@ -94,5 +92,5 @@ update_lutris() {
 }
 
 get_version_lutris() {
-    lutris --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo ""
+    _ver_from_cmd lutris || echo ""
 }
