@@ -112,6 +112,9 @@ source "${SCRIPT_DIR}/lib/pkg_manager.sh" || { echo "Error: Failed to source pkg
 # Initialize performance metrics tracking
 metrics_init
 
+# Prune log files according to retention policy (age + count limits from config)
+prune_logs
+
 # ============================================================================
 # SYSTEM INITIALIZATION
 # ============================================================================

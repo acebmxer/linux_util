@@ -9,6 +9,7 @@
 # These are overridden by linux_util.conf if present.
 CFG_LOG_RETENTION_DAYS=30
 CFG_MAX_LOG_SIZE_MB=50
+CFG_MAX_LOGS_PER_DAY=15
 CFG_COMPRESS_OLD_LOGS=true
 CFG_LOG_LEVEL="INFO"      # DEBUG, INFO, WARNING, ERROR
 
@@ -104,6 +105,7 @@ load_config() {
         case "$key" in
             log_retention_days)     _cfg_require_int "$key" "$value" && CFG_LOG_RETENTION_DAYS="$value" ;;
             max_log_size_mb)        _cfg_require_int "$key" "$value" && CFG_MAX_LOG_SIZE_MB="$value" ;;
+            max_logs_per_day)       _cfg_require_int "$key" "$value" && CFG_MAX_LOGS_PER_DAY="$value" ;;
             compress_old_logs)      _cfg_require_bool "$key" "$value" && CFG_COMPRESS_OLD_LOGS="$value" ;;
             log_level)              CFG_LOG_LEVEL="$value" ;;
             auto_confirm)           _cfg_require_bool "$key" "$value" && CFG_AUTO_CONFIRM="$value" ;;
