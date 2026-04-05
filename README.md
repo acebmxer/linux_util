@@ -67,7 +67,7 @@ The TUI uses a two-panel layout: a left sidebar with category tabs and system in
 ├──────────────────────┤                                                  │
 │ SYSTEM INFO          │                                                  │
 ├──────────────────────┤                                                  │
-│     Host: linux-pc    │                                                  │
+│     Host: linux-pc   │                                                  │
 │       OS: Arch Linux │                                                  │
 │   Kernel: 6.12.8-1   │                                                  │
 │      CPU: i9-14900K  │──────────────────────────────────────────────────│
