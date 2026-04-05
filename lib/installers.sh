@@ -51,6 +51,7 @@ register_system_task "Enable RDP"         install_enable_rdp      check_enable_r
 register_system_task "AMD Drivers"        install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
 register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_setup   uninstall_flatpak_setup   update_flatpak_setup      get_version_flatpak_setup
 register_system_task "UFW Firewall"       install_ufw             check_ufw             uninstall_ufw             update_ufw                get_version_ufw
+register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 
 # Landscape MOTD (Ubuntu, Kubuntu, KDE Neon)
 if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
@@ -239,6 +240,7 @@ UTILITY_DESCRIPTION["Enable RDP"]="Enables Remote Desktop Protocol access to thi
 UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance."
 UTILITY_DESCRIPTION["Flatpak Setup"]="Configures the Flatpak package manager and adds the Flathub repository for sandboxed applications."
 UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firewall with sensible default rules."
+UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local MOTD"]="Replaces Ubuntu's default dynamic MOTD with a clean, fast local version."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
 UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot for backup and rollback purposes using the configured snapshot backend."
