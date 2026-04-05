@@ -55,6 +55,10 @@ install_timeshift() {
             ;;
     esac
     echo "Timeshift installed successfully."
+
+    # Initialize snapshot support now that Timeshift is available,
+    # so the user can configure the backup device immediately.
+    timeshift_init
 }
 
 uninstall_timeshift() {

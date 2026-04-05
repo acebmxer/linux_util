@@ -67,6 +67,7 @@ fi
 
 # Snapshot tasks (Create / Restore) — runtime checks for available backend
 register_system_task "Create Snapshot"   setup_create_snapshot   check_always_false    noop_function             setup_create_snapshot
+NO_RETRY["Create Snapshot"]=1
 register_system_task "Restore Snapshot"  setup_restore_snapshot  check_always_false    noop_function             setup_restore_snapshot
 NO_RETRY["Restore Snapshot"]=1
 
