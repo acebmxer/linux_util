@@ -1,11 +1,17 @@
 #!/bin/bash
 
 # ============================================================================
-# Linux Utilities - Menu Module
-# Provides TUI menu rendering and keyboard navigation functions
+# Linux Utilities - Menu Module (Linutil-Style TUI)
+# Provides a bordered panel TUI with tabs, search, scrolling, and system info
 # ============================================================================
 
-# Terminal control sequences
+# Enable extended globbing for ANSI-stripping in _visible_len
+shopt -s extglob
+
+# ============================================================================
+# TERMINAL CONTROL & COLOR DEFINITIONS
+# ============================================================================
+
 CSI=$'\x1b['
 BOLD="${CSI}1m"
 DIM="${CSI}2m"
@@ -16,425 +22,1112 @@ YELLOW="${CSI}33m"
 BLUE="${CSI}34m"
 MAGENTA="${CSI}35m"
 CYAN="${CSI}36m"
+WHITE="${CSI}37m"
+BG_BLUE="${CSI}44m"
+BG_CYAN="${CSI}46m"
 
 # Respect the NO_COLOR standard (https://no-color.org/), non-interactive terminals,
 # and the --no-color CLI flag.
 if [[ ! -t 1 || -n "${NO_COLOR:-}" || "${NO_COLOR_FLAG:-false}" == "true" ]]; then
     BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN=""
+    WHITE="" BG_BLUE="" BG_CYAN=""
 fi
 
-# Hide cursor
+# Cursor control
 hide_cursor() { printf "${CSI}?25l"; }
-# Show cursor
 show_cursor() { printf "${CSI}?25h"; }
-# Move cursor up N lines
-cursor_up() { printf "${CSI}%dA" "$1"; }
-# Move cursor to beginning of line
-cursor_start() { printf "\r"; }
-# Clear line
-clear_line() { printf "${CSI}2K"; }
-
-# Draw the menu
-# COLUMN LAYOUT MATH (2-column format, do not modify):
-# ├─ system_rows_per_column = ceil(system_tasks / 2)
-# │  Example: 5 tasks → (5+1)/2 = 3 rows per column
-# │  Result: [left column rows 0-2, right column rows 0-2, some empty]
-# │
-# ├─ rows_per_column = ceil(utilities_count / 2)
-# │  Example: 14 utils → (14+1)/2 = 7 rows per column
-# │  Result: [left column 0-6, right column 0-6]
-# │
-# ├─ Rendering order (top-down, then next column):
-# │  LEFT column:  index 0, 1, 2, ...
-# │  RIGHT column: index rows_per_column, rows_per_column+1, ...
-# │
-# └─ Item position calculation: idx = col * rows_per_column + row
-#    LEFT (col=0):  0, 1, 2, 3...  RIGHT (col=1): 7, 8, 9...
-
-# Render one section's grid of items into the caller's _buf variable.
-# Relies on Bash dynamic scoping: _buf, col_width, pad, eol, CURSOR and all
-# UTILITIES/SELECTED/INSTALLED arrays are visible from draw_menu's frame.
-# Usage: _draw_items start_idx item_limit rows_per_col num_cols
-_draw_items() {
-    local _di_start="$1"
-    local _di_limit="$2"
-    local _di_rpc="$3"
-    local _di_cols="$4"
-
-    local _di_row _di_col
-    for (( _di_row=0; _di_row<_di_rpc; _di_row++ )); do
-        local line=""
-        for (( _di_col=0; _di_col<_di_cols; _di_col++ )); do
-            local i=$(( _di_start + _di_col * _di_rpc + _di_row ))
-            [[ $i -ge $_di_limit ]] && continue
-
-            local prefix="  "
-            local checkbox="[ ]"
-            local name="${UTILITIES[$i]}"
-            local status_tag=""
-
-            if [[ $i -eq $CURSOR ]]; then
-                prefix="${BOLD}${BLUE}▸ ${RESET}"
-            fi
-
-            if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
-                checkbox="${YELLOW}[U]${RESET}"
-            elif [[ ${SELECTED[$i]} -eq 1 ]]; then
-                checkbox="${GREEN}[✓]${RESET}"
-            fi
-
-            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                local ver="${INSTALLED_VERSIONS[$i]:-}"
-                if [[ -n "$ver" ]]; then
-                    status_tag=" ${MAGENTA}(v${ver})${RESET}"
-                else
-                    status_tag=" ${MAGENTA}(installed)${RESET}"
-                fi
-            fi
-
-            local item=""
-            if [[ $i -eq $CURSOR ]]; then
-                item="${prefix}${checkbox} ${BOLD}${name}${RESET}${status_tag}"
-            else
-                item="${prefix}${checkbox} ${name}${status_tag}"
-            fi
-
-            # Add column padding using visible width (no ANSI codes)
-            if [[ $_di_col -lt $(( _di_cols - 1 )) ]]; then
-                local plain_status=""
-                if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                    local pver="${INSTALLED_VERSIONS[$i]:-}"
-                    if [[ -n "$pver" ]]; then
-                        plain_status=" (v${pver})"
-                    else
-                        plain_status=" (installed)"
-                    fi
-                fi
-                # Visible chars: prefix (2), checkbox (3), space (1), name, status text
-                local visible_len=$(( 2 + 3 + 1 + ${#name} + ${#plain_status} ))
-                local padding=$(( col_width - visible_len ))
-                [[ $padding -lt 2 ]] && padding=2
-                item="${item}$(printf '%*s' $padding '')"
-            fi
-
-            line="${line}${item}"
-        done
-        _buf+="${pad}${line}${eol}"$'\n'
-    done
-}
-
-draw_menu() {
-    local total=${#UTILITIES[@]}
-    local system_tasks=${#SYSTEM_TASKS[@]}
-    local utilities_start=$system_tasks
-    local utilities_count=$((total - system_tasks))
-
-    # Re-query terminal width on every draw (supports live resize via SIGWINCH)
-    local term_width=${COLUMNS:-80}
-
-    # Force 2 columns by calculating rows needed
-    local system_rows_per_column=$(( (system_tasks + 1) / 2 ))  # ceil(system_tasks / 2) for 2 columns
-    local rows_per_column=$(( (utilities_count + 1) / 2 ))      # ceil(utilities_count / 2) for 2 columns
-
-    # Always 2 columns (unless fewer items)
-    local num_columns=$(( utilities_count > 0 ? 2 : 0 ))
-    local system_num_columns=$(( system_tasks > 0 ? 2 : 0 ))
-
-    local col_width=40
-    local content_width=$(( col_width * 2 ))
-
-    # Centre the content block horizontally in the terminal
-    local margin=0
-    (( term_width > content_width )) && margin=$(( (term_width - content_width) / 2 ))
-    local pad=""
-    (( margin > 0 )) && printf -v pad '%*s' "$margin" ''
-
-    # Clear-to-end-of-line — appended to every line so shorter redraws
-    # overwrite longer previous lines without leaving ghost characters
-    local eol=$'\033[K'
-
-    local dry_run_label=""
-    [[ "$DRY_RUN" == "true" ]] && dry_run_label="  ${BOLD}${YELLOW}[DRY RUN]${RESET}"
-
-    # Pre-build repeated-character strings without subshells
-    local inner_width=$((content_width - 2))
-    local border_fill sep_fill
-    printf -v border_fill '%*s' "$inner_width" ''; border_fill="${border_fill// /═}"
-    printf -v sep_fill '%*s' "$content_width" ''; sep_fill="${sep_fill// /-}"
-
-    # Build entire menu into a single buffer and flush at once.
-    # This eliminates SSH flicker caused by many individual write() syscalls.
-    local _buf=""
-
-    # Cursor home — no clear-screen, overwrite in place for flicker-free rendering.
-    # Per-line \033[K and trailing \033[J clean up stale characters.
-    _buf+=$'\033[H'
-
-    # ── Banner (dynamic width, centred text) ──
-    local banner_text="Linux System Setup & Utilities - Select Programs/Tasks"
-    local banner_len=${#banner_text}
-    local blpad=$(( (inner_width - banner_len) / 2 ))
-    local brpad=$(( inner_width - banner_len - blpad ))
-    local blspaces="" brspaces=""
-    (( blpad > 0 )) && printf -v blspaces '%*s' "$blpad" ''
-    (( brpad > 0 )) && printf -v brspaces '%*s' "$brpad" ''
-
-    _buf+="${pad}${eol}"$'\n'
-    _buf+="${pad}${BOLD}${CYAN}╔${border_fill}╗${RESET}${eol}"$'\n'
-    _buf+="${pad}${BOLD}${CYAN}║${blspaces}${banner_text}${brspaces}║${RESET}${dry_run_label}${eol}"$'\n'
-    _buf+="${pad}${BOLD}${CYAN}╚${border_fill}╝${RESET}${eol}"$'\n'
-    _buf+="${pad}${eol}"$'\n'
-
-    # ── Commit & system info (centred within content area) ──
-    local _commit_plain="Script (${CACHED_LOCAL_BRANCH}): ${CACHED_LOCAL_COMMIT}  |  Main Branch: ${CACHED_REMOTE_COMMIT}"
-    local _clpad=$(( (content_width - ${#_commit_plain}) / 2 ))
-    (( _clpad < 0 )) && _clpad=0
-    local _cspaces=""
-    (( _clpad > 0 )) && printf -v _cspaces '%*s' "$_clpad" ''
-    _buf+="${pad}${_cspaces}Script (${BOLD}${CACHED_LOCAL_BRANCH}${RESET}): ${BOLD}${CACHED_LOCAL_COMMIT}${RESET}  |  Main Branch: ${BOLD}${CACHED_REMOTE_COMMIT}${RESET}${eol}"$'\n'
-
-    if [[ "$CACHED_LOCAL_COMMIT" != "unknown" && "$CACHED_REMOTE_COMMIT" != "unknown" && "$CACHED_LOCAL_COMMIT" != "$CACHED_REMOTE_COMMIT" ]]; then
-        local _ood_text="Script out of date, please update."
-        local _olpad=$(( (content_width - ${#_ood_text}) / 2 ))
-        (( _olpad < 0 )) && _olpad=0
-        local _ospaces=""
-        (( _olpad > 0 )) && printf -v _ospaces '%*s' "$_olpad" ''
-        _buf+="${pad}${_ospaces}${BOLD}${YELLOW}${_ood_text}${RESET}${eol}"$'\n'
-    fi
-
-    local _sys_plain="Detected System: ${DISTRO_NAME}   Version: ${DISTRO_VERSION_ID}"
-    local _slpad=$(( (content_width - ${#_sys_plain}) / 2 ))
-    (( _slpad < 0 )) && _slpad=0
-    local _sspaces=""
-    (( _slpad > 0 )) && printf -v _sspaces '%*s' "$_slpad" ''
-    _buf+="${pad}${_sspaces}Detected System: ${BOLD}${DISTRO_NAME}${RESET}   Version: ${BOLD}${DISTRO_VERSION_ID}${RESET}${eol}"$'\n'
-
-    # Display Timeshift last snapshot if available
-    if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" ]]; then
-        local _snap_label="Timeshift"
-        [[ "${SNAPSHOT_BACKEND:-}" == "snapper" ]] && _snap_label="Snapper"
-        local _snap_raw="${TIMESHIFT_LAST_SNAPSHOT:-}"
-        local _snap_formatted
-        if [[ -n "$_snap_raw" ]]; then
-            # Parse and reformat the leading YYYY-MM-DD_HH-MM-SS timestamp
-            local _snap_name="${_snap_raw%%[[:space:]]*}"   # e.g. 2026-03-27_18-13-11
-            local _snap_date="${_snap_name%%_*}"             # e.g. 2026-03-27
-            local _snap_time="${_snap_name##*_}"             # e.g. 18-13-11
-            _snap_time="${_snap_time//-/:}"                  # e.g. 18:13:11
-            local _snap_display
-            _snap_display="$(date -d "${_snap_date} ${_snap_time}" '+%d %b %Y %I:%M %p' 2>/dev/null)" \
-                || _snap_display="$_snap_name"
-            # Remainder after the snap_name (e.g. " [O] - description")
-            local _snap_remainder="${_snap_raw#"$_snap_name"}"
-            _snap_formatted="${_snap_display}${_snap_remainder}"
-        else
-            _snap_formatted="No snapshots found"
-        fi
-
-        # Truncate the description so the full plain line fits within content_width
-        local _snap_prefix="Last ${_snap_label} Snapshot: "
-        local _snap_full_plain="${_snap_prefix}${_snap_formatted}"
-        local _snap_over=$(( ${#_snap_full_plain} - content_width ))
-        if (( _snap_over > 0 )); then
-            # Only truncate the description part (after " - "), leaving date/tags intact
-            local _snap_desc_marker=" - "
-            local _snap_before_desc="${_snap_formatted%%"${_snap_desc_marker}"*}"
-            local _snap_desc="${_snap_formatted#*"${_snap_desc_marker}"}"
-            if [[ "$_snap_before_desc" != "$_snap_formatted" ]]; then
-                # Trim _snap_over chars off the description, then append "..."
-                local _snap_desc_trimlen=$(( ${#_snap_desc} - _snap_over - 3 ))
-                (( _snap_desc_trimlen < 0 )) && _snap_desc_trimlen=0
-                _snap_formatted="${_snap_before_desc}${_snap_desc_marker}${_snap_desc:0:$_snap_desc_trimlen}..."
-            else
-                # No description section; trim the whole formatted string
-                local _snap_trimlen=$(( content_width - ${#_snap_prefix} - 3 ))
-                (( _snap_trimlen < 0 )) && _snap_trimlen=0
-                _snap_formatted="${_snap_formatted:0:$_snap_trimlen}..."
-            fi
-        fi
-
-        local _ts_plain="${_snap_prefix}${_snap_formatted}"
-        local _tlpad=$(( (content_width - ${#_ts_plain}) / 2 ))
-        (( _tlpad < 0 )) && _tlpad=0
-        local _tspaces=""
-        (( _tlpad > 0 )) && printf -v _tspaces '%*s' "$_tlpad" ''
-        _buf+="${pad}${_tspaces}${_snap_prefix}${BOLD}${_snap_formatted}${RESET}${eol}"$'\n'
-    fi
-
-    _buf+="${pad}${eol}"$'\n'
-
-    # Display System Tasks section
-    _buf+="${pad}${BOLD}${CYAN}System Tasks:${RESET}${eol}"$'\n'
-    _draw_items 0 "$system_tasks" "$system_rows_per_column" "$system_num_columns"
-
-    _buf+="${pad}${eol}"$'\n'
-    _buf+="${pad}${DIM}${sep_fill}${RESET}${eol}"$'\n'
-    _buf+="${pad}${eol}"$'\n'
-    _buf+="${pad}${BOLD}${CYAN}Utilities:${RESET}${eol}"$'\n'
-
-    # Build items for utilities in columns (same layout logic as System Tasks above)
-    _draw_items "$utilities_start" "$total" "$rows_per_column" "$num_columns"
-
-    _buf+="${pad}${eol}"$'\n'
-    _buf+="${pad}${sep_fill}${eol}"$'\n'
-
-    # Count selected items and categorize actions
-    local install_count=0
-    local uninstall_count=0
-    local update_count=0
-    for ((i=0; i<total; i++)); do
-        if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
-            (( update_count += 1 ))
-        elif [[ ${SELECTED[$i]} -eq 1 ]]; then
-            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
-                (( uninstall_count += 1 ))
-            else
-                (( install_count += 1 ))
-            fi
-        fi
-    done
-
-    _buf+="${pad}${CYAN}Actions: ${GREEN}Install: ${install_count}${RESET} | ${RED}Uninstall: ${uninstall_count}${RESET} | ${YELLOW}Update: ${update_count}${RESET}${eol}"$'\n'
-    _buf+="${pad}${eol}"$'\n'
-    _buf+="${pad}${YELLOW}↑↓←→ move  SPACE select  U update  A all  D none  ENTER confirm  Q quit${RESET}${eol}"$'\n'
-    _buf+="${pad}${eol}"$'\n'
-    _buf+="${pad}${DIM}Legend: ${GREEN}[✓]${RESET}${DIM} select  ${YELLOW}[U]${RESET}${DIM} update  ${RESET}${DIM}[ ]${RESET}${DIM} none  ${MAGENTA}(installed)${RESET}${DIM} = on system${RESET}${eol}"$'\n'
-    _buf+="${pad}${DIM}[✓] on installed = uninstall; [✓] on missing = install; [U] on installed = update.${RESET}${eol}"$'\n'
-
-    # Clear any leftover lines below from a previous (taller) render
-    _buf+=$'\033[J'
-
-    # Single write flushes entire menu — eliminates per-line SSH flicker
-    printf '%s' "$_buf"
-}
-
-# Redraw the menu in-place — cursor home is embedded in draw_menu's buffer
-# so the entire position-move + repaint is a single atomic write.
-redraw_menu() {
-    draw_menu
-}
-
-# Dynamically build navigational columns used by keyboard navigation.
-# Each visual display-column (spanning both System Tasks and Utilities) becomes
-# one navigational column.  Supports any number of columns.
-# Results are stored in NAV_FLAT (packed indices), NAV_COL_START (offsets),
-# NAV_COL_SIZE (lengths), and NAV_NUM_COLS.
-build_nav_columns() {
-    NAV_FLAT=()
-    NAV_COL_START=()
-    NAV_COL_SIZE=()
-    NAV_COL_SYS_SIZE=()   # system-task count per column (for section-aware LEFT/RIGHT)
-    NAV_NUM_COLS=0
-    local total=${#UTILITIES[@]}
-    local sys_tasks=${#SYSTEM_TASKS[@]}
-    local utilities_count=$(( total - sys_tasks ))
-
-    # Force 2 columns by calculating rows needed
-    local sys_rows=$(( (sys_tasks + 1) / 2 ))         # ceil(sys_tasks / 2) for 2 columns
-    local util_rows=$(( (utilities_count + 1) / 2 ))  # ceil(utilities_count / 2) for 2 columns
-
-    # Always 2 columns (unless fewer items)
-    local sys_cols=$(( sys_tasks > 0 ? 2 : 0 ))
-    local util_cols=$(( utilities_count > 0 ? 2 : 0 ))
-    local max_cols=$(( sys_cols > util_cols ? sys_cols : util_cols ))
-    NAV_NUM_COLS=$max_cols
-
-    for (( c=0; c<max_cols; c++ )); do
-        NAV_COL_START+=( ${#NAV_FLAT[@]} )
-        local col_size=0
-        local col_sys_size=0
-
-        # Add system task items for this column
-        for (( r=0; r<sys_rows; r++ )); do
-            local idx=$(( c * sys_rows + r ))
-            if (( idx < sys_tasks )); then
-                NAV_FLAT+=( "$idx" )
-                (( col_size += 1 ))
-                (( col_sys_size += 1 ))
-            fi
-        done
-
-        # Add utility items for this column
-        for (( r=0; r<util_rows; r++ )); do
-            local u_idx=$(( c * util_rows + r ))
-            if (( u_idx < utilities_count )); then
-                NAV_FLAT+=( "$(( sys_tasks + u_idx ))" )
-                (( col_size += 1 ))
-            fi
-        done
-
-        NAV_COL_SIZE+=( "$col_size" )
-        NAV_COL_SYS_SIZE+=( "$col_sys_size" )
-    done
-}
-
-# Read a single keypress
-read_key() {
-    local key
-    IFS= read -rsn1 key
-
-    # Check for escape sequence (arrow keys)
-    # Read byte-by-byte with a generous timeout to handle SSH latency
-    # where escape sequence bytes may arrive with delays between them
-    if [[ $key == $ESC ]]; then
-        local seq
-        IFS= read -rsn1 -t 0.5 seq
-        case "$seq" in
-            '[')
-                # CSI sequence (standard: ESC [ A/B/C/D)
-                IFS= read -rsn1 -t 0.5 seq
-                case "$seq" in
-                    A) echo "UP" ;;
-                    B) echo "DOWN" ;;
-                    C) echo "RIGHT" ;;
-                    D) echo "LEFT" ;;
-                    *) echo "OTHER" ;;
-                esac
-                ;;
-            O)
-                # SS3 sequence (application cursor mode: ESC O A/B/C/D)
-                IFS= read -rsn1 -t 0.5 seq
-                case "$seq" in
-                    A) echo "UP" ;;
-                    B) echo "DOWN" ;;
-                    C) echo "RIGHT" ;;
-                    D) echo "LEFT" ;;
-                    *) echo "OTHER" ;;
-                esac
-                ;;
-            *) echo "OTHER" ;;
-        esac
-    elif [[ $key == "" ]]; then
-        echo "ENTER"
-    elif [[ $key == " " ]]; then
-        echo "SPACE"
-    elif [[ $key == "q" ]] || [[ $key == "Q" ]]; then
-        echo "QUIT"
-    elif [[ $key == "a" ]] || [[ $key == "A" ]]; then
-        echo "SELECT_ALL"
-    elif [[ $key == "d" ]] || [[ $key == "D" ]]; then
-        echo "DESELECT_ALL"
-    elif [[ $key == "u" ]] || [[ $key == "U" ]]; then
-        echo "UPDATE"
-    else
-        echo "OTHER"
-    fi
-}
-
-# Navigation arrays (initialized in run_selection_menu)
-declare -a NAV_FLAT=()
-declare -a NAV_COL_START=()
-declare -a NAV_COL_SIZE=()
-declare -a NAV_COL_SYS_SIZE=()
-NAV_NUM_COLS=0
 
 # Escape key for terminal input
 ESC=$'\x1b'
 
-# Global flag: true while the TUI menu is actively displayed (cursor hidden,
-# echo disabled).  Used by trap handlers to restore terminal state on
-# unexpected exit (Ctrl+C, SIGTERM, etc.).
+# ============================================================================
+# BOX-DRAWING CHARACTERS
+# ============================================================================
+
+_BD_TL="┌" _BD_TR="┐" _BD_BL="└" _BD_BR="┘"
+_BD_H="─"  _BD_V="│"
+_BD_TJ="┬" _BD_BJ="┴" _BD_LJ="├" _BD_RJ="┤" _BD_X="┼"
+
+# ============================================================================
+# TUI STATE VARIABLES
+# ============================================================================
+
+# Focus state: "tabs" or "items"
+_FOCUS="items"
+
+# Active tab: 0 = System Tasks, 1 = Utilities
+_ACTIVE_TAB=0
+
+# Tab definitions — populated at runtime from CATEGORIES in run_selection_menu
+_TAB_NAMES=()
+
+# Per-tab cursor position within the filtered item list
+_TAB_CURSOR=()
+
+# Per-tab scroll offset (viewport top)
+_TAB_SCROLL=()
+
+# Per-tab active subcategory (empty string = top level, non-empty = inside a subcategory)
+_TAB_SUBCAT=()
+
+# Sentinel value used as the index for the ".." (go-up) entry
+_SUBCAT_UP_SENTINEL=-1
+
+# Search state
+_SEARCH_ACTIVE=false
+_SEARCH_QUERY=""
+declare -a _SEARCH_FILTERED=()
+
+# System info cache (populated once by _gather_sysinfo)
+_SYSINFO_HOST=""
+_SYSINFO_OS=""
+_SYSINFO_KERNEL=""
+_SYSINFO_CPU=""
+_SYSINFO_MEM=""
+_SYSINFO_DISK=""
+_SYSINFO_UPTIME=""
+
+# Layout geometry (recalculated on resize)
+_TERM_ROWS=0
+_TERM_COLS=0
+_LEFT_W=0
+_RIGHT_W=0
+_MAIN_H=0
+_ITEMS_H=0
+_DESC_H=0
+
+# Global flag: true while the TUI menu is actively displayed
 _MENU_ACTIVE=false
+
+# Flag: set to true by WINCH trap so _calc_layout re-queries the terminal size
+_NEEDS_SIZE_REFRESH=true
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+# Return visible length of a string (strip ANSI escape sequences)
+# Result stored in _VLEN to avoid subshells in hot path
+_VLEN=0
+_visible_len() {
+    local str="$1"
+    # Strip all CSI sequences (ESC [ ... final_byte)
+    local stripped="${str//$'\x1b'\[*([0-9;])m/}"
+    # Also strip any remaining ESC sequences
+    stripped="${stripped//$'\x1b'\[*([0-9;?])[a-zA-Z]/}"
+    _VLEN=${#stripped}
+}
+
+# Pad or truncate a string to exact visible width
+# Usage: _pad_or_truncate "string" width
+# Output stored in global _POT_RESULT to avoid subshell
+_POT_RESULT=""
+_pad_or_truncate() {
+    local str="$1"
+    local target_w="$2"
+    _visible_len "$str"
+    local vlen=$_VLEN
+
+    if (( vlen == target_w )); then
+        _POT_RESULT="$str"
+    elif (( vlen < target_w )); then
+        local pad_n=$(( target_w - vlen ))
+        local padding=""
+        printf -v padding '%*s' "$pad_n" ''
+        _POT_RESULT="${str}${padding}"
+    else
+        # Truncate: walk character by character, tracking visible length
+        local result="" vis=0 i=0 len=${#str}
+        local in_esc=false
+        while (( i < len && vis < target_w )); do
+            local ch="${str:$i:1}"
+            if [[ "$in_esc" == true ]]; then
+                result+="$ch"
+                # End of CSI sequence
+                [[ "$ch" =~ [a-zA-Z] ]] && in_esc=false
+            elif [[ "$ch" == $'\x1b' ]]; then
+                result+="$ch"
+                in_esc=true
+            else
+                if (( vis < target_w )); then
+                    result+="$ch"
+                    (( vis++ ))
+                fi
+            fi
+            (( i++ ))
+        done
+        # Close any open ANSI with reset
+        _POT_RESULT="${result}${RESET}"
+    fi
+}
+
+# Generate a horizontal line of repeated characters
+# Usage: _hline width [char]
+_HLINE_RESULT=""
+_hline() {
+    local w="$1"
+    local ch="${2:-$_BD_H}"
+    printf -v _HLINE_RESULT '%*s' "$w" ''
+    _HLINE_RESULT="${_HLINE_RESULT// /$ch}"
+}
+
+# ============================================================================
+# CATEGORY FILTER
+# ============================================================================
+
+# Parallel arrays describing each entry in the filtered list:
+#   _SEARCH_FILTERED    — utility index (only valid when type == "utility")
+#   _SEARCH_ITEM_TYPE   — "utility" | "subcat" | "up"
+#   _SEARCH_ITEM_LABEL  — display label (subcategory name for "subcat", ".." for "up")
+declare -a _SEARCH_ITEM_TYPE=()
+declare -a _SEARCH_ITEM_LABEL=()
+
+# Rebuild the filtered item list based on active tab, subcategory, and search query.
+# When a search query is active, search ALL categories (flat, no subcategory drilling)
+# and auto-switch _ACTIVE_TAB to the category containing the first/best match.
+_rebuild_filtered() {
+    _SEARCH_FILTERED=()
+    _SEARCH_ITEM_TYPE=()
+    _SEARCH_ITEM_LABEL=()
+    local i total=${#UTILITIES[@]}
+    local query_lower="${_SEARCH_QUERY,,}"
+
+    if [[ -n "$_SEARCH_QUERY" ]]; then
+        # Search mode: scan every utility regardless of category/subcategory
+        for (( i=0; i<total; i++ )); do
+            local name="${UTILITIES[$i]}"
+            if [[ "${name,,}" == *"$query_lower"* ]]; then
+                _SEARCH_FILTERED+=("$i")
+                _SEARCH_ITEM_TYPE+=("utility")
+                _SEARCH_ITEM_LABEL+=("$name")
+            fi
+        done
+
+        # Auto-switch active tab to the category of the first match
+        if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
+            local first_idx=${_SEARCH_FILTERED[0]}
+            local first_name="${UTILITIES[$first_idx]}"
+            local first_cat=""
+            # Check if it's a system task
+            local _st
+            for _st in "${SYSTEM_TASKS[@]}"; do
+                if [[ "$_st" == "$first_name" ]]; then
+                    first_cat="System Tasks"
+                    break
+                fi
+            done
+            # Otherwise look up UTILITY_CATEGORY
+            [[ -z "$first_cat" ]] && first_cat="${UTILITY_CATEGORY[$first_name]:-}"
+            # Find the tab index for that category
+            local t
+            for (( t=0; t<${#_TAB_NAMES[@]}; t++ )); do
+                if [[ "${_TAB_NAMES[$t]}" == "$first_cat" ]]; then
+                    _ACTIVE_TAB=$t
+                    break
+                fi
+            done
+        fi
+    else
+        # Normal mode: filter by active category and active subcategory
+        local category="${_TAB_NAMES[$_ACTIVE_TAB]:-System Tasks}"
+        local active_subcat="${_TAB_SUBCAT[$_ACTIVE_TAB]:-}"
+
+        if [[ -n "$active_subcat" ]]; then
+            # --- Inside a subcategory: show ".." then items belonging to this subcategory ---
+            _SEARCH_FILTERED+=("-1")      # ".." entry uses sentinel index
+            _SEARCH_ITEM_TYPE+=("up")
+            _SEARCH_ITEM_LABEL+=("..")
+
+            for (( i=0; i<total; i++ )); do
+                local name="${UTILITIES[$i]}"
+                local item_cat=""
+                if [[ "$category" == "System Tasks" ]]; then
+                    local _st
+                    for _st in "${SYSTEM_TASKS[@]}"; do
+                        [[ "$_st" == "$name" ]] && item_cat="System Tasks" && break
+                    done
+                else
+                    item_cat="${UTILITY_CATEGORY[$name]:-}"
+                fi
+                local item_subcat="${UTILITY_SUBCATEGORY[$name]:-}"
+                if [[ "$item_cat" == "$category" && "$item_subcat" == "$active_subcat" ]]; then
+                    _SEARCH_FILTERED+=("$i")
+                    _SEARCH_ITEM_TYPE+=("utility")
+                    _SEARCH_ITEM_LABEL+=("$name")
+                fi
+            done
+        else
+            # --- Top level of a category: show subcategory folders, then uncategorised items ---
+
+            # Collect distinct subcategory names present in this category
+            declare -A _seen_subcats=()
+            local -a _ordered_subcats=()
+            for (( i=0; i<total; i++ )); do
+                local name="${UTILITIES[$i]}"
+                local item_cat=""
+                if [[ "$category" == "System Tasks" ]]; then
+                    local _st
+                    for _st in "${SYSTEM_TASKS[@]}"; do
+                        [[ "$_st" == "$name" ]] && item_cat="System Tasks" && break
+                    done
+                else
+                    item_cat="${UTILITY_CATEGORY[$name]:-}"
+                fi
+                if [[ "$item_cat" == "$category" ]]; then
+                    local sc="${UTILITY_SUBCATEGORY[$name]:-}"
+                    if [[ -n "$sc" && -z "${_seen_subcats[$sc]:-}" ]]; then
+                        _seen_subcats["$sc"]=1
+                        _ordered_subcats+=("$sc")
+                    fi
+                fi
+            done
+
+            # Emit subcategory folder entries
+            local sc
+            for sc in "${_ordered_subcats[@]}"; do
+                _SEARCH_FILTERED+=("-1")   # sentinel; no real utility index
+                _SEARCH_ITEM_TYPE+=("subcat")
+                _SEARCH_ITEM_LABEL+=("$sc")
+            done
+
+            # Emit items that have NO subcategory
+            for (( i=0; i<total; i++ )); do
+                local name="${UTILITIES[$i]}"
+                local item_cat=""
+                if [[ "$category" == "System Tasks" ]]; then
+                    local _st
+                    for _st in "${SYSTEM_TASKS[@]}"; do
+                        [[ "$_st" == "$name" ]] && item_cat="System Tasks" && break
+                    done
+                else
+                    item_cat="${UTILITY_CATEGORY[$name]:-}"
+                fi
+                if [[ "$item_cat" == "$category" && -z "${UTILITY_SUBCATEGORY[$name]:-}" ]]; then
+                    _SEARCH_FILTERED+=("$i")
+                    _SEARCH_ITEM_TYPE+=("utility")
+                    _SEARCH_ITEM_LABEL+=("$name")
+                fi
+            done
+        fi
+    fi
+
+    # Clamp cursor
+    local max=$(( ${#_SEARCH_FILTERED[@]} - 1 ))
+    (( max < 0 )) && max=0
+    if (( _TAB_CURSOR[_ACTIVE_TAB] > max )); then
+        _TAB_CURSOR[$_ACTIVE_TAB]=$max
+    fi
+
+    # Sync CURSOR global (only meaningful for utility entries)
+    local cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+    if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
+        local cur_idx=${_SEARCH_FILTERED[$cur_pos]}
+        if [[ "${_SEARCH_ITEM_TYPE[$cur_pos]:-utility}" == "utility" && "$cur_idx" -ge 0 ]]; then
+            CURSOR=$cur_idx
+        fi
+    fi
+}
+
+# ============================================================================
+# SYSTEM INFO GATHERER
+# ============================================================================
+
+_gather_sysinfo() {
+    # Hostname
+    _SYSINFO_HOST="${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}"
+
+    # OS (from already-detected distro)
+    _SYSINFO_OS="${DISTRO_NAME:-Unknown} ${DISTRO_VERSION_ID:-}"
+
+    # Kernel
+    _SYSINFO_KERNEL="$(uname -r 2>/dev/null || echo 'unknown')"
+
+    # CPU model (strip trademark noise for readability)
+    if [[ -f /proc/cpuinfo ]]; then
+        _SYSINFO_CPU="$(awk -F: '/^model name/ {gsub(/^ +/, "", $2); print $2; exit}' /proc/cpuinfo)"
+        _SYSINFO_CPU="${_SYSINFO_CPU//(R)/}"
+        _SYSINFO_CPU="${_SYSINFO_CPU//(TM)/}"
+        _SYSINFO_CPU="${_SYSINFO_CPU// CPU/}"
+        _SYSINFO_CPU="${_SYSINFO_CPU//  / }"
+        _SYSINFO_CPU="${_SYSINFO_CPU# }"
+    fi
+    [[ -z "$_SYSINFO_CPU" ]] && _SYSINFO_CPU="unknown"
+
+    # Memory: total and available
+    if [[ -f /proc/meminfo ]]; then
+        local mem_total_kb mem_avail_kb
+        mem_total_kb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
+        mem_avail_kb=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
+        if [[ -n "$mem_total_kb" && -n "$mem_avail_kb" ]]; then
+            local mem_used_kb=$(( mem_total_kb - mem_avail_kb ))
+            # Format as GB with 1 decimal
+            local mem_used_g mem_total_g
+            mem_used_g=$(awk "BEGIN {printf \"%.1f\", $mem_used_kb/1048576}")
+            mem_total_g=$(awk "BEGIN {printf \"%.1f\", $mem_total_kb/1048576}")
+            _SYSINFO_MEM="${mem_used_g}G / ${mem_total_g}G"
+        fi
+    fi
+    [[ -z "$_SYSINFO_MEM" ]] && _SYSINFO_MEM="unknown"
+
+    # Disk usage for /
+    _SYSINFO_DISK="$(df -h / 2>/dev/null | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')"
+    [[ -z "$_SYSINFO_DISK" ]] && _SYSINFO_DISK="unknown"
+
+    # Uptime
+    if [[ -f /proc/uptime ]]; then
+        local up_secs
+        up_secs=$(awk '{printf "%d", $1}' /proc/uptime)
+        local days=$(( up_secs / 86400 ))
+        local hours=$(( (up_secs % 86400) / 3600 ))
+        local mins=$(( (up_secs % 3600) / 60 ))
+        if (( days > 0 )); then
+            _SYSINFO_UPTIME="${days}d ${hours}h ${mins}m"
+        elif (( hours > 0 )); then
+            _SYSINFO_UPTIME="${hours}h ${mins}m"
+        else
+            _SYSINFO_UPTIME="${mins}m"
+        fi
+    fi
+    [[ -z "$_SYSINFO_UPTIME" ]] && _SYSINFO_UPTIME="unknown"
+}
+
+# ============================================================================
+# LAYOUT CALCULATOR
+# ============================================================================
+
+_calc_layout() {
+    # On first call and after every WINCH signal, re-query the actual terminal
+    # size directly from the kernel (TIOCGWINSZ via stty) rather than trusting
+    # the LINES/COLUMNS env vars, which can be stale during and after resize.
+    if [[ "$_NEEDS_SIZE_REFRESH" == "true" ]]; then
+        local _stty
+        _stty=$(stty size 2>/dev/null)
+        if [[ "$_stty" =~ ^([0-9]+)[[:space:]]([0-9]+)$ ]]; then
+            _TERM_ROWS="${BASH_REMATCH[1]}"
+            _TERM_COLS="${BASH_REMATCH[2]}"
+        else
+            # Non-tty fallback (pipes, test harness, CI)
+            _TERM_ROWS=${LINES:-24}
+            _TERM_COLS=${COLUMNS:-80}
+        fi
+        _NEEDS_SIZE_REFRESH=false
+    fi
+
+    # Left panel width: content-aware, percentage-capped.
+    #
+    # Each sysinfo row occupies: 2 border chars + 8 label chars (right-aligned)
+    # + 2 for ": " + value = value_len + 12.  We find the longest actual value
+    # on this machine so the panel is never wider than necessary, but always
+    # wide enough to avoid truncating sysinfo on any hardware.
+    #
+    # The result is:  max(min_w, content_needed)
+    #                 capped at: min(max_w, floor(_TERM_COLS * 30 / 100))
+    local _overhead=14          # 2 borders + 8 label + 2 ": " + 2 right-margin padding
+    local _min_w=28             # never narrower than this
+    local _max_w=50             # never wider than this
+    local _content_w=_min_w
+    local _v
+    for _v in "$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" \
+              "$_SYSINFO_CPU"  "$_SYSINFO_MEM" "$_SYSINFO_DISK" \
+              "$_SYSINFO_UPTIME"; do
+        local _needed=$(( ${#_v} + _overhead ))
+        (( _needed > _content_w )) && _content_w=$_needed
+    done
+    # Also account for tab label lines: "   TabName" needs 3-char prefix + name + 2 borders
+    local _tn
+    for _tn in "${_TAB_NAMES[@]}"; do
+        local _needed=$(( ${#_tn} + 5 ))   # "> " + " " indent + 2 borders
+        (( _needed > _content_w )) && _content_w=$_needed
+    done
+    local _pct_max=$(( _TERM_COLS * 35 / 100 ))
+    (( _pct_max < _min_w )) && _pct_max=$_min_w
+    (( _pct_max > _max_w )) && _pct_max=$_max_w
+    _LEFT_W=$(( _content_w < _pct_max ? _content_w : _pct_max ))
+    (( _LEFT_W < _min_w )) && _LEFT_W=$_min_w
+
+    _RIGHT_W=$(( _TERM_COLS - _LEFT_W ))
+
+    # Vertical: title(3) + main + status(4)
+    _MAIN_H=$(( _TERM_ROWS - 3 - 4 ))
+    (( _MAIN_H < 5 )) && _MAIN_H=5
+
+    # Description panel height: ~30% of main area, clamped to [4, 10]
+    _DESC_H=$(( _MAIN_H * 30 / 100 ))
+    (( _DESC_H < 4 )) && _DESC_H=4
+    (( _DESC_H > 10 )) && _DESC_H=10
+
+    # Items viewport height = main height - header(1) - description area
+    _ITEMS_H=$(( _MAIN_H - 1 - _DESC_H ))
+    (( _ITEMS_H < 3 )) && _ITEMS_H=3
+}
+
+# ============================================================================
+# SCROLLING
+# ============================================================================
+
+_update_scroll() {
+    local tab=$_ACTIVE_TAB
+    local cursor_pos=${_TAB_CURSOR[$tab]}
+    local scroll=${_TAB_SCROLL[$tab]}
+    local visible=$_ITEMS_H
+    local total=${#_SEARCH_FILTERED[@]}
+    local margin=2
+
+    # Keep cursor within viewport with margin
+    if (( cursor_pos < scroll + margin )); then
+        scroll=$(( cursor_pos - margin ))
+    elif (( cursor_pos >= scroll + visible - margin )); then
+        scroll=$(( cursor_pos - visible + margin + 1 ))
+    fi
+
+    # Clamp
+    (( scroll < 0 )) && scroll=0
+    local max_scroll=$(( total - visible ))
+    (( max_scroll < 0 )) && max_scroll=0
+    (( scroll > max_scroll )) && scroll=$max_scroll
+
+    _TAB_SCROLL[$tab]=$scroll
+}
+
+# ============================================================================
+# PANEL RENDERERS
+# ============================================================================
+
+# --- Title Bar (3 lines) ---
+declare -a _TITLE_LINES=()
+_render_title() {
+    _TITLE_LINES=()
+    local eol=$'\033[K'
+
+    # Left cell inner width (between left border │ and divider │)
+    local left_inner=$(( _LEFT_W - 2 ))
+    # Right cell inner width (between divider │ and right border │)
+    # Must be _RIGHT_W - 1 so the title bar is _TERM_COLS wide, matching main panel rows.
+    local right_inner=$(( _RIGHT_W - 1 ))
+
+    # --- Line 1: top border ---
+    _hline "$left_inner"
+    local left_top="$_HLINE_RESULT"
+    _hline "$right_inner"
+    local right_top="$_HLINE_RESULT"
+    _TITLE_LINES+=("${CYAN}${_BD_TL}${left_top}${_BD_TJ}${right_top}${_BD_TR}${RESET}${eol}")
+
+    # --- Line 2: title (left) | search (right) ---
+    # Left: app title
+    local title_text=" linux_util (${CACHED_LOCAL_BRANCH}: ${CACHED_LOCAL_COMMIT})"
+    [[ "$DRY_RUN" == "true" ]] && title_text+=" ${BOLD}${YELLOW}[DRY RUN]${RESET}"
+    if [[ "$CACHED_LOCAL_COMMIT" != "unknown" && "$CACHED_REMOTE_COMMIT" != "unknown" && \
+          "$CACHED_LOCAL_COMMIT" != "$CACHED_REMOTE_COMMIT" ]]; then
+        title_text+=" ${YELLOW}(out of date)${RESET}"
+    fi
+    _pad_or_truncate "$title_text" "$left_inner"
+    local left_cell="${RESET}${BOLD}${_POT_RESULT}${RESET}"
+
+    # Right: search input
+    local search_text=""
+    if [[ "$_SEARCH_ACTIVE" == true ]]; then
+        search_text="${_SEARCH_QUERY}_"
+        local max_sw=$(( right_inner - 3 ))
+        (( ${#search_text} > max_sw )) && search_text="${search_text: -$max_sw}"
+        search_text=" ${BOLD}${WHITE}${search_text}${RESET}"
+    elif [[ -n "$_SEARCH_QUERY" ]]; then
+        search_text=" ${WHITE}${_SEARCH_QUERY}${RESET}"
+    else
+        search_text=" ${DIM}Type to search (/)${RESET}"
+    fi
+    # Search label + input on right side
+    local search_label="${BOLD}${CYAN}SEARCH${RESET} "
+    local search_content="${search_label}${search_text}"
+    _pad_or_truncate "$search_content" "$right_inner"
+    local right_cell="${_POT_RESULT}"
+
+    # Search border color: bright when active, dimmed otherwise
+    local sbc="${CYAN}"
+    [[ "$_SEARCH_ACTIVE" == true ]] && sbc="${BOLD}${CYAN}"
+
+    _TITLE_LINES+=("${CYAN}${_BD_V}${left_cell}${sbc}${_BD_V}${RESET}${right_cell}${CYAN}${_BD_V}${RESET}${eol}")
+
+    # --- Line 3: separator row connecting title to panels ---
+    _hline "$left_inner"
+    local left_sep="$_HLINE_RESULT"
+    _hline "$right_inner"
+    local right_sep="$_HLINE_RESULT"
+    _TITLE_LINES+=("${CYAN}${_BD_LJ}${left_sep}${_BD_X}${right_sep}${_BD_RJ}${RESET}${eol}")
+}
+
+# --- Left Panel (main_height lines) ---
+declare -a _LEFT_LINES=()
+_render_left() {
+    _LEFT_LINES=()
+    local inner_w=$(( _LEFT_W - 2 ))  # minus left border + right divider
+    local eol=$'\033[K'
+    local row=0
+
+    # --- Categories Section ---
+    # Category header
+    local header=" CATEGORIES"
+    _pad_or_truncate "$header" "$inner_w"
+    _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${BOLD}${CYAN}${_POT_RESULT}${RESET}${CYAN}${_BD_V}${RESET}")
+    (( row++ ))
+
+    # Separator under header
+    _hline "$inner_w"
+    _LEFT_LINES+=("${CYAN}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
+    (( row++ ))
+
+    # Tab entries
+    local num_tabs=${#_TAB_NAMES[@]}
+    for (( t=0; t<num_tabs; t++ )); do
+        local tab_text=""
+        if (( t == _ACTIVE_TAB )); then
+            if [[ "$_FOCUS" == "tabs" ]]; then
+                tab_text=" ${BOLD}${YELLOW}> ${_TAB_NAMES[$t]}${RESET}"
+            else
+                tab_text=" ${YELLOW}> ${_TAB_NAMES[$t]}${RESET}"
+            fi
+        else
+            tab_text="   ${DIM}${_TAB_NAMES[$t]}${RESET}"
+        fi
+        _pad_or_truncate "$tab_text" "$inner_w"
+        _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
+        (( row++ ))
+    done
+
+    # Separator between tabs and sysinfo
+    _hline "$inner_w"
+    _LEFT_LINES+=("${CYAN}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
+    (( row++ ))
+
+    # --- System Info Section ---
+    local sysinfo_header=" SYSTEM INFO"
+    _pad_or_truncate "$sysinfo_header" "$inner_w"
+    _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${BOLD}${CYAN}${_POT_RESULT}${RESET}${CYAN}${_BD_V}${RESET}")
+    (( row++ ))
+
+    _hline "$inner_w"
+    _LEFT_LINES+=("${CYAN}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
+    (( row++ ))
+
+    # Sysinfo entries: label + value
+    local -a _si_labels=("Host" "OS" "Kernel" "CPU" "Mem" "Disk" "Uptime")
+    local -a _si_values=("$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" "$_SYSINFO_CPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" "$_SYSINFO_UPTIME")
+
+    local label_w=8  # fixed label column width (includes leading space)
+    local val_w=$(( inner_w - label_w - 2 ))  # -2 for ": " separator
+
+    for (( s=0; s<${#_si_labels[@]}; s++ )); do
+        if (( row >= _MAIN_H )); then
+            break
+        fi
+        local lbl="${_si_labels[$s]}"
+        local val="${_si_values[$s]}"
+
+        # Right-align label, truncate value
+        printf -v lbl ' %7s' "$lbl"
+        local line_text="${BOLD}${CYAN}${lbl}${RESET}${DIM}:${RESET} "
+        # Truncate value to fit
+        if (( ${#val} > val_w )); then
+            val="${val:0:$((val_w - 3))}..."
+        fi
+        line_text+="${val}"
+
+        _pad_or_truncate "$line_text" "$inner_w"
+        _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
+        (( row++ ))
+    done
+
+    # --- Snapshot section (multi-line, word-wrapped) ---
+    # Rendered separately so it can span multiple rows rather than truncating.
+    if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" ]] && (( row < _MAIN_H )); then
+        local _snap_full="${TIMESHIFT_LAST_SNAPSHOT:-No snapshots found}"
+
+        # Reformat timestamp "YYYY-MM-DD_HH-MM-SS" → "DD Mon YYYY HH:MM AM/PM"
+        local _snap_display
+        if [[ "$_snap_full" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})_([0-9]{2})-([0-9]{2})-([0-9]{2})(.*) ]]; then
+            local _yr="${BASH_REMATCH[1]}" _mo="${BASH_REMATCH[2]}" _dy="${BASH_REMATCH[3]}"
+            local _hr="${BASH_REMATCH[4]}" _mi="${BASH_REMATCH[5]}" _rest="${BASH_REMATCH[7]}"
+            local -a _mn=(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+            local _ampm="AM" _h12=$(( 10#$_hr ))
+            (( _h12 >= 12 )) && _ampm="PM"
+            (( _h12 > 12 ))  && _h12=$(( _h12 - 12 ))
+            (( _h12 == 0 ))  && _h12=12
+            printf -v _h12 '%02d' "$_h12"
+            _snap_display="${_dy} ${_mn[$(( 10#$_mo - 1 ))]} ${_yr} ${_h12}:${_mi} ${_ampm}${_rest}"
+        else
+            _snap_display="$_snap_full"
+        fi
+
+        # Label is " Snapshot" (9 chars); prefix with ": " = 11 chars before value.
+        local _snap_lbl=" Snapshot"
+        local _snap_val_w=$(( inner_w - ${#_snap_lbl} - 2 ))
+        local _snap_indent
+        printf -v _snap_indent '%*s' "$(( ${#_snap_lbl} + 2 ))" ''
+
+        # Word-wrap _snap_display into _snap_val_w-wide chunks
+        local -a _snap_words
+        read -ra _snap_words <<< "$_snap_display"
+        local _snap_cur="" _snap_first=true
+        for _snapw in "${_snap_words[@]}"; do
+            local _snap_test
+            if [[ -z "$_snap_cur" ]]; then
+                _snap_test="$_snapw"
+            else
+                _snap_test="${_snap_cur} ${_snapw}"
+            fi
+            if (( ${#_snap_test} <= _snap_val_w )); then
+                _snap_cur="$_snap_test"
+            else
+                # Emit accumulated line
+                if (( row < _MAIN_H )); then
+                    local _snap_lt
+                    if [[ "$_snap_first" == true ]]; then
+                        _snap_lt="${BOLD}${CYAN}${_snap_lbl}${RESET}${DIM}:${RESET} ${_snap_cur}"
+                        _snap_first=false
+                    else
+                        _snap_lt="${_snap_indent}${_snap_cur}"
+                    fi
+                    _pad_or_truncate "$_snap_lt" "$inner_w"
+                    _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
+                    (( row++ ))
+                fi
+                _snap_cur="$_snapw"
+            fi
+        done
+        # Emit the final accumulated line
+        if [[ -n "$_snap_cur" ]] && (( row < _MAIN_H )); then
+            local _snap_lt
+            if [[ "$_snap_first" == true ]]; then
+                _snap_lt="${BOLD}${CYAN}${_snap_lbl}${RESET}${DIM}:${RESET} ${_snap_cur}"
+            else
+                _snap_lt="${_snap_indent}${_snap_cur}"
+            fi
+            _pad_or_truncate "$_snap_lt" "$inner_w"
+            _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
+            (( row++ ))
+        fi
+    fi
+
+    # Fill remaining rows with empty lines
+    while (( row < _MAIN_H )); do
+        _pad_or_truncate "" "$inner_w"
+        _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
+        (( row++ ))
+    done
+}
+
+# --- Right Panel (main_height lines) ---
+# Content is padded to fill inner_w (= _RIGHT_W - 1), then the outer │ is appended.
+# The left divider │ is provided by the left panel's trailing character.
+declare -a _RIGHT_LINES=()
+_render_right() {
+    _RIGHT_LINES=()
+    local inner_w=$(( _RIGHT_W - 1 ))  # content width; outer │ appended separately
+    local eol=$'\033[K'
+    local row=0
+
+    local outer_bc="${CYAN}"  # outer frame always full color
+
+    # --- Category label header (1 line) ---
+    # Show "Category > Subcategory" breadcrumb when inside a subcategory.
+    local active_subcat="${_TAB_SUBCAT[$_ACTIVE_TAB]:-}"
+    local header_label
+    if [[ -n "$active_subcat" ]]; then
+        header_label=" ${_TAB_NAMES[$_ACTIVE_TAB]} > ${active_subcat} "
+    else
+        header_label=" ${_TAB_NAMES[$_ACTIVE_TAB]} "
+    fi
+    _hline $(( inner_w - ${#header_label} - 1 ))
+    local items_hdr=" ${BOLD}${CYAN}${header_label}${RESET}${CYAN}${_HLINE_RESULT}${RESET}"
+    _pad_or_truncate "$items_hdr" "$inner_w"
+    _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_RJ}${RESET}")
+    (( row++ ))
+
+    # --- Items List ---
+    local total_items=${#_SEARCH_FILTERED[@]}
+    local scroll=${_TAB_SCROLL[$_ACTIVE_TAB]}
+    # Available width for item content (2 spaces left padding)
+    local item_w=$(( inner_w - 2 ))
+
+    # Scroll indicators
+    local show_up_arrow=false
+    local show_down_arrow=false
+    (( scroll > 0 )) && show_up_arrow=true
+    (( scroll + _ITEMS_H < total_items )) && show_down_arrow=true
+
+    for (( v=0; v<_ITEMS_H; v++ )); do
+        local item_idx=$(( scroll + v ))
+        local line_content=""
+        local scroll_indicator=""
+
+        # Scroll indicators on rightmost position
+        if (( v == 0 )) && [[ "$show_up_arrow" == true ]]; then
+            scroll_indicator="${DIM}▲${RESET}"
+        elif (( v == _ITEMS_H - 1 )) && [[ "$show_down_arrow" == true ]]; then
+            scroll_indicator="${DIM}▼${RESET}"
+        fi
+
+        if (( item_idx < total_items )); then
+            local real_idx=${_SEARCH_FILTERED[$item_idx]}
+            local entry_type="${_SEARCH_ITEM_TYPE[$item_idx]:-utility}"
+            local is_cursor=false
+            (( item_idx == _TAB_CURSOR[_ACTIVE_TAB] )) && is_cursor=true
+
+            # Build prefix (2 chars visible)
+            local prefix="  "
+            if [[ "$is_cursor" == true && "$_FOCUS" == "items" ]]; then
+                prefix="${BOLD}${CYAN}> ${RESET}"
+            elif [[ "$is_cursor" == true ]]; then
+                prefix="${DIM}> ${RESET}"
+            fi
+
+            if [[ "$entry_type" == "subcat" ]]; then
+                # Subcategory folder entry: [D]  Name
+                local sc_name="${_SEARCH_ITEM_LABEL[$item_idx]}"
+                local dir_tag="${CYAN}[D]${RESET}"
+                local name_avail=$(( item_w - 2 - 3 - 2 ))  # prefix(2) + "[D]"(3) + "  "(2)
+                local display_sc="$sc_name"
+                if (( ${#sc_name} > name_avail && name_avail > 3 )); then
+                    display_sc="${sc_name:0:$((name_avail - 3))}..."
+                fi
+                line_content="${prefix}${dir_tag}  ${display_sc}"
+
+            elif [[ "$entry_type" == "up" ]]; then
+                # Go-up ".." entry
+                local dir_tag="${CYAN}[D]${RESET}"
+                line_content="${prefix}${dir_tag}  ${DIM}..${RESET}"
+
+            else
+                # Regular utility entry
+                local name="${UTILITIES[$real_idx]}"
+
+                # Build checkbox (3 chars visible)
+                local checkbox="[ ]"
+                if [[ ${UPDATE_SELECTED[$real_idx]} -eq 1 ]]; then
+                    checkbox="${YELLOW}[U]${RESET}"
+                elif [[ ${SELECTED[$real_idx]} -eq 1 ]]; then
+                    checkbox="${GREEN}[✓]${RESET}"
+                fi
+
+                # Build status tag
+                local status_tag=""
+                local status_plain=""
+                if [[ ${INSTALLED[$real_idx]} -eq 1 ]]; then
+                    local ver="${INSTALLED_VERSIONS[$real_idx]:-}"
+                    if [[ -n "$ver" ]]; then
+                        if [[ "$ver" =~ ^[0-9] ]]; then
+                            status_tag="${MAGENTA}(v${ver})${RESET}"
+                            status_plain="(v${ver})"
+                        else
+                            status_tag="${MAGENTA}(${ver})${RESET}"
+                            status_plain="(${ver})"
+                        fi
+                    else
+                        status_tag="${MAGENTA}(installed)${RESET}"
+                        status_plain="(installed)"
+                    fi
+                fi
+
+                # Calculate available width for name
+                # Layout: prefix(2) + checkbox(3) + space(1) + name + gap + status
+                local name_avail=$(( item_w - 2 - 3 - 1 - ${#status_plain} ))
+                (( ${#status_plain} > 0 )) && name_avail=$(( name_avail - 1 ))  # space before status
+
+                local display_name="$name"
+                if (( ${#name} > name_avail && name_avail > 3 )); then
+                    display_name="${name:0:$((name_avail - 3))}..."
+                fi
+
+                # Build the item line
+                if [[ -n "$status_plain" ]]; then
+                    local name_pad=$(( name_avail - ${#display_name} ))
+                    (( name_pad < 1 )) && name_pad=1
+                    local gap=""
+                    printf -v gap '%*s' "$name_pad" ''
+                    line_content="${prefix}${checkbox} ${display_name}${gap} ${status_tag}"
+                else
+                    line_content="${prefix}${checkbox} ${display_name}"
+                fi
+            fi
+        fi
+
+        # Build full line: content padded to inner_w + outer border
+        if [[ -n "$scroll_indicator" ]]; then
+            _pad_or_truncate " ${line_content}" "$(( inner_w - 1 ))"
+            _RIGHT_LINES+=("${_POT_RESULT}${scroll_indicator}${outer_bc}${_BD_V}${RESET}")
+        else
+            _pad_or_truncate " ${line_content}" "$inner_w"
+            _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
+        fi
+        (( row++ ))
+    done
+
+    # Fill empty rows between items and description separator
+    local items_end=$(( 1 + _ITEMS_H ))  # header(1) + items
+    while (( row < items_end )); do
+        _pad_or_truncate "" "$inner_w"
+        _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
+        (( row++ ))
+    done
+
+    # --- Description panel separator ---
+    _hline "$inner_w"
+    _RIGHT_LINES+=("${CYAN}${_HLINE_RESULT}${_BD_RJ}${RESET}")
+    (( row++ ))
+
+    # --- Description content ---
+    local desc_content_h=$(( _DESC_H - 1 ))  # minus separator line
+    local desc_text=""
+
+    # Determine what is currently highlighted
+    local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+    if (( ${#_SEARCH_FILTERED[@]} > 0 && _cur_pos < ${#_SEARCH_FILTERED[@]} )); then
+        local _cur_type="${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}"
+        if [[ "$_cur_type" == "utility" ]]; then
+            local _cur_idx=${_SEARCH_FILTERED[$_cur_pos]}
+            local _cur_name="${UTILITIES[$_cur_idx]}"
+            desc_text="${UTILITY_DESCRIPTION[$_cur_name]:-}"
+        elif [[ "$_cur_type" == "subcat" ]]; then
+            local _sc_name="${_SEARCH_ITEM_LABEL[$_cur_pos]}"
+            # Count items in this subcategory
+            local _sc_count=0 _sc_i _sc_total=${#UTILITIES[@]}
+            local _sc_cat="${_TAB_NAMES[$_ACTIVE_TAB]:-}"
+            for (( _sc_i=0; _sc_i<_sc_total; _sc_i++ )); do
+                local _sc_uname="${UTILITIES[$_sc_i]}"
+                local _sc_ucat=""
+                if [[ "$_sc_cat" == "System Tasks" ]]; then
+                    local _sc_st
+                    for _sc_st in "${SYSTEM_TASKS[@]}"; do
+                        [[ "$_sc_st" == "$_sc_uname" ]] && _sc_ucat="System Tasks" && break
+                    done
+                else
+                    _sc_ucat="${UTILITY_CATEGORY[$_sc_uname]:-}"
+                fi
+                if [[ "$_sc_ucat" == "$_sc_cat" && "${UTILITY_SUBCATEGORY[$_sc_uname]:-}" == "$_sc_name" ]]; then
+                    (( _sc_count++ ))
+                fi
+            done
+            desc_text="Browse ${_sc_count} item(s) in the ${_sc_name} subcategory."
+        elif [[ "$_cur_type" == "up" ]]; then
+            desc_text="Return to the parent category."
+        fi
+    fi
+
+    # Word-wrap description text into desc_content_h lines
+    local desc_w=$(( inner_w - 3 ))  # 2 left padding + 1 right margin
+    local -a _desc_lines=()
+    if [[ -n "$desc_text" ]]; then
+        local -a _dwords
+        read -ra _dwords <<< "$desc_text"
+        local _dcur=""
+        for _dw in "${_dwords[@]}"; do
+            local _dtest
+            if [[ -z "$_dcur" ]]; then
+                _dtest="$_dw"
+            else
+                _dtest="${_dcur} ${_dw}"
+            fi
+            if (( ${#_dtest} <= desc_w )); then
+                _dcur="$_dtest"
+            else
+                _desc_lines+=("$_dcur")
+                _dcur="$_dw"
+            fi
+        done
+        [[ -n "$_dcur" ]] && _desc_lines+=("$_dcur")
+    fi
+
+    # Render description lines
+    local _dl=0
+    for (( _dl=0; _dl<desc_content_h; _dl++ )); do
+        local _dline=""
+        if (( _dl < ${#_desc_lines[@]} )); then
+            _dline="  ${_desc_lines[$_dl]}"
+        fi
+        _pad_or_truncate "$_dline" "$inner_w"
+        _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
+        (( row++ ))
+    done
+
+    # Fill any remaining rows (safety)
+    while (( row < _MAIN_H )); do
+        _pad_or_truncate "" "$inner_w"
+        _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
+        (( row++ ))
+    done
+}
+
+# --- Status Bar (4 lines) ---
+declare -a _STATUS_LINES=()
+_render_status() {
+    _STATUS_LINES=()
+    local w=$(( _TERM_COLS - 2 ))
+    local eol=$'\033[K'
+
+    # Count actions
+    local install_count=0 uninstall_count=0 update_count=0
+    local total=${#UTILITIES[@]}
+    for ((i=0; i<total; i++)); do
+        if [[ ${UPDATE_SELECTED[$i]} -eq 1 ]]; then
+            (( update_count++ ))
+        elif [[ ${SELECTED[$i]} -eq 1 ]]; then
+            if [[ ${INSTALLED[$i]} -eq 1 ]]; then
+                (( uninstall_count++ ))
+            else
+                (( install_count++ ))
+            fi
+        fi
+    done
+
+    # Line 1: separator with B-junction
+    _hline $(( _LEFT_W - 2 ))
+    local left_sep="$_HLINE_RESULT"
+    _hline $(( _RIGHT_W - 1 ))
+    local right_sep="$_HLINE_RESULT"
+    _STATUS_LINES+=("${CYAN}${_BD_LJ}${left_sep}${_BD_BJ}${right_sep}${_BD_RJ}${RESET}${eol}")
+
+    # Line 2: action counts
+    local actions=" ${CYAN}Actions:${RESET} ${GREEN}Install: ${install_count}${RESET} ${DIM}|${RESET} ${RED}Uninstall: ${uninstall_count}${RESET} ${DIM}|${RESET} ${YELLOW}Update: ${update_count}${RESET}"
+    _pad_or_truncate "$actions" "$w"
+    _STATUS_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}${eol}")
+
+    # Line 3: keybindings
+    local keys=""
+    if [[ "$_SEARCH_ACTIVE" == true ]]; then
+        keys=" ${BOLD}[Esc]${RESET} Clear  ${BOLD}[↑↓]${RESET} Navigate  ${BOLD}[Enter]${RESET} Accept  ${BOLD}[BS]${RESET} Delete"
+    else
+        keys=" ${BOLD}[↑↓]${RESET} Navigate  ${BOLD}[Space]${RESET} Select  ${BOLD}[U]${RESET} Update  ${BOLD}[/]${RESET} Search  ${BOLD}[Enter]${RESET} Confirm  ${BOLD}[Tab]${RESET} Focus  ${BOLD}[Q]${RESET} Quit"
+    fi
+    _pad_or_truncate "$keys" "$w"
+    _STATUS_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}${eol}")
+
+    # Line 4: bottom border
+    _hline "$w"
+    _STATUS_LINES+=("${CYAN}${_BD_BL}${_HLINE_RESULT}${_BD_BR}${RESET}${eol}")
+}
+
+# ============================================================================
+# FRAME COMPOSITOR
+# ============================================================================
+
+_compose_frame() {
+    _calc_layout
+
+    # Check minimum terminal size
+    if (( _TERM_COLS < 60 || _TERM_ROWS < 20 )); then
+        printf '\033[H\033[J'
+        printf '%s\n' "${RED}Terminal too small (${_TERM_COLS}x${_TERM_ROWS}). Minimum: 60x20.${RESET}"
+        printf '%s\n' "Please resize your terminal."
+        return
+    fi
+
+    # Render all panels
+    _render_title
+    _render_left
+    _render_right
+    _render_status
+
+    # Build final buffer
+    local _buf=""
+    local eol=$'\033[K'
+
+    # Cursor home (overwrite in place for flicker-free rendering)
+    _buf+=$'\033[H'
+
+    # Title lines
+    for line in "${_TITLE_LINES[@]}"; do
+        _buf+="${line}"$'\n'
+    done
+
+    # Main area: merge left + right
+    # \033[K (erase to end of line) after each row clears stale characters
+    # that remain when the terminal is resized narrower.
+    for (( r=0; r<_MAIN_H; r++ )); do
+        _buf+="${_LEFT_LINES[$r]}${_RIGHT_LINES[$r]}"$'\033[K\n'
+    done
+
+    # Status lines — all but the last get \n; omit \n on last line to prevent terminal scroll
+    local _sl
+    for (( _sl=0; _sl<${#_STATUS_LINES[@]}-1; _sl++ )); do
+        _buf+="${_STATUS_LINES[$_sl]}"$'\n'
+    done
+    _buf+="${_STATUS_LINES[-1]}"
+
+    # Clear any leftover content below
+    _buf+=$'\033[J'
+
+    # Single write flush
+    printf '%s' "$_buf"
+}
+
+# ============================================================================
+# INPUT HANDLER
+# ============================================================================
+
+read_key() {
+    local key
+    IFS= read -rsn1 key
+
+    # Escape sequence handling (arrow keys, etc.)
+    if [[ "$key" == "$ESC" ]]; then
+        local seq
+        IFS= read -rsn1 -t 0.5 seq
+        case "$seq" in
+            '[')
+                IFS= read -rsn1 -t 0.5 seq
+                case "$seq" in
+                    A) echo "UP" ;;
+                    B) echo "DOWN" ;;
+                    C) echo "RIGHT" ;;
+                    D) echo "LEFT" ;;
+                    Z) echo "SHIFT_TAB" ;;
+                    *) echo "OTHER" ;;
+                esac
+                ;;
+            O)
+                IFS= read -rsn1 -t 0.5 seq
+                case "$seq" in
+                    A) echo "UP" ;;
+                    B) echo "DOWN" ;;
+                    C) echo "RIGHT" ;;
+                    D) echo "LEFT" ;;
+                    *) echo "OTHER" ;;
+                esac
+                ;;
+            '')
+                # Bare ESC (no following sequence within timeout)
+                echo "ESCAPE"
+                ;;
+            *)
+                echo "OTHER"
+                ;;
+        esac
+    elif [[ "$key" == "" ]]; then
+        echo "ENTER"
+    elif [[ "$key" == " " ]]; then
+        echo "SPACE"
+    elif [[ "$key" == $'\t' ]]; then
+        echo "TAB"
+    elif [[ "$key" == $'\x7f' || "$key" == $'\x08' ]]; then
+        echo "BACKSPACE"
+    elif [[ "$key" == "/" ]]; then
+        echo "SLASH"
+    elif [[ "$key" == "q" || "$key" == "Q" ]]; then
+        echo "QUIT"
+    elif [[ "$key" == "a" || "$key" == "A" ]]; then
+        echo "SELECT_ALL"
+    elif [[ "$key" == "d" || "$key" == "D" ]]; then
+        echo "DESELECT_ALL"
+    elif [[ "$key" == "u" || "$key" == "U" ]]; then
+        echo "UPDATE"
+    else
+        # Return printable character for search mode
+        echo "CHAR:${key}"
+    fi
+}
+
+# ============================================================================
+# TERMINAL CLEANUP
+# ============================================================================
 
 # Wrapper that restores cursor/echo when the menu was active, then calls the
 # original cleanup_on_exit defined in logging.sh.
@@ -447,18 +1140,20 @@ _menu_cleanup_on_exit() {
     cleanup_on_exit
 }
 
-# Main selection loop
+# ============================================================================
+# MAIN SELECTION LOOP
+# ============================================================================
+
 run_selection_menu() {
     local total=${#UTILITIES[@]}
 
     # Check which utilities are already installed
     check_installed_utilities
 
-    # Fetch commit info once to avoid network call on every redraw
+    # Fetch commit info once
     CACHED_LOCAL_COMMIT=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
     CACHED_LOCAL_BRANCH=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     local _remote_full
-    # Check against the remote tip of the current branch; fall back to origin HEAD (main)
     _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin "refs/heads/${CACHED_LOCAL_BRANCH}" 2>/dev/null | awk '{print $1}')
     if [[ -z "$_remote_full" ]]; then
         _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin HEAD 2>/dev/null | awk '{print $1}')
@@ -469,156 +1164,340 @@ run_selection_menu() {
         CACHED_REMOTE_COMMIT="unknown"
     fi
 
-    # Build navigation column layout once (dynamic — adapts to UTILITIES count)
-    build_nav_columns
+    # Gather system info once
+    _gather_sysinfo
+
+    # Initialize tab names from registered categories, then reset per-tab state
+    _TAB_NAMES=("${CATEGORIES[@]}")
+    _ACTIVE_TAB=0
+    _FOCUS="items"
+    _SEARCH_QUERY=""
+    _SEARCH_ACTIVE=false
+    _TAB_CURSOR=()
+    _TAB_SCROLL=()
+    _TAB_SUBCAT=()
+    local _ti
+    for (( _ti=0; _ti<${#_TAB_NAMES[@]}; _ti++ )); do
+        _TAB_CURSOR[$_ti]=0
+        _TAB_SCROLL[$_ti]=0
+        _TAB_SUBCAT[$_ti]=""
+    done
+    _rebuild_filtered
 
     # Setup terminal
     hide_cursor
     stty -echo
     _MENU_ACTIVE=true
 
-    # Cleanup on exit — uses the wrapper so INT/TERM also restore cursor/echo
+    # Cleanup on exit
     trap '_menu_cleanup_on_exit' EXIT
     trap 'echo ""; _MENU_ACTIVE=false; show_cursor; stty echo; exit 130' INT TERM
 
-    # Redraw on terminal resize (update COLUMNS for centering recalculation)
-    trap 'COLUMNS=$(tput cols 2>/dev/null || echo 80); redraw_menu' WINCH
+    # Redraw on terminal resize
+    # On resize: mark dimensions stale, clear the screen to remove any
+    # leftover content from the previous (wider) render, then redraw.
+    trap '_NEEDS_SIZE_REFRESH=true; printf "\033[2J"; _compose_frame' WINCH
 
     # Initial draw
     clear
-    draw_menu
+    _calc_layout
+    _compose_frame
 
     while true; do
-        local key=$(read_key)
+        local key
+        key=$(read_key)
 
-        # Multi-column navigation model.
-        # UP/DOWN stays within the same column (wrapping at the ends);
-        # LEFT/RIGHT jumps one column in that direction to the same row.
+        # --- Search mode input handling ---
+        if [[ "$_SEARCH_ACTIVE" == true ]]; then
+            case "$key" in
+                ESCAPE)
+                    _SEARCH_ACTIVE=false
+                    _SEARCH_QUERY=""
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
+                BACKSPACE)
+                    if [[ -n "$_SEARCH_QUERY" ]]; then
+                        _SEARCH_QUERY="${_SEARCH_QUERY%?}"
+                        _TAB_CURSOR[$_ACTIVE_TAB]=0
+                        _TAB_SCROLL[$_ACTIVE_TAB]=0
+                        _rebuild_filtered
+                    fi
+                    _compose_frame
+                    continue
+                    ;;
+                ENTER)
+                    _SEARCH_ACTIVE=false
+                    _FOCUS="items"
+                    _compose_frame
+                    continue
+                    ;;
+                UP)
+                    if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
+                        local max=$(( ${#_SEARCH_FILTERED[@]} - 1 ))
+                        _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] - 1 + ${#_SEARCH_FILTERED[@]}) % ${#_SEARCH_FILTERED[@]} ))
+                        local _np=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_np]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_np]}
+                        fi
+                        _update_scroll
+                    fi
+                    _compose_frame
+                    continue
+                    ;;
+                DOWN)
+                    if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
+                        _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] + 1) % ${#_SEARCH_FILTERED[@]} ))
+                        local _np=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_np]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_np]}
+                        fi
+                        _update_scroll
+                    fi
+                    _compose_frame
+                    continue
+                    ;;
+                SPACE)
+                    # Allow selection while searching (only for real utility entries)
+                    if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
+                        local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_cur_pos]}
+                            if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 1 ]]; then
+                                UPDATE_SELECTED[$CURSOR]=0
+                                SELECTED[$CURSOR]=0
+                            elif [[ ${SELECTED[$CURSOR]} -eq 1 ]]; then
+                                SELECTED[$CURSOR]=0
+                                if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                                    UPDATE_SELECTED[$CURSOR]=1
+                                fi
+                            else
+                                SELECTED[$CURSOR]=1
+                            fi
+                        fi
+                    fi
+                    _compose_frame
+                    continue
+                    ;;
+                CHAR:*)
+                    local ch="${key#CHAR:}"
+                    _SEARCH_QUERY+="$ch"
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
+                QUIT)
+                    _SEARCH_QUERY+="q"
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
+                SELECT_ALL)
+                    _SEARCH_QUERY+="a"
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
+                DESELECT_ALL)
+                    _SEARCH_QUERY+="d"
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
+                UPDATE)
+                    _SEARCH_QUERY+="u"
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                    continue
+                    ;;
+                TAB)
+                    _SEARCH_ACTIVE=false
+                    _FOCUS="items"
+                    _compose_frame
+                    continue
+                    ;;
+                *)
+                    # Ignore other keys in search mode
+                    continue
+                    ;;
+            esac
+        fi
 
-        # Determine which column the cursor is in and its position within it.
-        local _nav_col=-1
-        local _nav_pos=-1
-        local _c _r
-        for (( _c=0; _c<NAV_NUM_COLS; _c++ )); do
-            local _start=${NAV_COL_START[$_c]}
-            local _size=${NAV_COL_SIZE[$_c]}
-            for (( _r=0; _r<_size; _r++ )); do
-                if [[ ${NAV_FLAT[$(( _start + _r ))]} -eq $CURSOR ]]; then
-                    _nav_col=$_c
-                    _nav_pos=$_r
-                    break 2
-                fi
-            done
-        done
-        # Fallback: keep cursor as-is if somehow not found
-        [[ $_nav_col -eq -1 ]] && { _nav_col=0; _nav_pos=0; }
-
-        local _cur_start=${NAV_COL_START[$_nav_col]}
-        local _cur_size=${NAV_COL_SIZE[$_nav_col]}
-
+        # --- Normal mode input handling ---
         case "$key" in
+            ESCAPE)
+                if [[ -n "$_SEARCH_QUERY" ]]; then
+                    _SEARCH_QUERY=""
+                    _TAB_CURSOR[$_ACTIVE_TAB]=0
+                    _TAB_SCROLL[$_ACTIVE_TAB]=0
+                    _rebuild_filtered
+                    _compose_frame
+                fi
+                ;;
+            TAB|SHIFT_TAB)
+                if [[ "$_FOCUS" == "tabs" ]]; then
+                    _FOCUS="items"
+                else
+                    _FOCUS="tabs"
+                fi
+                _compose_frame
+                ;;
+            SLASH)
+                _SEARCH_ACTIVE=true
+                _FOCUS="items"
+                _compose_frame
+                ;;
             UP)
-                local _new_pos=$(( (_nav_pos - 1 + _cur_size) % _cur_size ))
-                CURSOR=${NAV_FLAT[$(( _cur_start + _new_pos ))]}
-                redraw_menu
+                if [[ "$_FOCUS" == "tabs" ]]; then
+                    _ACTIVE_TAB=$(( (_ACTIVE_TAB - 1 + ${#_TAB_NAMES[@]}) % ${#_TAB_NAMES[@]} ))
+                    _SEARCH_QUERY=""
+                    _rebuild_filtered
+                    _update_scroll
+                else
+                    if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
+                        _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] - 1 + ${#_SEARCH_FILTERED[@]}) % ${#_SEARCH_FILTERED[@]} ))
+                        local _np=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_np]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_np]}
+                        fi
+                        _update_scroll
+                    fi
+                fi
+                _compose_frame
                 ;;
             DOWN)
-                local _new_pos=$(( (_nav_pos + 1) % _cur_size ))
-                CURSOR=${NAV_FLAT[$(( _cur_start + _new_pos ))]}
-                redraw_menu
+                if [[ "$_FOCUS" == "tabs" ]]; then
+                    _ACTIVE_TAB=$(( (_ACTIVE_TAB + 1) % ${#_TAB_NAMES[@]} ))
+                    _SEARCH_QUERY=""
+                    _rebuild_filtered
+                    _update_scroll
+                else
+                    if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
+                        _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] + 1) % ${#_SEARCH_FILTERED[@]} ))
+                        local _np=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                        if [[ "${_SEARCH_ITEM_TYPE[$_np]:-utility}" == "utility" ]]; then
+                            CURSOR=${_SEARCH_FILTERED[$_np]}
+                        fi
+                        _update_scroll
+                    fi
+                fi
+                _compose_frame
                 ;;
             LEFT)
-                if (( _nav_col > 0 )); then
-                    local _target_col=$(( _nav_col - 1 ))
-                    local _target_start=${NAV_COL_START[$_target_col]}
-                    local _target_size=${NAV_COL_SIZE[$_target_col]}
-                    local _cur_sys=${NAV_COL_SYS_SIZE[$_nav_col]}
-                    local _target_sys=${NAV_COL_SYS_SIZE[$_target_col]}
-                    local _target_pos
-                    if (( _nav_pos < _cur_sys )); then
-                        _target_pos=$(( _nav_pos < _target_sys ? _nav_pos : _target_sys - 1 ))
+                if [[ "$_FOCUS" == "items" ]]; then
+                    # If inside a subcategory, LEFT goes up to the parent level
+                    if [[ -n "${_TAB_SUBCAT[$_ACTIVE_TAB]:-}" ]]; then
+                        _TAB_SUBCAT[$_ACTIVE_TAB]=""
+                        _TAB_CURSOR[$_ACTIVE_TAB]=0
+                        _TAB_SCROLL[$_ACTIVE_TAB]=0
+                        _rebuild_filtered
                     else
-                        local _util_row=$(( _nav_pos - _cur_sys ))
-                        local _target_util_size=$(( _target_size - _target_sys ))
-                        if (( _target_util_size > 0 )); then
-                            _target_pos=$(( _target_sys + (_util_row < _target_util_size ? _util_row : _target_util_size - 1) ))
-                        else
-                            _target_pos=$(( _target_size - 1 ))
-                        fi
+                        _FOCUS="tabs"
                     fi
-                    CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
+                    _compose_frame
                 fi
-                redraw_menu
                 ;;
             RIGHT)
-                if (( _nav_col < NAV_NUM_COLS - 1 )); then
-                    local _target_col=$(( _nav_col + 1 ))
-                    local _target_start=${NAV_COL_START[$_target_col]}
-                    local _target_size=${NAV_COL_SIZE[$_target_col]}
-                    local _cur_sys=${NAV_COL_SYS_SIZE[$_nav_col]}
-                    local _target_sys=${NAV_COL_SYS_SIZE[$_target_col]}
-                    local _target_pos
-                    if (( _nav_pos < _cur_sys )); then
-                        _target_pos=$(( _nav_pos < _target_sys ? _nav_pos : _target_sys - 1 ))
-                    else
-                        local _util_row=$(( _nav_pos - _cur_sys ))
-                        local _target_util_size=$(( _target_size - _target_sys ))
-                        if (( _target_util_size > 0 )); then
-                            _target_pos=$(( _target_sys + (_util_row < _target_util_size ? _util_row : _target_util_size - 1) ))
-                        else
-                            _target_pos=$(( _target_size - 1 ))
-                        fi
-                    fi
-                    CURSOR=${NAV_FLAT[$(( _target_start + _target_pos ))]}
+                if [[ "$_FOCUS" == "tabs" ]]; then
+                    _FOCUS="items"
+                    _compose_frame
                 fi
-                redraw_menu
                 ;;
             SPACE)
-                # Cycle through states: [ ] → [✓] → [U] (if installed) → [ ]
-                if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 1 ]]; then
-                    # [U] → [ ]
-                    UPDATE_SELECTED[$CURSOR]=0
-                    SELECTED[$CURSOR]=0
-                elif [[ ${SELECTED[$CURSOR]} -eq 1 ]]; then
-                    # [✓] → [U] if installed, otherwise [✓] → [ ]
-                    SELECTED[$CURSOR]=0
-                    if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
-                        UPDATE_SELECTED[$CURSOR]=1
+                if [[ "$_FOCUS" == "items" && ${#_SEARCH_FILTERED[@]} -gt 0 ]]; then
+                    local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                    local _cur_type="${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}"
+                    # [D] entries are not selectable
+                    if [[ "$_cur_type" == "utility" ]]; then
+                        CURSOR=${_SEARCH_FILTERED[$_cur_pos]}
+                        # Cycle: [ ] -> [✓] -> [U] (if installed) -> [ ]
+                        if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 1 ]]; then
+                            UPDATE_SELECTED[$CURSOR]=0
+                            SELECTED[$CURSOR]=0
+                        elif [[ ${SELECTED[$CURSOR]} -eq 1 ]]; then
+                            SELECTED[$CURSOR]=0
+                            if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                                UPDATE_SELECTED[$CURSOR]=1
+                            fi
+                        else
+                            SELECTED[$CURSOR]=1
+                        fi
+                        _compose_frame
                     fi
-                else
-                    # [ ] → [✓]
-                    SELECTED[$CURSOR]=1
                 fi
-                redraw_menu
                 ;;
             UPDATE)
-                # Toggle update mode for installed items only
-                if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
-                    SELECTED[$CURSOR]=0   # clear install/uninstall selection
-                    if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 0 ]]; then
-                        UPDATE_SELECTED[$CURSOR]=1
-                    else
-                        UPDATE_SELECTED[$CURSOR]=0
+                if [[ "$_FOCUS" == "items" && ${#_SEARCH_FILTERED[@]} -gt 0 ]]; then
+                    local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                    if [[ "${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}" == "utility" ]]; then
+                        CURSOR=${_SEARCH_FILTERED[$_cur_pos]}
+                        if [[ ${INSTALLED[$CURSOR]} -eq 1 ]]; then
+                            SELECTED[$CURSOR]=0
+                            if [[ ${UPDATE_SELECTED[$CURSOR]} -eq 0 ]]; then
+                                UPDATE_SELECTED[$CURSOR]=1
+                            else
+                                UPDATE_SELECTED[$CURSOR]=0
+                            fi
+                            _compose_frame
+                        fi
                     fi
-                    redraw_menu
                 fi
                 ;;
             SELECT_ALL)
-                for ((i=0; i<${#UTILITIES[@]}; i++)); do
-                    SELECTED[$i]=1
-                    UPDATE_SELECTED[$i]=0
+                # Select all utilities in current filtered view (skip [D] entries)
+                for (( _sa_i=0; _sa_i<${#_SEARCH_FILTERED[@]}; _sa_i++ )); do
+                    [[ "${_SEARCH_ITEM_TYPE[$_sa_i]:-utility}" != "utility" ]] && continue
+                    local _sa_idx=${_SEARCH_FILTERED[$_sa_i]}
+                    SELECTED[$_sa_idx]=1
+                    UPDATE_SELECTED[$_sa_idx]=0
                 done
-                redraw_menu
+                _compose_frame
                 ;;
             DESELECT_ALL)
-                for ((i=0; i<${#UTILITIES[@]}; i++)); do
-                    SELECTED[$i]=0
-                    UPDATE_SELECTED[$i]=0
+                # Deselect all utilities in current filtered view (skip [D] entries)
+                for (( _da_i=0; _da_i<${#_SEARCH_FILTERED[@]}; _da_i++ )); do
+                    [[ "${_SEARCH_ITEM_TYPE[$_da_i]:-utility}" != "utility" ]] && continue
+                    local _da_idx=${_SEARCH_FILTERED[$_da_i]}
+                    SELECTED[$_da_idx]=0
+                    UPDATE_SELECTED[$_da_idx]=0
                 done
-                redraw_menu
+                _compose_frame
                 ;;
             ENTER)
-                # Continue to installation
+                # If focused on a [D] entry, navigate into/out of subcategory
+                if [[ "$_FOCUS" == "items" && ${#_SEARCH_FILTERED[@]} -gt 0 ]]; then
+                    local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
+                    local _cur_type="${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}"
+                    if [[ "$_cur_type" == "subcat" ]]; then
+                        _TAB_SUBCAT[$_ACTIVE_TAB]="${_SEARCH_ITEM_LABEL[$_cur_pos]}"
+                        _TAB_CURSOR[$_ACTIVE_TAB]=0
+                        _TAB_SCROLL[$_ACTIVE_TAB]=0
+                        _rebuild_filtered
+                        _compose_frame
+                        continue
+                    elif [[ "$_cur_type" == "up" ]]; then
+                        _TAB_SUBCAT[$_ACTIVE_TAB]=""
+                        _TAB_CURSOR[$_ACTIVE_TAB]=0
+                        _TAB_SCROLL[$_ACTIVE_TAB]=0
+                        _rebuild_filtered
+                        _compose_frame
+                        continue
+                    fi
+                fi
+                # Otherwise confirm selections and exit menu
                 show_cursor
                 stty echo
                 _MENU_ACTIVE=false

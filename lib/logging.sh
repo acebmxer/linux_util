@@ -233,3 +233,62 @@ metrics_summary() {
     log_info "Total execution time: ${minutes}m ${seconds}s"
     metrics_record "session" "total" "$total_duration" "complete"
 }
+
+# ============================================================================
+# Log Pruning
+# Silently removes old log files at startup based on two independent limits:
+#   - Age:         files older than CFG_LOG_RETENTION_DAYS days are deleted.
+#   - Per-day cap: for each log type (success, error) and each calendar day,
+#                  oldest files beyond CFG_MAX_LOGS_PER_DAY are deleted.
+#                  Days within the retention window are unaffected unless they
+#                  exceed the per-day cap.
+# Symlinks (*_latest.log) and metrics.log are always preserved.
+# ============================================================================
+prune_logs() {
+    local log_dir="${LOG_DIR}"
+    local max_age_days="${CFG_LOG_RETENTION_DAYS:-30}"
+    local max_per_day="${CFG_MAX_LOGS_PER_DAY:-0}"
+
+    [[ -d "$log_dir" ]] || return 0
+
+    # Age-based: remove timestamped logs older than max_age_days
+    if [[ "$max_age_days" -gt 0 ]]; then
+        find "$log_dir" -maxdepth 1 -name "*.log" -type f \
+            ! -name "*_latest.log" ! -name "metrics.log" \
+            -mtime +"${max_age_days}" -delete 2>/dev/null || true
+    fi
+
+    # Per-day cap: for each log type, for each calendar day, keep only the
+    # newest max_per_day files from that day, leaving all other days untouched.
+    if [[ "$max_per_day" -gt 0 ]]; then
+        local prefix
+        for prefix in success error; do
+            # Collect the unique YYYYMMDD dates present in log filenames
+            local -a dates=()
+            mapfile -t dates < <(
+                find "$log_dir" -maxdepth 1 \
+                    -name "${prefix}_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*.log" \
+                    -type f ! -name "*_latest.log" -printf '%f\n' 2>/dev/null \
+                    | sed "s/^${prefix}_//" | cut -c1-8 | sort -u
+            )
+            local date
+            for date in "${dates[@]}"; do
+                local -a day_logs=()
+                mapfile -t day_logs < <(
+                    find "$log_dir" -maxdepth 1 \
+                        -name "${prefix}_${date}_*.log" \
+                        -type f ! -name "*_latest.log" \
+                        -printf '%T@ %p\n' 2>/dev/null \
+                        | sort -rn | awk '{print $2}'
+                )
+                local day_count=${#day_logs[@]}
+                if [[ $day_count -gt $max_per_day ]]; then
+                    local i
+                    for (( i = max_per_day; i < day_count; i++ )); do
+                        rm -f "${day_logs[$i]}" 2>/dev/null || true
+                    done
+                fi
+            done
+        done
+    fi
+}

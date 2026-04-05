@@ -112,6 +112,9 @@ source "${SCRIPT_DIR}/lib/pkg_manager.sh" || { echo "Error: Failed to source pkg
 # Initialize performance metrics tracking
 metrics_init
 
+# Prune log files according to retention policy (age + count limits from config)
+prune_logs
+
 # ============================================================================
 # SYSTEM INITIALIZATION
 # ============================================================================
@@ -346,13 +349,19 @@ process_selected() {
         local _op_start=$SECONDS
 
         if [[ -n "$func" ]] && declare -f "$func" > /dev/null; then
+            # Capture stderr to temp file while still displaying on terminal
+            local _stderr_tmp
+            _stderr_tmp=$(mktemp)
+            CLEANUP_FILES+=("$_stderr_tmp")
+
             local _exit_code=0
-            $func || _exit_code=$?
+            $func 2> >(tee -a "$_stderr_tmp" >&2) || _exit_code=$?
             if [[ $_exit_code -eq 2 ]]; then
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
                 echo "${YELLOW}⊘ Cancelled: $util${RESET} ${DIM}(${_duration}s)${RESET}"
                 log_info "Cancelled by user: $util"
+                rm -f "$_stderr_tmp"
             elif [[ $_exit_code -eq 0 || $_exit_code -eq 3 ]]; then
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
@@ -374,6 +383,7 @@ process_selected() {
                         needs_reboot=true
                     fi
                 fi
+                rm -f "$_stderr_tmp"
             else
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
@@ -381,14 +391,26 @@ process_selected() {
                 log_error "Failed to ${_verb}: $util"
                 metrics_record "$_verb" "$util" "$_duration" "failed"
 
+                # Append captured command stderr to error log
+                if [[ -s "$_stderr_tmp" ]]; then
+                    init_error_log
+                    {
+                        echo "[COMMAND OUTPUT for ${util}]"
+                        cat "$_stderr_tmp"
+                        echo ""
+                    } >> "$ERROR_LOG"
+                fi
+
                 # Retry logic
                 if [[ "$CFG_RETRY_FAILED" == "true" && "$op_type" != "uninstall" && -z "${NO_RETRY[$util]:-}" ]]; then
                     local _attempt=1
                     while (( _attempt < CFG_RETRY_ATTEMPTS )); do
                         (( _attempt += 1 ))
+                        log_warning "Retrying ${_verb} for ${util} (attempt ${_attempt}/${CFG_RETRY_ATTEMPTS})"
                         echo "${YELLOW}Retrying ${_verb} for ${util} (attempt ${_attempt}/${CFG_RETRY_ATTEMPTS})...${RESET}"
+                        > "$_stderr_tmp"  # Reset capture for retry
                         local _retry_start=$SECONDS
-                        if $func; then
+                        if $func 2> >(tee -a "$_stderr_tmp" >&2); then
                             local _retry_dur=$(( SECONDS - _retry_start ))
                             echo "${GREEN}✓ Retry succeeded: $util${RESET} ${DIM}(${_retry_dur}s)${RESET}"
                             log_success "Retry ${_verb} succeeded: $util (attempt ${_attempt})"
@@ -397,11 +419,24 @@ process_selected() {
                             if [[ "$op_type" == "install" || "$op_type" == "update" ]]; then
                                 health_check "$util" || true
                             fi
+                            rm -f "$_stderr_tmp"
                             return 0
+                        else
+                            log_error "Retry ${_attempt}/${CFG_RETRY_ATTEMPTS} failed for ${util}"
+                            # Append retry stderr to error log
+                            if [[ -s "$_stderr_tmp" ]]; then
+                                init_error_log
+                                {
+                                    echo "[COMMAND OUTPUT for ${util} - retry ${_attempt}/${CFG_RETRY_ATTEMPTS}]"
+                                    cat "$_stderr_tmp"
+                                    echo ""
+                                } >> "$ERROR_LOG"
+                            fi
                         fi
                     done
                 fi
 
+                rm -f "$_stderr_tmp"
                 (( fail_count += 1 ))
                 if [[ "$_is_system_task" == "true" ]]; then
                     failed_utils+=("$util")
@@ -565,7 +600,7 @@ EOF
                 ;;
             --no-color)
                 NO_COLOR_FLAG=true
-                BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN=""
+                BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN="" WHITE="" BG_BLUE="" BG_CYAN=""
                 shift
                 ;;
             --setup-logrotate)

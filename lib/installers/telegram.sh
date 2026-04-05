@@ -1,0 +1,85 @@
+#!/bin/bash
+# Telegram Desktop installer functions
+
+# --- Telegram Desktop ---
+
+check_telegram() {
+    command -v telegram-desktop &>/dev/null || \
+        pkg_check_installed telegram-desktop || \
+        (has_flatpak && flatpak list 2>/dev/null | grep -qi "org.telegram.desktop")
+}
+
+install_telegram() {
+    info "Installing Telegram Desktop..."
+    ensure_tools
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo apt install -y telegram-desktop
+            ;;
+        fedora)
+            sudo "$PKG_MGR" install -y telegram-desktop
+            ;;
+        rhel)
+            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
+            sudo "$PKG_MGR" install -y telegram-desktop 2>/dev/null || {
+                warn "telegram-desktop not in repos. Falling back to Flatpak..."
+                if has_flatpak; then
+                    flatpak install -y flathub org.telegram.desktop
+                else
+                    error "Telegram requires Flatpak on this system."
+                    return 1
+                fi
+            }
+            ;;
+        arch)
+            sudo pacman -S --noconfirm telegram-desktop
+            ;;
+        suse)
+            sudo zypper install -y telegram-desktop 2>/dev/null || {
+                if has_flatpak; then
+                    flatpak install -y flathub org.telegram.desktop
+                else
+                    error "Telegram requires Flatpak on this openSUSE system."
+                    return 1
+                fi
+            }
+            ;;
+    esac
+    info "Telegram Desktop installed."
+}
+
+uninstall_telegram() {
+    info "Uninstalling Telegram Desktop..."
+    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.telegram.desktop"; then
+        flatpak uninstall -y org.telegram.desktop
+    else
+        case "$DISTRO_FAMILY" in
+            debian)  sudo apt purge --autoremove -y telegram-desktop ;;
+            fedora|rhel) sudo "$PKG_MGR" remove -y telegram-desktop ;;
+            arch)    sudo pacman -Rs --noconfirm telegram-desktop ;;
+            suse)    sudo zypper remove -y telegram-desktop ;;
+        esac
+    fi
+    rm -rf "$HOME/.local/share/TelegramDesktop"
+}
+
+update_telegram() {
+    info "Updating Telegram Desktop..."
+    if has_flatpak && flatpak list 2>/dev/null | grep -qi "org.telegram.desktop"; then
+        flatpak update -y org.telegram.desktop
+    else
+        case "$DISTRO_FAMILY" in
+            debian)  sudo apt update && sudo apt upgrade -y telegram-desktop ;;
+            fedora|rhel) sudo "$PKG_MGR" upgrade -y telegram-desktop ;;
+            arch)    sudo pacman -S --noconfirm telegram-desktop ;;
+            suse)    sudo zypper update -y telegram-desktop ;;
+        esac
+    fi
+}
+
+get_version_telegram() {
+    telegram-desktop --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
+    (has_flatpak && flatpak list 2>/dev/null | grep -i "org.telegram.desktop" | awk -F'\t' '{print $3}') || \
+    pkg_get_version telegram-desktop 2>/dev/null | sed 's/-.*//' || \
+    echo ""
+}

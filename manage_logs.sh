@@ -34,7 +34,7 @@ show_usage() {
     echo "  tail [success|error]          Tail log file (follow mode)"
     echo "  search <pattern>              Search in all logs"
     echo "  stats                         Show log statistics"
-    echo "  clean [days]                  Remove logs older than N days (default: 30)"
+    echo "  clean [days] [--count-per-day N]  Remove logs older than N days and/or keep at most N per day per type"
     echo "  compress                      Compress old logs"
     echo "  help                          Show this help"
     echo ""
@@ -223,29 +223,95 @@ show_stats() {
 }
 
 clean_logs() {
-    local days="${1:-30}"
-    
-    echo "${BOLD}${YELLOW}Removing logs older than ${days} days...${RESET}"
-    
+    local days=""
+    local max_per_day=0
+
+    # Parse arguments: any order of [days] and [--count-per-day N]
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --count-per-day)
+                shift
+                if [[ "$1" =~ ^[0-9]+$ ]]; then
+                    max_per_day="$1"
+                else
+                    echo "${RED}Error: --count-per-day requires a positive integer${RESET}"
+                    return 1
+                fi
+                ;;
+            [0-9]*)
+                days="$1"
+                ;;
+            *)
+                echo "${RED}Error: Unknown argument: $1${RESET}"
+                return 1
+                ;;
+        esac
+        shift
+    done
+
+    days="${days:-30}"
+
     if [[ ! -d "$LOG_DIR" ]]; then
         echo "${RED}Log directory not found.${RESET}"
         return 1
     fi
-    
-    local count; count=$(find "$LOG_DIR" -name "*.log" -type f -mtime +"${days}" 2>/dev/null | wc -l)
-    
-    if [[ $count -eq 0 ]]; then
-        echo "${GREEN}No old logs to clean.${RESET}"
+
+    # Collect files to remove
+    local -a age_files=() excess_files=()
+
+    # Age-based: logs older than $days days (skip symlinks, metrics)
+    mapfile -t age_files < <(
+        find "$LOG_DIR" -maxdepth 1 -name "*.log" -type f \
+            ! -name "*_latest.log" ! -name "metrics.log" \
+            -mtime +"${days}" 2>/dev/null
+    )
+
+    # Per-day cap: for each type, for each calendar day, collect files beyond the limit
+    if [[ $max_per_day -gt 0 ]]; then
+        local prefix
+        for prefix in success error; do
+            local -a dates=()
+            mapfile -t dates < <(
+                find "$LOG_DIR" -maxdepth 1 \
+                    -name "${prefix}_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*.log" \
+                    -type f ! -name "*_latest.log" -printf '%f\n' 2>/dev/null \
+                    | sed "s/^${prefix}_//" | cut -c1-8 | sort -u
+            )
+            local date
+            for date in "${dates[@]}"; do
+                local -a day_logs=()
+                mapfile -t day_logs < <(
+                    find "$LOG_DIR" -maxdepth 1 \
+                        -name "${prefix}_${date}_*.log" \
+                        -type f ! -name "*_latest.log" \
+                        -printf '%T@ %p\n' 2>/dev/null \
+                        | sort -rn | awk '{print $2}'
+                )
+                local day_count=${#day_logs[@]}
+                if [[ $day_count -gt $max_per_day ]]; then
+                    excess_files+=("${day_logs[@]:$max_per_day}")
+                fi
+            done
+        done
+    fi
+
+    if [[ ${#age_files[@]} -eq 0 && ${#excess_files[@]} -eq 0 ]]; then
+        echo "${GREEN}No logs to clean.${RESET}"
         return 0
     fi
-    
-    echo "Found ${count} log file(s) to remove."
+
+    [[ ${#age_files[@]} -gt 0 ]] && \
+        echo "${BOLD}${YELLOW}Found ${#age_files[@]} log(s) older than ${days} days.${RESET}"
+    [[ ${#excess_files[@]} -gt 0 ]] && \
+        echo "${BOLD}${YELLOW}Found ${#excess_files[@]} log(s) exceeding ${max_per_day} per day.${RESET}"
+
     read -p "Are you sure? (y/N) " -n 1 -r
     echo
-    
+
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        find "$LOG_DIR" -name "*.log" -type f -mtime +${days} -delete
-        echo "${GREEN}✓ Old logs removed.${RESET}"
+        [[ ${#age_files[@]} -gt 0 ]] && rm -f "${age_files[@]}"
+        [[ ${#excess_files[@]} -gt 0 ]] && rm -f "${excess_files[@]}"
+        echo "${GREEN}✓ Logs cleaned.${RESET}"
     else
         echo "Cancelled."
     fi
@@ -294,7 +360,7 @@ case "${1:-help}" in
         show_stats
         ;;
     clean)
-        clean_logs "$2"
+        clean_logs "${@:2}"
         ;;
     compress)
         compress_logs
