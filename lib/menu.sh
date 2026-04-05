@@ -25,12 +25,13 @@ CYAN="${CSI}36m"
 WHITE="${CSI}37m"
 BG_BLUE="${CSI}44m"
 BG_CYAN="${CSI}46m"
+UNDERLINE="${CSI}4m"
 
 # Respect the NO_COLOR standard (https://no-color.org/), non-interactive terminals,
 # and the --no-color CLI flag.
 if [[ ! -t 1 || -n "${NO_COLOR:-}" || "${NO_COLOR_FLAG:-false}" == "true" ]]; then
     BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN=""
-    WHITE="" BG_BLUE="" BG_CYAN=""
+    WHITE="" BG_BLUE="" BG_CYAN="" UNDERLINE=""
 fi
 
 # Cursor control
@@ -858,12 +859,17 @@ _render_right() {
         fi
 
         # Build full line: content padded to inner_w + outer border
+        # Apply underline to the full cursor line for visual tracking
+        local ul_on="" ul_off=""
+        if [[ "${is_cursor:-false}" == true && "$_FOCUS" == "items" ]]; then
+            ul_on="$UNDERLINE" ul_off="$RESET"
+        fi
         if [[ -n "$scroll_indicator" ]]; then
             _pad_or_truncate " ${line_content}" "$(( inner_w - 1 ))"
-            _RIGHT_LINES+=("${_POT_RESULT}${scroll_indicator}${outer_bc}${_BD_V}${RESET}")
+            _RIGHT_LINES+=("${ul_on}${_POT_RESULT}${scroll_indicator}${ul_off}${outer_bc}${_BD_V}${RESET}")
         else
             _pad_or_truncate " ${line_content}" "$inner_w"
-            _RIGHT_LINES+=("${_POT_RESULT}${outer_bc}${_BD_V}${RESET}")
+            _RIGHT_LINES+=("${ul_on}${_POT_RESULT}${ul_off}${outer_bc}${_BD_V}${RESET}")
         fi
         (( row++ ))
     done
