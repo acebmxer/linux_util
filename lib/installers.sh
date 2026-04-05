@@ -69,13 +69,19 @@ NO_RETRY["Restore Snapshot"]=1
 # --- Utilities (alphabetical order) ---
 register_utility "Bitwarden Client"    install_bitwarden       check_bitwarden       uninstall_bitwarden       update_bitwarden          get_version_bitwarden
 register_utility "Brave Browser"       install_brave           check_brave           uninstall_brave           update_brave              get_version_brave
+register_utility "Chromium"            install_chromium        check_chromium        uninstall_chromium        update_chromium           get_version_chromium
 register_utility "Firefox"             install_firefox         check_firefox         uninstall_firefox         update_firefox            get_version_firefox
+register_utility "Google Chrome"       install_google_chrome   check_google_chrome   uninstall_google_chrome   update_google_chrome      get_version_google_chrome
+register_utility "Thorium Browser"     install_thorium         check_thorium         uninstall_thorium         update_thorium            get_version_thorium
+register_utility "Thunderbird"         install_thunderbird     check_thunderbird     uninstall_thunderbird     update_thunderbird        get_version_thunderbird
+register_utility "Vivaldi Browser"     install_vivaldi         check_vivaldi         uninstall_vivaldi         update_vivaldi            get_version_vivaldi
 register_utility "Claude Code"         install_claude_code     check_claude_code     uninstall_claude_code     update_claude_code        get_version_claude_code
 register_utility "Devolutions RDM"     install_devolutions_rdm check_devolutions_rdm uninstall_devolutions_rdm update_devolutions_rdm    get_version_devolutions_rdm
 register_utility "Docker"              setup_install_docker    check_docker          uninstall_docker          update_docker             get_version_docker
 register_utility "Dotfiles"            setup_install_dotfiles  check_dotfiles        uninstall_dotfiles        setup_install_dotfiles
 register_utility "Feral Gamemode"      install_gamemode        check_gamemode        uninstall_gamemode        update_gamemode            get_version_gamemode
 register_utility "Joplin Client"       install_joplin          check_joplin          uninstall_joplin          update_joplin             get_version_joplin
+register_utility "KMail"               install_kmail           check_kmail           uninstall_kmail           update_kmail              get_version_kmail
 register_utility "LibreOffice"         install_libreoffice     check_libreoffice     uninstall_libreoffice     update_libreoffice        get_version_libreoffice
 register_utility "OpenSSH Server"      install_openssh_server  check_openssh_server  uninstall_openssh_server  update_openssh_server     get_version_openssh_server
 register_utility "PIA VPN"             install_pia_vpn         check_pia_vpn         uninstall_pia_vpn         update_pia_vpn            get_version_pia_vpn
@@ -92,7 +98,11 @@ CATEGORIES=("System Tasks" "Development" "Gaming" "Internet" "Productivity" "Sys
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Brave Browser"]="Internet"
+UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Firefox"]="Internet"
+UTILITY_CATEGORY["Google Chrome"]="Internet"
+UTILITY_CATEGORY["Thorium Browser"]="Internet"
+UTILITY_CATEGORY["Vivaldi Browser"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
 UTILITY_CATEGORY["Devolutions RDM"]="Productivity"
 UTILITY_CATEGORY["Docker"]="Development"
@@ -106,10 +116,18 @@ UTILITY_CATEGORY["QBittorrent"]="Internet"
 UTILITY_CATEGORY["Steam App"]="Gaming"
 UTILITY_CATEGORY["Syncthing"]="Internet"
 UTILITY_CATEGORY["Termius SSH Client"]="Internet"
+UTILITY_CATEGORY["KMail"]="Internet"
+UTILITY_CATEGORY["Thunderbird"]="Internet"
 UTILITY_CATEGORY["Timeshift"]="System Tools"
 UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
 
 # Subcategory assignments — utility name → subcategory label within the parent category
 UTILITY_SUBCATEGORY["Brave Browser"]="Web Browsers"
+UTILITY_SUBCATEGORY["Chromium"]="Web Browsers"
 UTILITY_SUBCATEGORY["Firefox"]="Web Browsers"
+UTILITY_SUBCATEGORY["Google Chrome"]="Web Browsers"
+UTILITY_SUBCATEGORY["Thorium Browser"]="Web Browsers"
+UTILITY_SUBCATEGORY["Vivaldi Browser"]="Web Browsers"
+UTILITY_SUBCATEGORY["KMail"]="Email Clients"
+UTILITY_SUBCATEGORY["Thunderbird"]="Email Clients"
