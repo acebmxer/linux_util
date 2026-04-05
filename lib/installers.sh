@@ -121,6 +121,8 @@ register_utility "Thunderbird"         install_thunderbird      check_thunderbir
 register_utility "Timeshift"           install_timeshift        check_timeshift        uninstall_timeshift        update_timeshift           get_version_timeshift
 register_utility "Visual Studio Code"  install_vscode           check_vscode           uninstall_vscode           update_vscode              get_version_vscode
 register_utility "Vivaldi Browser"     install_vivaldi          check_vivaldi          uninstall_vivaldi          update_vivaldi             get_version_vivaldi
+register_utility "WireGuard Client"    install_wireguard_client check_wireguard_client uninstall_wireguard_client update_wireguard_client    get_version_wireguard_client
+register_utility "WireGuard Server"    install_wireguard_server check_wireguard_server uninstall_wireguard_server update_wireguard_server    get_version_wireguard_server
 register_utility "WPS Office"          install_wps_office       check_wps_office       uninstall_wps_office       update_wps_office          get_version_wps_office
 register_utility "Zsh + Oh My Zsh"     install_zsh_setup        check_zsh_setup        uninstall_zsh_setup        update_zsh_setup           get_version_zsh_setup
 
@@ -137,7 +139,7 @@ UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
 UTILITY_CATEGORY["Cursor IDE"]="Development"
 UTILITY_CATEGORY["DBeaver"]="Development"
-UTILITY_CATEGORY["Devolutions RDM"]="Productivity"
+UTILITY_CATEGORY["Devolutions RDM"]="Internet"
 UTILITY_CATEGORY["Discord"]="Internet"
 UTILITY_CATEGORY["Docker"]="Development"
 UTILITY_CATEGORY["Dotfiles"]="System Tools"
@@ -180,6 +182,8 @@ UTILITY_CATEGORY["Thunderbird"]="Internet"
 UTILITY_CATEGORY["Timeshift"]="System Tools"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
 UTILITY_CATEGORY["Vivaldi Browser"]="Internet"
+UTILITY_CATEGORY["WireGuard Client"]="Internet"
+UTILITY_CATEGORY["WireGuard Server"]="Internet"
 UTILITY_CATEGORY["WPS Office"]="Productivity"
 UTILITY_CATEGORY["Zsh + Oh My Zsh"]="System Tools"
 
@@ -199,9 +203,12 @@ UTILITY_SUBCATEGORY["FileZilla"]="File Transfer"
 UTILITY_SUBCATEGORY["Remmina"]="Remote Access"
 UTILITY_SUBCATEGORY["Termius SSH Client"]="Remote Access"
 UTILITY_SUBCATEGORY["OpenSSH Server"]="Remote Access"
+UTILITY_SUBCATEGORY["Devolutions RDM"]="Remote Access"
 UTILITY_SUBCATEGORY["PIA VPN"]="VPN"
 UTILITY_SUBCATEGORY["ProtonVPN"]="VPN"
 UTILITY_SUBCATEGORY["Tailscale"]="VPN"
+UTILITY_SUBCATEGORY["WireGuard Client"]="VPN"
+UTILITY_SUBCATEGORY["WireGuard Server"]="VPN"
 UTILITY_SUBCATEGORY["LibreOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["OnlyOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["WPS Office"]="Office Suites"
