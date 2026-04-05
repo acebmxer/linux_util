@@ -43,7 +43,7 @@ check_always_false() {
 # --- System Tasks (must be registered before utilities) ---
 register_system_task "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update
 NO_RETRY["Full System Upgrade/Update"]=1
-register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates
+register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates      get_version_system_updates
 register_system_task "KDE Desktop"        install_kde             check_kde             uninstall_kde             update_kde                get_version_kde
 register_system_task "NVIDIA Drivers"     install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_system_task "XEN Guest Utilities" setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities

@@ -814,7 +814,7 @@ _render_right() {
                 if [[ ${INSTALLED[$real_idx]} -eq 1 ]]; then
                     local ver="${INSTALLED_VERSIONS[$real_idx]:-}"
                     if [[ -n "$ver" ]]; then
-                        if [[ "$ver" =~ ^[0-9] ]]; then
+                        if [[ "$ver" =~ ^[0-9] && ! "$ver" =~ \  ]]; then
                             status_tag="${MAGENTA}(v${ver})${RESET}"
                             status_plain="(v${ver})"
                         else
@@ -824,6 +824,13 @@ _render_right() {
                     else
                         status_tag="${MAGENTA}(installed)${RESET}"
                         status_plain="(installed)"
+                    fi
+                else
+                    # Show status info for non-installed items (e.g., pending update count)
+                    local ver="${INSTALLED_VERSIONS[$real_idx]:-}"
+                    if [[ -n "$ver" ]]; then
+                        status_tag="${MAGENTA}(${ver})${RESET}"
+                        status_plain="(${ver})"
                     fi
                 fi
 
