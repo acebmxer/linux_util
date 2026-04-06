@@ -531,7 +531,18 @@ process_selected() {
                 ;;
         esac
     else
-        read -rp "Press ENTER to return to menu..." < /dev/tty
+        read -n 1 -rp "No reboot needed. Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty
+        echo
+        _RELOAD_CHOICE=${_RELOAD_CHOICE:-Y}
+        case "$_RELOAD_CHOICE" in
+            y|Y|"")
+                exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
+                ;;
+            *)
+                info "Exiting."
+                exit 0
+                ;;
+        esac
     fi
 }
 

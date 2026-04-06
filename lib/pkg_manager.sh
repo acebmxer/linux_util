@@ -195,7 +195,12 @@ pkg_autoremove() {
     fi
     case "$PKG_MGR" in
         apt)
-            if apt-get --dry-run autoremove 2>/dev/null | grep -q "^Remv "; then
+            # Capture dry-run output first to avoid SIGPIPE+pipefail false negative.
+            # grep -q exits on first match, sending SIGPIPE to apt-get; with pipefail
+            # that non-zero exit makes the pipeline condition false even when matches exist.
+            local _apt_dry_run
+            _apt_dry_run=$(sudo apt-get --dry-run autoremove 2>/dev/null) || true
+            if grep -qE "^(Remv|Purg) " <<< "$_apt_dry_run"; then
                 # shellcheck disable=SC2086
                 "$_run" "Removing orphaned packages" sudo apt autoremove $_y
             else
