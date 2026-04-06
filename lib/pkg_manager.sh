@@ -226,7 +226,9 @@ pkg_full_upgrade() {
     fi
     # shellcheck disable=SC2086
     case "$PKG_MGR" in
-        apt)     "$_run" "Running full system upgrade" sudo apt full-upgrade $_y ;;
+        apt)     # Fix broken dependencies before upgrading (e.g. half-installed kernels)
+                 "$_run" "Fixing broken packages" sudo apt --fix-broken install $_y || true
+                 "$_run" "Running full system upgrade" sudo apt full-upgrade $_y ;;
         dnf|yum) "$_run" "Running full system upgrade" sudo "$PKG_MGR" upgrade $_y ;;
         pacman)  if command -v yay &>/dev/null; then
                      "$_run" "Running full system upgrade (yay)"  yay  -Syu $_nc
@@ -751,18 +753,12 @@ pkg_check_upgrade_available() {
                 prompt=$(grep -oP '^Prompt=\K.*' "$release_config" 2>/dev/null || echo "lts")
             fi
 
-            # Determine which meta-release file(s) to check
-            local meta_urls=()
-            if [[ "$prompt" == "normal" ]]; then
-                meta_urls=("http://changelogs.ubuntu.com/meta-release")
-            else
-                # On LTS: check both LTS and normal channels so the user can
-                # be offered the LTS-vs-normal choice in pkg_distro_upgrade()
-                meta_urls=(
-                    "http://changelogs.ubuntu.com/meta-release-lts"
-                    "http://changelogs.ubuntu.com/meta-release"
-                )
-            fi
+            # Always check both channels so the user can be offered
+            # the LTS-vs-normal track choice in pkg_distro_upgrade()
+            local meta_urls=(
+                "http://changelogs.ubuntu.com/meta-release-lts"
+                "http://changelogs.ubuntu.com/meta-release"
+            )
 
             for meta_url in "${meta_urls[@]}"; do
                 local meta_content
@@ -1001,50 +997,111 @@ pkg_distro_upgrade() {
                     fi
                 fi
 
+                # Determine if the detected target is LTS or non-LTS
+                local tgt_ver="${target_version%% *}"
+                local tgt_y tgt_m tgt_is_lts=false
+                tgt_y=$(echo "$tgt_ver" | cut -d. -f1)
+                tgt_m=$(echo "$tgt_ver" | cut -d. -f2)
+                if [[ -n "$tgt_y" && -n "$tgt_m" ]] && (( tgt_m == 4 && tgt_y % 2 == 0 )); then
+                    tgt_is_lts=true
+                fi
+
+                # Helper: probe whether an LTS upgrade exists
+                _probe_lts_target() {
+                    sudo sed -i "s/^Prompt=.*/Prompt=lts/" "$release_config"
+                    local _check _tgt
+                    _check=$(do-release-upgrade -c 2>&1) || true
+                    if echo "$_check" | grep -qi "new release"; then
+                        _tgt=$(echo "$_check" | grep -oP "New release '\K[^']+" || true)
+                        [[ -n "$_tgt" ]] && echo "$_tgt" && return 0
+                    fi
+                    return 1
+                }
+
+                # Helper: probe whether a non-LTS upgrade exists
+                _probe_normal_target() {
+                    sudo sed -i "s/^Prompt=.*/Prompt=normal/" "$release_config"
+                    local _check _tgt
+                    _check=$(do-release-upgrade -c 2>&1) || true
+                    if echo "$_check" | grep -qi "new release"; then
+                        _tgt=$(echo "$_check" | grep -oP "New release '\K[^']+" || true)
+                        [[ -n "$_tgt" ]] && echo "$_tgt" && return 0
+                    fi
+                    return 1
+                }
+
                 if [[ "$is_lts" == "true" ]]; then
+                    # Currently on LTS — offer to stay LTS or switch to non-LTS
                     echo ""
                     echo "You are currently on an LTS release (${DISTRO_NAME} ${DISTRO_VERSION_ID})."
                     echo ""
                     echo "  1) Stay on LTS track (upgrade only to next LTS release)"
-                    echo "  2) Upgrade to latest release (including non-LTS)"
+                    echo "  2) Switch to latest release track (including non-LTS)"
                     echo ""
-                    local lts_choice=""
-                    while [[ "$lts_choice" != "1" && "$lts_choice" != "2" ]]; do
-                        read -rp "Choose [1/2]: " lts_choice
+                    local track_choice=""
+                    while [[ "$track_choice" != "1" && "$track_choice" != "2" ]]; do
+                        read -rp "Choose [1/2]: " track_choice < /dev/tty
                     done
 
-                    if [[ "$lts_choice" == "1" ]]; then
-                        sudo sed -i "s/^Prompt=.*/Prompt=lts/" "$release_config"
-                        # Verify an LTS upgrade is actually available
-                        local tgt_ver="${target_version%% *}"
-                        local tgt_y tgt_m
-                        tgt_y=$(echo "$tgt_ver" | cut -d. -f1)
-                        tgt_m=$(echo "$tgt_ver" | cut -d. -f2)
-                        if ! (( tgt_m == 4 && tgt_y % 2 == 0 )); then
-                            # Detected target was non-LTS — check if an LTS upgrade exists
-                            local lts_check
-                            lts_check=$(do-release-upgrade -c 2>&1) || true
-                            if echo "$lts_check" | grep -qi "new release"; then
-                                # LTS upgrade found — update target_version
-                                local lts_target
-                                lts_target=$(echo "$lts_check" | grep -oP "New release '\K[^']+" || true)
-                                if [[ -n "$lts_target" ]]; then
-                                    target_version="$lts_target"
-                                    info "LTS upgrade target: ${target_version}"
-                                fi
+                    if [[ "$track_choice" == "1" ]]; then
+                        # User wants LTS — verify an LTS target exists
+                        if [[ "$tgt_is_lts" == "true" ]]; then
+                            sudo sed -i "s/^Prompt=.*/Prompt=lts/" "$release_config"
+                        else
+                            local lts_target
+                            lts_target=$(_probe_lts_target) || true
+                            if [[ -n "$lts_target" ]]; then
+                                target_version="$lts_target"
+                                info "LTS upgrade target: ${target_version}"
                             else
                                 info "No next LTS release is available yet. Your system is up to date on the LTS track."
-                                # Restore original prompt setting
-                                if [[ -n "$original_prompt" ]]; then
-                                    sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
-                                fi
+                                sudo sed -i "s/^Prompt=.*/Prompt=${original_prompt}/" "$release_config"
                                 return 2
                             fi
                         fi
                     else
                         sudo sed -i "s/^Prompt=.*/Prompt=normal/" "$release_config"
+                        # If detected target was LTS, check for a newer non-LTS
+                        if [[ "$tgt_is_lts" == "true" ]]; then
+                            local normal_target
+                            normal_target=$(_probe_normal_target) || true
+                            if [[ -n "$normal_target" ]]; then
+                                target_version="$normal_target"
+                                info "Non-LTS upgrade target: ${target_version}"
+                            fi
+                        fi
+                    fi
+                else
+                    # Currently on non-LTS — offer to switch to LTS or stay on non-LTS
+                    # Only prompt if an LTS release is actually available
+                    local lts_target
+                    lts_target=$(_probe_lts_target) || true
+                    # Restore prompt to normal while we decide
+                    sudo sed -i "s/^Prompt=.*/Prompt=normal/" "$release_config"
+
+                    if [[ -n "$lts_target" ]]; then
+                        echo ""
+                        echo "You are currently on a non-LTS release (${DISTRO_NAME} ${DISTRO_VERSION_ID})."
+                        echo ""
+                        echo "  1) Switch to LTS track (upgrade to ${lts_target})"
+                        echo "  2) Stay on latest release track (upgrade to ${target_version})"
+                        echo ""
+                        local track_choice=""
+                        while [[ "$track_choice" != "1" && "$track_choice" != "2" ]]; do
+                            read -rp "Choose [1/2]: " track_choice < /dev/tty
+                        done
+
+                        if [[ "$track_choice" == "1" ]]; then
+                            sudo sed -i "s/^Prompt=.*/Prompt=lts/" "$release_config"
+                            target_version="$lts_target"
+                            info "LTS upgrade target: ${target_version}"
+                        else
+                            sudo sed -i "s/^Prompt=.*/Prompt=normal/" "$release_config"
+                        fi
                     fi
                 fi
+
+                unset -f _probe_lts_target _probe_normal_target
             fi
 
             # do-release-upgrade requires all pending updates to be installed first

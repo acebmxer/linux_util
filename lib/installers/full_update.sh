@@ -106,7 +106,7 @@ setup_full_update() {
     # Fallback: standard package update
     info "Performing package updates..."
     _pkg_cleanup_stale_releases direct
-    pkg_full_upgrade_interactive
+    pkg_full_upgrade_interactive || return 1
     pkg_cleanup_thorough_interactive
     info "System update completed."
     local _snap_after

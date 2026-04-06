@@ -77,9 +77,9 @@ install_zsh_setup() {
 uninstall_zsh_setup() {
     info "Uninstalling Zsh + Oh My Zsh + Starship..."
 
-    # Remove Oh My Zsh
+    # Remove Oh My Zsh (pipe 'y' to bypass interactive confirmation prompt)
     if [[ -f "$_OMZ_DIR/tools/uninstall.sh" ]]; then
-        env ZSH="$_OMZ_DIR" sh "$_OMZ_DIR/tools/uninstall.sh" --keep-zshrc 2>/dev/null || true
+        echo "y" | env ZSH="$_OMZ_DIR" sh "$_OMZ_DIR/tools/uninstall.sh" --keep-zshrc 2>/dev/null || true
     fi
     rm -rf "$_OMZ_DIR"
 
