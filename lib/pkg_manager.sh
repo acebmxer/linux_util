@@ -267,6 +267,77 @@ pkg_full_upgrade_interactive() { pkg_full_upgrade direct; }
 pkg_autoremove_interactive()   { pkg_autoremove   direct; }
 pkg_clean_interactive()        { pkg_clean        direct; }
 
+# Detect and clean up packages left from a previous RHEL major version
+# (common after leapp/ELevate upgrades). Runs distro-sync --allowerasing
+# for only the stale packages to align them with the current release.
+# Safe to call multiple times — no-ops if no stale packages are found.
+_pkg_cleanup_stale_releases() {
+    local mode="${1:-spinner}"
+    [[ "$PKG_MGR" == "dnf" || "$PKG_MGR" == "yum" ]] || return 0
+
+    local current_el
+    current_el=$(rpm -E '%{rhel}' 2>/dev/null) || return 0
+    [[ "$current_el" =~ ^[0-9]+$ ]] || return 0
+    (( current_el > 7 )) || return 0
+
+    local prev_el="el$(( current_el - 1 ))"
+    local _run
+    [[ "$mode" == "direct" ]] && _run=run_direct || _run=run_with_spinner
+
+    local stale_pkgs
+    stale_pkgs=$(rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n' \
+        | grep "\.${prev_el}" | grep -v "^gpg-pubkey-" || true)
+
+    if [[ -n "$stale_pkgs" ]]; then
+        local stale_count
+        stale_count=$(echo "$stale_pkgs" | wc -l)
+        warn "Found ${stale_count} package(s) from previous OS version (${prev_el})."
+        warn "These may block updates. Running distro-sync to align with current release..."
+
+        # Extract just the package names for a targeted distro-sync
+        local stale_names
+        stale_names=$(echo "$stale_pkgs" | sed 's/-[^-]*-[^-]*$//' | sort -u)
+
+        # Split into packages that exist in repos (syncable) vs orphans (removable)
+        local syncable="" orphan=""
+        for pkg in $stale_names; do
+            if dnf repoquery "$pkg" --quiet 2>/dev/null | grep -q .; then
+                syncable+=" $pkg"
+            else
+                orphan+=" $pkg"
+            fi
+        done
+
+        # Distro-sync packages that have a current-release equivalent
+        if [[ -n "${syncable// /}" ]]; then
+            # shellcheck disable=SC2086
+            "$_run" "Syncing stale packages to current release" \
+                sudo dnf distro-sync -y --allowerasing $syncable || {
+                warn "distro-sync had errors. You may need to manually resolve package conflicts."
+                warn "Try: sudo dnf distro-sync --allowerasing"
+            }
+        fi
+
+        # Remove orphan packages that have no equivalent in current repos
+        # --disableexcludes=all bypasses repo exclude filters (e.g. ELevate excludes leapp packages)
+        if [[ -n "${orphan// /}" ]]; then
+            info "Removing ${prev_el} packages with no current-release equivalent:${orphan}"
+            # shellcheck disable=SC2086
+            "$_run" "Removing orphaned ${prev_el} packages" \
+                sudo dnf remove -y --disableexcludes=all $orphan || {
+                warn "Some orphaned packages could not be removed automatically."
+            }
+        fi
+    fi
+
+    # Clean up ELevate repo after a successful major version upgrade
+    if rpm -q elevate-release &>/dev/null; then
+        info "Removing ELevate repository (no longer needed post-upgrade)."
+        "$_run" "Removing ELevate repository" \
+            sudo dnf remove -y elevate-release || true
+    fi
+}
+
 # Shared implementation for thorough cleanup.
 # Accepts a "mode" argument: "spinner" (non-interactive) or "direct" (interactive).
 _pkg_cleanup_thorough_impl() {
@@ -320,7 +391,7 @@ _pkg_cleanup_thorough_impl() {
             fi
             ;;
         dnf|yum)
-            "$_runner" "Removing old kernels" sudo "$PKG_MGR" remove ${_confirm_flag} --oldinstallonly --setopt installonly_limit=2 || true
+            "$_runner" "Removing old kernels" sudo "$PKG_MGR" remove -y --oldinstallonly --setopt installonly_limit=2 || true
             ;;
         pacman)
             # Arch doesn't accumulate old kernels the same way; skip
@@ -340,10 +411,13 @@ _pkg_cleanup_thorough_impl() {
         fi
     fi
 
-    # Step 4: Clean package cache
+    # Step 4: Remove stale packages from previous RHEL major version (post-upgrade cleanup)
+    _pkg_cleanup_stale_releases "$mode"
+
+    # Step 5: Clean package cache
     pkg_clean "$mode"
 
-    # Step 5: Clean apt lists partial files (Debian family only)
+    # Step 6: Clean apt lists partial files (Debian family only)
     if [[ "$PKG_MGR" == "apt" ]]; then
         sudo rm -f /var/lib/apt/lists/partial/* 2>/dev/null || true
     fi
@@ -523,6 +597,123 @@ _apt_codename_upgrade_restore() {
     info "Sources restored from backup: ${backup_dir}"
 }
 
+# Install leapp and ELevate packages for RHEL-family distro upgrades.
+# For community RHEL derivatives (AlmaLinux, Rocky, CentOS, Oracle Linux),
+# leapp comes from AlmaLinux's ELevate project which requires its own repo.
+# RHEL proper ships leapp in its standard repos.
+_install_leapp_packages() {
+    # For community distros, install the ELevate repo first
+    if [[ "$DISTRO_ID" != "rhel" ]]; then
+        if ! rpm -q elevate-release &>/dev/null; then
+            info "Installing ELevate repo for upgrade support..."
+            local el_ver
+            el_ver=$(rpm --eval '%{rhel}')
+            sudo "$PKG_MGR" install -y \
+                "http://repo.almalinux.org/elevate/elevate-release-latest-el${el_ver}.noarch.rpm" || {
+                error "Could not install ELevate repo. Cannot check for upgrades."
+                return 1
+            }
+        fi
+    fi
+
+    # Determine the correct leapp data package for this distro
+    local leapp_data_pkg=""
+    case "$DISTRO_ID" in
+        almalinux|alma)  leapp_data_pkg="leapp-data-almalinux" ;;
+        rocky)           leapp_data_pkg="leapp-data-rocky" ;;
+        centos)          leapp_data_pkg="leapp-data-centos" ;;
+        ol)              leapp_data_pkg="leapp-data-oraclelinux" ;;
+        # RHEL uses its own data bundled with leapp-upgrade
+    esac
+
+    info "Installing leapp upgrade packages..."
+    local install_pkgs=(leapp-upgrade)
+    [[ -n "$leapp_data_pkg" ]] && install_pkgs+=("$leapp_data_pkg")
+
+    sudo "$PKG_MGR" install -y "${install_pkgs[@]}" || {
+        error "Failed to install leapp packages. Cannot proceed with upgrade."
+        return 1
+    }
+}
+
+# Fix common leapp inhibitors before running preupgrade analysis.
+# Checks for known issues that can be auto-remediated and offers fixes.
+_leapp_pre_remediate() {
+    local target_major="$1"
+    local fixes_applied=0
+
+    info "Checking for common upgrade blockers..."
+
+    # 1. Legacy ifcfg network configuration (EL9 → EL10)
+    #    RHEL 10 / AlmaLinux 10 drops support for ifcfg-style configs.
+    if (( target_major >= 10 )); then
+        local ifcfg_count=0
+        ifcfg_count=$(find /etc/sysconfig/network-scripts/ -maxdepth 1 -name 'ifcfg-*' \
+            ! -name 'ifcfg-lo' 2>/dev/null | wc -l)
+        if (( ifcfg_count > 0 )); then
+            warn "Found ${ifcfg_count} legacy ifcfg network config file(s)."
+            warn "RHEL 10+ requires NetworkManager keyfile format."
+            echo ""
+            local migrate_confirm=""
+            read -rp "  Migrate network configs to keyfile format now? (Y/n): " migrate_confirm < /dev/tty
+            if [[ ! "$migrate_confirm" =~ ^[Nn]$ ]]; then
+                if sudo nmcli connection migrate 2>&1; then
+                    info "Network configuration migrated to keyfile format."
+                    (( fixes_applied++ ))
+                else
+                    warn "Network migration failed. You may need to migrate manually: sudo nmcli connection migrate"
+                fi
+            else
+                warn "Skipped. This will likely cause a leapp inhibitor."
+            fi
+        fi
+    fi
+
+    # 2. AllowZoneDrifting in firewalld (EL8 → EL9)
+    if (( target_major == 9 )) && [[ -f /etc/firewalld/firewalld.conf ]]; then
+        if grep -q '^AllowZoneDrifting=yes' /etc/firewalld/firewalld.conf 2>/dev/null; then
+            warn "firewalld AllowZoneDrifting=yes is deprecated and blocks EL9 upgrades."
+            echo ""
+            local fwd_confirm=""
+            read -rp "  Set AllowZoneDrifting=no now? (Y/n): " fwd_confirm < /dev/tty
+            if [[ ! "$fwd_confirm" =~ ^[Nn]$ ]]; then
+                sudo sed -i 's/^AllowZoneDrifting=yes/AllowZoneDrifting=no/' /etc/firewalld/firewalld.conf
+                info "AllowZoneDrifting set to no."
+                (( fixes_applied++ ))
+            else
+                warn "Skipped. This will likely cause a leapp inhibitor."
+            fi
+        fi
+    fi
+
+    # 3. /etc/resolv.conf is a symlink (causes DNS failures in leapp container)
+    if [[ -L /etc/resolv.conf ]]; then
+        warn "/etc/resolv.conf is a symlink, which can cause DNS failures during the upgrade."
+        echo ""
+        local resolv_confirm=""
+        read -rp "  Convert to a regular file now? (Y/n): " resolv_confirm < /dev/tty
+        if [[ ! "$resolv_confirm" =~ ^[Nn]$ ]]; then
+            local resolv_target
+            resolv_target=$(readlink -f /etc/resolv.conf)
+            if [[ -f "$resolv_target" ]]; then
+                sudo cp --remove-destination "$resolv_target" /etc/resolv.conf
+                info "/etc/resolv.conf converted to a regular file."
+                (( fixes_applied++ ))
+            else
+                warn "Symlink target not found. Skipping."
+            fi
+        else
+            warn "Skipped. This may cause DNS resolution failures during upgrade."
+        fi
+    fi
+
+    if (( fixes_applied > 0 )); then
+        info "Applied ${fixes_applied} pre-upgrade fix(es)."
+    else
+        info "No common blockers found."
+    fi
+}
+
 # Check if a distribution version upgrade is available.
 # Returns 0 if available (outputs target version to stdout), 1 if not.
 # Dispatches on DISTRO_ID since upgrade paths are distro-specific.
@@ -531,8 +722,8 @@ pkg_check_upgrade_available() {
         ubuntu|kubuntu|pop|neon)
             # Ensure do-release-upgrade is available
             if ! command -v do-release-upgrade &>/dev/null; then
-                info "Installing update-manager-core for upgrade checks..."
-                sudo apt-get install -y update-manager-core 2>/dev/null || {
+                info "Installing update-manager-core for upgrade checks..." >&2
+                sudo apt-get install -y update-manager-core >&2 2>&1 || {
                     warn "Could not install update-manager-core"
                     return 1
                 }
@@ -648,11 +839,9 @@ pkg_check_upgrade_available() {
 
             # Install leapp if not present
             if ! command -v leapp &>/dev/null; then
-                info "Installing leapp for upgrade checks..."
-                sudo "$PKG_MGR" install -y leapp leapp-upgrade 2>/dev/null || {
-                    warn "Could not install leapp"
-                    return 1
-                }
+                # Redirect to stderr so install output doesn't pollute
+                # the version string captured by command substitution
+                _install_leapp_packages >&2 || return 1
             fi
 
             # Target is next major version
@@ -664,7 +853,7 @@ pkg_check_upgrade_available() {
             # pkg_distro_upgrade since it takes 10-30 minutes.
             # Just verify leapp is installed and the target is a reasonable version.
             if command -v leapp &>/dev/null && (( target_major >= 8 && target_major <= 11 )); then
-                echo "$target_major"
+                echo "${target_major}.0"
                 return 0
             fi
             return 1
@@ -691,8 +880,8 @@ pkg_check_upgrade_available() {
         linuxmint)
             # Install mintupgrade if not present
             if ! command -v mintupgrade &>/dev/null; then
-                info "Installing mintupgrade for upgrade checks..."
-                sudo apt-get install -y mintupgrade 2>/dev/null || {
+                info "Installing mintupgrade for upgrade checks..." >&2
+                sudo apt-get install -y mintupgrade >&2 2>&1 || {
                     warn "Could not install mintupgrade"
                     return 1
                 }
@@ -980,48 +1169,24 @@ pkg_distro_upgrade() {
 
             # Install leapp if not present
             if ! command -v leapp &>/dev/null; then
-                info "Installing leapp and leapp-upgrade..."
-                sudo "$PKG_MGR" install -y leapp leapp-upgrade 2>/dev/null || {
-                    error "Failed to install leapp. Cannot proceed with upgrade."
-                    return 1
-                }
+                _install_leapp_packages || return 1
             fi
+
+            # Fix common leapp inhibitors before the expensive preupgrade analysis
+            local target_major
+            target_major=$(echo "$target_version" | cut -d. -f1)
+            _leapp_pre_remediate "$target_major"
 
             # Run full preupgrade analysis (this is the expensive check, done once)
             info "Running leapp preupgrade analysis for version ${target_version}..."
             info "This may take 10-30 minutes..."
-            local preupgrade_output
             local preupgrade_rc=0
-            preupgrade_output=$(sudo leapp preupgrade --target "$target_version" 2>&1) || preupgrade_rc=$?
-
-            # Check for critical inhibitors via the structured report
-            if [[ -f /var/log/leapp/leapp-report.json ]]; then
-                local inhibitor_count
-                inhibitor_count=$(grep -c '"risk factor": "high"' /var/log/leapp/leapp-report.json 2>/dev/null || echo "0")
-                if (( inhibitor_count > 0 )); then
-                    error "Leapp preupgrade found ${inhibitor_count} high-risk inhibitor(s)."
-                    echo ""
-                    # Show summary from text report
-                    grep -B1 -A3 "Risk Factor: high" /var/log/leapp/leapp-report.txt 2>/dev/null || \
-                        echo "$preupgrade_output" | grep -A2 -i "inhibitor"
-                    echo ""
-                    error "Resolve the above inhibitors before attempting the upgrade."
-                    error "Full report: /var/log/leapp/leapp-report.txt"
-                    return 1
-                fi
-            elif echo "$preupgrade_output" | grep -qi "inhibitor"; then
-                # Fallback if structured report not available
-                error "Leapp preupgrade found inhibitors:"
-                echo ""
-                echo "$preupgrade_output" | grep -A2 -i "inhibitor"
-                echo ""
-                error "Full report: /var/log/leapp/leapp-report.txt"
-                return 1
-            fi
+            sudo leapp preupgrade --target "$target_version" || preupgrade_rc=$?
 
             if (( preupgrade_rc != 0 )); then
-                error "Leapp preupgrade failed (exit code: ${preupgrade_rc})."
-                error "Check /var/log/leapp/leapp-report.txt for details."
+                error "Leapp preupgrade found issue(s) that block the upgrade."
+                error "Review the report above and resolve all inhibitors."
+                error "Full report: /var/log/leapp/leapp-report.txt"
                 return 1
             fi
 

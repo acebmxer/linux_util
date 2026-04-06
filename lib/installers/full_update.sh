@@ -105,6 +105,7 @@ setup_full_update() {
 
     # Fallback: standard package update
     info "Performing package updates..."
+    _pkg_cleanup_stale_releases direct
     pkg_full_upgrade_interactive
     pkg_cleanup_thorough_interactive
     info "System update completed."
@@ -115,4 +116,39 @@ setup_full_update() {
         return 3
     fi
     return 0
+}
+
+# --- Version/status for Full System Upgrade/Update ---
+# Returns the next available distro version for display in the menu.
+# Shows nothing when no upgrade is available.
+_FULL_UPDATE_UPGRADE_CACHE=""
+_FULL_UPDATE_UPGRADE_CHECKED=false
+get_version_full_update() {
+    # Cache the result so the (potentially slow) network check runs only once
+    if [[ "$_FULL_UPDATE_UPGRADE_CHECKED" == true ]]; then
+        [[ -n "$_FULL_UPDATE_UPGRADE_CACHE" ]] && echo "$_FULL_UPDATE_UPGRADE_CACHE"
+        return 0
+    fi
+    _FULL_UPDATE_UPGRADE_CHECKED=true
+
+    local target_version=""
+    target_version=$(pkg_check_upgrade_available 2>/dev/null) || { return 0; }
+    [[ -z "$target_version" ]] && return 0
+
+    # Build display string with LTS/non-LTS label for Ubuntu-family
+    local label=""
+    case "$DISTRO_ID" in
+        ubuntu|kubuntu|pop|neon)
+            local tgt_num="${target_version%% *}"  # strip trailing text like "LTS"
+            local tgt_year tgt_month
+            tgt_year=$(echo "$tgt_num" | cut -d. -f1)
+            tgt_month=$(echo "$tgt_num" | cut -d. -f2)
+            if [[ -n "$tgt_year" && -n "$tgt_month" ]] && (( tgt_month == 4 && tgt_year % 2 == 0 )); then
+                [[ "$target_version" != *"LTS"* ]] && label=" LTS"
+            fi
+            ;;
+    esac
+
+    _FULL_UPDATE_UPGRADE_CACHE="↑ ${target_version}${label} available"
+    echo "$_FULL_UPDATE_UPGRADE_CACHE"
 }

@@ -7,6 +7,7 @@ setup_system_updates() {
     local _snap_before
     _snap_before=$(pkg_snapshot)
     pkg_refresh_interactive
+    _pkg_cleanup_stale_releases direct
     pkg_full_upgrade_interactive
     pkg_cleanup_thorough_interactive
     info "System updates completed."
