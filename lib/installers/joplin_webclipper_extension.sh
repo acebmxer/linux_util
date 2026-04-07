@@ -36,9 +36,81 @@ declare -A _JWC_CHROMIUM_POLICY_DIRS=(
 # ---------------------------------------------------------------------------
 
 # _jwc_ext_policy_file BROWSER
-#   Prints the path to this browser's Joplin Web Clipper policy JSON file.
+#   Prints the path to this browser's shared Chromium extension policy JSON file.
 _jwc_ext_policy_file() {
-    echo "${_JWC_CHROMIUM_POLICY_DIRS[$1]}/joplin_webclipper_extension.json"
+    echo "${_JWC_CHROMIUM_POLICY_DIRS[$1]}/linux_util_chromium_extensions.json"
+}
+
+# _jwc_ext_write_chromium_forcelist POLICY_FILE ENTRY...
+#   Writes ExtensionInstallForcelist policy JSON with the provided entries.
+_jwc_ext_write_chromium_forcelist() {
+    local policy_file="$1"
+    shift
+    local entries=("$@")
+
+    {
+        echo "{"
+        echo "    \"ExtensionInstallForcelist\": ["
+        local i
+        for i in "${!entries[@]}"; do
+            local suffix=","
+            (( i == ${#entries[@]} - 1 )) && suffix=""
+            printf '        "%s"%s\n' "${entries[$i]}" "$suffix"
+        done
+        echo "    ]"
+        echo "}"
+    } | sudo tee "$policy_file" > /dev/null
+}
+
+# _jwc_ext_apply_chromium_entry POLICY_FILE ENTRY
+#   Adds this extension entry to the shared Chromium force-install list.
+_jwc_ext_apply_chromium_entry() {
+    local policy_file="$1"
+    local entry="$2"
+    local entries=()
+    local seen=0
+    local line
+
+    if [[ -f "$policy_file" ]]; then
+        while IFS= read -r line; do
+            line="${line#\"}"
+            line="${line%\"}"
+            [[ -n "$line" ]] && entries+=("$line")
+        done < <(sudo grep -oE '"[a-z0-9]{32};https://clients2\.google\.com/service/update2/crx"' "$policy_file" 2>/dev/null)
+    fi
+
+    for line in "${entries[@]}"; do
+        if [[ "$line" == "$entry" ]]; then
+            seen=1
+            break
+        fi
+    done
+    (( seen == 0 )) && entries+=("$entry")
+
+    _jwc_ext_write_chromium_forcelist "$policy_file" "${entries[@]}"
+}
+
+# _jwc_ext_remove_chromium_entry POLICY_FILE ENTRY
+#   Removes this extension entry from the shared Chromium force-install list.
+_jwc_ext_remove_chromium_entry() {
+    local policy_file="$1"
+    local entry="$2"
+    local kept=()
+    local line
+
+    [[ -f "$policy_file" ]] || return 0
+
+    while IFS= read -r line; do
+        line="${line#\"}"
+        line="${line%\"}"
+        [[ -n "$line" && "$line" != "$entry" ]] && kept+=("$line")
+    done < <(sudo grep -oE '"[a-z0-9]{32};https://clients2\.google\.com/service/update2/crx"' "$policy_file" 2>/dev/null)
+
+    if (( ${#kept[@]} == 0 )); then
+        sudo rm -f "$policy_file"
+    else
+        _jwc_ext_write_chromium_forcelist "$policy_file" "${kept[@]}"
+    fi
 }
 
 # _jwc_ext_detected_chromium_browsers
@@ -46,7 +118,11 @@ _jwc_ext_policy_file() {
 _jwc_ext_detected_chromium_browsers() {
     local browser
     for browser in "${!_JWC_CHROMIUM_POLICY_DIRS[@]}"; do
-        command -v "$browser" &>/dev/null && echo "$browser"
+        if [[ "$browser" == "brave" ]]; then
+            (command -v brave &>/dev/null || command -v brave-browser &>/dev/null) && echo "$browser"
+        else
+            command -v "$browser" &>/dev/null && echo "$browser"
+        fi
     done
 }
 
@@ -63,6 +139,121 @@ _jwc_ext_firefox_policy_path() {
     fi
 }
 
+# _jwc_ext_extract_firefox_entries POLICY_FILE
+#   Prints existing Firefox ExtensionSettings entries as GUID|URL.
+_jwc_ext_extract_firefox_entries() {
+    local policy_file="$1"
+    [[ -f "$policy_file" ]] || return 0
+
+    sudo awk '
+        BEGIN { in_settings=0; depth=0; guid="" }
+        /"ExtensionSettings"[[:space:]]*:[[:space:]]*\{/ {
+            in_settings=1
+            depth=1
+            next
+        }
+        in_settings {
+            if (match($0, /^[[:space:]]*"([^"]+)"[[:space:]]*:[[:space:]]*\{/, m)) {
+                guid=m[1]
+            }
+            if (guid != "" && match($0, /"install_url"[[:space:]]*:[[:space:]]*"([^"]+)"/, u)) {
+                print guid "|" u[1]
+                guid=""
+            }
+            open_count = gsub(/\{/, "{", $0)
+            close_count = gsub(/\}/, "}", $0)
+            depth += open_count - close_count
+            if (depth <= 0) {
+                in_settings=0
+            }
+        }
+    ' "$policy_file" 2>/dev/null
+}
+
+# _jwc_ext_write_firefox_entries POLICY_FILE ENTRY...
+#   Writes Firefox ExtensionSettings policy JSON with the provided entries.
+_jwc_ext_write_firefox_entries() {
+    local policy_file="$1"
+    shift
+    local entries=("$@")
+
+    {
+        echo "{"
+        echo "    \"policies\": {"
+        echo "        \"ExtensionSettings\": {"
+        local i
+        for i in "${!entries[@]}"; do
+            local guid="${entries[$i]%%|*}"
+            local url="${entries[$i]#*|}"
+            local suffix=","
+            (( i == ${#entries[@]} - 1 )) && suffix=""
+            echo "            \"${guid}\": {"
+            echo "                \"installation_mode\": \"force_installed\"," 
+            echo "                \"install_url\": \"${url}\""
+            echo "            }${suffix}"
+        done
+        echo "        }"
+        echo "    }"
+        echo "}"
+    } | sudo tee "$policy_file" > /dev/null
+}
+
+# _jwc_ext_apply_firefox_entry POLICY_FILE GUID URL
+#   Adds or updates this extension in Firefox ExtensionSettings.
+_jwc_ext_apply_firefox_entry() {
+    local policy_file="$1"
+    local guid="$2"
+    local url="$3"
+    local line
+    local -A settings=()
+
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        settings["${line%%|*}"]="${line#*|}"
+    done < <(_jwc_ext_extract_firefox_entries "$policy_file")
+
+    settings["$guid"]="$url"
+
+    local entries=()
+    local k
+    for k in "${!settings[@]}"; do
+        entries+=("$k|${settings[$k]}")
+    done
+
+    _jwc_ext_write_firefox_entries "$policy_file" "${entries[@]}"
+}
+
+# _jwc_ext_remove_firefox_entry POLICY_FILE GUID
+#   Removes this extension from Firefox ExtensionSettings.
+_jwc_ext_remove_firefox_entry() {
+    local policy_file="$1"
+    local guid="$2"
+    local line
+    local -A settings=()
+
+    [[ -f "$policy_file" ]] || return 0
+
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        settings["${line%%|*}"]="${line#*|}"
+    done < <(_jwc_ext_extract_firefox_entries "$policy_file")
+
+    unset 'settings[$guid]'
+
+    if (( ${#settings[@]} == 0 )); then
+        sudo rm -f "$policy_file"
+        return 0
+    fi
+
+    local entries=()
+    local k
+    for k in "${!settings[@]}"; do
+        entries+=("$k|${settings[$k]}")
+    done
+
+    _jwc_ext_write_firefox_entries "$policy_file" "${entries[@]}"
+}
+
 # _jwc_ext_apply_chromium BROWSER
 #   Creates the force-install policy JSON for a Chromium-family browser.
 _jwc_ext_apply_chromium() {
@@ -70,16 +261,14 @@ _jwc_ext_apply_chromium() {
     local policy_dir="${_JWC_CHROMIUM_POLICY_DIRS[$browser]}"
     local policy_file
     policy_file="$(_jwc_ext_policy_file "$browser")"
+    local legacy_policy_file="${policy_dir}/joplin_webclipper_extension.json"
+    local entry="${_JWC_EXT_ID};${_JWC_EXT_UPDATE_URL}"
 
     sudo mkdir -p "$policy_dir"
-    sudo tee "$policy_file" > /dev/null <<EOF
-{
-    "ExtensionInstallForcelist": [
-        "${_JWC_EXT_ID};${_JWC_EXT_UPDATE_URL}"
-    ]
-}
-EOF
-    echo "  → Wrote Joplin Web Clipper extension policy for ${browser}: ${policy_file}"
+    # Cleanup legacy per-extension file to avoid policy key conflicts.
+    sudo rm -f "$legacy_policy_file"
+    _jwc_ext_apply_chromium_entry "$policy_file" "$entry"
+    echo "  → Ensured Joplin Web Clipper extension policy for ${browser}: ${policy_file}"
 }
 
 # _jwc_ext_apply_firefox POLICY_FILE
@@ -90,19 +279,8 @@ _jwc_ext_apply_firefox() {
     policy_dir="$(dirname "$policy_file")"
 
     sudo mkdir -p "$policy_dir"
-    sudo tee "$policy_file" > /dev/null <<EOF
-{
-    "policies": {
-        "ExtensionSettings": {
-            "${_JWC_FF_GUID}": {
-                "installation_mode": "force_installed",
-                "install_url": "${_JWC_FF_URL}"
-            }
-        }
-    }
-}
-EOF
-    echo "  → Wrote Joplin Web Clipper extension policy for Firefox: ${policy_file}"
+    _jwc_ext_apply_firefox_entry "$policy_file" "${_JWC_FF_GUID}" "${_JWC_FF_URL}"
+    echo "  → Ensured Joplin Web Clipper extension policy for Firefox: ${policy_file}"
 }
 
 # ---------------------------------------------------------------------------
@@ -113,11 +291,13 @@ check_joplin_webclipper_extension() {
     # Check policy files (installed by this tool)
     local browser
     for browser in "${!_JWC_CHROMIUM_POLICY_DIRS[@]}"; do
-        [[ -f "$(_jwc_ext_policy_file "$browser")" ]] && return 0
+        local pf
+        pf="$(_jwc_ext_policy_file "$browser")"
+        [[ -f "$pf" ]] && sudo grep -q "${_JWC_EXT_ID};${_JWC_EXT_UPDATE_URL}" "$pf" 2>/dev/null && return 0
     done
     local ff_path
     ff_path="$(_jwc_ext_firefox_policy_path)"
-    [[ -n "$ff_path" && -f "$ff_path" ]] && return 0
+    [[ -n "$ff_path" && -f "$ff_path" ]] && sudo grep -q "\"${_JWC_FF_GUID}\"" "$ff_path" 2>/dev/null && return 0
     # Check if the extension is already present in any browser profile directory
     local root
     for root in \
@@ -170,19 +350,21 @@ uninstall_joplin_webclipper_extension() {
     for browser in "${!_JWC_CHROMIUM_POLICY_DIRS[@]}"; do
         local pf
         pf="$(_jwc_ext_policy_file "$browser")"
+        local legacy_pf="${_JWC_CHROMIUM_POLICY_DIRS[$browser]}/joplin_webclipper_extension.json"
         if [[ -f "$pf" ]]; then
-            sudo rm -f "$pf"
-            echo "  → Removed: ${pf}"
+            _jwc_ext_remove_chromium_entry "$pf" "${_JWC_EXT_ID};${_JWC_EXT_UPDATE_URL}"
+            echo "  → Removed Joplin Web Clipper entry from: ${pf}"
             local pd="${_JWC_CHROMIUM_POLICY_DIRS[$browser]}"
             sudo rmdir --ignore-fail-on-non-empty "$pd" 2>/dev/null || true
         fi
+        sudo rm -f "$legacy_pf"
     done
 
     local ff_path
     ff_path="$(_jwc_ext_firefox_policy_path)"
     if [[ -n "$ff_path" && -f "$ff_path" ]]; then
-        sudo rm -f "$ff_path"
-        echo "  → Removed: ${ff_path}"
+        _jwc_ext_remove_firefox_entry "$ff_path" "${_JWC_FF_GUID}"
+        echo "  → Removed Joplin Web Clipper Firefox entry from: ${ff_path}"
         sudo rmdir --ignore-fail-on-non-empty "$(dirname "$ff_path")" 2>/dev/null || true
     fi
 
@@ -193,10 +375,10 @@ uninstall_joplin_webclipper_extension() {
 update_joplin_webclipper_extension() {
     if check_joplin_webclipper_extension; then
         echo "Re-applying Joplin Web Clipper extension policies (extensions self-update via browser)..."
-        install_joplin_webclipper_extension
     else
-        echo "Joplin Web Clipper extension policies not installed — nothing to update."
+        echo "Joplin Web Clipper extension policies not found — installing now."
     fi
+    install_joplin_webclipper_extension
 }
 
 get_version_joplin_webclipper_extension() {
