@@ -71,6 +71,10 @@ _TAB_SCROLL=()
 # Per-tab active subcategory (empty string = top level, non-empty = inside a subcategory)
 _TAB_SUBCAT=()
 
+# Active profile cursor: 0-based index into PROFILES[] array.
+# Updated by UP/DOWN while _FOCUS=="profiles"; reset to 0 on menu entry.
+_PROFILES_CURSOR=0
+
 # Sentinel value used as the index for the ".." (go-up) entry
 _SUBCAT_UP_SENTINEL=-1
 
@@ -597,13 +601,55 @@ _render_left() {
         (( row++ ))
     done
 
-    # Separator between tabs and sysinfo
+    # Separator between categories and profiles
     _hline "$inner_w"
     _LEFT_LINES+=("${CYAN}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
     (( row++ ))
 
+    # --- Profiles Section ---
+    # Rendered only when at least one profile is registered (lib/profiles.sh).
+    # Shows a navigable list of curated presets that pre-populate the install
+    # queue when activated. Utilities not registered on the current distro
+    # are silently skipped by apply_profile() at runtime.
+    if (( ${#PROFILES[@]} > 0 )) && (( row < _MAIN_H )); then
+        local _phdr=" PROFILES"
+        _pad_or_truncate "$_phdr" "$inner_w"
+        _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${BOLD}${CYAN}${_POT_RESULT}${RESET}${CYAN}${_BD_V}${RESET}")
+        (( row++ ))
+
+        if (( row < _MAIN_H )); then
+            _hline "$inner_w"
+            _LEFT_LINES+=("${CYAN}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
+            (( row++ ))
+        fi
+
+        local _num_profiles=${#PROFILES[@]}
+        for (( p=0; p<_num_profiles; p++ )); do
+            (( row >= _MAIN_H )) && break
+            local _pname="${PROFILES[$p]}"
+            local _ptext=""
+            if (( p == _PROFILES_CURSOR )) && [[ "$_FOCUS" == "profiles" ]]; then
+                _ptext=" ${BOLD}${YELLOW}> ${_pname}${RESET}"
+            elif (( p == _PROFILES_CURSOR )); then
+                _ptext=" ${YELLOW}> ${_pname}${RESET}"
+            else
+                _ptext="   ${DIM}${_pname}${RESET}"
+            fi
+            _pad_or_truncate "$_ptext" "$inner_w"
+            _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
+            (( row++ ))
+        done
+
+        # Separator between profiles and sysinfo
+        if (( row < _MAIN_H )); then
+            _hline "$inner_w"
+            _LEFT_LINES+=("${CYAN}${_BD_LJ}${_HLINE_RESULT}${_BD_RJ}${RESET}")
+            (( row++ ))
+        fi
+    fi
+
     # --- System Info Section ---
-    local sysinfo_header=" SYSTEM INFO"
+    local sysinfo_header=" SYSTEM DETAILS"
     _pad_or_truncate "$sysinfo_header" "$inner_w"
     _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${BOLD}${CYAN}${_POT_RESULT}${RESET}${CYAN}${_BD_V}${RESET}")
     (( row++ ))
@@ -903,6 +949,12 @@ _render_right() {
     local desc_content_h=$(( _DESC_H - 1 ))  # minus separator line
     local desc_text=""
 
+    # When the profiles section is focused, show the selected profile's
+    # description instead of the highlighted right-panel item description.
+    if [[ "$_FOCUS" == "profiles" ]] && (( ${#PROFILES[@]} > 0 )); then
+        desc_text="${PROFILE_DESC[$_PROFILES_CURSOR]:-}"
+    fi
+
     # Determine what is currently highlighted
     local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
     if (( ${#_SEARCH_FILTERED[@]} > 0 && _cur_pos < ${#_SEARCH_FILTERED[@]} )); then
@@ -1019,6 +1071,8 @@ _render_status() {
     local keys=""
     if [[ "$_SEARCH_ACTIVE" == true ]]; then
         keys=" ${BOLD}[Esc]${RESET} Clear  ${BOLD}[↑↓]${RESET} Navigate  ${BOLD}[Enter]${RESET} Accept  ${BOLD}[BS]${RESET} Delete"
+    elif [[ "$_FOCUS" == "profiles" ]]; then
+        keys=" ${BOLD}[↑↓]${RESET} Select Profile  ${BOLD}[Enter/Space]${RESET} Apply Profile  ${BOLD}[Tab]${RESET} Switch Focus  ${BOLD}[Q]${RESET} Quit"
     else
         keys=" ${BOLD}[↑↓]${RESET} Navigate  ${BOLD}[Space]${RESET} Select  ${BOLD}[U]${RESET} Update  ${BOLD}[/]${RESET} Search  ${BOLD}[Enter]${RESET} Confirm  ${BOLD}[Tab]${RESET} Focus  ${BOLD}[Q]${RESET} Quit"
     fi
@@ -1197,6 +1251,7 @@ run_selection_menu() {
     _TAB_NAMES=("${CATEGORIES[@]}")
     _ACTIVE_TAB=0
     _FOCUS="items"
+    _PROFILES_CURSOR=0
     _SEARCH_QUERY=""
     _SEARCH_ACTIVE=false
     _TAB_CURSOR=()
@@ -1386,10 +1441,20 @@ run_selection_menu() {
                 fi
                 ;;
             TAB|SHIFT_TAB)
-                if [[ "$_FOCUS" == "tabs" ]]; then
-                    _FOCUS="items"
+                # Cycle focus forward: tabs → profiles → items (TAB)
+                # Cycle focus reverse: tabs → items → profiles  (SHIFT_TAB)
+                if [[ "$key" == "TAB" ]]; then
+                    case "$_FOCUS" in
+                        tabs)     _FOCUS="profiles" ;;
+                        profiles) _FOCUS="items" ;;
+                        items)    _FOCUS="tabs" ;;
+                    esac
                 else
-                    _FOCUS="tabs"
+                    case "$_FOCUS" in
+                        tabs)     _FOCUS="items" ;;
+                        items)    _FOCUS="profiles" ;;
+                        profiles) _FOCUS="tabs" ;;
+                    esac
                 fi
                 _compose_frame
                 ;;
@@ -1404,6 +1469,8 @@ run_selection_menu() {
                     _SEARCH_QUERY=""
                     _rebuild_filtered
                     _update_scroll
+                elif [[ "$_FOCUS" == "profiles" ]] && (( ${#PROFILES[@]} > 0 )); then
+                    _PROFILES_CURSOR=$(( (_PROFILES_CURSOR - 1 + ${#PROFILES[@]}) % ${#PROFILES[@]} ))
                 else
                     if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
                         _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] - 1 + ${#_SEARCH_FILTERED[@]}) % ${#_SEARCH_FILTERED[@]} ))
@@ -1422,6 +1489,8 @@ run_selection_menu() {
                     _SEARCH_QUERY=""
                     _rebuild_filtered
                     _update_scroll
+                elif [[ "$_FOCUS" == "profiles" ]] && (( ${#PROFILES[@]} > 0 )); then
+                    _PROFILES_CURSOR=$(( (_PROFILES_CURSOR + 1) % ${#PROFILES[@]} ))
                 else
                     if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
                         _TAB_CURSOR[$_ACTIVE_TAB]=$(( (_TAB_CURSOR[_ACTIVE_TAB] + 1) % ${#_SEARCH_FILTERED[@]} ))
@@ -1446,6 +1515,9 @@ run_selection_menu() {
                         _FOCUS="tabs"
                     fi
                     _compose_frame
+                elif [[ "$_FOCUS" == "profiles" ]]; then
+                    _FOCUS="tabs"
+                    _compose_frame
                 fi
                 ;;
             RIGHT)
@@ -1455,6 +1527,13 @@ run_selection_menu() {
                 fi
                 ;;
             SPACE)
+                # Apply the highlighted profile if the profiles section is focused
+                if [[ "$_FOCUS" == "profiles" ]] && (( ${#PROFILES[@]} > 0 )); then
+                    apply_profile "$_PROFILES_CURSOR"
+                    _FOCUS="items"
+                    _compose_frame
+                    continue
+                fi
                 if [[ "$_FOCUS" == "items" && ${#_SEARCH_FILTERED[@]} -gt 0 ]]; then
                     local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
                     local _cur_type="${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}"
@@ -1515,6 +1594,13 @@ run_selection_menu() {
                 _compose_frame
                 ;;
             ENTER)
+                # Apply the highlighted profile if the profiles section is focused
+                if [[ "$_FOCUS" == "profiles" ]] && (( ${#PROFILES[@]} > 0 )); then
+                    apply_profile "$_PROFILES_CURSOR"
+                    _FOCUS="items"
+                    _compose_frame
+                    continue
+                fi
                 # If focused on a [D] entry, navigate into/out of subcategory
                 if [[ "$_FOCUS" == "items" && ${#_SEARCH_FILTERED[@]} -gt 0 ]]; then
                     local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}

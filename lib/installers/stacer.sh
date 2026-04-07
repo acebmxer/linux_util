@@ -8,7 +8,7 @@ check_stacer() { _check_standard stacer stacer ""; }
 _stacer_latest_url() {
     local ext="$1"
     curl -fsSL "https://api.github.com/repos/oguzhaninan/Stacer/releases/latest" \
-        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+\.'"$ext"'"' | grep -v "arm" | head -1
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+\.'"$ext" | grep -v "arm" | head -1
 }
 
 install_stacer() {

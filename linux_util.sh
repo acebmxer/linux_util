@@ -135,6 +135,12 @@ source "${SCRIPT_DIR}/lib/installers.sh" || { echo "Error: Failed to source inst
 _init_deps_map
 _init_health_checks
 
+# Load profiles module — must come after installers.sh so all utility names
+# are registered before the profile registration calls in profiles.sh run.
+# Profiles reference utility names by exact string; unregistered names are
+# silently skipped by the apply_profile() helper functions at runtime.
+source "${SCRIPT_DIR}/lib/profiles.sh" || { echo "Error: Failed to source profiles.sh"; exit 1; }
+
 # Setup traps for cleanup and error handling
 trap cleanup_on_exit EXIT
 trap 'echo ""; echo "Interrupted."; exit 130' INT TERM

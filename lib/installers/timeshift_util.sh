@@ -59,6 +59,24 @@ install_timeshift() {
     # Initialize snapshot support now that Timeshift is available,
     # so the user can configure the backup device immediately.
     timeshift_init
+
+    # Offer to take an initial snapshot right after setup.
+    # Having a restore point before any further installations is the whole
+    # point of running "Run Me First", so this prompt appears automatically.
+    # The snapshot is optional — pressing N skips it without any side-effects.
+    # Skipped in dry-run mode since no actual installation occurred.
+    if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" && "${DRY_RUN:-false}" == "false" ]]; then
+        echo ""
+        read -n 1 -rp "Create an initial Timeshift snapshot now? [Y/n] " _ts_snap_now < /dev/tty
+        echo ""
+        if [[ ! "$_ts_snap_now" =~ ^[Nn]$ ]]; then
+            setup_create_snapshot
+            # Refresh the cached snapshot timestamp shown in the left panel
+            _timeshift_cache_last_snapshot
+        else
+            echo "Skipping initial snapshot. You can create one later via 'Create Snapshot'."
+        fi
+    fi
 }
 
 uninstall_timeshift() {
