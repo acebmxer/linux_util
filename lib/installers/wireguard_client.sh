@@ -228,7 +228,7 @@ uninstall_wireguard_client() {
 update_wireguard_client() {
     info "Updating WireGuard Client..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt update && sudo apt upgrade -y wireguard wireguard-tools ;;
+        debian)  sudo apt-get install -y --only-upgrade wireguard wireguard-tools ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y wireguard-tools ;;
         arch)    sudo pacman -S --noconfirm wireguard-tools ;;
         suse)    sudo zypper update -y wireguard-tools ;;

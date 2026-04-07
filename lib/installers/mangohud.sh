@@ -103,7 +103,7 @@ uninstall_mangohud() {
 update_mangohud() {
     info "Updating MangoHud..."
     case "$DISTRO_FAMILY" in
-        debian)   sudo apt update && sudo apt upgrade -y mangohud 2>/dev/null || install_mangohud ;;
+        debian)   sudo apt-get install -y --only-upgrade mangohud 2>/dev/null || install_mangohud ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y mangohud ;;
         arch)     sudo pacman -S --noconfirm mangohud lib32-mangohud 2>/dev/null || sudo pacman -S --noconfirm mangohud ;;
         suse)     sudo zypper update -y mangohud ;;

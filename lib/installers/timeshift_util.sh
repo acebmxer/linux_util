@@ -104,7 +104,7 @@ update_timeshift() {
     echo "Updating Timeshift..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt update && sudo apt upgrade -y timeshift
+            sudo apt-get install -y --only-upgrade timeshift
             ;;
         *)
             pkg_upgrade timeshift

@@ -61,7 +61,7 @@ update_github_cli() {
     info "Updating GitHub CLI..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt update && sudo apt upgrade -y gh
+            sudo apt-get install -y --only-upgrade gh
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" upgrade -y gh

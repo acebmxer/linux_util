@@ -88,7 +88,7 @@ uninstall_tailscale() {
 update_tailscale() {
     info "Updating Tailscale..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt update && sudo apt upgrade -y tailscale ;;
+        debian)  sudo apt-get install -y --only-upgrade tailscale ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y tailscale ;;
         arch)    sudo pacman -S --noconfirm tailscale ;;
         suse)    sudo zypper update -y tailscale ;;

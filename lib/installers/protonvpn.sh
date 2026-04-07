@@ -101,7 +101,7 @@ update_protonvpn() {
         flatpak update -y com.protonvpn.www
     else
         case "$DISTRO_FAMILY" in
-            debian)   sudo apt update && sudo apt upgrade -y proton-vpn-gnome-desktop ;;
+            debian)   sudo apt-get install -y --only-upgrade proton-vpn-gnome-desktop ;;
             fedora)   sudo "$PKG_MGR" upgrade -y proton-vpn-gnome-desktop ;;
             arch)
                 aur_ensure protonvpn

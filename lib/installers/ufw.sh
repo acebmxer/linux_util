@@ -75,7 +75,7 @@ uninstall_ufw() {
 update_ufw() {
     info "Updating UFW..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt update && sudo apt upgrade -y ufw ;;
+        debian)  sudo apt-get install -y --only-upgrade ufw ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y ufw ;;
         arch)    sudo pacman -S --noconfirm ufw ;;
         suse)    sudo zypper update -y ufw ;;

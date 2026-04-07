@@ -70,7 +70,7 @@ update_nextcloud_desktop() {
         flatpak update -y com.nextcloud.desktopclient.nextcloud
     else
         case "$DISTRO_FAMILY" in
-            debian)  sudo apt update && sudo apt upgrade -y nextcloud-desktop ;;
+            debian)  sudo apt-get install -y --only-upgrade nextcloud-desktop ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y nextcloud-client ;;
             arch)    sudo pacman -S --noconfirm nextcloud-client ;;
             suse)    sudo zypper update -y nextcloud-client ;;

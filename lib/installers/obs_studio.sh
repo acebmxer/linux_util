@@ -79,7 +79,7 @@ update_obs_studio() {
         flatpak update -y com.obsproject.Studio
     else
         case "$DISTRO_FAMILY" in
-            debian)  sudo apt update && sudo apt upgrade -y obs-studio ;;
+            debian)  sudo apt-get install -y --only-upgrade obs-studio ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y obs-studio ;;
             arch)    sudo pacman -S --noconfirm obs-studio ;;
             suse)    sudo zypper update -y obs-studio ;;

@@ -35,7 +35,7 @@
 # Utilities:     "Bitwarden Client"  "Bitwarden Extension"  "Bottles"
 #                "Brave Browser"  "Btop"  "Claude Code"  "Cursor IDE"
 #                "DBeaver"  "Devolutions RDM"  "Discord"  "Docker"
-#                "Dotfiles"  "Fastfetch"  "Feral Gamemode"  "FileZilla"
+#                "Fastfetch"  "Feral Gamemode"  "FileZilla"
 #                "Firefox"  "GIMP"  "GitHub CLI"  "Google Chrome"
 #                "Heroic Games Launcher"  "JetBrains Toolbox"
 #                "Joplin Client"  "Joplin Web Clipper"  "KMail"

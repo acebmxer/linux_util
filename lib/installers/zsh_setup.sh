@@ -9,6 +9,149 @@ check_zsh_setup() {
     command -v zsh &>/dev/null && [[ -d "$_OMZ_DIR" ]]
 }
 
+_zsh_setup_configure_shells() {
+    local marker="# linux_util:zsh_setup"
+
+    # Ensure our OMZ plugins are in ~/.zshrc plugins=() line
+    if [[ -f "$HOME/.zshrc" ]]; then
+        if ! grep -q "zsh-autosuggestions" "$HOME/.zshrc"; then
+            sed -i 's/^plugins=(\(.*\))/plugins=(\1 zsh-autosuggestions)/' "$HOME/.zshrc"
+            info "Added zsh-autosuggestions to plugins in ~/.zshrc"
+        else
+            info "zsh-autosuggestions already in plugins in ~/.zshrc"
+        fi
+        if ! grep -q "zsh-syntax-highlighting" "$HOME/.zshrc"; then
+            sed -i 's/^plugins=(\(.*\))/plugins=(\1 zsh-syntax-highlighting)/' "$HOME/.zshrc"
+            info "Added zsh-syntax-highlighting to plugins in ~/.zshrc"
+        else
+            info "zsh-syntax-highlighting already in plugins in ~/.zshrc"
+        fi
+    fi
+
+    # Starship init — zsh
+    if command -v starship &>/dev/null && [[ -f "$HOME/.zshrc" ]]; then
+        if ! grep -qF "$marker" "$HOME/.zshrc" 2>/dev/null; then
+            printf '\n%s\neval "$(starship init zsh)"\n' "$marker" >> "$HOME/.zshrc"
+            info "Added Starship init to ~/.zshrc"
+        else
+            info "Starship init already configured in ~/.zshrc"
+        fi
+    fi
+
+    # Starship init — bash
+    if command -v starship &>/dev/null && command -v bash &>/dev/null; then
+        if [[ -f "$HOME/.bashrc" ]]; then
+            local rc="$HOME/.bashrc"
+            if ! grep -qF "$marker" "$rc" 2>/dev/null; then
+                printf '\n%s\neval "$(starship init bash)"\n' "$marker" >> "$rc"
+                info "Added Starship init to $rc"
+            else
+                info "Starship init already configured in $rc"
+            fi
+        elif [[ -L "$HOME/.bashrc" ]]; then
+            info "~/.bashrc is a broken symlink — skipping Starship init for bash"
+        else
+            info "bash installed but ~/.bashrc not found — skipping Starship init for bash"
+        fi
+    fi
+
+    # Starship init — fish
+    if command -v starship &>/dev/null && command -v fish &>/dev/null; then
+        local rc="$HOME/.config/fish/config.fish"
+        mkdir -p "$(dirname "$rc")"
+        if ! grep -qF "$marker" "$rc" 2>/dev/null; then
+            printf '\n%s\nstarship init fish | source\n' "$marker" >> "$rc"
+            info "Added Starship init to $rc"
+        else
+            info "Starship init already configured in $rc"
+        fi
+    fi
+
+    # Starship init — tcsh
+    if command -v starship &>/dev/null && command -v tcsh &>/dev/null && [[ -f "$HOME/.tcshrc" ]]; then
+        local rc="$HOME/.tcshrc"
+        if ! grep -qF "$marker" "$rc" 2>/dev/null; then
+            printf '\n%s\neval \`starship init tcsh\`\n' "$marker" >> "$rc"
+            info "Added Starship init to $rc"
+        else
+            info "Starship init already configured in $rc"
+        fi
+    fi
+
+    # Starship init — xonsh
+    if command -v starship &>/dev/null && command -v xonsh &>/dev/null && [[ -f "$HOME/.xonshrc" ]]; then
+        local rc="$HOME/.xonshrc"
+        if ! grep -qF "$marker" "$rc" 2>/dev/null; then
+            printf '\n%s\nexecx($(starship init xonsh))\n' "$marker" >> "$rc"
+            info "Added Starship init to $rc"
+        else
+            info "Starship init already configured in $rc"
+        fi
+    fi
+
+    # Starship init — elvish
+    if command -v starship &>/dev/null && command -v elvish &>/dev/null; then
+        local rc="$HOME/.config/elvish/rc.elv"
+        mkdir -p "$(dirname "$rc")"
+        if ! grep -qF "$marker" "$rc" 2>/dev/null; then
+            printf '\n%s\neval (starship init elvish)\n' "$marker" >> "$rc"
+            info "Added Starship init to $rc"
+        else
+            info "Starship init already configured in $rc"
+        fi
+    fi
+
+    # Starship init — nushell
+    if command -v starship &>/dev/null && command -v nu &>/dev/null; then
+        local nu_config
+        nu_config=$(nu -c '$nu.data-dir' 2>/dev/null)
+        if [[ -n "$nu_config" ]]; then
+            local nu_autoload="$nu_config/vendor/autoload"
+            mkdir -p "$nu_autoload"
+            local nu_file="$nu_autoload/starship.nu"
+            if [[ ! -f "$nu_file" ]]; then
+                starship init nu | nu --stdin -c 'save -f ("'"$nu_file"'")' 2>/dev/null || \
+                    starship init nu > "$nu_file"
+                info "Added Starship init to $nu_file"
+            else
+                info "Starship init already configured in $nu_file"
+            fi
+        fi
+    fi
+}
+
+_zsh_setup_deconfigure_shells() {
+    local marker="# linux_util:zsh_setup"
+    local rc
+
+    # Remove Starship init marker+line from all shell RCs
+    for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.config/fish/config.fish" \
+              "$HOME/.tcshrc" "$HOME/.xonshrc" "$HOME/.config/elvish/rc.elv"; do
+        [[ -f "$rc" ]] || continue
+        if grep -qF "$marker" "$rc"; then
+            sed -i '/^# linux_util:zsh_setup$/{N;d}' "$rc"
+            info "Removed Starship init from $rc"
+        fi
+    done
+
+    # Remove nushell starship autoload file
+    if command -v nu &>/dev/null; then
+        local nu_config
+        nu_config=$(nu -c '$nu.data-dir' 2>/dev/null)
+        local nu_file="${nu_config}/vendor/autoload/starship.nu"
+        if [[ -f "$nu_file" ]]; then
+            rm -f "$nu_file"
+            info "Removed Starship init from $nu_file"
+        fi
+    fi
+
+    # Remove our plugins from the plugins=() line in ~/.zshrc
+    if [[ -f "$HOME/.zshrc" ]]; then
+        sed -i 's/ zsh-autosuggestions//g; s/ zsh-syntax-highlighting//g' "$HOME/.zshrc"
+        info "Removed custom plugins from ~/.zshrc"
+    fi
+}
+
 install_zsh_setup() {
     info "Installing Zsh + Oh My Zsh + Starship..."
     ensure_tools
@@ -67,15 +210,14 @@ install_zsh_setup() {
         chsh -s "$zsh_path" || warn "Could not change default shell. Run: chsh -s $zsh_path"
     fi
 
-    info "Zsh + Oh My Zsh + Starship installed."
-    info "Plugins enabled: zsh-autosuggestions, zsh-syntax-highlighting."
-    info "Add them to your ~/.zshrc plugins list: plugins=(git zsh-autosuggestions zsh-syntax-highlighting)"
-    info "Add 'eval \"\$(starship init zsh)\"' to ~/.zshrc to enable Starship."
-    info "Open a new terminal or run 'zsh' to start using it."
+    _zsh_setup_configure_shells
+    info "Zsh + Oh My Zsh + Starship installed. Open a new terminal or run 'zsh' to start using it."
 }
 
 uninstall_zsh_setup() {
     info "Uninstalling Zsh + Oh My Zsh + Starship..."
+
+    _zsh_setup_deconfigure_shells
 
     # Remove Oh My Zsh (pipe 'y' to bypass interactive confirmation prompt)
     if [[ -f "$_OMZ_DIR/tools/uninstall.sh" ]]; then
@@ -127,6 +269,7 @@ update_zsh_setup() {
         curl -fsSL https://starship.rs/install.sh | sh -s -- --yes || true
     fi
 
+    _zsh_setup_configure_shells
     info "Zsh setup updated."
 }
 

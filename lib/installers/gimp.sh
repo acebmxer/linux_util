@@ -41,7 +41,7 @@ update_gimp() {
         flatpak update -y org.gimp.GIMP
     else
         case "$DISTRO_FAMILY" in
-            debian)  sudo apt update && sudo apt upgrade -y gimp ;;
+            debian)  sudo apt-get install -y --only-upgrade gimp ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y gimp ;;
             arch)    sudo pacman -S --noconfirm gimp ;;
             suse)    sudo zypper update -y gimp ;;

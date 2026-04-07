@@ -130,8 +130,8 @@ setup_command_not_found() {
     _cnf_ensure_package || return 1
     _cnf_apply_bash "$HOME/.bashrc"
 
-    # Configure zsh if already present (e.g. dotfiles installed first).
-    # Silently skipped when ~/.zshrc doesn't exist; use Update later once dotfiles are set up.
+    # Configure zsh if already present.
+    # Silently skipped when ~/.zshrc doesn't exist; use Update later once zsh is set up.
     if [[ -f "$HOME/.zshrc" ]]; then
         _cnf_apply_zsh "$HOME/.zshrc"
         info "command-not-found setup complete. Open a new terminal to activate."

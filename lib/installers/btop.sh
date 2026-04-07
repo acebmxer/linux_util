@@ -75,7 +75,7 @@ uninstall_btop() {
 update_btop() {
     info "Updating Btop++..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt update && sudo apt upgrade -y btop ;;
+        debian)  sudo apt-get install -y --only-upgrade btop ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y btop 2>/dev/null || _btop_install_binary ;;
         arch)    sudo pacman -S --noconfirm btop ;;
         suse)    sudo zypper update -y btop 2>/dev/null || _btop_install_binary ;;

@@ -59,7 +59,7 @@ update_signal() {
         flatpak update -y org.signal.Signal
     else
         case "$DISTRO_FAMILY" in
-            debian)   sudo apt update && sudo apt upgrade -y signal-desktop ;;
+            debian)   sudo apt-get install -y --only-upgrade signal-desktop ;;
             arch)
                 aur_ensure signal-desktop
                 ;;

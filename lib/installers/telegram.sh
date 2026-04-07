@@ -80,7 +80,7 @@ update_telegram() {
         sudo snap refresh telegram-desktop
     else
         case "$DISTRO_FAMILY" in
-            debian)  sudo apt update && sudo apt upgrade -y telegram-desktop ;;
+            debian)  sudo apt-get install -y --only-upgrade telegram-desktop ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y telegram-desktop ;;
             arch)    sudo pacman -S --noconfirm telegram-desktop ;;
             suse)    sudo zypper update -y telegram-desktop ;;

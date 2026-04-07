@@ -209,7 +209,6 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | Utility | Description |
 |---------|-------------|
 | **Btop** | Terminal-based resource monitor with rich visuals |
-| **Dotfiles** | Deploys personal shell config from your repository |
 | **Fastfetch** | Fast system information display tool |
 | **Stacer** | Graphical system optimizer and monitor |
 | **Timeshift** | System restore utility using rsync or BTRFS snapshots |

@@ -72,7 +72,7 @@ update_remmina() {
         flatpak update -y org.remmina.Remmina
     else
         case "$DISTRO_FAMILY" in
-            debian)  sudo apt update && sudo apt upgrade -y remmina ;;
+            debian)  sudo apt-get install -y --only-upgrade remmina ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y remmina ;;
             arch)    sudo pacman -S --noconfirm remmina ;;
             suse)    sudo zypper update -y remmina ;;

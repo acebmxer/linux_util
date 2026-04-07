@@ -59,7 +59,6 @@ fi
 
 # Command-not-found auto-install prompt (Ubuntu, Kubuntu, KDE Neon)
 # Prerequisite: enables interactive y/N install prompt for missing commands in bash.
-# Dotfiles installer will additionally apply the zsh handler when zsh is set up.
 if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
     register_system_task "Command-Not-Found Prompt" setup_command_not_found check_command_not_found uninstall_command_not_found update_command_not_found
 fi
@@ -83,7 +82,6 @@ register_utility "DBeaver"             install_dbeaver          check_dbeaver   
 register_utility "Devolutions RDM"     install_devolutions_rdm  check_devolutions_rdm  uninstall_devolutions_rdm  update_devolutions_rdm     get_version_devolutions_rdm
 register_utility "Discord"             install_discord          check_discord          uninstall_discord          update_discord             get_version_discord
 register_utility "Docker"              setup_install_docker     check_docker           uninstall_docker           update_docker              get_version_docker
-register_utility "Dotfiles"            setup_install_dotfiles   check_dotfiles         uninstall_dotfiles         setup_install_dotfiles
 register_utility "Fastfetch"           install_fastfetch        check_fastfetch        uninstall_fastfetch        update_fastfetch           get_version_fastfetch
 register_utility "Feral Gamemode"      install_gamemode         check_gamemode         uninstall_gamemode         update_gamemode            get_version_gamemode
 register_utility "FileZilla"           install_filezilla        check_filezilla        uninstall_filezilla        update_filezilla           get_version_filezilla
@@ -215,7 +213,6 @@ UTILITY_CATEGORY["DBeaver"]="Development"
 UTILITY_CATEGORY["Devolutions RDM"]="Internet"
 UTILITY_CATEGORY["Discord"]="Internet"
 UTILITY_CATEGORY["Docker"]="Development"
-UTILITY_CATEGORY["Dotfiles"]="System Tools"
 UTILITY_CATEGORY["Fastfetch"]="System Tools"
 UTILITY_CATEGORY["Feral Gamemode"]="Gaming"
 UTILITY_CATEGORY["FileZilla"]="Internet"
@@ -399,7 +396,6 @@ UTILITY_DESCRIPTION["WPS Office"]="Microsoft Office-compatible office suite with
 
 # System Tools
 UTILITY_DESCRIPTION["Btop"]="Modern terminal-based resource monitor with a rich visual interface showing CPU, memory, disk, and network."
-UTILITY_DESCRIPTION["Dotfiles"]="Deploys your personal shell configuration and dotfiles from your repository."
 UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written in C, displaying OS, hardware, and software details."
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
 UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS."

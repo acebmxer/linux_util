@@ -83,7 +83,7 @@ update_lutris() {
         flatpak update -y net.lutris.Lutris
     else
         case "$DISTRO_FAMILY" in
-            debian)   sudo apt update && sudo apt upgrade -y lutris ;;
+            debian)   sudo apt-get install -y --only-upgrade lutris ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y lutris ;;
             arch)     sudo pacman -S --noconfirm lutris ;;
             suse)     sudo zypper update -y lutris ;;

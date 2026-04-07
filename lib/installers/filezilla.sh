@@ -34,7 +34,7 @@ uninstall_filezilla() {
 update_filezilla() {
     info "Updating FileZilla..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt update && sudo apt upgrade -y filezilla ;;
+        debian)  sudo apt-get install -y --only-upgrade filezilla ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y filezilla ;;
         arch)    sudo pacman -S --noconfirm filezilla ;;
         suse)    sudo zypper update -y filezilla ;;
