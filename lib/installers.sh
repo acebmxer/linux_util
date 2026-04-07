@@ -44,7 +44,6 @@ check_always_false() {
 register_system_task "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update get_version_full_update
 NO_RETRY["Full System Upgrade/Update"]=1
 register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates      get_version_system_updates
-register_system_task "KDE Desktop"        install_kde             check_kde             uninstall_kde             update_kde                get_version_kde
 register_system_task "NVIDIA Drivers"     install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_system_task "XEN Guest Utilities" setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
 register_system_task "Enable RDP"         install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
@@ -128,11 +127,79 @@ register_utility "WireGuard Server"    install_wireguard_server check_wireguard_
 register_utility "WPS Office"          install_wps_office       check_wps_office       uninstall_wps_office       update_wps_office          get_version_wps_office
 register_utility "Zsh + Oh My Zsh"     install_zsh_setup        check_zsh_setup        uninstall_zsh_setup        update_zsh_setup           get_version_zsh_setup
 
+# --- Desktop Environment Utilities ---
+# Elementary OS uses Pantheon exclusively; any other DE causes display manager
+# and PAM session conflicts. The elementary project explicitly advises against it.
+
+# Cinnamon: available on Debian, Ubuntu, Fedora, Arch, openSUSE — not elementary
+if [[ "$DISTRO_ID" != "elementary" ]]; then
+    register_utility "Cinnamon Desktop"    install_cinnamon         check_cinnamon         uninstall_cinnamon         update_cinnamon            get_version_cinnamon
+fi
+
+# COSMIC: requires Ubuntu 24.10+/Debian Trixie, Fedora 42+, or Arch.
+# Not packaged for the RHEL ecosystem or openSUSE Leap/SLES.
+if [[ "$DISTRO_ID" != "elementary" ]] && \
+   [[ "$DISTRO_FAMILY" != "rhel" ]] && \
+   [[ "$DISTRO_ID" != "opensuse-leap" ]] && \
+   [[ "$DISTRO_ID" != "sles" ]]; then
+    register_utility "COSMIC Desktop"      install_cosmic           check_cosmic           uninstall_cosmic           update_cosmic              get_version_cosmic
+fi
+
+# Deepin: official packages on Fedora, Arch, and openSUSE Tumbleweed (via OBS).
+# No official Debian/Ubuntu packages; the only Ubuntu PPA is unmaintained and
+# conflicts with GDM. No EPEL coverage. Not in openSUSE Leap/SLES.
+if [[ "$DISTRO_FAMILY" != "debian" ]] && \
+   [[ "$DISTRO_FAMILY" != "rhel" ]] && \
+   [[ "$DISTRO_ID" != "elementary" ]] && \
+   [[ "$DISTRO_ID" != "opensuse-leap" ]] && \
+   [[ "$DISTRO_ID" != "sles" ]]; then
+    register_utility "Deepin Desktop"      install_deepin           check_deepin           uninstall_deepin           update_deepin              get_version_deepin
+fi
+
+# GNOME, KDE, MATE, Xfce: available on all supported distros except elementary
+if [[ "$DISTRO_ID" != "elementary" ]]; then
+    register_utility "GNOME Desktop"       install_gnome            check_gnome            uninstall_gnome            update_gnome               get_version_gnome
+    register_utility "KDE Desktop"         install_kde              check_kde              uninstall_kde              update_kde                 get_version_kde
+    register_utility "MATE Desktop"        install_mate             check_mate             uninstall_mate             update_mate                get_version_mate
+    register_utility "Xfce Desktop"        install_xfce             check_xfce             uninstall_xfce             update_xfce                get_version_xfce
+fi
+
+# Budgie: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
+# Not packaged in EPEL (no RHEL support). Not on elementary.
+if [[ "$DISTRO_ID" != "elementary" ]] && \
+   [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "Budgie Desktop"      install_budgie           check_budgie           uninstall_budgie           update_budgie              get_version_budgie
+fi
+
+# LXQt: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
+# Not packaged in EPEL (no RHEL support). Not on elementary.
+if [[ "$DISTRO_ID" != "elementary" ]] && \
+   [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "LXQt Desktop"        install_lxqt             check_lxqt             uninstall_lxqt             update_lxqt                get_version_lxqt
+fi
+
+# Pantheon: official packages only on Arch (extra repo) and openSUSE Tumbleweed
+# (Factory pattern). Not packaged on Debian/Ubuntu, Fedora, RHEL, or Leap/SLES.
+# Already installed on elementary — no need to offer it there.
+if [[ "$DISTRO_FAMILY" == "arch" ]] || [[ "$DISTRO_ID" == "opensuse-tumbleweed" ]]; then
+    register_utility "Pantheon Desktop"    install_pantheon         check_pantheon         uninstall_pantheon         update_pantheon            get_version_pantheon
+fi
+
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Development" "Gaming" "Internet" "Productivity" "System Tools")
+CATEGORIES=("System Tasks" "Desktop Environments" "Development" "Gaming" "Internet" "Productivity" "System Tools")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
+UTILITY_CATEGORY["Budgie Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["Cinnamon Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["COSMIC Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["Deepin Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["GNOME Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["KDE Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["LXQt Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["MATE Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["Pantheon Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["Xfce Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
 UTILITY_CATEGORY["Bottles"]="Gaming"
 UTILITY_CATEGORY["Brave Browser"]="Internet"
@@ -234,8 +301,19 @@ UTILITY_SUBCATEGORY["ProtonUp-Qt"]="Gaming Utilities"
 # System Tasks
 UTILITY_DESCRIPTION["Full System Upgrade/Update"]="Performs a comprehensive system upgrade including all configured package managers and removes unused packages."
 UTILITY_DESCRIPTION["System Updates"]="Installs and configures automatic system update scheduling via systemd timers or cron."
-UTILITY_DESCRIPTION["KDE Desktop"]="Installs the KDE Plasma desktop environment with core applications and sensible defaults."
 UTILITY_DESCRIPTION["NVIDIA Drivers"]="Installs proprietary NVIDIA GPU drivers for optimal 3D graphics and compute performance."
+
+# Desktop Environments
+UTILITY_DESCRIPTION["Budgie Desktop"]="Modern, polished desktop from the Solus project built on the GNOME stack, featuring a clean layout and the unique Raven notification and settings sidebar."
+UTILITY_DESCRIPTION["Cinnamon Desktop"]="Linux Mint's elegant desktop environment offering a classic layout with modern polish and strong customisability."
+UTILITY_DESCRIPTION["COSMIC Desktop"]="System76's new Rust-built desktop environment designed for speed, modularity, and a first-class Linux experience."
+UTILITY_DESCRIPTION["Deepin Desktop"]="Visually striking desktop environment from the Deepin project, known for its beautiful animations, polished UI, and integrated application suite (DDE)."
+UTILITY_DESCRIPTION["GNOME Desktop"]="Modern, minimalist desktop used by default on Ubuntu and Fedora, focused on simplicity, touch-friendly design, and keyboard-driven workflow."
+UTILITY_DESCRIPTION["KDE Desktop"]="Feature-rich Plasma desktop with extensive customisation, a full application suite, and strong Wayland support."
+UTILITY_DESCRIPTION["LXQt Desktop"]="Lightweight Qt-based desktop offering a fast, resource-efficient experience with a modern look — ideal for modest hardware or users who prefer Qt tooling."
+UTILITY_DESCRIPTION["MATE Desktop"]="Traditional GNOME 2-based desktop offering a familiar layout, low resource usage, and broad hardware support."
+UTILITY_DESCRIPTION["Pantheon Desktop"]="Elegant, opinionated desktop from the elementary OS project, designed for simplicity and consistency with a macOS-inspired aesthetic."
+UTILITY_DESCRIPTION["Xfce Desktop"]="Lightweight and fast desktop that is visually clean, reliable, and ideal for older or lower-end hardware."
 UTILITY_DESCRIPTION["XEN Guest Utilities"]="Installs XEN guest agent for improved virtual machine performance, clipboard sharing, and host integration."
 UTILITY_DESCRIPTION["Enable RDP"]="Enables Remote Desktop Protocol access to this machine using the XRDP server."
 UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance."
