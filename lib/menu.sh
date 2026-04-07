@@ -1641,6 +1641,21 @@ run_selection_menu() {
                         continue
                     fi
                 fi
+
+                # Ignore ENTER when no actions are selected.
+                local _has_selection=0
+                local _sel_i
+                for (( _sel_i=0; _sel_i<${#UTILITIES[@]}; _sel_i++ )); do
+                    if [[ ${SELECTED[$_sel_i]} -eq 1 || ${UPDATE_SELECTED[$_sel_i]} -eq 1 ]]; then
+                        _has_selection=1
+                        break
+                    fi
+                done
+                if (( _has_selection == 0 )); then
+                    _compose_frame
+                    continue
+                fi
+
                 # Otherwise confirm selections and exit menu
                 printf '\033[?1049l'  # leave alternate screen
                 show_cursor
