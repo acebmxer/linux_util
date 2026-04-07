@@ -18,6 +18,7 @@ declare -A UTILITY_CATEGORY     # maps utility name → category tab label
 declare -A UTILITY_SUBCATEGORY  # maps utility name → subcategory name (optional)
 declare -A UTILITY_DESCRIPTION  # maps utility name → short description for the info panel
 declare -a CATEGORIES=()        # ordered list of category tab names (populated by installers.sh)
+declare -A SUBCATEGORY_ORDER    # maps category name → pipe-separated ordered subcategory list
 
 # Internal helper — shared registration logic for both system tasks and utilities.
 _register_entry() {

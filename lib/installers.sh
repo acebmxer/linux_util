@@ -71,8 +71,9 @@ register_system_task "Restore Snapshot"  setup_restore_snapshot  check_always_fa
 NO_RETRY["Restore Snapshot"]=1
 
 # --- Utilities (alphabetical order) ---
-register_utility "Bitwarden Client"    install_bitwarden        check_bitwarden        uninstall_bitwarden        update_bitwarden           get_version_bitwarden
-register_utility "Bottles"             install_bottles          check_bottles          uninstall_bottles          update_bottles             get_version_bottles
+register_utility "Bitwarden Client"       install_bitwarden           check_bitwarden           uninstall_bitwarden           update_bitwarden              get_version_bitwarden
+register_utility "Bitwarden Extension"    install_bitwarden_extension check_bitwarden_extension uninstall_bitwarden_extension update_bitwarden_extension    get_version_bitwarden_extension
+register_utility "Bottles"                install_bottles             check_bottles             uninstall_bottles             update_bottles                get_version_bottles
 register_utility "Brave Browser"       install_brave            check_brave            uninstall_brave            update_brave               get_version_brave
 register_utility "Btop"                install_btop             check_btop             uninstall_btop             update_btop                get_version_btop
 register_utility "Chromium"            install_chromium         check_chromium         uninstall_chromium         update_chromium            get_version_chromium
@@ -92,8 +93,9 @@ register_utility "GitHub CLI"          install_github_cli       check_github_cli
 register_utility "Google Chrome"       install_google_chrome    check_google_chrome    uninstall_google_chrome    update_google_chrome       get_version_google_chrome
 register_utility "Heroic Games Launcher" install_heroic         check_heroic           uninstall_heroic           update_heroic              get_version_heroic
 register_utility "JetBrains Toolbox"   install_jetbrains_toolbox check_jetbrains_toolbox uninstall_jetbrains_toolbox update_jetbrains_toolbox get_version_jetbrains_toolbox
-register_utility "Joplin Client"       install_joplin           check_joplin           uninstall_joplin           update_joplin              get_version_joplin
-register_utility "KMail"               install_kmail            check_kmail            uninstall_kmail            update_kmail               get_version_kmail
+register_utility "Joplin Client"              install_joplin                       check_joplin                       uninstall_joplin                       update_joplin                        get_version_joplin
+register_utility "Joplin Web Clipper"         install_joplin_webclipper_extension  check_joplin_webclipper_extension  uninstall_joplin_webclipper_extension  update_joplin_webclipper_extension   get_version_joplin_webclipper_extension
+register_utility "KMail"                      install_kmail                        check_kmail                        uninstall_kmail                        update_kmail                         get_version_kmail
 register_utility "LibreOffice"         install_libreoffice      check_libreoffice      uninstall_libreoffice      update_libreoffice         get_version_libreoffice
 register_utility "Lutris"              install_lutris           check_lutris           uninstall_lutris           update_lutris              get_version_lutris
 register_utility "MangoHud"            install_mangohud         check_mangohud         uninstall_mangohud         update_mangohud            get_version_mangohud
@@ -109,8 +111,9 @@ register_utility "ProtonUp-Qt"         install_protonup_qt      check_protonup_q
 register_utility "ProtonVPN"           install_protonvpn        check_protonvpn        uninstall_protonvpn        update_protonvpn           get_version_protonvpn
 register_utility "QBittorrent"         install_qbittorrent      check_qbittorrent      uninstall_qbittorrent      update_qbittorrent         get_version_qbittorrent
 register_utility "Remmina"             install_remmina          check_remmina          uninstall_remmina          update_remmina             get_version_remmina
-register_utility "Signal Desktop"      install_signal           check_signal           uninstall_signal           update_signal              get_version_signal
-register_utility "Stacer"              install_stacer           check_stacer           uninstall_stacer           update_stacer              get_version_stacer
+register_utility "Signal Desktop"         install_signal                check_signal                uninstall_signal                update_signal                 get_version_signal
+register_utility "SponsorBlock Extension" install_sponsorblock_extension check_sponsorblock_extension uninstall_sponsorblock_extension update_sponsorblock_extension get_version_sponsorblock_extension
+register_utility "Stacer"                 install_stacer                check_stacer                uninstall_stacer                update_stacer                 get_version_stacer
 register_utility "Standard Notes"      install_standard_notes   check_standard_notes   uninstall_standard_notes   update_standard_notes      get_version_standard_notes
 register_utility "Steam App"           install_steam            check_steam            uninstall_steam            update_steam               get_version_steam
 register_utility "Syncthing"           install_syncthing        check_syncthing        uninstall_syncthing        update_syncthing           get_version_syncthing
@@ -201,6 +204,7 @@ UTILITY_CATEGORY["MATE Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Pantheon Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Xfce Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
+UTILITY_CATEGORY["Bitwarden Extension"]="Internet"
 UTILITY_CATEGORY["Bottles"]="Gaming"
 UTILITY_CATEGORY["Brave Browser"]="Internet"
 UTILITY_CATEGORY["Btop"]="System Tools"
@@ -222,6 +226,7 @@ UTILITY_CATEGORY["Google Chrome"]="Internet"
 UTILITY_CATEGORY["Heroic Games Launcher"]="Gaming"
 UTILITY_CATEGORY["JetBrains Toolbox"]="Development"
 UTILITY_CATEGORY["Joplin Client"]="Productivity"
+UTILITY_CATEGORY["Joplin Web Clipper"]="Internet"
 UTILITY_CATEGORY["KMail"]="Internet"
 UTILITY_CATEGORY["LibreOffice"]="Productivity"
 UTILITY_CATEGORY["Lutris"]="Gaming"
@@ -239,6 +244,7 @@ UTILITY_CATEGORY["ProtonVPN"]="Internet"
 UTILITY_CATEGORY["QBittorrent"]="Internet"
 UTILITY_CATEGORY["Remmina"]="Internet"
 UTILITY_CATEGORY["Signal Desktop"]="Internet"
+UTILITY_CATEGORY["SponsorBlock Extension"]="Internet"
 UTILITY_CATEGORY["Stacer"]="System Tools"
 UTILITY_CATEGORY["Standard Notes"]="Productivity"
 UTILITY_CATEGORY["Steam App"]="Gaming"
@@ -263,6 +269,9 @@ UTILITY_SUBCATEGORY["Firefox"]="Web Browsers"
 UTILITY_SUBCATEGORY["Google Chrome"]="Web Browsers"
 UTILITY_SUBCATEGORY["Thorium Browser"]="Web Browsers"
 UTILITY_SUBCATEGORY["Vivaldi Browser"]="Web Browsers"
+UTILITY_SUBCATEGORY["Bitwarden Extension"]="Web Browser Extensions"
+UTILITY_SUBCATEGORY["Joplin Web Clipper"]="Web Browser Extensions"
+UTILITY_SUBCATEGORY["SponsorBlock Extension"]="Web Browser Extensions"
 UTILITY_SUBCATEGORY["Discord"]="Messaging"
 UTILITY_SUBCATEGORY["Signal Desktop"]="Messaging"
 UTILITY_SUBCATEGORY["Telegram Desktop"]="Messaging"
@@ -295,6 +304,9 @@ UTILITY_SUBCATEGORY["Bottles"]="Game Launchers"
 UTILITY_SUBCATEGORY["Feral Gamemode"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["MangoHud"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["ProtonUp-Qt"]="Gaming Utilities"
+
+# Explicit subcategory display order within each category tab
+SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Extensions|Messaging|Email Clients|File Transfer|Remote Access|VPN"
 
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
 
@@ -346,6 +358,7 @@ UTILITY_DESCRIPTION["ProtonUp-Qt"]="Graphical tool for managing Proton-GE and Wi
 UTILITY_DESCRIPTION["Steam App"]="Valve's gaming platform for purchasing, downloading, and playing PC games on Linux."
 
 # Internet
+UTILITY_DESCRIPTION["Bitwarden Extension"]="Deploys Bitwarden browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, Vivaldi). The extension is force-installed on next browser launch."
 UTILITY_DESCRIPTION["Brave Browser"]="Privacy-focused web browser with built-in ad and tracker blocking based on Chromium."
 UTILITY_DESCRIPTION["Chromium"]="Open-source web browser that serves as the upstream base for Google Chrome."
 UTILITY_DESCRIPTION["Devolutions RDM"]="Remote Desktop Manager for centrally managing remote connections, passwords, and credentials."
@@ -360,6 +373,7 @@ UTILITY_DESCRIPTION["ProtonVPN"]="Free and open-source VPN service by Proton for
 UTILITY_DESCRIPTION["QBittorrent"]="Open-source BitTorrent client with a clean interface and no ads."
 UTILITY_DESCRIPTION["Remmina"]="Remote desktop client supporting RDP, VNC, SSH, SPICE, and other protocols."
 UTILITY_DESCRIPTION["Signal Desktop"]="End-to-end encrypted messaging application focused on privacy and security."
+UTILITY_DESCRIPTION["SponsorBlock Extension"]="Deploys SponsorBlock browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, Vivaldi). Automatically skips YouTube sponsors, intros, outros, and other unwanted segments using a crowdsourced database."
 UTILITY_DESCRIPTION["Syncthing"]="Continuous peer-to-peer file synchronization between your devices without a central server."
 UTILITY_DESCRIPTION["Tailscale"]="Zero-config mesh VPN built on WireGuard for secure networking between your devices."
 UTILITY_DESCRIPTION["Telegram Desktop"]="Cloud-based messaging app with fast delivery, group chats, channels, and file sharing."
@@ -374,6 +388,7 @@ UTILITY_DESCRIPTION["WireGuard Server"]="Sets up a WireGuard VPN server for secu
 UTILITY_DESCRIPTION["Bitwarden Client"]="Open-source password manager for securely storing and auto-filling credentials."
 UTILITY_DESCRIPTION["GIMP"]="GNU Image Manipulation Program — powerful open-source photo editor and graphic design tool."
 UTILITY_DESCRIPTION["Joplin Client"]="Open-source note-taking and to-do application with Markdown support and sync."
+UTILITY_DESCRIPTION["Joplin Web Clipper"]="Deploys Joplin Web Clipper browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, Vivaldi). Captures web pages and screenshots directly into Joplin — requires the Joplin desktop app running with Web Clipper service enabled."
 UTILITY_DESCRIPTION["LibreOffice"]="Full-featured open-source office suite compatible with Microsoft Office formats."
 UTILITY_DESCRIPTION["Nextcloud Desktop"]="Desktop sync client for Nextcloud, providing self-hosted cloud file storage and sharing."
 UTILITY_DESCRIPTION["OBS Studio"]="Open-source software for video recording and live streaming with scene composition."

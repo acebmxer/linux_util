@@ -32,21 +32,23 @@
 #                "AMD Drivers"  "Flatpak Setup"  "UFW Firewall"
 #                "Num Lock at Boot"  "Create Snapshot"  "Restore Snapshot"
 #                "Local MOTD"  "Command-Not-Found Prompt" (Ubuntu/Kubuntu/Neon)
-# Utilities:     "Bitwarden Client"  "Bottles"     "Brave Browser"  "Btop"
-#                "Claude Code"  "Cursor IDE"  "DBeaver"  "Devolutions RDM"
-#                "Discord"  "Docker"  "Dotfiles"  "Fastfetch"
-#                "Feral Gamemode"  "FileZilla"  "Firefox"  "GIMP"
-#                "GitHub CLI"  "Google Chrome"  "Heroic Games Launcher"
-#                "JetBrains Toolbox"  "Joplin Client"  "KMail"
+# Utilities:     "Bitwarden Client"  "Bitwarden Extension"  "Bottles"
+#                "Brave Browser"  "Btop"  "Claude Code"  "Cursor IDE"
+#                "DBeaver"  "Devolutions RDM"  "Discord"  "Docker"
+#                "Dotfiles"  "Fastfetch"  "Feral Gamemode"  "FileZilla"
+#                "Firefox"  "GIMP"  "GitHub CLI"  "Google Chrome"
+#                "Heroic Games Launcher"  "JetBrains Toolbox"
+#                "Joplin Client"  "Joplin Web Clipper"  "KMail"
 #                "LibreOffice"  "Lutris"  "MangoHud"  "Nextcloud Desktop"
 #                "NVM"  "OBS Studio"  "Obsidian"  "OnlyOffice"
 #                "OpenSSH Server"  "PIA VPN"  "Postman"  "ProtonUp-Qt"
 #                "ProtonVPN"  "QBittorrent"  "Remmina"  "Signal Desktop"
-#                "Stacer"  "Standard Notes"  "Steam App"  "Syncthing"
-#                "Tailscale"  "Telegram Desktop"  "Termius SSH Client"
-#                "Thorium Browser"  "Thunderbird"  "Timeshift"
-#                "Visual Studio Code"  "Vivaldi Browser"  "WireGuard Client"
-#                "WireGuard Server"  "WPS Office"  "Zsh + Oh My Zsh"
+#                "SponsorBlock Extension"  "Stacer"  "Standard Notes"
+#                "Steam App"  "Syncthing"  "Tailscale"  "Telegram Desktop"
+#                "Termius SSH Client"  "Thorium Browser"  "Thunderbird"
+#                "Timeshift"  "Visual Studio Code"  "Vivaldi Browser"
+#                "WireGuard Client"  "WireGuard Server"  "WPS Office"
+#                "Zsh + Oh My Zsh"
 # ============================================================================
 
 # ============================================================================
@@ -98,15 +100,19 @@ apply_profile() {
 # safe to apply across all supported distributions and during dry-run mode.
 # ============================================================================
 
-# Mark a utility for install. Skips if already installed or not registered.
+# Mark a utility for install, or for update if it is already installed.
+# Silently no-ops if the utility is not registered on the current distro.
 # Usage: _profile_select_for_install "Utility Name"
 _profile_select_for_install() {
     local name="$1"
     local total=${#UTILITIES[@]}
     for (( i=0; i<total; i++ )); do
         if [[ "${UTILITIES[$i]}" == "$name" ]]; then
-            # Only mark for install if not already installed
-            if [[ ${INSTALLED[$i]:-0} -eq 0 ]]; then
+            if [[ ${INSTALLED[$i]:-0} -eq 1 ]]; then
+                # Already installed — queue for update instead
+                UPDATE_SELECTED[$i]=1
+                SELECTED[$i]=0
+            else
                 SELECTED[$i]=1
                 UPDATE_SELECTED[$i]=0
             fi
@@ -183,9 +189,9 @@ register_profile "Run Me First" \
 # Profile 2 — Default VM Server Profile
 #
 # Lightweight profile for virtual machines running under a Xen hypervisor.
-# Marks Xen Guest Utilities for update if already installed (or install if
-# not yet present), plus adds btop for live resource monitoring and
-# Zsh + Oh My Zsh for an improved interactive shell experience.
+# Installs Xen Guest Utilities (or updates them if already present), plus
+# Btop for live resource monitoring and Zsh + Oh My Zsh for an improved
+# interactive shell experience.
 #
 # DISTRO NOTE:
 #   • Xen Guest Utilities are available on all supported distros (package
@@ -196,10 +202,6 @@ register_profile "Run Me First" \
 #     and is entirely distribution-agnostic.
 # ----------------------------------------------------------------------------
 _profile_default_vm_server() {
-    # Prefer update if XEN Guest Utilities is already installed;
-    # _profile_select_for_update is a no-op if not yet installed,
-    # so _profile_select_for_install runs as the fallback.
-    _profile_select_for_update  "XEN Guest Utilities"
     _profile_select_for_install "XEN Guest Utilities"
     _profile_select_for_install "Btop"
     _profile_select_for_install "Zsh + Oh My Zsh"
@@ -234,14 +236,17 @@ _profile_default_physical_pc() {
     _profile_select_for_install "Brave Browser"
     _profile_select_for_install "Devolutions RDM"
     _profile_select_for_install "Termius SSH Client"
+    _profile_select_for_install "Bitwarden Extension"
     _profile_select_for_install "Joplin Client"
+    _profile_select_for_install "Joplin Web Clipper"
+    _profile_select_for_install "SponsorBlock Extension"
     _profile_select_for_install "Btop"
     _profile_select_for_install "Zsh + Oh My Zsh"
     _profile_select_for_install "Fastfetch"
 }
 register_profile "Default Physical PC" \
     _profile_default_physical_pc \
-    "Desktop workstation: Num Lock, VSCode, GitHub CLI, Steam, Brave, Devolutions RDM, Termius, Joplin, Btop, Zsh + Oh My Zsh, Fastfetch."
+    "Desktop workstation: Num Lock, VSCode, GitHub CLI, Steam, Brave, Devolutions RDM, Termius, Bitwarden Extension, Joplin, Joplin Web Clipper, SponsorBlock Extension, Btop, Zsh + Oh My Zsh, Fastfetch."
 
 # ----------------------------------------------------------------------------
 # Profile 4 — Custom Profile 1

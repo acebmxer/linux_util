@@ -290,6 +290,26 @@ _rebuild_filtered() {
                 fi
             done
 
+            # Apply explicit subcategory ordering if defined for this category
+            if [[ -n "${SUBCATEGORY_ORDER[$category]:-}" ]]; then
+                IFS='|' read -ra _sc_explicit <<< "${SUBCATEGORY_ORDER[$category]}"
+                local -a _reordered_subcats=()
+                for _sc_o in "${_sc_explicit[@]}"; do
+                    for _sc_e in "${_ordered_subcats[@]}"; do
+                        [[ "$_sc_e" == "$_sc_o" ]] && _reordered_subcats+=("$_sc_e") && break
+                    done
+                done
+                # Append any subcategories not listed in the explicit order
+                for _sc_e in "${_ordered_subcats[@]}"; do
+                    local _sc_found=0
+                    for _sc_o in "${_sc_explicit[@]}"; do
+                        [[ "$_sc_e" == "$_sc_o" ]] && _sc_found=1 && break
+                    done
+                    (( _sc_found == 0 )) && _reordered_subcats+=("$_sc_e")
+                done
+                _ordered_subcats=("${_reordered_subcats[@]}")
+            fi
+
             # Emit subcategory folder entries
             local sc
             for sc in "${_ordered_subcats[@]}"; do
