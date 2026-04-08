@@ -1,5 +1,5 @@
 #!/bin/bash
-# Zsh + Oh My Zsh + Starship installer functions
+# Zsh + Oh My Zsh installer functions
 
 # --- Zsh + Oh My Zsh ---
 
@@ -10,8 +10,6 @@ check_zsh_setup() {
 }
 
 _zsh_setup_configure_shells() {
-    local marker="# linux_util:zsh_setup"
-
     # Ensure our OMZ plugins are in ~/.zshrc plugins=() line
     if [[ -f "$HOME/.zshrc" ]]; then
         if ! grep -q "zsh-autosuggestions" "$HOME/.zshrc"; then
@@ -27,123 +25,36 @@ _zsh_setup_configure_shells() {
             info "zsh-syntax-highlighting already in plugins in ~/.zshrc"
         fi
     fi
-
-    # Starship init — zsh
-    if command -v starship &>/dev/null && [[ -f "$HOME/.zshrc" ]]; then
-        if ! grep -qF "$marker" "$HOME/.zshrc" 2>/dev/null; then
-            printf '\n%s\neval "$(starship init zsh)"\n' "$marker" >> "$HOME/.zshrc"
-            info "Added Starship init to ~/.zshrc"
-        else
-            info "Starship init already configured in ~/.zshrc"
-        fi
-    fi
-
-    # Starship init — bash
-    if command -v starship &>/dev/null && command -v bash &>/dev/null; then
-        if [[ -f "$HOME/.bashrc" ]]; then
-            local rc="$HOME/.bashrc"
-            if ! grep -qF "$marker" "$rc" 2>/dev/null; then
-                printf '\n%s\neval "$(starship init bash)"\n' "$marker" >> "$rc"
-                info "Added Starship init to $rc"
-            else
-                info "Starship init already configured in $rc"
-            fi
-        elif [[ -L "$HOME/.bashrc" ]]; then
-            info "~/.bashrc is a broken symlink — skipping Starship init for bash"
-        else
-            info "bash installed but ~/.bashrc not found — skipping Starship init for bash"
-        fi
-    fi
-
-    # Starship init — fish
-    if command -v starship &>/dev/null && command -v fish &>/dev/null; then
-        local rc="$HOME/.config/fish/config.fish"
-        mkdir -p "$(dirname "$rc")"
-        if ! grep -qF "$marker" "$rc" 2>/dev/null; then
-            printf '\n%s\nstarship init fish | source\n' "$marker" >> "$rc"
-            info "Added Starship init to $rc"
-        else
-            info "Starship init already configured in $rc"
-        fi
-    fi
-
-    # Starship init — tcsh
-    if command -v starship &>/dev/null && command -v tcsh &>/dev/null && [[ -f "$HOME/.tcshrc" ]]; then
-        local rc="$HOME/.tcshrc"
-        if ! grep -qF "$marker" "$rc" 2>/dev/null; then
-            printf '\n%s\neval \`starship init tcsh\`\n' "$marker" >> "$rc"
-            info "Added Starship init to $rc"
-        else
-            info "Starship init already configured in $rc"
-        fi
-    fi
-
-    # Starship init — xonsh
-    if command -v starship &>/dev/null && command -v xonsh &>/dev/null && [[ -f "$HOME/.xonshrc" ]]; then
-        local rc="$HOME/.xonshrc"
-        if ! grep -qF "$marker" "$rc" 2>/dev/null; then
-            printf '\n%s\nexecx($(starship init xonsh))\n' "$marker" >> "$rc"
-            info "Added Starship init to $rc"
-        else
-            info "Starship init already configured in $rc"
-        fi
-    fi
-
-    # Starship init — elvish
-    if command -v starship &>/dev/null && command -v elvish &>/dev/null; then
-        local rc="$HOME/.config/elvish/rc.elv"
-        mkdir -p "$(dirname "$rc")"
-        if ! grep -qF "$marker" "$rc" 2>/dev/null; then
-            printf '\n%s\neval (starship init elvish)\n' "$marker" >> "$rc"
-            info "Added Starship init to $rc"
-        else
-            info "Starship init already configured in $rc"
-        fi
-    fi
-
-    # Starship init — nushell
-    if command -v starship &>/dev/null && command -v nu &>/dev/null; then
-        local nu_config
-        nu_config=$(nu -c '$nu.data-dir' 2>/dev/null)
-        if [[ -n "$nu_config" ]]; then
-            local nu_autoload="$nu_config/vendor/autoload"
-            mkdir -p "$nu_autoload"
-            local nu_file="$nu_autoload/starship.nu"
-            if [[ ! -f "$nu_file" ]]; then
-                starship init nu | nu --stdin -c 'save -f ("'"$nu_file"'")' 2>/dev/null || \
-                    starship init nu > "$nu_file"
-                info "Added Starship init to $nu_file"
-            else
-                info "Starship init already configured in $nu_file"
-            fi
-        fi
-    fi
 }
 
-_zsh_setup_deconfigure_shells() {
+_zsh_setup_remove_legacy_starship() {
     local marker="# linux_util:zsh_setup"
     local rc
 
-    # Remove Starship init marker+line from all shell RCs
+    # Remove legacy Starship init marker+line from supported shell RCs.
     for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.config/fish/config.fish" \
               "$HOME/.tcshrc" "$HOME/.xonshrc" "$HOME/.config/elvish/rc.elv"; do
         [[ -f "$rc" ]] || continue
         if grep -qF "$marker" "$rc"; then
             sed -i '/^# linux_util:zsh_setup$/{N;d}' "$rc"
-            info "Removed Starship init from $rc"
+            info "Removed legacy Starship init from $rc"
         fi
     done
 
-    # Remove nushell starship autoload file
+    # Remove legacy nushell Starship autoload file.
     if command -v nu &>/dev/null; then
         local nu_config
         nu_config=$(nu -c '$nu.data-dir' 2>/dev/null)
         local nu_file="${nu_config}/vendor/autoload/starship.nu"
         if [[ -f "$nu_file" ]]; then
             rm -f "$nu_file"
-            info "Removed Starship init from $nu_file"
+            info "Removed legacy Starship init from $nu_file"
         fi
     fi
+}
+
+_zsh_setup_deconfigure_shells() {
+    _zsh_setup_remove_legacy_starship
 
     # Remove our plugins from the plugins=() line in ~/.zshrc
     if [[ -f "$HOME/.zshrc" ]]; then
@@ -153,7 +64,7 @@ _zsh_setup_deconfigure_shells() {
 }
 
 install_zsh_setup() {
-    info "Installing Zsh + Oh My Zsh + Starship..."
+    info "Installing Zsh + Oh My Zsh..."
     ensure_tools
 
     # 1. Install Zsh
@@ -193,12 +104,8 @@ install_zsh_setup() {
             "$custom_dir/plugins/zsh-syntax-highlighting" 2>/dev/null || true
     fi
 
-    # 4. Install Starship prompt
-    if ! command -v starship &>/dev/null; then
-        info "Installing Starship prompt..."
-        curl -fsSL https://starship.rs/install.sh | sh -s -- --yes || \
-            warn "Starship installation failed. You can install it later from starship.rs."
-    fi
+    # 4. Remove legacy Starship integration from older linux_util installs.
+    _zsh_setup_remove_legacy_starship
 
     # 5. Set Zsh as the default shell
     local zsh_path
@@ -211,11 +118,11 @@ install_zsh_setup() {
     fi
 
     _zsh_setup_configure_shells
-    info "Zsh + Oh My Zsh + Starship installed. Open a new terminal or run 'zsh' to start using it."
+    info "Zsh + Oh My Zsh installed. Open a new terminal or run 'zsh' to start using it."
 }
 
 uninstall_zsh_setup() {
-    info "Uninstalling Zsh + Oh My Zsh + Starship..."
+    info "Uninstalling Zsh + Oh My Zsh..."
 
     _zsh_setup_deconfigure_shells
 
@@ -224,12 +131,6 @@ uninstall_zsh_setup() {
         echo "y" | env ZSH="$_OMZ_DIR" sh "$_OMZ_DIR/tools/uninstall.sh" --keep-zshrc 2>/dev/null || true
     fi
     rm -rf "$_OMZ_DIR"
-
-    # Remove Starship
-    if command -v starship &>/dev/null; then
-        sudo rm -f "$(command -v starship)"
-    fi
-    rm -f "$HOME/.config/starship.toml"
 
     # Restore default shell to bash
     local bash_path
@@ -250,7 +151,7 @@ uninstall_zsh_setup() {
 }
 
 update_zsh_setup() {
-    info "Updating Oh My Zsh + Starship..."
+    info "Updating Oh My Zsh..."
 
     # Update Oh My Zsh
     if [[ -f "$_OMZ_DIR/tools/upgrade.sh" ]]; then
@@ -264,22 +165,15 @@ update_zsh_setup() {
         [[ -d "$plugin_dir/.git" ]] && git -C "$plugin_dir" pull --ff-only 2>/dev/null || true
     done
 
-    # Update Starship
-    if command -v starship &>/dev/null; then
-        curl -fsSL https://starship.rs/install.sh | sh -s -- --yes || true
-    fi
-
+    _zsh_setup_remove_legacy_starship
     _zsh_setup_configure_shells
     info "Zsh setup updated."
 }
 
 get_version_zsh_setup() {
-    local zsh_ver starship_ver
+    local zsh_ver
     zsh_ver=$(zsh --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-    starship_ver=$(starship --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-    if [[ -n "$zsh_ver" && -n "$starship_ver" ]]; then
-        echo "zsh ${zsh_ver} / starship ${starship_ver}"
-    elif [[ -n "$zsh_ver" ]]; then
+    if [[ -n "$zsh_ver" ]]; then
         echo "zsh ${zsh_ver}"
     else
         echo ""
