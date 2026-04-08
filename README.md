@@ -128,8 +128,8 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Enable RDP** | Enables Remote Desktop Protocol access via XRDP server |
 | **Flatpak Setup** | Configures Flatpak and adds the Flathub repository |
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
-| **Local MOTD** | Replaces Ubuntu's default dynamic MOTD with a clean, fast local version *(Ubuntu/Kubuntu/Neon only)* |
 | **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/Neon only)* |
+| **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
 | **Create Snapshot** | Creates a Timeshift or Snapper snapshot with a user-provided description |
 | **Restore Snapshot** | Lists available snapshots, creates a safety snapshot, then restores the selected one |
 

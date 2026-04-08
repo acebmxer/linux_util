@@ -199,8 +199,8 @@ process_selected() {
     declare -a to_update
     local needs_reboot=false
 
-    # Creating a snapshot never requires a reboot
-    local -A NO_REBOOT=(["Create Snapshot"]=1)
+    # These tasks do not require a reboot after successful completion
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Local Time Zone / Locale"]=1)
 
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do

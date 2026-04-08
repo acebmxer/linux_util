@@ -30,8 +30,9 @@
 # System Tasks:  "Full System Upgrade/Update"  "System Updates"
 #                "NVIDIA Drivers"  "XEN Guest Utilities"  "Enable RDP"
 #                "AMD Drivers"  "Flatpak Setup"  "UFW Firewall"
-#                "Num Lock at Boot"  "Create Snapshot"  "Restore Snapshot"
-#                "Local MOTD"  "Command-Not-Found Prompt" (Ubuntu/Kubuntu/Neon)
+#                "Num Lock at Boot"  "Local Time Zone / Locale"
+#                "Create Snapshot"  "Restore Snapshot"
+#                "Command-Not-Found Prompt" (Ubuntu/Kubuntu/Neon)
 # Utilities:     "Bitwarden Client"  "Bitwarden Extension"  "Bottles"
 #                "Brave Browser"  "Btop"  "Claude Code"  "Cursor IDE"
 #                "DBeaver"  "Devolutions RDM"  "Discord"  "Docker"
