@@ -122,12 +122,13 @@ pkg_refresh() {
     local _run; [[ "$mode" == "direct" ]] && _run=run_direct || _run=run_with_spinner
     local _nc;  [[ "$mode" != "direct" ]] && _nc="--noconfirm" || _nc=""
     [[ "${_PKG_REFRESHED:-}" == "true" ]] && return 0
+    # NOTE: On Arch, -Sy without -u risks partial upgrades. We use -Syu
+    # here so that any subsequent pkg_install calls have a consistent DB+system.
+    # $_nc is intentionally unquoted so an empty value passes no extra argument.
+    # shellcheck disable=SC2086
     case "$PKG_MGR" in
         apt)     "$_run" "Refreshing package cache"             sudo apt update ;;
         dnf|yum) "$_run" "Refreshing package cache"             sudo "$PKG_MGR" makecache ;;
-        # NOTE: On Arch, -Sy without -u risks partial upgrades. We use -Syu
-        # here so that any subsequent pkg_install calls have a consistent DB+system.
-        # shellcheck disable=SC2086
         pacman)  "$_run" "Refreshing package cache & upgrading" sudo pacman -Syu $_nc ;;
         zypper)  "$_run" "Refreshing package cache"             sudo zypper refresh ;;
     esac
@@ -250,11 +251,12 @@ pkg_clean() {
     local mode="${1:-spinner}"
     local _run; [[ "$mode" == "direct" ]] && _run=run_direct || _run=run_with_spinner
     local _nc;  [[ "$mode" != "direct" ]] && _nc="--noconfirm" || _nc=""
+    # $_nc is intentionally unquoted so an empty value passes no extra argument.
+    # shellcheck disable=SC2086
     case "$PKG_MGR" in
         apt)     "$_run" "Cleaning package cache" sudo apt clean
                  "$_run" "Running apt autoclean"  sudo apt autoclean ;;
         dnf|yum) "$_run" "Cleaning package cache" sudo "$PKG_MGR" clean all ;;
-        # shellcheck disable=SC2086
         pacman)  "$_run" "Cleaning package cache" \
                      bash -c "sudo find /var/cache/pacman/pkg -maxdepth 1 -name 'download-*' -delete 2>/dev/null; sudo pacman -Sc $_nc" ;;
         zypper)  "$_run" "Cleaning package cache" sudo zypper clean -a ;;

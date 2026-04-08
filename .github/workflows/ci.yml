@@ -28,10 +28,10 @@ jobs:
         run: sudo apt-get install -y shellcheck
 
       - name: Run ShellCheck on main script
-        run: shellcheck -S warning linux_util.sh manage_logs.sh
+        run: shellcheck -S error linux_util.sh manage_logs.sh
 
       - name: Run ShellCheck on lib modules
-        run: shellcheck -S warning lib/*.sh
+        run: shellcheck -S error lib/*.sh
 
       - name: Run ShellCheck on installers
-        run: shellcheck -S warning lib/installers/*.sh
+        run: shellcheck -S error lib/installers/*.sh
