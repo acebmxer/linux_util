@@ -198,6 +198,7 @@ process_selected() {
     declare -a to_uninstall
     declare -a to_update
     local needs_reboot=false
+    local needs_shell_reload=false
 
     # These tasks do not require a reboot after successful completion
     local -A NO_REBOOT=(["Create Snapshot"]=1 ["Local Time Zone / Locale"]=1)
@@ -392,6 +393,11 @@ process_selected() {
                         needs_reboot=true
                     fi
                 fi
+
+                # Do not switch shells during batch/profile runs; defer to end-of-run notice.
+                if [[ "$util" == "Zsh + Oh My Zsh" && ( "$op_type" == "install" || "$op_type" == "update" ) ]]; then
+                    needs_shell_reload=true
+                fi
                 rm -f "$_stderr_tmp"
             else
                 local _duration=$(( SECONDS - _op_start ))
@@ -519,6 +525,12 @@ process_selected() {
 
     echo "Log files saved to: ${LOG_DIR}"
     echo ""
+
+    if [[ "$needs_shell_reload" == "true" ]]; then
+        echo "${YELLOW}Shell reload recommended:${RESET}"
+        echo "  Run 'exec zsh' or open a new terminal to apply Zsh theme/plugin changes."
+        echo ""
+    fi
 
     # Offer reboot (only for System Tasks and Docker)
     if [[ "$needs_reboot" == "true" ]]; then

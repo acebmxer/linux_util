@@ -10,6 +10,18 @@ check_zsh_setup() {
 }
 
 _zsh_setup_configure_shells() {
+    local desired_theme="crunch"
+
+    # Ensure a predictable Oh My Zsh theme.
+    if [[ -f "$HOME/.zshrc" ]]; then
+        if grep -q '^ZSH_THEME=' "$HOME/.zshrc"; then
+            sed -i "s/^ZSH_THEME=.*/ZSH_THEME=\"${desired_theme}\"/" "$HOME/.zshrc"
+        else
+            printf '\nZSH_THEME="%s"\n' "$desired_theme" >> "$HOME/.zshrc"
+        fi
+        info "Set Oh My Zsh theme to ${desired_theme} in ~/.zshrc"
+    fi
+
     # Ensure our OMZ plugins are in ~/.zshrc plugins=() line
     if [[ -f "$HOME/.zshrc" ]]; then
         if ! grep -q "zsh-autosuggestions" "$HOME/.zshrc"; then
