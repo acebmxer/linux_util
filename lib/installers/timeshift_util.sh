@@ -51,6 +51,8 @@ install_timeshift() {
             ;;
         *)
             warn "Timeshift installation not implemented for ${DISTRO_NAME}."
+            warn "Supported distros: Debian/Ubuntu, Fedora, RHEL/Alma/Rocky, Arch/Manjaro, openSUSE."
+            warn "Install manually: https://github.com/teejee2008/timeshift"
             return 1
             ;;
     esac

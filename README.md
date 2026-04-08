@@ -1,5 +1,7 @@
 # Linux System Setup & Utilities Installer
 
+[![CI](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml/badge.svg)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+
 An interactive multi-select TUI for installing, uninstalling, and updating system tasks and utilities across all major Linux distributions. Supports 55+ utilities organized by category, automatic pre-operation snapshots, and full CLI automation.
 
 ## Requirements
@@ -243,6 +245,42 @@ A system snapshot is automatically created before every install, uninstall, or u
 - Restore always takes a safety snapshot before proceeding
 - Non-blocking — if snapshot creation fails, the operation continues normally
 
+## Shell Completions
+
+Tab-completion scripts for bash and zsh are provided in the `completions/` directory.
+
+### Bash
+
+```bash
+# Source for the current session
+source completions/linux_util.bash
+
+# Install system-wide (requires root)
+sudo cp completions/linux_util.bash /etc/bash_completion.d/linux_util
+
+# Or install for your user only
+mkdir -p ~/.local/share/bash-completion/completions
+cp completions/linux_util.bash ~/.local/share/bash-completion/completions/linux_util
+```
+
+### Zsh
+
+```zsh
+# Add the completions directory to fpath (add this to ~/.zshrc)
+fpath=(/path/to/linux_util/completions $fpath)
+autoload -Uz compinit && compinit
+
+# Or install system-wide
+sudo cp completions/_linux_util /usr/local/share/zsh/site-functions/_linux_util
+
+# Or install for your user only
+mkdir -p ~/.zsh/completions
+cp completions/_linux_util ~/.zsh/completions/_linux_util
+# Add to ~/.zshrc:  fpath=(~/.zsh/completions $fpath)
+```
+
+Once installed, tab-completing `./linux_util.sh --install <TAB>` lists all available utility names.
+
 ## Configuration
 
 Copy the example config and edit as needed:
@@ -440,4 +478,4 @@ Use `$DISTRO_FAMILY` (`debian`, `fedora`, `rhel`, `arch`, `suse`) for distro-spe
 
 ## License
 
-MIT License
+This project is licensed under the [MIT License](LICENSE).

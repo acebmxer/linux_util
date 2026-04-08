@@ -26,6 +26,9 @@ install_heroic() {
             tmpfile=$(mktemp /tmp/heroic-XXXXXX.deb)
             CLEANUP_FILES+=("$tmpfile")
             wget -qO "$tmpfile" "$url" || { error "Failed to download Heroic .deb."; return 1; }
+            verify_download "$tmpfile" "deb" "Heroic" || return 1
+            github_verify_checksum "https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest" \
+                "$(basename "$url")" "$tmpfile" || return 1
             sudo apt install -y "$tmpfile"
             ;;
         fedora|rhel)
@@ -39,6 +42,9 @@ install_heroic() {
             tmpfile=$(mktemp /tmp/heroic-XXXXXX.rpm)
             CLEANUP_FILES+=("$tmpfile")
             wget -qO "$tmpfile" "$url" || { error "Failed to download Heroic .rpm."; return 1; }
+            verify_download "$tmpfile" "rpm" "Heroic" || return 1
+            github_verify_checksum "https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest" \
+                "$(basename "$url")" "$tmpfile" || return 1
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)

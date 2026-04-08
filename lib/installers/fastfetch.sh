@@ -145,6 +145,9 @@ install_fastfetch() {
                 tmpfile=$(mktemp /tmp/fastfetch-XXXXXX.deb)
                 CLEANUP_FILES+=("$tmpfile")
                 wget -qO "$tmpfile" "$url" || { error "Failed to download Fastfetch .deb."; return 1; }
+                verify_download "$tmpfile" "deb" "Fastfetch" || return 1
+                github_verify_checksum "https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest" \
+                    "$(basename "$url")" "$tmpfile" || return 1
                 sudo apt install -y "$tmpfile"
             fi
             ;;
@@ -162,6 +165,9 @@ install_fastfetch() {
                 tmpfile=$(mktemp /tmp/fastfetch-XXXXXX.rpm)
                 CLEANUP_FILES+=("$tmpfile")
                 wget -qO "$tmpfile" "$url" || { error "Failed to download Fastfetch .rpm."; return 1; }
+                verify_download "$tmpfile" "rpm" "Fastfetch" || return 1
+                github_verify_checksum "https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest" \
+                    "$(basename "$url")" "$tmpfile" || return 1
                 sudo "$PKG_MGR" install -y "$tmpfile"
             }
             ;;
@@ -178,6 +184,9 @@ install_fastfetch() {
                 tmpfile=$(mktemp /tmp/fastfetch-XXXXXX.rpm)
                 CLEANUP_FILES+=("$tmpfile")
                 wget -qO "$tmpfile" "$url" || { error "Failed to download Fastfetch .rpm."; return 1; }
+                verify_download "$tmpfile" "rpm" "Fastfetch" || return 1
+                github_verify_checksum "https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest" \
+                    "$(basename "$url")" "$tmpfile" || return 1
                 sudo zypper install -y "$tmpfile"
             }
             ;;

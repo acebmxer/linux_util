@@ -66,6 +66,8 @@ install_nvidia_container_toolkit() {
             ;;
         *)
             warn "NVIDIA Container Toolkit installation not implemented for ${DISTRO_NAME}."
+            warn "Supported distros: Debian/Ubuntu, Fedora/RHEL, Arch/Manjaro, openSUSE."
+            warn "Manual instructions: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html"
             return 1
             ;;
     esac
@@ -208,6 +210,8 @@ install_nvidia_i386_libs() {
             ;;
         *)
             warn "NVIDIA 32-bit library installation not implemented for ${DISTRO_NAME}."
+            warn "Supported distros: Debian/Ubuntu, Fedora/RHEL, Arch/Manjaro, openSUSE."
+            warn "Install 32-bit libs manually from: https://www.nvidia.com/en-us/drivers/"
             return 1
             ;;
     esac
@@ -306,6 +310,8 @@ install_nvidia_drivers() {
             ;;
         *)
             warn "NVIDIA driver detection not implemented for ${DISTRO_NAME}."
+            warn "Supported distros: Debian/Ubuntu, Fedora/RHEL, Arch/Manjaro, openSUSE."
+            warn "Install drivers manually from: https://www.nvidia.com/en-us/drivers/"
             return 1
             ;;
     esac
@@ -392,6 +398,12 @@ install_nvidia_drivers() {
             else
                 sudo zypper install -y "nvidia-driver-${driver_version}"
             fi
+            ;;
+        *)
+            warn "NVIDIA driver installation not implemented for ${DISTRO_NAME}."
+            warn "Supported distros: Debian/Ubuntu, Fedora/RHEL, Arch/Manjaro, openSUSE."
+            warn "Install drivers manually from: https://www.nvidia.com/en-us/drivers/"
+            return 1
             ;;
     esac
 

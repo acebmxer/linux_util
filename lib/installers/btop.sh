@@ -48,6 +48,9 @@ _btop_install_binary() {
     tmpfile=$(mktemp /tmp/btop-XXXXXX.tbz)
     CLEANUP_FILES+=("$tmpfile")
     wget -qO "$tmpfile" "$url" || { error "Failed to download btop."; return 1; }
+    verify_download "$tmpfile" "tbz" "Btop" || return 1
+    github_verify_checksum "https://api.github.com/repos/aristocratos/btop/releases/latest" \
+        "$(basename "$url")" "$tmpfile" || return 1
 
     local tmpdir
     tmpdir=$(mktemp -d)

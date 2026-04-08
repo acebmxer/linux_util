@@ -25,6 +25,7 @@ install_postman() {
         error "Failed to download Postman."
         return 1
     fi
+    verify_download "$tmpfile" "tar.gz" "Postman" || return 1
 
     rm -rf "$_POSTMAN_DIR"
     mkdir -p "$_POSTMAN_DIR"

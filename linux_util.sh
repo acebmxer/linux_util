@@ -28,6 +28,9 @@ DRY_RUN=false
 # No-color flag — set to true via --no-color CLI argument
 NO_COLOR_FLAG=false
 
+# JSON output flag — set to true via --json CLI argument
+JSON_OUTPUT=false
+
 # Preserve original CLI arguments for self-update re-exec
 ORIGINAL_ARGS=("$@")
 
@@ -126,6 +129,7 @@ echo ""
 # Continue sourcing remaining library modules
 source "${SCRIPT_DIR}/lib/aur.sh" || { echo "Error: Failed to source aur.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/system.sh" || { echo "Error: Failed to source system.sh"; exit 1; }
+source "${SCRIPT_DIR}/lib/verify.sh" || { echo "Error: Failed to source verify.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/snapshot.sh" || { echo "Error: Failed to source snapshot.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/utilities.sh" || { echo "Error: Failed to source utilities.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/menu.sh" || { echo "Error: Failed to source menu.sh"; exit 1; }
@@ -158,10 +162,14 @@ fi
 
 # Cache sudo credentials and keep them alive in the background so the user
 # is not re-prompted mid-install when the sudo timeout expires.
-sudo -v
-( exec 9>&-; while true; do sudo -n true; sleep 50; done ) 2>/dev/null &
-SUDO_KEEPALIVE_PID=$!
-echo "$SUDO_KEEPALIVE_PID" > "$SUDO_PID_FILE"
+# Only run when stdin is a terminal (skip during non-interactive/test invocations
+# so that child processes cannot inherit the lock fd and block subsequent runs).
+if [[ -t 0 ]]; then
+    sudo -v 9>&-
+    ( exec 9>&-; while true; do sudo -n true; sleep 50; done ) 2>/dev/null &
+    SUDO_KEEPALIVE_PID=$!
+    echo "$SUDO_KEEPALIVE_PID" > "$SUDO_PID_FILE"
+fi
 
 # Initialize Timeshift integration (Debian/Ubuntu only — silent no-op otherwise)
 timeshift_init
@@ -596,6 +604,14 @@ _cli_op() {
 # COMMAND-LINE ARGUMENT PARSING
 # ============================================================================
 
+# Escape a string for safe embedding inside a JSON double-quoted value.
+_json_str() {
+    local s="$1"
+    s="${s//\\/\\\\}"   # \ → \\
+    s="${s//\"/\\\"}"   # " → \"
+    printf '%s' "$s"
+}
+
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -616,10 +632,15 @@ Options:
   --update-all          Update every currently installed utility
   --check <name>        Exit 0 if utility is installed, 1 if not
   --no-color            Disable colored output
+  --json                Output machine-readable JSON (use with --list or --check)
   --setup-logrotate     Install logrotate config for linux_util logs
+  --export-profile <profile> <file>  Export a profile's utility list to JSON
+  --import-profile <file>            Install utilities from an exported profile
 
 Configuration: Copy linux_util.conf.example to linux_util.conf to customize.
 Utility names are matched case-insensitively and support partial matches.
+For --export-profile, pass the profile label (e.g. 'Developer Workstation').
+Omit the profile label to export all profiles.
 EOF
                 exit 0
                 ;;
@@ -628,6 +649,30 @@ EOF
                 exit 0
                 ;;
             --list)
+                if [[ "$JSON_OUTPUT" == "true" ]]; then
+                    local _first=true
+                    printf '{\n  "schema": "linux_util/list/v1",\n  "utilities": [\n'
+                    for util in "${UTILITIES[@]}"; do
+                        local check_func="${CHECK_FUNCS[$util]}"
+                        local _installed="false" _vjson="null"
+                        if [[ -n "$check_func" ]] && declare -f "$check_func" &>/dev/null; then
+                            if $check_func 2>/dev/null; then
+                                _installed="true"
+                                local ver_func="${VERSION_FUNCS[$util]:-}"
+                                if [[ -n "$ver_func" ]] && declare -f "$ver_func" &>/dev/null; then
+                                    local _ver
+                                    _ver=$($ver_func 2>/dev/null)
+                                    [[ -n "$_ver" ]] && _vjson="\"$(_json_str "$_ver")\""
+                                fi
+                            fi
+                        fi
+                        [[ "$_first" == "true" ]] && _first=false || printf ',\n'
+                        printf '    {"name": "%s", "installed": %s, "version": %s}' \
+                            "$(_json_str "$util")" "$_installed" "$_vjson"
+                    done
+                    printf '\n  ]\n}\n'
+                    exit 0
+                fi
                 echo "Available utilities:"
                 for util in "${UTILITIES[@]}"; do
                     local check_func="${CHECK_FUNCS[$util]}"
@@ -664,6 +709,10 @@ EOF
             --no-color)
                 NO_COLOR_FLAG=true
                 BOLD="" DIM="" RESET="" RED="" GREEN="" YELLOW="" BLUE="" MAGENTA="" CYAN="" WHITE="" BG_BLUE="" BG_CYAN=""
+                shift
+                ;;
+            --json)
+                # Already processed by the pre-scan in main(); just consume the flag.
                 shift
                 ;;
             --setup-logrotate)
@@ -732,19 +781,47 @@ EOF
                 if [[ -z "$_func" ]] || ! declare -f "$_func" &>/dev/null; then
                     echo "Error: No check function found for: $_util"; exit 1
                 fi
+                local _is_installed=false _ver_raw="" _ver_json="null"
                 if $_func 2>/dev/null; then
+                    _is_installed=true
                     local _ver_func="${VERSION_FUNCS[$_util]:-}"
                     if [[ -n "$_ver_func" ]] && declare -f "$_ver_func" &>/dev/null; then
-                        local _ver
-                        _ver=$($_ver_func 2>/dev/null)
-                        if [[ -n "$_ver" ]]; then
-                            echo "${_util} is installed (v${_ver})"; exit 0
-                        fi
+                        _ver_raw=$($_ver_func 2>/dev/null)
+                        [[ -n "$_ver_raw" ]] && _ver_json="\"$(_json_str "$_ver_raw")\""
                     fi
+                fi
+                if [[ "$JSON_OUTPUT" == "true" ]]; then
+                    printf '{"name": "%s", "installed": %s, "version": %s}\n' \
+                        "$(_json_str "$_util")" "$_is_installed" "$_ver_json"
+                    [[ "$_is_installed" == "true" ]] && exit 0 || exit 1
+                fi
+                if [[ "$_is_installed" == "true" ]]; then
+                    [[ -n "$_ver_raw" ]] && { echo "${_util} is installed (v${_ver_raw})"; exit 0; }
                     echo "${_util} is installed"; exit 0
                 else
                     echo "${_util} is not installed"; exit 1
                 fi
+                ;;
+            --export-profile)
+                # Usage: --export-profile [<profile label>] <output file>
+                # If only one extra arg is given it is the output file (export all profiles).
+                # If two extra args are given, the first is the label and the second is the file.
+                local _ep_label="" _ep_file=""
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --export-profile requires an output file."; exit 1
+                fi
+                if [[ -n "${3:-}" ]]; then
+                    _ep_label="$2"; _ep_file="$3"; shift 3
+                else
+                    _ep_file="$2"; shift 2
+                fi
+                profile_export "$_ep_label" "$_ep_file"
+                exit $?
+                ;;
+            --import-profile)
+                [[ -z "${2:-}" ]] && { echo "Error: --import-profile requires an input file."; exit 1; }
+                profile_import "$2"
+                exit $?
                 ;;
             *)
                 echo "Unknown option: $1"
@@ -760,6 +837,11 @@ EOF
 # ============================================================================
 
 main() {
+    # Pre-scan for modifier flags that must be active before any command runs.
+    for _arg in "$@"; do
+        [[ "$_arg" == "--json" ]] && JSON_OUTPUT=true
+    done
+
     # Pre-parse info-only flags that should work without network access or
     # side effects (self_update_script does a git pull).
     for _arg in "$@"; do

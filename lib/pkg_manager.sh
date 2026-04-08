@@ -111,7 +111,7 @@ detect_distro() {
             ;;
     esac
 
-    echo "Detected: ${DISTRO_NAME} (family: ${DISTRO_FAMILY}, package manager: ${PKG_MGR})"
+    echo "Detected: ${DISTRO_NAME} (family: ${DISTRO_FAMILY}, package manager: ${PKG_MGR})" >&2
     log_info "System detected: ${DISTRO_NAME} (family: ${DISTRO_FAMILY}, package manager: ${PKG_MGR})"
 }
 
@@ -1571,10 +1571,10 @@ check_internet() {
 
 # download_file <url> <dest> [retries=3]
 # Robust download with retries; prefers wget, falls back to curl.
-# NOTE: Checksum verification is not implemented because download URLs
-# change frequently and upstream projects do not consistently provide
-# checksum files at predictable URLs. If a utility provides a .sha256
-# file alongside its download, verify it in the individual install function.
+# After downloading, call verify_download() from lib/verify.sh to check the
+# file is non-empty, not an HTML error page, and has the expected magic bytes.
+# For GitHub releases that provide a checksums asset, also call
+# github_verify_checksum() to validate the SHA256 hash.
 download_file() {
     local url="$1" dest="$2" retries="${3:-3}" attempt=1
     while (( attempt <= retries )); do

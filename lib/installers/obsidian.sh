@@ -26,6 +26,9 @@ install_obsidian() {
             tmpfile=$(mktemp /tmp/obsidian-XXXXXX.deb)
             CLEANUP_FILES+=("$tmpfile")
             wget -qO "$tmpfile" "$url" || { error "Failed to download Obsidian .deb."; return 1; }
+            verify_download "$tmpfile" "deb" "Obsidian" || return 1
+            github_verify_checksum "https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest" \
+                "$(basename "$url")" "$tmpfile" || return 1
             sudo apt install -y "$tmpfile"
             ;;
         fedora|rhel)
@@ -44,6 +47,9 @@ install_obsidian() {
             tmpfile=$(mktemp /tmp/obsidian-XXXXXX.rpm)
             CLEANUP_FILES+=("$tmpfile")
             wget -qO "$tmpfile" "$url" || { error "Failed to download Obsidian .rpm."; return 1; }
+            verify_download "$tmpfile" "rpm" "Obsidian" || return 1
+            github_verify_checksum "https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest" \
+                "$(basename "$url")" "$tmpfile" || return 1
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)

@@ -23,6 +23,7 @@ install_bitwarden() {
                 rm -f "$tmp_deb"
                 return 1
             fi
+            verify_download "$tmp_deb" "deb" "Bitwarden" || return 1
             # Try installing; if deps are missing, fix them and retry
             if ! sudo dpkg -i "$tmp_deb"; then
                 sudo apt-get install -f -y || true
@@ -44,6 +45,7 @@ install_bitwarden() {
                 rm -f "$tmp_rpm"
                 return 1
             fi
+            verify_download "$tmp_rpm" "rpm" "Bitwarden" || return 1
             if ! sudo "$PKG_MGR" install -y "$tmp_rpm"; then
                 echo "Error: Failed to install Bitwarden .rpm."
                 rm -f "$tmp_rpm"

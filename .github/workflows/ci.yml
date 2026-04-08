@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run test suite
+        run: bash tests/test_linux_util.sh
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck on main script
+        run: shellcheck -S warning linux_util.sh manage_logs.sh
+
+      - name: Run ShellCheck on lib modules
+        run: shellcheck -S warning lib/*.sh
+
+      - name: Run ShellCheck on installers
+        run: shellcheck -S warning lib/installers/*.sh

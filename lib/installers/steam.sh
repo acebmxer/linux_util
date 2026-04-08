@@ -136,6 +136,7 @@ install_steam() {
                     rm -f "$steam_deb"
                     return 1
                 fi
+                verify_download "$steam_deb" "deb" "Steam" || return 1
 
                 # Install Steam - prompts will be shown for user to accept/decline
                 echo "Installing Steam (follow any on-screen prompts)..."

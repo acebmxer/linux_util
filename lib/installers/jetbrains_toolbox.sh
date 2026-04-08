@@ -38,6 +38,7 @@ install_jetbrains_toolbox() {
         error "Failed to download JetBrains Toolbox."
         return 1
     fi
+    verify_download "$tmpfile" "tar.gz" "JetBrains Toolbox" || return 1
 
     local tmpdir
     tmpdir=$(mktemp -d)

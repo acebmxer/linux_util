@@ -60,6 +60,7 @@ _pia_install_via_run() {
         rm -f "$pia_installer"
         return 1
     fi
+    verify_download "$pia_installer" "run" "PIA VPN" || return 1
     chmod +x "$pia_installer"
     if ! "$pia_installer" --accept --quiet; then
         echo "Error: Failed to install PIA VPN."

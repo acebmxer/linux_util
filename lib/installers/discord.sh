@@ -17,6 +17,7 @@ install_discord() {
                 error "Failed to download Discord .deb package."
                 return 1
             fi
+            verify_download "$tmpfile" "deb" "Discord" || return 1
             sudo apt install -y "$tmpfile"
             ;;
         fedora|rhel)
@@ -30,6 +31,7 @@ install_discord() {
                     error "Failed to download Discord archive."
                     return 1
                 }
+                verify_download "$tmpfile" "tar.gz" "Discord" || return 1
                 sudo mkdir -p /opt/discord
                 sudo tar -xzf "$tmpfile" -C /opt/discord --strip-components=1
                 sudo ln -sf /opt/discord/Discord /usr/local/bin/discord

@@ -1,0 +1,132 @@
+#compdef linux_util.sh
+
+# zsh completion for linux_util.sh
+# Install: copy to a directory in $fpath (e.g. /usr/local/share/zsh/site-functions/)
+#          or source this file directly.
+
+_linux_util_utilities=(
+    'AMD Drivers'
+    'Bitwarden Client'
+    'Bitwarden Extension'
+    'Bottles'
+    'Brave Browser'
+    'Btop'
+    'Budgie Desktop'
+    'Chromium'
+    'Cinnamon Desktop'
+    'Claude Code'
+    'Command-Not-Found Prompt'
+    'COSMIC Desktop'
+    'Create Snapshot'
+    'Cursor IDE'
+    'DBeaver'
+    'Deepin Desktop'
+    'Devolutions RDM'
+    'Discord'
+    'Docker'
+    'Enable RDP'
+    'Fastfetch'
+    'Feral Gamemode'
+    'FileZilla'
+    'Firefox'
+    'Flatpak Setup'
+    'Full System Upgrade/Update'
+    'GIMP'
+    'GitHub CLI'
+    'GNOME Desktop'
+    'Google Chrome'
+    'Heroic Games Launcher'
+    'JetBrains Toolbox'
+    'Joplin Client'
+    'Joplin Web Clipper'
+    'KDE Desktop'
+    'KMail'
+    'LibreOffice'
+    'Local Time Zone / Locale'
+    'Lutris'
+    'LXQt Desktop'
+    'MangoHud'
+    'MATE Desktop'
+    'Nextcloud Desktop'
+    'Num Lock at Boot'
+    'NVIDIA Drivers'
+    'NVM'
+    'OBS Studio'
+    'Obsidian'
+    'OnlyOffice'
+    'OpenSSH Server'
+    'Pantheon Desktop'
+    'PIA VPN'
+    'Postman'
+    'ProtonUp-Qt'
+    'ProtonVPN'
+    'QBittorrent'
+    'Remmina'
+    'Restore Snapshot'
+    'Signal Desktop'
+    'SponsorBlock Extension'
+    'Stacer'
+    'Standard Notes'
+    'Steam App'
+    'Syncthing'
+    'System Updates'
+    'Tailscale'
+    'Telegram Desktop'
+    'Termius SSH Client'
+    'Thorium Browser'
+    'Thunderbird'
+    'Timeshift'
+    'UFW Firewall'
+    'Visual Studio Code'
+    'Vivaldi Browser'
+    'WireGuard Client'
+    'WireGuard Server'
+    'WPS Office'
+    'XEN Guest Utilities'
+    'Xfce Desktop'
+    'Zsh + Oh My Zsh'
+)
+
+_linux_util() {
+    local context state state_descr line
+    typeset -A opt_args
+
+    _arguments -C \
+        '(- *)'{--help,-h}'[Show usage information and exit]' \
+        '(- *)--version[Show script version (git commit)]' \
+        '(- *)--list[List all utilities with current install status]' \
+        '--dry-run[Preview actions without making any changes]' \
+        '--verbose[Enable verbose output]' \
+        '--debug[Enable debug output (internal state details)]' \
+        '--no-color[Disable coloured output]' \
+        '--json[Output machine-readable JSON (use with --list or --check)]' \
+        '--update-all[Update every currently installed utility]' \
+        '--setup-logrotate[Install logrotate config for linux_util logs]' \
+        '--install[Install a utility by name]:utility:->utility' \
+        '--uninstall[Uninstall a utility by name]:utility:->utility' \
+        '--update[Update a utility by name]:utility:->utility' \
+        '--check[Check if a utility is installed]:utility:->utility' \
+        '--export-profile[Export a profile utility list to JSON]:profile:->profile_or_file' \
+        '--import-profile[Install utilities from an exported profile JSON]:file:_files' \
+        && return
+
+    case "$state" in
+        utility)
+            _describe 'utility' _linux_util_utilities
+            ;;
+        profile_or_file)
+            # First arg after --export-profile may be a profile name or a file
+            local profiles=(
+                'All Profiles'
+                'Run Me First'
+                'Default VM Server Profile'
+                'Default Physical PC'
+                'Custom Profile 1'
+                'Custom Profile 2'
+            )
+            _describe 'profile' profiles || _files
+            ;;
+    esac
+}
+
+_linux_util "$@"

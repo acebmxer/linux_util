@@ -33,6 +33,9 @@ install_thorium() {
             local tmp_rpm
             tmp_rpm=$(mktemp /tmp/thorium-XXXXXX.rpm)
             curl -fsSL "$rpm_url" -o "$tmp_rpm"
+            verify_download "$tmp_rpm" "rpm" "Thorium" || { rm -f "$tmp_rpm"; return 1; }
+            github_verify_checksum "https://api.github.com/repos/Alex313031/thorium/releases/latest" \
+                "$(basename "$rpm_url")" "$tmp_rpm" || { rm -f "$tmp_rpm"; return 1; }
             sudo "$PKG_MGR" install -y "$tmp_rpm"
             rm -f "$tmp_rpm"
             ;;
@@ -53,6 +56,9 @@ install_thorium() {
             local tmp_rpm
             tmp_rpm=$(mktemp /tmp/thorium-XXXXXX.rpm)
             curl -fsSL "$rpm_url" -o "$tmp_rpm"
+            verify_download "$tmp_rpm" "rpm" "Thorium" || { rm -f "$tmp_rpm"; return 1; }
+            github_verify_checksum "https://api.github.com/repos/Alex313031/thorium/releases/latest" \
+                "$(basename "$rpm_url")" "$tmp_rpm" || { rm -f "$tmp_rpm"; return 1; }
             sudo zypper install -y "$tmp_rpm"
             rm -f "$tmp_rpm"
             ;;

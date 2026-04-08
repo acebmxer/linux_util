@@ -32,6 +32,9 @@ install_standard_notes() {
                 tmpfile=$(mktemp /tmp/standard-notes-XXXXXX.deb)
                 CLEANUP_FILES+=("$tmpfile")
                 wget -qO "$tmpfile" "$url" || { error "Failed to download Standard Notes .deb."; return 1; }
+                verify_download "$tmpfile" "deb" "Standard Notes" || return 1
+                github_verify_checksum "https://api.github.com/repos/standardnotes/app/releases/latest" \
+                    "$(basename "$url")" "$tmpfile" || return 1
                 sudo apt install -y "$tmpfile"
                 return 0
             fi
@@ -66,6 +69,9 @@ _sn_install_appimage() {
 
     mkdir -p "$(dirname "$_SN_APPIMAGE")"
     wget -qO "$_SN_APPIMAGE" "$url" || { error "Failed to download Standard Notes AppImage."; return 1; }
+    verify_download "$_SN_APPIMAGE" "AppImage" "Standard Notes" || return 1
+    github_verify_checksum "https://api.github.com/repos/standardnotes/app/releases/latest" \
+        "$(basename "$url")" "$_SN_APPIMAGE" || return 1
     chmod +x "$_SN_APPIMAGE"
 
     mkdir -p "$HOME/.local/bin"

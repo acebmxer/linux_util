@@ -17,6 +17,7 @@ install_dbeaver() {
                 error "Failed to download DBeaver .deb package."
                 return 1
             fi
+            verify_download "$tmpfile" "deb" "DBeaver" || return 1
             sudo apt install -y "$tmpfile"
             ;;
         fedora|rhel)
@@ -27,6 +28,7 @@ install_dbeaver() {
                 error "Failed to download DBeaver .rpm package."
                 return 1
             fi
+            verify_download "$tmpfile" "rpm" "DBeaver" || return 1
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
@@ -44,6 +46,7 @@ install_dbeaver() {
                 error "Failed to download DBeaver .rpm package."
                 return 1
             fi
+            verify_download "$tmpfile" "rpm" "DBeaver" || return 1
             sudo zypper install -y "$tmpfile"
             ;;
     esac

@@ -19,6 +19,7 @@ install_termius() {
             tmp_deb=$(mktemp /tmp/termius-XXXXXX.deb)
             CLEANUP_FILES+=("$tmp_deb")
             wget -q https://www.termius.com/download/linux/Termius.deb -O "$tmp_deb"
+            verify_download "$tmp_deb" "deb" "Termius" || return 1
             sudo apt install -y "$tmp_deb"
             rm -f "$tmp_deb"
             ;;
@@ -66,6 +67,7 @@ update_termius() {
             tmp_deb=$(mktemp /tmp/termius-XXXXXX.deb)
             CLEANUP_FILES+=("$tmp_deb")
             wget -q https://www.termius.com/download/linux/Termius.deb -O "$tmp_deb"
+            verify_download "$tmp_deb" "deb" "Termius" || return 1
             sudo apt install -y "$tmp_deb"
             rm -f "$tmp_deb"
             ;;

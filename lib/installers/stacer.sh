@@ -26,6 +26,9 @@ install_stacer() {
             tmpfile=$(mktemp /tmp/stacer-XXXXXX.deb)
             CLEANUP_FILES+=("$tmpfile")
             wget -qO "$tmpfile" "$url" || { error "Failed to download Stacer .deb."; return 1; }
+            verify_download "$tmpfile" "deb" "Stacer" || return 1
+            github_verify_checksum "https://api.github.com/repos/oguzhaninan/Stacer/releases/latest" \
+                "$(basename "$url")" "$tmpfile" || return 1
             sudo apt install -y "$tmpfile"
             ;;
         fedora|rhel)
@@ -39,6 +42,9 @@ install_stacer() {
             tmpfile=$(mktemp /tmp/stacer-XXXXXX.rpm)
             CLEANUP_FILES+=("$tmpfile")
             wget -qO "$tmpfile" "$url" || { error "Failed to download Stacer .rpm."; return 1; }
+            verify_download "$tmpfile" "rpm" "Stacer" || return 1
+            github_verify_checksum "https://api.github.com/repos/oguzhaninan/Stacer/releases/latest" \
+                "$(basename "$url")" "$tmpfile" || return 1
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
@@ -56,6 +62,9 @@ install_stacer() {
                     tmpfile=$(mktemp /tmp/stacer-XXXXXX.rpm)
                     CLEANUP_FILES+=("$tmpfile")
                     wget -qO "$tmpfile" "$url" || { error "Failed to download Stacer .rpm."; return 1; }
+                    verify_download "$tmpfile" "rpm" "Stacer" || return 1
+                    github_verify_checksum "https://api.github.com/repos/oguzhaninan/Stacer/releases/latest" \
+                        "$(basename "$url")" "$tmpfile" || return 1
                     sudo zypper install -y "$tmpfile"
                 else
                     error "Could not install Stacer on this openSUSE system."

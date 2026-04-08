@@ -35,6 +35,7 @@ install_protonvpn() {
                 error "Failed to download ProtonVPN .deb package."
                 return 1
             fi
+            verify_download "$tmpfile" "deb" "ProtonVPN" || return 1
             # Install the repo-setup package (adds ProtonVPN apt repo + GPG key)
             sudo apt install -y "$tmpfile"
             sudo apt update
