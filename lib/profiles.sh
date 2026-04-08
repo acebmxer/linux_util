@@ -250,7 +250,7 @@ register_profile "Default Physical PC" \
     "Desktop workstation: Num Lock, VSCode, GitHub CLI, Steam, Brave, Devolutions RDM, Termius, Bitwarden Extension, Joplin, Joplin Web Clipper, SponsorBlock Extension, Btop, Zsh + Oh My Zsh, Fastfetch."
 
 # ----------------------------------------------------------------------------
-# Profile 4 — Custom Profile 1
+# Profile 4 — Developer Workstation
 #
 # Developer Workstation — targets a software-developer desktop: firewall,
 # SSH server, containers, editor, version control tooling, API testing,
@@ -278,12 +278,12 @@ _profile_custom_1() {
     _profile_select_for_install "Zsh + Oh My Zsh"
     _profile_select_for_install "Fastfetch"
 }
-register_profile "Custom Profile 1" \
+register_profile "Developer Workstation" \
     _profile_custom_1 \
     "Developer workstation: UFW, OpenSSH Server, Docker, VSCode, GitHub CLI, NVM, Postman, DBeaver, Bitwarden Client, Btop, Zsh + Oh My Zsh, Fastfetch."
 
 # ----------------------------------------------------------------------------
-# Profile 5 — Custom Profile 2
+# Profile 5 — Home Desktop
 #
 # Home Desktop — privacy- and productivity-focused daily-driver profile:
 # open-source browser, email, messaging, office suite, image editor,
@@ -305,7 +305,7 @@ _profile_custom_2() {
     _profile_select_for_install "Zsh + Oh My Zsh"
     _profile_select_for_install "Fastfetch"
 }
-register_profile "Custom Profile 2" \
+register_profile "Home Desktop" \
     _profile_custom_2 \
     "Home desktop: Flatpak, Firefox, Thunderbird, Signal, LibreOffice, GIMP, Nextcloud Desktop, Bitwarden Client, Joplin Client, QBittorrent, ProtonVPN, Btop, Zsh + Oh My Zsh, Fastfetch."
 

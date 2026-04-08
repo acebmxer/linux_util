@@ -121,8 +121,8 @@ _linux_util() {
                 'Run Me First'
                 'Default VM Server Profile'
                 'Default Physical PC'
-                'Custom Profile 1'
-                'Custom Profile 2'
+                'Developer Workstation'
+                'Home Desktop'
             )
             _describe 'profile' profiles || _files
             ;;

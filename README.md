@@ -72,8 +72,8 @@ The TUI uses a two-panel layout: a left sidebar with category tabs and system in
 │   Run Me First       │                                                  │
 │   Default VM Server  │                                                  │
 │   Default Phys. PC   │                                                  │
-│   Custom Profile 1   │                                                  │
-│   Custom Profile 2   │                                                  │
+│  Developer Workstat. │                                                  │
+│    Home Desktop      │                                                  │
 ├──────────────────────┤                                                  │
 │ SYSTEM Details       │                                                  │
 ├──────────────────────┤                                                  │
@@ -381,17 +381,17 @@ Applying a profile clears all current selections and queues the profile's items.
 | **Run Me First** | Installs Timeshift for a restore point before any other changes |
 | **Default VM Server Profile** | Xen Guest Utilities, Btop, Zsh + Oh My Zsh |
 | **Default Physical PC** | Desktop essentials — VSCode, GitHub CLI, Steam, Brave, and more |
-| **Custom Profile 1** | Blank user-defined slot |
-| **Custom Profile 2** | Second blank user-defined slot |
+| **Developer Workstation** | UFW, OpenSSH Server, Docker, VSCode, GitHub CLI, NVM, Postman, DBeaver, Bitwarden Client, Btop, Zsh + Oh My Zsh, Fastfetch |
+| **Home Desktop** | Flatpak, Firefox, Thunderbird, Signal, LibreOffice, GIMP, Nextcloud Desktop, Bitwarden Client, Joplin Client, QBittorrent, ProtonVPN, Btop, Zsh + Oh My Zsh, Fastfetch |
 
-To customize, edit `_profile_custom_1()` or `_profile_custom_2()` in `lib/profiles.sh`:
+To add your own profile, edit `_profile_custom_1()` or `_profile_custom_2()` in `lib/profiles.sh` and change the registered name:
 
 ```bash
 _profile_custom_1() {
     _profile_select_for_install "Docker"
     _profile_select_task        "UFW Firewall"
 }
-register_profile "Custom Profile 1" _profile_custom_1 "Short description."
+register_profile "Developer Workstation" _profile_custom_1 "Short description."
 ```
 
 Available helpers: `_profile_select_for_install`, `_profile_select_for_update`, `_profile_select_task`. Valid utility names are listed at the top of `lib/profiles.sh`.

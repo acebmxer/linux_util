@@ -562,6 +562,7 @@ process_selected() {
         _RELOAD_CHOICE=${_RELOAD_CHOICE:-Y}
         case "$_RELOAD_CHOICE" in
             y|Y|"")
+                exec 9>&-  # release lock fd before re-exec so new instance can acquire it
                 exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
                 ;;
             *)
