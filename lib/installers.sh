@@ -353,7 +353,7 @@ UTILITY_DESCRIPTION["Visual Studio Code"]="Microsoft's extensible code editor wi
 
 # Gaming
 UTILITY_DESCRIPTION["Bottles"]="Wine prefix manager for running Windows software on Linux with per-app isolation. Requires Flatpak — enable the 'Flatpak Setup' system task first on non-Arch systems."
-UTILITY_DESCRIPTION["Feral Gamemode"]="Optimizes Linux system performance while gaming by adjusting CPU governor, I/O priority, and more.  For Steam games add "gamemoderun %command%" to the game's launch options. For non-Steam games, run them via the "Run with Gamemode" option in the right-click context menu in this app."
+UTILITY_DESCRIPTION["Feral Gamemode"]="Optimizes Linux system performance while gaming by adjusting CPU governor, I/O priority, and more.  For Steam games add gamemoderun %command% to the game's launch options. For non-Steam games, run them via the "Run with Gamemode" option in the right-click context menu in this app."
 UTILITY_DESCRIPTION["Heroic Games Launcher"]="Open-source launcher for Epic Games Store, GOG, and Amazon Prime Gaming libraries."
 UTILITY_DESCRIPTION["Lutris"]="Open gaming platform for managing and running games from multiple sources including Steam, GOG, and more."
 UTILITY_DESCRIPTION["MangoHud"]="Vulkan and OpenGL overlay for monitoring FPS, frame times, CPU/GPU usage, and temperatures in-game."
