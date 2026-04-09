@@ -64,6 +64,9 @@ register_system_task "Create Snapshot"   setup_create_snapshot   check_always_fa
 NO_RETRY["Create Snapshot"]=1
 register_system_task "Restore Snapshot"  setup_restore_snapshot  check_always_false    noop_function             setup_restore_snapshot
 NO_RETRY["Restore Snapshot"]=1
+# These fail immediately when Flatpak is absent — retrying adds no value
+NO_RETRY["ProtonUp-Qt"]=1
+NO_RETRY["Bottles"]=1
 
 # --- Utilities (alphabetical order) ---
 register_utility "Bitwarden Client"       install_bitwarden           check_bitwarden           uninstall_bitwarden           update_bitwarden              get_version_bitwarden
@@ -119,6 +122,7 @@ register_utility "Thunderbird"         install_thunderbird      check_thunderbir
 register_utility "Timeshift"           install_timeshift        check_timeshift        uninstall_timeshift        update_timeshift           get_version_timeshift
 register_utility "Visual Studio Code"  install_vscode           check_vscode           uninstall_vscode           update_vscode              get_version_vscode
 register_utility "Vivaldi Browser"     install_vivaldi          check_vivaldi          uninstall_vivaldi          update_vivaldi             get_version_vivaldi
+register_utility "Wine"               install_wine             check_wine             uninstall_wine             update_wine                get_version_wine
 register_utility "WireGuard Client"    install_wireguard_client check_wireguard_client uninstall_wireguard_client update_wireguard_client    get_version_wireguard_client
 register_utility "WireGuard Server"    install_wireguard_server check_wireguard_server uninstall_wireguard_server update_wireguard_server    get_version_wireguard_server
 register_utility "WPS Office"          install_wps_office       check_wps_office       uninstall_wps_office       update_wps_office          get_version_wps_office
@@ -250,6 +254,7 @@ UTILITY_CATEGORY["Thunderbird"]="Internet"
 UTILITY_CATEGORY["Timeshift"]="System Tools"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
 UTILITY_CATEGORY["Vivaldi Browser"]="Internet"
+UTILITY_CATEGORY["Wine"]="Gaming"
 UTILITY_CATEGORY["WireGuard Client"]="Internet"
 UTILITY_CATEGORY["WireGuard Server"]="Internet"
 UTILITY_CATEGORY["WPS Office"]="Productivity"
@@ -297,6 +302,11 @@ UTILITY_SUBCATEGORY["Bottles"]="Game Launchers"
 UTILITY_SUBCATEGORY["Feral Gamemode"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["MangoHud"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["ProtonUp-Qt"]="Gaming Utilities"
+UTILITY_SUBCATEGORY["Wine"]="Gaming Utilities"
+
+# Display name overrides — shown in the menu instead of the utility key
+UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
+UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Extensions|Messaging|Email Clients|File Transfer|Remote Access|VPN"
@@ -342,13 +352,14 @@ UTILITY_DESCRIPTION["Postman"]="API development and testing platform for designi
 UTILITY_DESCRIPTION["Visual Studio Code"]="Microsoft's extensible code editor with a rich ecosystem of extensions and built-in Git support."
 
 # Gaming
-UTILITY_DESCRIPTION["Bottles"]="Wine prefix manager for running Windows software on Linux with per-app isolation."
-UTILITY_DESCRIPTION["Feral Gamemode"]="Optimizes Linux system performance while gaming by adjusting CPU governor, I/O priority, and more."
+UTILITY_DESCRIPTION["Bottles"]="Wine prefix manager for running Windows software on Linux with per-app isolation. Requires Flatpak — enable the 'Flatpak Setup' system task first on non-Arch systems."
+UTILITY_DESCRIPTION["Feral Gamemode"]="Optimizes Linux system performance while gaming by adjusting CPU governor, I/O priority, and more.  For Steam games add "gamemoderun %command%" to the game's launch options. For non-Steam games, run them via the "Run with Gamemode" option in the right-click context menu in this app."
 UTILITY_DESCRIPTION["Heroic Games Launcher"]="Open-source launcher for Epic Games Store, GOG, and Amazon Prime Gaming libraries."
 UTILITY_DESCRIPTION["Lutris"]="Open gaming platform for managing and running games from multiple sources including Steam, GOG, and more."
 UTILITY_DESCRIPTION["MangoHud"]="Vulkan and OpenGL overlay for monitoring FPS, frame times, CPU/GPU usage, and temperatures in-game."
-UTILITY_DESCRIPTION["ProtonUp-Qt"]="Graphical tool for managing Proton-GE and Wine-GE compatibility layers for Steam and Lutris."
+UTILITY_DESCRIPTION["ProtonUp-Qt"]="Graphical tool for managing Proton-GE and Wine-GE compatibility layers for Steam and Lutris. Requires Flatpak — enable the 'Flatpak Setup' system task first on non-Arch systems."
 UTILITY_DESCRIPTION["Steam App"]="Valve's gaming platform for purchasing, downloading, and playing PC games on Linux."
+UTILITY_DESCRIPTION["Wine"]="Compatibility layer that enables Windows applications and games to run natively on Linux without a virtual machine."
 
 # Internet
 UTILITY_DESCRIPTION["Bitwarden Extension"]="Deploys Bitwarden browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, Vivaldi). The extension is force-installed on next browser launch."

@@ -909,8 +909,8 @@ _render_right() {
                 local name_avail=$(( item_w - 2 - 3 - 1 - ${#status_plain} ))
                 (( ${#status_plain} > 0 )) && name_avail=$(( name_avail - 1 ))  # space before status
 
-                local display_name="$name"
-                if (( ${#name} > name_avail && name_avail > 3 )); then
+                local display_name="${UTILITY_DISPLAY_NAME[$name]:-$name}"
+                if (( ${#display_name} > name_avail && name_avail > 3 )); then
                     display_name="${name:0:$((name_avail - 3))}..."
                 fi
 

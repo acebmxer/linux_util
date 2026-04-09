@@ -162,6 +162,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **MangoHud** | Vulkan/OpenGL overlay for FPS, frame times, and hardware monitoring |
 | **ProtonUp-Qt** | Manages Proton-GE and Wine-GE compatibility layers |
 | **Steam App** | Valve's gaming platform — native packages / RPM Fusion / flatpak |
+| **Wine** | Compatibility layer for running Windows applications and games on Linux |
 
 #### Internet
 
