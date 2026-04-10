@@ -44,10 +44,10 @@ check_always_false() {
 register_system_task "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update get_version_full_update
 NO_RETRY["Full System Upgrade/Update"]=1
 register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates      get_version_system_updates
-register_system_task "NVIDIA Drivers"     install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
-register_system_task "XEN Guest Utilities" setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
+register_utility "NVIDIA Drivers"         install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
+register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
 register_system_task "Enable RDP"         install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
-register_system_task "AMD Drivers"        install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
+register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
 register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_setup   uninstall_flatpak_setup   update_flatpak_setup      get_version_flatpak_setup
 register_system_task "UFW Firewall"       install_ufw             check_ufw             uninstall_ufw             update_ufw                get_version_ufw
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
@@ -71,11 +71,13 @@ NO_RETRY["ProtonUp-Qt"]=1
 NO_RETRY["Bottles"]=1
 
 # --- Utilities (alphabetical order) ---
+register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   check_amd_chipset_drivers   uninstall_amd_chipset_drivers   update_amd_chipset_drivers   get_version_amd_chipset_drivers
 register_utility "Bitwarden Client"       install_bitwarden           check_bitwarden           uninstall_bitwarden           update_bitwarden              get_version_bitwarden
 register_utility "Bitwarden Extension"    install_bitwarden_extension check_bitwarden_extension uninstall_bitwarden_extension update_bitwarden_extension    get_version_bitwarden_extension
 register_utility "Bottles"                install_bottles             check_bottles             uninstall_bottles             update_bottles                get_version_bottles
 register_utility "Brave Browser"       install_brave            check_brave            uninstall_brave            update_brave               get_version_brave
 register_utility "Btop"                install_btop             check_btop             uninstall_btop             update_btop                get_version_btop
+register_utility "Intel CPU Microcode & Thermal" install_intel_chipset_drivers check_intel_chipset_drivers uninstall_intel_chipset_drivers update_intel_chipset_drivers get_version_intel_chipset_drivers
 register_utility "Chromium"            install_chromium         check_chromium         uninstall_chromium         update_chromium            get_version_chromium
 register_utility "Claude Code"         install_claude_code      check_claude_code      uninstall_claude_code      update_claude_code         get_version_claude_code
 register_utility "Cursor IDE"          install_cursor           check_cursor           uninstall_cursor           update_cursor              get_version_cursor
@@ -190,9 +192,14 @@ fi
 
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Desktop Environments" "Development" "Gaming" "Internet" "Productivity" "System Tools")
+CATEGORIES=("System Tasks" "Desktop Environments" "Development" "Drivers" "Gaming" "Internet" "Productivity" "System Tools")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
+UTILITY_CATEGORY["AMD CPU Microcode & Firmware"]="Drivers"
+UTILITY_CATEGORY["AMD Drivers"]="Drivers"
+UTILITY_CATEGORY["Intel CPU Microcode & Thermal"]="Drivers"
+UTILITY_CATEGORY["NVIDIA Drivers"]="Drivers"
+UTILITY_CATEGORY["XEN Guest Utilities"]="Drivers"
 UTILITY_CATEGORY["Budgie Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Cinnamon Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["COSMIC Desktop"]="Desktop Environments"
@@ -305,12 +312,17 @@ UTILITY_SUBCATEGORY["Feral Gamemode"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["MangoHud"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["ProtonUp-Qt"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["Wine"]="Gaming Utilities"
+UTILITY_SUBCATEGORY["AMD CPU Microcode & Firmware"]="CPU Microcode"
+UTILITY_SUBCATEGORY["AMD Drivers"]="GPU Drivers"
+UTILITY_SUBCATEGORY["Intel CPU Microcode & Thermal"]="CPU Microcode"
+UTILITY_SUBCATEGORY["NVIDIA Drivers"]="GPU Drivers"
 
 # Display name overrides — shown in the menu instead of the utility key
 UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 
 # Explicit subcategory display order within each category tab
+SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Extensions|Messaging|Email Clients|File Transfer|Remote Access|VPN"
 
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
@@ -333,6 +345,8 @@ UTILITY_DESCRIPTION["Pantheon Desktop"]="Elegant, opinionated desktop from the e
 UTILITY_DESCRIPTION["Xfce Desktop"]="Lightweight and fast desktop that is visually clean, reliable, and ideal for older or lower-end hardware."
 UTILITY_DESCRIPTION["XEN Guest Utilities"]="Installs XEN guest agent for improved virtual machine performance, clipboard sharing, and host integration."
 UTILITY_DESCRIPTION["Enable RDP"]="Enables Remote Desktop Protocol access to this machine using the XRDP server."
+UTILITY_DESCRIPTION["AMD CPU Microcode & Firmware"]="Installs AMD CPU microcode updates and linux-firmware blobs (PSP/SMU, Wi-Fi, Bluetooth, and other device firmware) for Ryzen, Threadripper, and EPYC platforms."
+UTILITY_DESCRIPTION["Intel CPU Microcode & Thermal"]="Installs Intel CPU microcode updates and the thermald thermal management daemon for 10th Gen through Core Ultra (Arrow Lake) platforms."
 UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance."
 UTILITY_DESCRIPTION["Flatpak Setup"]="Configures the Flatpak package manager and adds the Flathub repository for sandboxed applications."
 UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firewall with sensible default rules."
