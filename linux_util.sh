@@ -209,7 +209,7 @@ process_selected() {
     local needs_shell_reload=false
 
     # These tasks do not require a reboot after successful completion
-    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Local Time Zone / Locale"]=1)
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1)
 
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do

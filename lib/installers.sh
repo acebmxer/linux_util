@@ -52,6 +52,8 @@ register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_
 register_system_task "UFW Firewall"       install_ufw             check_ufw             uninstall_ufw             update_ufw                get_version_ufw
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
+register_system_task "Mount Local Drive"        setup_mount_local_drive check_always_false noop_function setup_mount_local_drive get_version_mount_local_drive
+NO_RETRY["Mount Local Drive"]=1
 
 # Command-not-found auto-install prompt (Ubuntu, Kubuntu, KDE Neon)
 # Prerequisite: enables interactive y/N install prompt for missing commands in bash.
