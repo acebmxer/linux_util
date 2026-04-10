@@ -72,6 +72,9 @@ NO_RETRY["Bottles"]=1
 
 # --- Utilities (alphabetical order) ---
 register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   check_amd_chipset_drivers   uninstall_amd_chipset_drivers   update_amd_chipset_drivers   get_version_amd_chipset_drivers
+register_utility "Ansible"             install_ansible          check_ansible          uninstall_ansible          update_ansible             get_version_ansible
+register_utility "AnyDesk"             install_anydesk          check_anydesk          uninstall_anydesk          update_anydesk             get_version_anydesk
+register_utility "Audacity"            install_audacity         check_audacity         uninstall_audacity         update_audacity            get_version_audacity
 register_utility "Bitwarden Client"       install_bitwarden           check_bitwarden           uninstall_bitwarden           update_bitwarden              get_version_bitwarden
 register_utility "Bitwarden Extension"    install_bitwarden_extension check_bitwarden_extension uninstall_bitwarden_extension update_bitwarden_extension    get_version_bitwarden_extension
 register_utility "Bottles"                install_bottles             check_bottles             uninstall_bottles             update_bottles                get_version_bottles
@@ -79,40 +82,61 @@ register_utility "Brave Browser"       install_brave            check_brave     
 register_utility "Btop"                install_btop             check_btop             uninstall_btop             update_btop                get_version_btop
 register_utility "Intel CPU Microcode & Thermal" install_intel_chipset_drivers check_intel_chipset_drivers uninstall_intel_chipset_drivers update_intel_chipset_drivers get_version_intel_chipset_drivers
 register_utility "Chromium"            install_chromium         check_chromium         uninstall_chromium         update_chromium            get_version_chromium
+register_utility "ClamAV"              install_clamav           check_clamav           uninstall_clamav           update_clamav              get_version_clamav
 register_utility "Claude Code"         install_claude_code      check_claude_code      uninstall_claude_code      update_claude_code         get_version_claude_code
 register_utility "Cursor IDE"          install_cursor           check_cursor           uninstall_cursor           update_cursor              get_version_cursor
 register_utility "DBeaver"             install_dbeaver          check_dbeaver          uninstall_dbeaver          update_dbeaver             get_version_dbeaver
 register_utility "Devolutions RDM"     install_devolutions_rdm  check_devolutions_rdm  uninstall_devolutions_rdm  update_devolutions_rdm     get_version_devolutions_rdm
 register_utility "Discord"             install_discord          check_discord          uninstall_discord          update_discord             get_version_discord
+register_utility "Element (Matrix)"    install_element          check_element          uninstall_element          update_element             get_version_element
 register_utility "Docker"              setup_install_docker     check_docker           uninstall_docker           update_docker              get_version_docker
 register_utility "Fastfetch"           install_fastfetch        check_fastfetch        uninstall_fastfetch        update_fastfetch           get_version_fastfetch
 register_utility "Feral Gamemode"      install_gamemode         check_gamemode         uninstall_gamemode         update_gamemode            get_version_gamemode
 register_utility "FileZilla"           install_filezilla        check_filezilla        uninstall_filezilla        update_filezilla           get_version_filezilla
 register_utility "Firefox"             install_firefox          check_firefox          uninstall_firefox          update_firefox             get_version_firefox
+register_utility "Flameshot"           install_flameshot        check_flameshot        uninstall_flameshot        update_flameshot           get_version_flameshot
 register_utility "GIMP"                install_gimp             check_gimp             uninstall_gimp             update_gimp                get_version_gimp
 register_utility "GitHub CLI"          install_github_cli       check_github_cli       uninstall_github_cli       update_github_cli          get_version_github_cli
+register_utility "Go SDK"              install_golang           check_golang           uninstall_golang           update_golang              get_version_golang
 register_utility "Google Chrome"       install_google_chrome    check_google_chrome    uninstall_google_chrome    update_google_chrome       get_version_google_chrome
+register_utility "HandBrake"           install_handbrake        check_handbrake        uninstall_handbrake        update_handbrake           get_version_handbrake
 register_utility "Heroic Games Launcher" install_heroic         check_heroic           uninstall_heroic           update_heroic              get_version_heroic
+register_utility "Inkscape"            install_inkscape         check_inkscape         uninstall_inkscape         update_inkscape            get_version_inkscape
+register_utility "Input Leap"          install_input_leap       check_input_leap       uninstall_input_leap       update_input_leap          get_version_input_leap
 register_utility "JetBrains Toolbox"   install_jetbrains_toolbox check_jetbrains_toolbox uninstall_jetbrains_toolbox update_jetbrains_toolbox get_version_jetbrains_toolbox
 register_utility "Joplin Client"              install_joplin                       check_joplin                       uninstall_joplin                       update_joplin                        get_version_joplin
 register_utility "Joplin Web Clipper"         install_joplin_webclipper_extension  check_joplin_webclipper_extension  uninstall_joplin_webclipper_extension  update_joplin_webclipper_extension   get_version_joplin_webclipper_extension
+register_utility "k9s"                 install_k9s              check_k9s              uninstall_k9s              update_k9s                 get_version_k9s
+register_utility "Kdenlive"            install_kdenlive         check_kdenlive         uninstall_kdenlive         update_kdenlive            get_version_kdenlive
 register_utility "KMail"                      install_kmail                        check_kmail                        uninstall_kmail                        update_kmail                         get_version_kmail
+register_utility "Krita"               install_krita            check_krita            uninstall_krita            update_krita               get_version_krita
+register_utility "kubectl"             install_kubectl          check_kubectl          uninstall_kubectl          update_kubectl             get_version_kubectl
 register_utility "LibreOffice"         install_libreoffice      check_libreoffice      uninstall_libreoffice      update_libreoffice         get_version_libreoffice
+register_utility "LibreWolf"           install_librewolf        check_librewolf        uninstall_librewolf        update_librewolf           get_version_librewolf
+register_utility "Logseq"              install_logseq           check_logseq           uninstall_logseq           update_logseq              get_version_logseq
 register_utility "Lutris"              install_lutris           check_lutris           uninstall_lutris           update_lutris              get_version_lutris
 register_utility "MangoHud"            install_mangohud         check_mangohud         uninstall_mangohud         update_mangohud            get_version_mangohud
+register_utility "Mark Text"           install_marktext         check_marktext         uninstall_marktext         update_marktext            get_version_marktext
+register_utility "Neovim"              install_neovim           check_neovim           uninstall_neovim           update_neovim              get_version_neovim
 register_utility "Nextcloud Desktop"   install_nextcloud_desktop check_nextcloud_desktop uninstall_nextcloud_desktop update_nextcloud_desktop get_version_nextcloud_desktop
 register_utility "NVM"                 install_nvm              check_nvm              uninstall_nvm              update_nvm                 get_version_nvm
 register_utility "OBS Studio"          install_obs_studio       check_obs_studio       uninstall_obs_studio       update_obs_studio          get_version_obs_studio
 register_utility "Obsidian"            install_obsidian         check_obsidian         uninstall_obsidian         update_obsidian            get_version_obsidian
 register_utility "OnlyOffice"          install_onlyoffice       check_onlyoffice       uninstall_onlyoffice       update_onlyoffice          get_version_onlyoffice
 register_utility "OpenSSH Server"      install_openssh_server   check_openssh_server   uninstall_openssh_server   update_openssh_server      get_version_openssh_server
+register_utility "OpenTofu"            install_opentofu         check_opentofu         uninstall_opentofu         update_opentofu            get_version_opentofu
 register_utility "PIA VPN"             install_pia_vpn          check_pia_vpn          uninstall_pia_vpn          update_pia_vpn             get_version_pia_vpn
+register_utility "Podman"              install_podman           check_podman           uninstall_podman           update_podman              get_version_podman
 register_utility "Postman"             install_postman          check_postman          uninstall_postman          update_postman             get_version_postman
 register_utility "ProtonUp-Qt"         install_protonup_qt      check_protonup_qt      uninstall_protonup_qt      update_protonup_qt         get_version_protonup_qt
 register_utility "ProtonVPN"           install_protonvpn        check_protonvpn        uninstall_protonvpn        update_protonvpn           get_version_protonvpn
+register_utility "pyenv"               install_pyenv            check_pyenv            uninstall_pyenv            update_pyenv               get_version_pyenv
 register_utility "QBittorrent"         install_qbittorrent      check_qbittorrent      uninstall_qbittorrent      update_qbittorrent         get_version_qbittorrent
 register_utility "Remmina"             install_remmina          check_remmina          uninstall_remmina          update_remmina             get_version_remmina
+register_utility "RustDesk"            install_rustdesk         check_rustdesk         uninstall_rustdesk         update_rustdesk            get_version_rustdesk
+register_utility "Rustup"              install_rustup           check_rustup           uninstall_rustup           update_rustup              get_version_rustup
 register_utility "Signal Desktop"         install_signal                check_signal                uninstall_signal                update_signal                 get_version_signal
+register_utility "Slack"               install_slack            check_slack            uninstall_slack            update_slack               get_version_slack
 register_utility "SponsorBlock Extension" install_sponsorblock_extension check_sponsorblock_extension uninstall_sponsorblock_extension update_sponsorblock_extension get_version_sponsorblock_extension
 register_utility "Stacer"                 install_stacer                check_stacer                uninstall_stacer                update_stacer                 get_version_stacer
 register_utility "Standard Notes"      install_standard_notes   check_standard_notes   uninstall_standard_notes   update_standard_notes      get_version_standard_notes
@@ -121,15 +145,22 @@ register_utility "Syncthing"           install_syncthing        check_syncthing 
 register_utility "Tailscale"           install_tailscale        check_tailscale        uninstall_tailscale        update_tailscale           get_version_tailscale
 register_utility "Telegram Desktop"    install_telegram         check_telegram         uninstall_telegram         update_telegram            get_version_telegram
 register_utility "Termius SSH Client"  install_termius          check_termius          uninstall_termius          update_termius             get_version_termius
+register_utility "Terraform"           install_terraform        check_terraform        uninstall_terraform        update_terraform           get_version_terraform
 register_utility "Thorium Browser"     install_thorium          check_thorium          uninstall_thorium          update_thorium             get_version_thorium
 register_utility "Thunderbird"         install_thunderbird      check_thunderbird      uninstall_thunderbird      update_thunderbird         get_version_thunderbird
 register_utility "Timeshift"           install_timeshift        check_timeshift        uninstall_timeshift        update_timeshift           get_version_timeshift
+register_utility "Tor Browser"         install_tor_browser      check_tor_browser      uninstall_tor_browser      update_tor_browser         get_version_tor_browser
+register_utility "Ventoy"              install_ventoy           check_ventoy           uninstall_ventoy           update_ventoy              get_version_ventoy
+register_utility "Virt-Manager"        install_virt_manager     check_virt_manager     uninstall_virt_manager     update_virt_manager        get_version_virt_manager
 register_utility "Visual Studio Code"  install_vscode           check_vscode           uninstall_vscode           update_vscode              get_version_vscode
 register_utility "Vivaldi Browser"     install_vivaldi          check_vivaldi          uninstall_vivaldi          update_vivaldi             get_version_vivaldi
+register_utility "VLC"                 install_vlc              check_vlc              uninstall_vlc              update_vlc                 get_version_vlc
 register_utility "Wine"               install_wine             check_wine             uninstall_wine             update_wine                get_version_wine
 register_utility "WireGuard Client"    install_wireguard_client check_wireguard_client uninstall_wireguard_client update_wireguard_client    get_version_wireguard_client
 register_utility "WireGuard Server"    install_wireguard_server check_wireguard_server uninstall_wireguard_server update_wireguard_server    get_version_wireguard_server
 register_utility "WPS Office"          install_wps_office       check_wps_office       uninstall_wps_office       update_wps_office          get_version_wps_office
+register_utility "Zoom"                install_zoom             check_zoom             uninstall_zoom             update_zoom                get_version_zoom
+register_utility "Zotero"              install_zotero           check_zotero           uninstall_zotero           update_zotero              get_version_zotero
 register_utility "Zsh + Oh My Zsh"     install_zsh_setup        check_zsh_setup        uninstall_zsh_setup        update_zsh_setup           get_version_zsh_setup
 
 # --- Desktop Environment Utilities ---
