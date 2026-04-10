@@ -16,8 +16,10 @@ prompt_nodejs_version() {
 }
 
 install_nodejs() {
-    local branch
-    branch=$(prompt_nodejs_version)
+    local branch="${1:-}"
+    if [[ -z "$branch" ]]; then
+        branch=$(prompt_nodejs_version)
+    fi
     local version url pkg
     if [[ "$branch" == "current" ]]; then
         version="$NODEJS_CURRENT_VERSION"
@@ -46,32 +48,55 @@ check_nodejs() {
 
 uninstall_nodejs() {
     info "Removing Node.js binaries from /usr/local/bin..."
-    sudo rm -f /usr/local/bin/node /usr/local/bin/npm /usr/local/bin/npx
+    sudo rm -f /usr/local/bin/node /usr/local/bin/npm /usr/local/bin/npx \
+               /usr/local/bin/corepack
+    # Also remove system-installed node if present
+    if command -v node >/dev/null 2>&1; then
+        local node_path
+        node_path="$(command -v node)"
+        if [[ "$node_path" != /usr/local/bin/* ]]; then
+            info "Removing system Node.js at $node_path..."
+            sudo rm -f "$node_path" "$(command -v npm 2>/dev/null)" "$(command -v npx 2>/dev/null)"
+        fi
+    fi
     info "Node.js uninstalled."
 }
 
 update_nodejs() {
-    local current_branch
-    if node --version | grep -q '^v${NODEJS_LTS_VERSION%%.*}\.'; then
+    local current_branch branch choice
+    if node --version | grep -q "^v${NODEJS_LTS_VERSION%%.*}\."; then
         current_branch="lts"
-    elif node --version | grep -q '^v${NODEJS_CURRENT_VERSION%%.*}\.'; then
+    elif node --version | grep -q "^v${NODEJS_CURRENT_VERSION%%.*}\."; then
         current_branch="current"
     else
         current_branch="unknown"
     fi
     echo "Current Node.js branch: $current_branch"
     echo "Update options:"
-    echo "  1) Stay on current branch"
-    echo "  2) Switch to LTS (${NODEJS_LTS_VERSION})"
-    echo "  3) Switch to Current (${NODEJS_CURRENT_VERSION})"
-    read -rp "Enter 1, 2, or 3 [1]: " choice
-    case "$choice" in
-        2) branch="lts" ;;
-        3) branch="current" ;;
-        *) branch="$current_branch" ;;
-    esac
-    if [[ "$branch" == "unknown" ]]; then
-        branch=$(prompt_nodejs_version)
+    if [[ "$current_branch" == "lts" ]]; then
+        echo "  1) Stay on LTS (${NODEJS_LTS_VERSION})"
+        echo "  2) Switch to Current (${NODEJS_CURRENT_VERSION})"
+        read -rp "Enter 1 or 2 [1]: " choice
+        case "$choice" in
+            2) branch="current" ;;
+            *) branch="lts" ;;
+        esac
+    elif [[ "$current_branch" == "current" ]]; then
+        echo "  1) Stay on Current (${NODEJS_CURRENT_VERSION})"
+        echo "  2) Switch to LTS (${NODEJS_LTS_VERSION})"
+        read -rp "Enter 1 or 2 [1]: " choice
+        case "$choice" in
+            2) branch="lts" ;;
+            *) branch="current" ;;
+        esac
+    else
+        echo "  1) LTS (${NODEJS_LTS_VERSION})"
+        echo "  2) Current (${NODEJS_CURRENT_VERSION})"
+        read -rp "Enter 1 or 2 [1]: " choice
+        case "$choice" in
+            2) branch="current" ;;
+            *) branch="lts" ;;
+        esac
     fi
     uninstall_nodejs
     install_nodejs "$branch"

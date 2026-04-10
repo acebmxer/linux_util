@@ -10,20 +10,20 @@ install_clamav() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y clamav clamav-daemon
+            sudo apt install -y clamav clamav-daemon clamtk
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y clamav clamav-update clamd
+            sudo "$PKG_MGR" install -y clamav clamav-update clamd clamtk
             ;;
         rhel)
             sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y clamav clamav-update clamd
+            sudo "$PKG_MGR" install -y clamav clamav-update clamd clamtk
             ;;
         arch)
-            sudo pacman -S --noconfirm clamav
+            sudo pacman -S --noconfirm clamav clamtk
             ;;
         suse)
-            sudo zypper install -y clamav
+            sudo zypper install -y clamav clamtk
             ;;
     esac
 
@@ -47,27 +47,39 @@ uninstall_clamav() {
     sudo systemctl disable clamav-freshclam clamav-daemon clamd 2>/dev/null || true
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y clamav clamav-daemon clamav-freshclam
+            sudo apt purge --autoremove -y clamav clamav-daemon clamav-freshclam clamtk
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y clamav clamav-update clamd
+            sudo "$PKG_MGR" remove -y clamav clamav-update clamd clamtk
             ;;
         arch)
-            sudo pacman -Rs --noconfirm clamav
+            sudo pacman -Rs --noconfirm clamtk clamav
             ;;
         suse)
-            sudo zypper remove -y clamav
+            sudo zypper remove -y clamtk clamav
             ;;
     esac
 }
 
 update_clamav() {
-    info "Updating ClamAV..."
+    info "Updating ClamAV and ClamTk..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt-get install -y --only-upgrade clamav clamav-daemon ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y clamav clamav-update ;;
-        arch)        sudo pacman -S --noconfirm clamav ;;
-        suse)        sudo zypper update -y clamav ;;
+        debian)
+            sudo apt-get install -y --only-upgrade clamav clamav-daemon
+            # Install clamtk if missing, otherwise upgrade it
+            sudo apt-get install -y clamtk
+            ;;
+        fedora|rhel)
+            sudo "$PKG_MGR" upgrade -y clamav clamav-update
+            sudo "$PKG_MGR" install -y clamtk
+            ;;
+        arch)
+            sudo pacman -S --noconfirm clamav clamtk
+            ;;
+        suse)
+            sudo zypper update -y clamav
+            sudo zypper install -y clamtk
+            ;;
     esac
     sudo freshclam 2>/dev/null || true
 }
