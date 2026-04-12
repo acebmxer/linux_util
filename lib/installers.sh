@@ -111,6 +111,7 @@ register_utility "Kdenlive"            install_kdenlive         check_kdenlive  
 register_utility "KMail"                      install_kmail                        check_kmail                        uninstall_kmail                        update_kmail                         get_version_kmail
 register_utility "Krita"               install_krita            check_krita            uninstall_krita            update_krita               get_version_krita
 register_utility "kubectl"             install_kubectl          check_kubectl          uninstall_kubectl          update_kubectl             get_version_kubectl
+register_utility "LACT"                install_lact             check_lact             uninstall_lact             update_lact                get_version_lact
 register_utility "LibreOffice"         install_libreoffice      check_libreoffice      uninstall_libreoffice      update_libreoffice         get_version_libreoffice
 register_utility "LibreWolf"           install_librewolf        check_librewolf        uninstall_librewolf        update_librewolf           get_version_librewolf
 register_utility "Logseq"              install_logseq           check_logseq           uninstall_logseq           update_logseq              get_version_logseq
@@ -230,6 +231,7 @@ CATEGORIES=("System Tasks" "Desktop Environments" "Development" "Drivers" "Gamin
 UTILITY_CATEGORY["AMD CPU Microcode & Firmware"]="Drivers"
 UTILITY_CATEGORY["AMD Drivers"]="Drivers"
 UTILITY_CATEGORY["Intel CPU Microcode & Thermal"]="Drivers"
+UTILITY_CATEGORY["LACT"]="Drivers"
 UTILITY_CATEGORY["NVIDIA Drivers"]="Drivers"
 UTILITY_CATEGORY["XEN Guest Utilities"]="Drivers"
 UTILITY_CATEGORY["Budgie Desktop"]="Desktop Environments"
@@ -387,6 +389,7 @@ UTILITY_SUBCATEGORY["Zoom"]="Messaging"
 UTILITY_SUBCATEGORY["AMD CPU Microcode & Firmware"]="CPU Microcode"
 UTILITY_SUBCATEGORY["AMD Drivers"]="GPU Drivers"
 UTILITY_SUBCATEGORY["Intel CPU Microcode & Thermal"]="CPU Microcode"
+UTILITY_SUBCATEGORY["LACT"]="GPU Drivers"
 UTILITY_SUBCATEGORY["NVIDIA Drivers"]="GPU Drivers"
 
 # Display name overrides — shown in the menu instead of the utility key
@@ -420,6 +423,7 @@ UTILITY_DESCRIPTION["Enable RDP"]="Enables Remote Desktop Protocol access to thi
 UTILITY_DESCRIPTION["AMD CPU Microcode & Firmware"]="Installs AMD CPU microcode updates and linux-firmware blobs (PSP/SMU, Wi-Fi, Bluetooth, and other device firmware) for Ryzen, Threadripper, and EPYC platforms."
 UTILITY_DESCRIPTION["Intel CPU Microcode & Thermal"]="Installs Intel CPU microcode updates and the thermald thermal management daemon for 10th Gen through Core Ultra (Arrow Lake) platforms."
 UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance."
+UTILITY_DESCRIPTION["LACT"]="Linux AMDGPU Top — graphical tool for overclocking, undervolting, and monitoring AMD GPUs. Provides fan control, power limit adjustments, and real-time sensor readings. A reboot is required after installation before changes can be applied."
 UTILITY_DESCRIPTION["Flatpak Setup"]="Configures the Flatpak package manager and adds the Flathub repository for sandboxed applications."
 UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firewall with sensible default rules."
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."

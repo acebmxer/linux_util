@@ -394,10 +394,10 @@ process_selected() {
 
                 (( success_count += 1 ))
 
-                # Reboot required for system tasks (except no-reboot list) and Docker
+                # Reboot required for system tasks (except no-reboot list), Docker, and LACT
                 # Exit code 3 = success with no changes — skip reboot prompt
                 if [[ $_exit_code -ne 3 && -z "${NO_REBOOT[$util]:-}" ]]; then
-                    if [[ "$_is_system_task" == "true" || "$util" == "Docker" ]]; then
+                    if [[ "$_is_system_task" == "true" || "$util" == "Docker" || "$util" == "LACT" ]]; then
                         needs_reboot=true
                     fi
                 fi
