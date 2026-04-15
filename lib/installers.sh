@@ -61,6 +61,12 @@ if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DIS
     register_system_task "Command-Not-Found Prompt" setup_command_not_found check_command_not_found uninstall_command_not_found update_command_not_found
 fi
 
+# Ubuntu/Kubuntu/KDE Neon specific fixes
+if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
+    register_system_task "Fix Grub on BTRFS"          install_fix_grub_btrfs   check_fix_grub_btrfs   uninstall_fix_grub_btrfs   update_fix_grub_btrfs   get_version_fix_grub_btrfs
+    register_system_task "Fix Monitor Layout at Login" install_fix_monitor_login check_always_false     noop_function              install_fix_monitor_login
+fi
+
 # Snapshot tasks (Create / Restore) — runtime checks for available backend
 register_system_task "Create Snapshot"   setup_create_snapshot   check_always_false    noop_function             setup_create_snapshot
 NO_RETRY["Create Snapshot"]=1
