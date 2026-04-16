@@ -246,10 +246,6 @@ _timeshift_write_device_config() {
     local btrfs_home="false"
     if [[ "$snapshot_type" == "btrfs" ]]; then
         btrfs_mode="true"
-        # Include @home in snapshots if the subvolume exists
-        if findmnt -n /home 2>/dev/null | grep -q 'subvol=.*@home'; then
-            btrfs_home="true"
-        fi
     fi
 
     # Always write the full config — timeshift --list-devices may have created
@@ -277,7 +273,7 @@ _timeshift_write_device_config() {
   "count_boot" : "5",
   "snapshot_size" : "0",
   "snapshot_count" : "0",
-  "exclude" : [],
+  "exclude" : ["/home/**"],
   "exclude-apps" : []
 }
 TSCFG
