@@ -67,11 +67,6 @@ if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DIS
     register_system_task "Fix Monitor Layout at Login" install_fix_monitor_login check_always_false     noop_function              install_fix_monitor_login
 fi
 
-# Snapshot tasks (Create / Restore) — runtime checks for available backend
-register_system_task "Create Snapshot"   setup_create_snapshot   check_always_false    noop_function             setup_create_snapshot
-NO_RETRY["Create Snapshot"]=1
-register_system_task "Restore Snapshot"  setup_restore_snapshot  check_always_false    noop_function             setup_restore_snapshot
-NO_RETRY["Restore Snapshot"]=1
 # These fail immediately when Flatpak is absent — retrying adds no value
 NO_RETRY["ProtonUp-Qt"]=1
 NO_RETRY["Bottles"]=1
@@ -157,6 +152,12 @@ register_utility "Terraform"           install_terraform        check_terraform 
 register_utility "Thorium Browser"     install_thorium          check_thorium          uninstall_thorium          update_thorium             get_version_thorium
 register_utility "Thunderbird"         install_thunderbird      check_thunderbird      uninstall_thunderbird      update_thunderbird         get_version_thunderbird
 register_utility "Timeshift"           install_timeshift        check_timeshift        uninstall_timeshift        update_timeshift           get_version_timeshift
+register_utility "Create Snapshot"     setup_create_snapshot    check_always_false     noop_function              setup_create_snapshot
+NO_RETRY["Create Snapshot"]=1
+register_utility "Restore Snapshot"    setup_restore_snapshot   check_always_false     noop_function              setup_restore_snapshot
+NO_RETRY["Restore Snapshot"]=1
+register_utility "Delete Snapshot"     setup_delete_snapshot    check_always_false     noop_function              setup_delete_snapshot
+NO_RETRY["Delete Snapshot"]=1
 register_utility "Tor Browser"         install_tor_browser      check_tor_browser      uninstall_tor_browser      update_tor_browser         get_version_tor_browser
 register_utility "Ventoy"              install_ventoy           check_ventoy           uninstall_ventoy           update_ventoy              get_version_ventoy
 register_utility "Virt-Manager"        install_virt_manager     check_virt_manager     uninstall_virt_manager     update_virt_manager        get_version_virt_manager
@@ -231,7 +232,7 @@ fi
 
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Desktop Environments" "Development" "Drivers" "Gaming" "Internet" "Productivity" "System Tools")
+CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Drivers" "Gaming" "Internet" "Productivity" "System Tools")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["AMD CPU Microcode & Firmware"]="Drivers"
@@ -300,7 +301,10 @@ UTILITY_CATEGORY["Telegram Desktop"]="Internet"
 UTILITY_CATEGORY["Termius SSH Client"]="Internet"
 UTILITY_CATEGORY["Thorium Browser"]="Internet"
 UTILITY_CATEGORY["Thunderbird"]="Internet"
-UTILITY_CATEGORY["Timeshift"]="System Tools"
+UTILITY_CATEGORY["Timeshift"]="Backup"
+UTILITY_CATEGORY["Create Snapshot"]="Backup"
+UTILITY_CATEGORY["Restore Snapshot"]="Backup"
+UTILITY_CATEGORY["Delete Snapshot"]="Backup"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
 UTILITY_CATEGORY["Vivaldi Browser"]="Internet"
 UTILITY_CATEGORY["Wine"]="Gaming"
@@ -392,6 +396,10 @@ UTILITY_SUBCATEGORY["RustDesk"]="Remote Access"
 UTILITY_SUBCATEGORY["Slack"]="Messaging"
 UTILITY_SUBCATEGORY["Tor Browser"]="Web Browsers"
 UTILITY_SUBCATEGORY["Zoom"]="Messaging"
+UTILITY_SUBCATEGORY["Timeshift"]="Timeshift"
+UTILITY_SUBCATEGORY["Create Snapshot"]="Timeshift"
+UTILITY_SUBCATEGORY["Restore Snapshot"]="Timeshift"
+UTILITY_SUBCATEGORY["Delete Snapshot"]="Timeshift"
 UTILITY_SUBCATEGORY["AMD CPU Microcode & Firmware"]="CPU Microcode"
 UTILITY_SUBCATEGORY["AMD Drivers"]="GPU Drivers"
 UTILITY_SUBCATEGORY["Intel CPU Microcode & Thermal"]="CPU Microcode"
@@ -435,8 +443,9 @@ UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firew
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
-UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot for backup and rollback purposes using the configured snapshot backend."
-UTILITY_DESCRIPTION["Restore Snapshot"]="Restores the system from a previously created snapshot. Use with caution."
+UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot using the active backup backend (Timeshift or Snapper). Prompts for an optional description."
+UTILITY_DESCRIPTION["Restore Snapshot"]="Restores the system from a previously created snapshot. Lists all available snapshots and asks for confirmation before proceeding."
+UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshots. Lists all available snapshots and asks for confirmation before deleting."
 
 # Development
 UTILITY_DESCRIPTION["Ansible"]="IT automation tool for provisioning, configuration management, and application deployment using agentless SSH-based playbooks."
@@ -535,5 +544,5 @@ UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyb
 UTILITY_DESCRIPTION["Ventoy"]="Bootable USB solution for loading multiple ISO images from a single drive — just copy ISOs and boot."
 UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written in C, displaying OS, hardware, and software details."
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
-UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS."
+UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS. Install this first to enable Create, Restore, and Delete Snapshot."
 UTILITY_DESCRIPTION["Zsh + Oh My Zsh"]="Installs the Z shell with Oh My Zsh framework for enhanced terminal experience, themes, and plugins."

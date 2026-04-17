@@ -857,6 +857,64 @@ timeshift_restore_snapshot() {
 }
 
 # ============================================================================
+# Snapshot Deletion
+# ============================================================================
+
+# Delete one or more Timeshift snapshots by name.
+# Arguments:
+#   $@ - One or more snapshot names to delete
+# Returns 0 if all deletions succeed, 1 if any fail.
+timeshift_delete_snapshots() {
+    [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 1
+
+    local _all_ok=0
+    for snap_name in "$@"; do
+        echo ""
+        echo "${CYAN}Deleting snapshot: ${snap_name}${RESET}"
+        local _out _rc
+        _out=$(sudo timeshift --delete --snapshot "$snap_name" --scripted </dev/null 2>&1)
+        _rc=$?
+        echo "$_out" | grep -v '/tmp/timeshift-[^:]*: line [0-9]*: status:'
+        if [[ $_rc -eq 0 ]]; then
+            echo "${GREEN}✓ Deleted: ${snap_name}${RESET}"
+            log_success "Timeshift snapshot deleted: ${snap_name}"
+        else
+            echo "${RED}✗ Failed to delete: ${snap_name}${RESET}"
+            log_error "Timeshift snapshot deletion failed: ${snap_name}"
+            _all_ok=1
+        fi
+    done
+
+    _timeshift_cache_last_snapshot
+    return $_all_ok
+}
+
+# Delete a Snapper snapshot by number.
+# Arguments:
+#   $@ - One or more snapshot numbers to delete
+_snapper_delete_snapshots() {
+    local _all_ok=0
+    for snap_num in "$@"; do
+        echo ""
+        echo "${CYAN}Deleting Snapper snapshot #${snap_num}${RESET}"
+        local _out _rc
+        _out=$(sudo snapper -c root delete "$snap_num" 2>&1)
+        _rc=$?
+        if [[ $_rc -eq 0 ]]; then
+            echo "${GREEN}✓ Deleted: #${snap_num}${RESET}"
+            log_success "Snapper snapshot deleted: #${snap_num}"
+        else
+            echo "${RED}✗ Failed to delete: #${snap_num}${RESET}"
+            log_error "Snapper snapshot deletion failed: #${snap_num} — ${_out}"
+            _all_ok=1
+        fi
+    done
+
+    _snapper_cache_last_snapshot
+    return $_all_ok
+}
+
+# ============================================================================
 # Snapshot Creation
 # ============================================================================
 
