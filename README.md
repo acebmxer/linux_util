@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml/badge.svg)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
-An interactive multi-select TUI for installing, uninstalling, and updating system tasks and utilities across all major Linux distributions. Supports 55+ utilities organized by category, automatic pre-operation snapshots, and full CLI automation.
+An interactive multi-select TUI for installing, uninstalling, and updating system tasks and utilities across all major Linux distributions. Supports 70+ utilities organized by category, automatic pre-operation snapshots, and full CLI automation.
 
 ## Requirements
 
@@ -132,10 +132,27 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
 | **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/Neon only)* |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
-| **Create Snapshot** | Creates a Timeshift or Snapper snapshot with a user-provided description |
-| **Restore Snapshot** | Lists available snapshots, creates a safety snapshot, then restores the selected one |
+| **Create Snapshot** | Creates a Timeshift snapshot with a user-provided description |
+| **Restore Snapshot** | Lists available Timeshift snapshots, takes a safety snapshot, then restores the selected one |
 
 ### Utilities by Category
+
+#### Backup
+
+| Utility | Description |
+|---------|-------------|
+| **Timeshift** | System restore utility using rsync or BTRFS snapshots |
+| **Create Snapshot** | Creates a Timeshift snapshot with a user-provided description |
+| **Restore Snapshot** | Lists snapshots, takes a safety snapshot, then restores the selected one |
+| **Delete Snapshot** | Lists and deletes existing Timeshift snapshots |
+| **Snapper** | Btrfs/LVM snapshot manager used on Arch-based distros |
+| **Btrfs Assistant** | GUI for managing Btrfs subvolumes and Snapper snapshots |
+| **Create Snapshot (Snapper)** | Creates a Snapper snapshot with a user-provided description |
+| **Restore Snapshot (Snapper)** | Restores from a Snapper snapshot |
+| **Delete Snapshot (Snapper)** | Lists and deletes existing Snapper snapshots |
+| **Déjà Dup** | Simple GNOME backup tool with cloud and local storage support |
+| **Vorta** | Borg Backup GUI — deduplicating, encrypted backups |
+| **Duplicati** | Browser-based backup tool with cloud provider support |
 
 #### Development
 
@@ -214,7 +231,6 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Btop** | Terminal-based resource monitor with rich visuals |
 | **Fastfetch** | Fast system information display tool |
 | **Stacer** | Graphical system optimizer and monitor |
-| **Timeshift** | System restore utility using rsync or BTRFS snapshots |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |
 
 ## Supported Distributions
@@ -347,7 +363,7 @@ linux_util/
 │   ├── menu.sh              TUI rendering, keyboard navigation, category layout
 │   ├── installers.sh        Loader + registration for all utilities/system tasks
 │   ├── profiles.sh          Curated installation presets
-│   └── installers/          Per-utility installer scripts (69 files, one per utility/task)
+│   └── installers/          Per-utility installer scripts (126 files, one per utility/task)
 ├── logs/                    Timestamped execution logs
 ├── tests/
 │   └── test_linux_util.sh   Test suite
