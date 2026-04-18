@@ -90,31 +90,26 @@ setup_mount_smb_share() {
     local default_name
     default_name=$(printf '%s' "${share_name}" | tr -cs 'A-Za-z0-9._-' '_')
 
-    local default_mount_point="/home/${USER}/${default_name}"
+    local default_mount_point="/home/${USER}"
     printf '\n' > /dev/tty
     local mount_input
     while true; do
-        read -rp "Mount point [default: ${default_mount_point}]: " mount_input < /dev/tty
+        printf 'Mount point - The default location is %s/\n' "$default_mount_point" > /dev/tty
+        read -rp "Please specify a mount folder (/media/${default_name}): " mount_input < /dev/tty
         [[ -z "$mount_input" ]] && mount_input="$default_mount_point"
 
-        local re_abs='^/[A-Za-z0-9][-A-Za-z0-9_./ ]*$'
-        local re_name='^[A-Za-z0-9][-A-Za-z0-9_.]*$'
-        if [[ "$mount_input" == /* ]]; then
-            # Absolute path — validate each component
-            if [[ ! "$mount_input" =~ $re_abs ]]; then
-                printf '%sInvalid path. Use an absolute path (e.g. /media/Apps) or a folder name.%s\n' \
-                    "${RED:-}" "${RESET:-}" > /dev/tty
-                continue
-            fi
-        else
-            # Bare name — validate and expand to home
-            if [[ ! "$mount_input" =~ $re_name ]]; then
-                printf '%sName must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
-                    "${RED:-}" "${RESET:-}" > /dev/tty
-                continue
-            fi
-            mount_input="/home/${USER}/${mount_input}"
+        local re_valid='^[A-Za-z0-9][-A-Za-z0-9_./]*$'
+        mount_input="${mount_input#/home/${USER}/}"
+        mount_input="${mount_input#/}"
+        if [[ -z "$mount_input" ]]; then
+            printf '%sPlease specify a folder name.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+            continue
         fi
+        if [[ ! "$mount_input" =~ $re_valid ]]; then
+            printf '%sInvalid folder name.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+            continue
+        fi
+        mount_input="/home/${USER}/${mount_input}"
         break
     done
 

@@ -53,21 +53,61 @@ setup_mount_nfs_share() {
         break
     done
 
-    # ── Step 2: Export path ───────────────────────────────────────────────────
+    # ── Step 2: Export path (scan or manual) ─────────────────────────────────
     local export_path
-    while true; do
-        read -rp "Export path on server (e.g. /srv/nfs/data): " export_path < /dev/tty
-        export_path="${export_path%/}"   # strip trailing slash
-        if [[ -z "$export_path" ]]; then
-            printf '%sExport path cannot be empty.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
-            continue
-        fi
-        if [[ "${export_path:0:1}" != "/" ]]; then
-            printf '%sExport path must start with /.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
-            continue
-        fi
-        break
-    done
+    local -a nfs_exports=()
+
+    printf '\n' > /dev/tty
+    printf 'Scanning for NFS exports on %s...\n' "$server_ip" > /dev/tty
+    local showmount_out
+    if showmount_out=$(showmount -e --no-headers "$server_ip" 2>/dev/null); then
+        while IFS= read -r line; do
+            local path
+            path=$(awk '{print $1}' <<< "$line")
+            [[ "$path" == /* ]] && nfs_exports+=("$path")
+        done <<< "$showmount_out"
+    fi
+
+    if [[ "${#nfs_exports[@]}" -gt 0 ]]; then
+        printf '\nAvailable exports:\n' > /dev/tty
+        local i
+        for i in "${!nfs_exports[@]}"; do
+            printf '  %d) %s\n' "$((i+1))" "${nfs_exports[$i]}" > /dev/tty
+        done
+        printf '  m) Enter path manually\n\n' > /dev/tty
+
+        while true; do
+            read -rp "Select export [1-${#nfs_exports[@]} / m]: " sel < /dev/tty
+            sel="${sel// /}"
+            if [[ "$sel" == "m" || "$sel" == "M" ]]; then
+                export_path=""
+                break
+            fi
+            if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#nfs_exports[@]} )); then
+                export_path="${nfs_exports[$((sel-1))]}"
+                break
+            fi
+            printf '%sInvalid selection.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+        done
+    else
+        printf '%sCould not retrieve export list — enter path manually.%s\n' "${YELLOW:-}" "${RESET:-}" > /dev/tty
+    fi
+
+    if [[ -z "$export_path" ]]; then
+        while true; do
+            read -rp "Export path on server (e.g. /srv/nfs/data): " export_path < /dev/tty
+            export_path="${export_path%/}"
+            if [[ -z "$export_path" ]]; then
+                printf '%sExport path cannot be empty.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+            fi
+            if [[ "${export_path:0:1}" != "/" ]]; then
+                printf '%sExport path must start with /.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+            fi
+            break
+        done
+    fi
 
     # ── Step 3: NFS version ───────────────────────────────────────────────────
     printf '\n' > /dev/tty
@@ -86,31 +126,27 @@ setup_mount_nfs_share() {
     default_name=$(printf '%s' "${export_path##*/}" | tr -cs 'A-Za-z0-9._-' '_')
     [[ -z "$default_name" ]] && default_name="nfs_share"
 
-    local default_mount_point="/home/${USER}/${default_name}"
+    local default_mount_point="/home/${USER}"
     printf '\n' > /dev/tty
     local mount_input
     while true; do
-        read -rp "Mount point [default: ${default_mount_point}]: " mount_input < /dev/tty
+        printf 'Mount point - The default location is %s/\n' "$default_mount_point" > /dev/tty
+        read -rp "Please specify a mount folder (/media/${default_name}): " mount_input < /dev/tty
         [[ -z "$mount_input" ]] && mount_input="$default_mount_point"
 
-        local re_abs='^/[A-Za-z0-9][-A-Za-z0-9_./ ]*$'
-        local re_name='^[A-Za-z0-9][-A-Za-z0-9_.]*$'
-        if [[ "$mount_input" == /* ]]; then
-            # Absolute path — validate each component
-            if [[ ! "$mount_input" =~ $re_abs ]]; then
-                printf '%sInvalid path. Use an absolute path (e.g. /media/Apps) or a folder name.%s\n' \
-                    "${RED:-}" "${RESET:-}" > /dev/tty
-                continue
-            fi
-        else
-            # Bare name — validate and expand to home
-            if [[ ! "$mount_input" =~ $re_name ]]; then
-                printf '%sName must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
-                    "${RED:-}" "${RESET:-}" > /dev/tty
-                continue
-            fi
-            mount_input="/home/${USER}/${mount_input}"
+        local re_valid='^[A-Za-z0-9][-A-Za-z0-9_./]*$'
+        # Strip leading /home/$USER/ or leading / so all variations mount under home
+        mount_input="${mount_input#/home/${USER}/}"
+        mount_input="${mount_input#/}"
+        if [[ -z "$mount_input" ]]; then
+            printf '%sPlease specify a folder name.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+            continue
         fi
+        if [[ ! "$mount_input" =~ $re_valid ]]; then
+                printf '%sInvalid folder name.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+        fi
+        mount_input="/home/${USER}/${mount_input}"
         break
     done
 
