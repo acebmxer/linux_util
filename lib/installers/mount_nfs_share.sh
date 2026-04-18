@@ -93,16 +93,18 @@ setup_mount_nfs_share() {
         read -rp "Mount point [default: ${default_mount_point}]: " mount_input < /dev/tty
         [[ -z "$mount_input" ]] && mount_input="$default_mount_point"
 
+        local re_abs='^/[A-Za-z0-9][-A-Za-z0-9_./ ]*$'
+        local re_name='^[A-Za-z0-9][-A-Za-z0-9_.]*$'
         if [[ "$mount_input" == /* ]]; then
             # Absolute path — validate each component
-            if [[ ! "$mount_input" =~ ^/[A-Za-z0-9][A-Za-z0-9_./ \-]*$ ]]; then
+            if [[ ! "$mount_input" =~ $re_abs ]]; then
                 printf '%sInvalid path. Use an absolute path (e.g. /media/Apps) or a folder name.%s\n' \
                     "${RED:-}" "${RESET:-}" > /dev/tty
                 continue
             fi
         else
             # Bare name — validate and expand to home
-            if [[ ! "$mount_input" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
+            if [[ ! "$mount_input" =~ $re_name ]]; then
                 printf '%sName must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
                     "${RED:-}" "${RESET:-}" > /dev/tty
                 continue
