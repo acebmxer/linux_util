@@ -55,12 +55,12 @@ timeshift_init() {
         return 0
     fi
 
-    # On Arch-based systems, check for Snapper as an alternative
-    if [[ "${DISTRO_FAMILY:-}" == "arch" ]] && command -v snapper &>/dev/null; then
+    # On Arch-based and openSUSE systems, check for Snapper as an alternative
+    if [[ "${DISTRO_FAMILY:-}" == "arch" || "${DISTRO_FAMILY:-}" == "suse" ]] && command -v snapper &>/dev/null; then
         if _snapper_has_config; then
             SNAPSHOT_BACKEND="snapper"
             TIMESHIFT_AVAILABLE=true
-            verbose "Snapper: Detected and available (Arch-based system)"
+            verbose "Snapper: Detected and available (${DISTRO_FAMILY}-based system)"
             _snapper_cache_last_snapshot
             return 0
         else
@@ -246,10 +246,6 @@ _timeshift_write_device_config() {
     local btrfs_home="false"
     if [[ "$snapshot_type" == "btrfs" ]]; then
         btrfs_mode="true"
-        # Include @home in snapshots if the subvolume exists
-        if findmnt -n /home 2>/dev/null | grep -q 'subvol=.*@home'; then
-            btrfs_home="true"
-        fi
     fi
 
     # Always write the full config — timeshift --list-devices may have created
@@ -267,17 +263,17 @@ _timeshift_write_device_config() {
   "stop_cron_emails" : "true",
   "schedule_monthly" : "false",
   "schedule_weekly" : "false",
-  "schedule_daily" : "false",
+  "schedule_daily" : "true",
   "schedule_hourly" : "false",
-  "schedule_boot" : "false",
+  "schedule_boot" : "true",
   "count_monthly" : "2",
   "count_weekly" : "3",
   "count_daily" : "5",
   "count_hourly" : "6",
-  "count_boot" : "5",
+  "count_boot" : "3",
   "snapshot_size" : "0",
   "snapshot_count" : "0",
-  "exclude" : [],
+  "exclude" : ["/home/**"],
   "exclude-apps" : []
 }
 TSCFG
@@ -858,6 +854,64 @@ timeshift_restore_snapshot() {
     else
         _timeshift_restore_snapshot "$@"
     fi
+}
+
+# ============================================================================
+# Snapshot Deletion
+# ============================================================================
+
+# Delete one or more Timeshift snapshots by name.
+# Arguments:
+#   $@ - One or more snapshot names to delete
+# Returns 0 if all deletions succeed, 1 if any fail.
+timeshift_delete_snapshots() {
+    [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 1
+
+    local _all_ok=0
+    for snap_name in "$@"; do
+        echo ""
+        echo "${CYAN}Deleting snapshot: ${snap_name}${RESET}"
+        local _out _rc
+        _out=$(sudo timeshift --delete --snapshot "$snap_name" --scripted </dev/null 2>&1)
+        _rc=$?
+        echo "$_out" | grep -v '/tmp/timeshift-[^:]*: line [0-9]*: status:'
+        if [[ $_rc -eq 0 ]]; then
+            echo "${GREEN}✓ Deleted: ${snap_name}${RESET}"
+            log_success "Timeshift snapshot deleted: ${snap_name}"
+        else
+            echo "${RED}✗ Failed to delete: ${snap_name}${RESET}"
+            log_error "Timeshift snapshot deletion failed: ${snap_name}"
+            _all_ok=1
+        fi
+    done
+
+    _timeshift_cache_last_snapshot
+    return $_all_ok
+}
+
+# Delete a Snapper snapshot by number.
+# Arguments:
+#   $@ - One or more snapshot numbers to delete
+_snapper_delete_snapshots() {
+    local _all_ok=0
+    for snap_num in "$@"; do
+        echo ""
+        echo "${CYAN}Deleting Snapper snapshot #${snap_num}${RESET}"
+        local _out _rc
+        _out=$(sudo snapper -c root delete "$snap_num" 2>&1)
+        _rc=$?
+        if [[ $_rc -eq 0 ]]; then
+            echo "${GREEN}✓ Deleted: #${snap_num}${RESET}"
+            log_success "Snapper snapshot deleted: #${snap_num}"
+        else
+            echo "${RED}✗ Failed to delete: #${snap_num}${RESET}"
+            log_error "Snapper snapshot deletion failed: #${snap_num} — ${_out}"
+            _all_ok=1
+        fi
+    done
+
+    _snapper_cache_last_snapshot
+    return $_all_ok
 }
 
 # ============================================================================

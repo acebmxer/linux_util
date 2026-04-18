@@ -209,7 +209,7 @@ process_selected() {
     local needs_shell_reload=false
 
     # These tasks do not require a reboot after successful completion
-    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1)
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1)
 
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do
@@ -274,11 +274,11 @@ process_selected() {
     fi
 
     # Create a Timeshift snapshot before making any changes.
-    # Skip if the user explicitly selected Create Snapshot or Restore Snapshot
-    # (those tasks manage their own snapshots — avoids creating duplicates).
+    # Skip if the user explicitly selected a snapshot task — those manage their
+    # own snapshots or don't need one before deleting (avoids duplicates).
     local _skip_auto_snapshot=false
     for _chk in "${to_install[@]}"; do
-        [[ "$_chk" == "Create Snapshot" || "$_chk" == "Restore Snapshot" ]] && _skip_auto_snapshot=true
+        [[ "$_chk" == "Create Snapshot" || "$_chk" == "Restore Snapshot" || "$_chk" == "Delete Snapshot" ]] && _skip_auto_snapshot=true
     done
 
     if [[ "$TIMESHIFT_AVAILABLE" == "true" && "$_skip_auto_snapshot" == "false" ]]; then
@@ -394,10 +394,10 @@ process_selected() {
 
                 (( success_count += 1 ))
 
-                # Reboot required for system tasks (except no-reboot list), Docker, and LACT
+                # Reboot required for system tasks (except no-reboot list), Docker, and Drivers
                 # Exit code 3 = success with no changes — skip reboot prompt
                 if [[ $_exit_code -ne 3 && -z "${NO_REBOOT[$util]:-}" ]]; then
-                    if [[ "$_is_system_task" == "true" || "$util" == "Docker" || "$util" == "LACT" ]]; then
+                    if [[ "$_is_system_task" == "true" || "$util" == "Docker" || "${UTILITY_CATEGORY[$util]:-}" == "Drivers" ]]; then
                         needs_reboot=true
                     fi
                 fi

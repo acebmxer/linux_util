@@ -106,3 +106,95 @@ setup_restore_snapshot() {
     # Perform the restore
     timeshift_restore_snapshot "$_selected"
 }
+
+# --- Delete Snapshot(s) ---
+
+setup_delete_snapshot() {
+    if [[ "$TIMESHIFT_AVAILABLE" != "true" ]]; then
+        warn "No snapshot tool available. Please install Timeshift or configure Snapper first."
+        return 1
+    fi
+
+    local _snap_label="Timeshift"
+    [[ "$SNAPSHOT_BACKEND" == "snapper" ]] && _snap_label="Snapper"
+
+    echo ""
+    echo "${BOLD}${CYAN}════════════════════════════════════════════════════════════════${RESET}"
+    echo "${BOLD}${CYAN}  Delete ${_snap_label} Snapshot(s)                             ${RESET}"
+    echo "${BOLD}${CYAN}════════════════════════════════════════════════════════════════${RESET}"
+    echo ""
+
+    echo "Available snapshots:"
+    echo ""
+
+    if ! timeshift_list_snapshots; then
+        warn "No snapshots found. Nothing to delete."
+        return 1
+    fi
+
+    if [[ ${#SNAPSHOT_NAMES[@]} -eq 0 ]]; then
+        warn "No snapshots found. Nothing to delete."
+        return 1
+    fi
+
+    # Display numbered list
+    for ((i=0; i<${#SNAPSHOT_NAMES[@]}; i++)); do
+        local snap_name="${SNAPSHOT_NAMES[$i]}"
+        local snap_date="${snap_name%%_*}"
+        local snap_time="${snap_name##*_}"
+        snap_time="${snap_time//-/:}"
+        local snap_display
+        snap_display="$(date -d "${snap_date} ${snap_time}" '+%d %b %Y %I:%M %p' 2>/dev/null)" \
+            || snap_display="${snap_name}"
+        echo "  $((i + 1))) ${snap_display}"
+    done
+    echo ""
+    echo "Enter the number(s) to delete (e.g. 1 or 1 3 5), or 0 to cancel:"
+    echo ""
+
+    local _input
+    read -rp "> " _input < /dev/tty
+
+    if [[ -z "$_input" || "$_input" == "0" ]]; then
+        echo "${YELLOW}Delete cancelled.${RESET}"
+        return 2
+    fi
+
+    # Resolve selections to snapshot names
+    local -a _to_delete=()
+    local _invalid=false
+    for _num in $_input; do
+        if [[ "$_num" =~ ^[0-9]+$ ]] && (( _num >= 1 && _num <= ${#SNAPSHOT_NAMES[@]} )); then
+            _to_delete+=("${SNAPSHOT_NAMES[$((_num - 1))]}")
+        else
+            echo "${RED}Invalid selection: ${_num}${RESET}"
+            _invalid=true
+        fi
+    done
+
+    if [[ "$_invalid" == "true" || ${#_to_delete[@]} -eq 0 ]]; then
+        echo "${YELLOW}No valid snapshots selected. Delete cancelled.${RESET}"
+        return 2
+    fi
+
+    echo ""
+    echo "${YELLOW}The following snapshots will be permanently deleted:${RESET}"
+    for snap in "${_to_delete[@]}"; do
+        echo "  - ${snap}"
+    done
+    echo ""
+
+    local _confirm
+    read -n 1 -rp "${YELLOW}Proceed? (y/N) ${RESET}" _confirm < /dev/tty
+    echo ""
+    if [[ ! "$_confirm" =~ ^[Yy]$ ]]; then
+        echo "${YELLOW}Delete cancelled.${RESET}"
+        return 2
+    fi
+
+    if [[ "$SNAPSHOT_BACKEND" == "snapper" ]]; then
+        _snapper_delete_snapshots "${_to_delete[@]}"
+    else
+        timeshift_delete_snapshots "${_to_delete[@]}"
+    fi
+}

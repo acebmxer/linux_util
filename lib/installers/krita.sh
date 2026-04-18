@@ -63,5 +63,5 @@ update_krita() {
 }
 
 get_version_krita() {
-    _ver_from_cmd krita || _ver_from_flatpak org.kde.krita || _ver_from_pkg krita || echo ""
+    _ver_from_snap krita || _ver_from_flatpak org.kde.krita || _ver_from_pkg krita || _ver_from_cmd krita || echo ""
 }

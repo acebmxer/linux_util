@@ -67,11 +67,6 @@ if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DIS
     register_system_task "Fix Monitor Layout at Login" install_fix_monitor_login check_always_false     noop_function              install_fix_monitor_login
 fi
 
-# Snapshot tasks (Create / Restore) — runtime checks for available backend
-register_system_task "Create Snapshot"   setup_create_snapshot   check_always_false    noop_function             setup_create_snapshot
-NO_RETRY["Create Snapshot"]=1
-register_system_task "Restore Snapshot"  setup_restore_snapshot  check_always_false    noop_function             setup_restore_snapshot
-NO_RETRY["Restore Snapshot"]=1
 # These fail immediately when Flatpak is absent — retrying adds no value
 NO_RETRY["ProtonUp-Qt"]=1
 NO_RETRY["Bottles"]=1
@@ -92,6 +87,13 @@ register_utility "ClamAV"              install_clamav           check_clamav    
 register_utility "Claude Code"         install_claude_code      check_claude_code      uninstall_claude_code      update_claude_code         get_version_claude_code
 register_utility "Cursor IDE"          install_cursor           check_cursor           uninstall_cursor           update_cursor              get_version_cursor
 register_utility "DBeaver"             install_dbeaver          check_dbeaver          uninstall_dbeaver          update_dbeaver             get_version_dbeaver
+
+# Déjà Dup: not supported on RHEL family
+if [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "Déjà Dup" install_deja_dup check_deja_dup uninstall_deja_dup update_deja_dup get_version_deja_dup
+fi
+register_utility "Duplicati"           install_duplicati        check_duplicati        uninstall_duplicati        update_duplicati           get_version_duplicati
+NO_RETRY["Duplicati"]=1
 register_utility "Devolutions RDM"     install_devolutions_rdm  check_devolutions_rdm  uninstall_devolutions_rdm  update_devolutions_rdm     get_version_devolutions_rdm
 register_utility "Discord"             install_discord          check_discord          uninstall_discord          update_discord             get_version_discord
 register_utility "Element (Matrix)"    install_element          check_element          uninstall_element          update_element             get_version_element
@@ -157,10 +159,29 @@ register_utility "Terraform"           install_terraform        check_terraform 
 register_utility "Thorium Browser"     install_thorium          check_thorium          uninstall_thorium          update_thorium             get_version_thorium
 register_utility "Thunderbird"         install_thunderbird      check_thunderbird      uninstall_thunderbird      update_thunderbird         get_version_thunderbird
 register_utility "Timeshift"           install_timeshift        check_timeshift        uninstall_timeshift        update_timeshift           get_version_timeshift
+register_utility "Create Snapshot"     setup_create_snapshot    check_always_false     noop_function              setup_create_snapshot
+NO_RETRY["Create Snapshot"]=1
+register_utility "Restore Snapshot"    setup_restore_snapshot   check_always_false     noop_function              setup_restore_snapshot
+NO_RETRY["Restore Snapshot"]=1
+register_utility "Delete Snapshot"     setup_delete_snapshot    check_always_false     noop_function              setup_delete_snapshot
+NO_RETRY["Delete Snapshot"]=1
+
+# Snapper and Btrfs Assistant: Arch and openSUSE only
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]]; then
+    register_utility "Snapper"                   install_snapper          check_snapper          uninstall_snapper          update_snapper             get_version_snapper
+    register_utility "Btrfs Assistant"           install_btrfs_assistant  check_btrfs_assistant  uninstall_btrfs_assistant  update_btrfs_assistant     get_version_btrfs_assistant
+    register_utility "Create Snapshot (Snapper)" setup_create_snapshot    check_always_false     noop_function              setup_create_snapshot
+    NO_RETRY["Create Snapshot (Snapper)"]=1
+    register_utility "Restore Snapshot (Snapper)" setup_restore_snapshot  check_always_false     noop_function              setup_restore_snapshot
+    NO_RETRY["Restore Snapshot (Snapper)"]=1
+    register_utility "Delete Snapshot (Snapper)" setup_delete_snapshot    check_always_false     noop_function              setup_delete_snapshot
+    NO_RETRY["Delete Snapshot (Snapper)"]=1
+fi
 register_utility "Tor Browser"         install_tor_browser      check_tor_browser      uninstall_tor_browser      update_tor_browser         get_version_tor_browser
 register_utility "Ventoy"              install_ventoy           check_ventoy           uninstall_ventoy           update_ventoy              get_version_ventoy
 register_utility "Virt-Manager"        install_virt_manager     check_virt_manager     uninstall_virt_manager     update_virt_manager        get_version_virt_manager
 register_utility "Visual Studio Code"  install_vscode           check_vscode           uninstall_vscode           update_vscode              get_version_vscode
+register_utility "Vorta"               install_vorta            check_vorta            uninstall_vorta            update_vorta               get_version_vorta
 register_utility "Vivaldi Browser"     install_vivaldi          check_vivaldi          uninstall_vivaldi          update_vivaldi             get_version_vivaldi
 register_utility "VLC"                 install_vlc              check_vlc              uninstall_vlc              update_vlc                 get_version_vlc
 register_utility "Wine"               install_wine             check_wine             uninstall_wine             update_wine                get_version_wine
@@ -231,7 +252,7 @@ fi
 
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Desktop Environments" "Development" "Drivers" "Gaming" "Internet" "Productivity" "System Tools")
+CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Drivers" "Gaming" "Internet" "Productivity" "System Tools")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["AMD CPU Microcode & Firmware"]="Drivers"
@@ -300,7 +321,18 @@ UTILITY_CATEGORY["Telegram Desktop"]="Internet"
 UTILITY_CATEGORY["Termius SSH Client"]="Internet"
 UTILITY_CATEGORY["Thorium Browser"]="Internet"
 UTILITY_CATEGORY["Thunderbird"]="Internet"
-UTILITY_CATEGORY["Timeshift"]="System Tools"
+UTILITY_CATEGORY["Timeshift"]="Backup"
+UTILITY_CATEGORY["Create Snapshot"]="Backup"
+UTILITY_CATEGORY["Restore Snapshot"]="Backup"
+UTILITY_CATEGORY["Delete Snapshot"]="Backup"
+UTILITY_CATEGORY["Snapper"]="Backup"
+UTILITY_CATEGORY["Btrfs Assistant"]="Backup"
+UTILITY_CATEGORY["Create Snapshot (Snapper)"]="Backup"
+UTILITY_CATEGORY["Restore Snapshot (Snapper)"]="Backup"
+UTILITY_CATEGORY["Delete Snapshot (Snapper)"]="Backup"
+UTILITY_CATEGORY["Déjà Dup"]="Backup"
+UTILITY_CATEGORY["Vorta"]="Backup"
+UTILITY_CATEGORY["Duplicati"]="Backup"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
 UTILITY_CATEGORY["Vivaldi Browser"]="Internet"
 UTILITY_CATEGORY["Wine"]="Gaming"
@@ -392,6 +424,18 @@ UTILITY_SUBCATEGORY["RustDesk"]="Remote Access"
 UTILITY_SUBCATEGORY["Slack"]="Messaging"
 UTILITY_SUBCATEGORY["Tor Browser"]="Web Browsers"
 UTILITY_SUBCATEGORY["Zoom"]="Messaging"
+UTILITY_SUBCATEGORY["Timeshift"]="Timeshift"
+UTILITY_SUBCATEGORY["Create Snapshot"]="Timeshift"
+UTILITY_SUBCATEGORY["Restore Snapshot"]="Timeshift"
+UTILITY_SUBCATEGORY["Delete Snapshot"]="Timeshift"
+UTILITY_SUBCATEGORY["Snapper"]="Snapper"
+UTILITY_SUBCATEGORY["Btrfs Assistant"]="Snapper"
+UTILITY_SUBCATEGORY["Create Snapshot (Snapper)"]="Snapper"
+UTILITY_SUBCATEGORY["Restore Snapshot (Snapper)"]="Snapper"
+UTILITY_SUBCATEGORY["Delete Snapshot (Snapper)"]="Snapper"
+UTILITY_SUBCATEGORY["Déjà Dup"]="File Backup"
+UTILITY_SUBCATEGORY["Vorta"]="File Backup"
+UTILITY_SUBCATEGORY["Duplicati"]="File Backup"
 UTILITY_SUBCATEGORY["AMD CPU Microcode & Firmware"]="CPU Microcode"
 UTILITY_SUBCATEGORY["AMD Drivers"]="GPU Drivers"
 UTILITY_SUBCATEGORY["Intel CPU Microcode & Thermal"]="CPU Microcode"
@@ -401,6 +445,7 @@ UTILITY_SUBCATEGORY["NVIDIA Drivers"]="GPU Drivers"
 # Display name overrides — shown in the menu instead of the utility key
 UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
+UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
 
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
@@ -435,8 +480,9 @@ UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firew
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
-UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot for backup and rollback purposes using the configured snapshot backend."
-UTILITY_DESCRIPTION["Restore Snapshot"]="Restores the system from a previously created snapshot. Use with caution."
+UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot using the active backup backend (Timeshift or Snapper). Prompts for an optional description."
+UTILITY_DESCRIPTION["Restore Snapshot"]="Restores the system from a previously created snapshot. Lists all available snapshots and asks for confirmation before proceeding."
+UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshots. Lists all available snapshots and asks for confirmation before deleting."
 
 # Development
 UTILITY_DESCRIPTION["Ansible"]="IT automation tool for provisioning, configuration management, and application deployment using agentless SSH-based playbooks."
@@ -535,5 +581,13 @@ UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyb
 UTILITY_DESCRIPTION["Ventoy"]="Bootable USB solution for loading multiple ISO images from a single drive — just copy ISOs and boot."
 UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written in C, displaying OS, hardware, and software details."
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
-UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS."
+UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS. Install this first to enable Create, Restore, and Delete Snapshot."
+UTILITY_DESCRIPTION["Déjà Dup"]="Simple, beginner-friendly backup tool for backing up files and folders to local drives, network shares, or cloud storage. Uses duplicity under the hood for encrypted, incremental backups."
+UTILITY_DESCRIPTION["Vorta"]="GUI frontend for BorgBackup — a fast, deduplicating backup tool with encryption and compression. Installs both Borg (CLI) and Vorta (GUI). On RHEL-based systems, only BorgBackup is installed via EPEL as Vorta is not packaged there."
+UTILITY_DESCRIPTION["Duplicati"]="Cloud backup tool with a web-based GUI supporting S3, Google Drive, OneDrive, SFTP, and many more backends. Features encryption, deduplication, and scheduling. Installed via Flatpak — run 'Flatpak Setup' first if not already configured."
+UTILITY_DESCRIPTION["Snapper"]="Btrfs and LVM snapshot manager from openSUSE. Supports automatic pre/post snapshots on Arch and openSUSE. Conflicts with Timeshift on Arch-based systems."
+UTILITY_DESCRIPTION["Btrfs Assistant"]="GUI frontend for managing Btrfs snapshots and subvolumes. Works alongside Snapper to provide a visual interface for snapshot operations."
+UTILITY_DESCRIPTION["Create Snapshot (Snapper)"]="Create a manual Snapper snapshot of the root filesystem with an optional description."
+UTILITY_DESCRIPTION["Restore Snapshot (Snapper)"]="Roll back the system to a previous Snapper snapshot."
+UTILITY_DESCRIPTION["Delete Snapshot (Snapper)"]="Permanently delete one or more Snapper snapshots to free disk space."
 UTILITY_DESCRIPTION["Zsh + Oh My Zsh"]="Installs the Z shell with Oh My Zsh framework for enhanced terminal experience, themes, and plugins."
