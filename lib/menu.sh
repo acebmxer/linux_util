@@ -1374,6 +1374,13 @@ run_selection_menu() {
                     continue
                     ;;
                 SPACE)
+                    # In search mode, append a space to the query
+                    if [[ "$_SEARCH_ACTIVE" == true ]]; then
+                        _SEARCH_QUERY+=" "
+                        _rebuild_filtered
+                        _compose_frame
+                        continue
+                    fi
                     # Allow selection while searching (only for real utility entries)
                     if (( ${#_SEARCH_FILTERED[@]} > 0 )); then
                         local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
