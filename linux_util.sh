@@ -209,7 +209,7 @@ process_selected() {
     local needs_shell_reload=false
 
     # These tasks do not require a reboot after successful completion
-    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1)
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount SMB Share"]=1 ["Mount NFS Share"]=1 ["Update Mount"]=1 ["Unmount Share"]=1)
 
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do
@@ -553,35 +553,41 @@ process_selected() {
                 ;;
             *)
                 info "Remember to reboot later if needed."
-                read -n 1 -rp "Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty
-                echo
-                _RELOAD_CHOICE=${_RELOAD_CHOICE:-Y}
-                case "$_RELOAD_CHOICE" in
-                    y|Y|"")
-                        exec 9>&-
-                        exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
-                        ;;
-                    *)
-                        info "Exiting."
-                        exit 0
-                        ;;
-                esac
+                while true; do
+                    read -n 1 -rp "Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty
+                    echo
+                    [[ $'\e' == "$_RELOAD_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+                    _RELOAD_CHOICE=${_RELOAD_CHOICE:-Y}
+                    case "$_RELOAD_CHOICE" in
+                        y|Y|"")
+                            exec 9>&-
+                            exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
+                            ;;
+                        n|N)
+                            info "Exiting."
+                            exit 0
+                            ;;
+                    esac
+                done
                 ;;
         esac
     else
-        read -n 1 -rp "No reboot needed. Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty
-        echo
-        _RELOAD_CHOICE=${_RELOAD_CHOICE:-Y}
-        case "$_RELOAD_CHOICE" in
-            y|Y|"")
-                exec 9>&-  # release lock fd before re-exec so new instance can acquire it
-                exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
-                ;;
-            *)
-                info "Exiting."
-                exit 0
-                ;;
-        esac
+        while true; do
+            read -n 1 -rp "No reboot needed. Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty
+            echo
+            [[ $'\e' == "$_RELOAD_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            _RELOAD_CHOICE=${_RELOAD_CHOICE:-Y}
+            case "$_RELOAD_CHOICE" in
+                y|Y|"")
+                    exec 9>&-  # release lock fd before re-exec so new instance can acquire it
+                    exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
+                    ;;
+                n|N)
+                    info "Exiting."
+                    exit 0
+                    ;;
+            esac
+        done
     fi
 }
 

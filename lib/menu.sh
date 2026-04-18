@@ -265,7 +265,7 @@ _rebuild_filtered() {
                 fi
             done
         else
-            # --- Top level of a category: show subcategory folders, then uncategorised items ---
+            # --- Top level of a category: show items, then subcategory folders (or vice versa) ---
 
             # Collect distinct subcategory names present in this category
             declare -A _seen_subcats=()
@@ -310,32 +310,45 @@ _rebuild_filtered() {
                 _ordered_subcats=("${_reordered_subcats[@]}")
             fi
 
-            # Emit subcategory folder entries
-            local sc
-            for sc in "${_ordered_subcats[@]}"; do
-                _SEARCH_FILTERED+=("-1")   # sentinel; no real utility index
-                _SEARCH_ITEM_TYPE+=("subcat")
-                _SEARCH_ITEM_LABEL+=("$sc")
-            done
+            # Helper: emit all plain (uncategorised) items for the current category
+            _emit_plain_items() {
+                for (( i=0; i<total; i++ )); do
+                    local name="${UTILITIES[$i]}"
+                    local item_cat=""
+                    if [[ "$category" == "System Tasks" ]]; then
+                        local _st
+                        for _st in "${SYSTEM_TASKS[@]}"; do
+                            [[ "$_st" == "$name" ]] && item_cat="System Tasks" && break
+                        done
+                    else
+                        item_cat="${UTILITY_CATEGORY[$name]:-}"
+                    fi
+                    if [[ "$item_cat" == "$category" && -z "${UTILITY_SUBCATEGORY[$name]:-}" ]]; then
+                        _SEARCH_FILTERED+=("$i")
+                        _SEARCH_ITEM_TYPE+=("utility")
+                        _SEARCH_ITEM_LABEL+=("$name")
+                    fi
+                done
+            }
 
-            # Emit items that have NO subcategory
-            for (( i=0; i<total; i++ )); do
-                local name="${UTILITIES[$i]}"
-                local item_cat=""
-                if [[ "$category" == "System Tasks" ]]; then
-                    local _st
-                    for _st in "${SYSTEM_TASKS[@]}"; do
-                        [[ "$_st" == "$name" ]] && item_cat="System Tasks" && break
-                    done
-                else
-                    item_cat="${UTILITY_CATEGORY[$name]:-}"
-                fi
-                if [[ "$item_cat" == "$category" && -z "${UTILITY_SUBCATEGORY[$name]:-}" ]]; then
-                    _SEARCH_FILTERED+=("$i")
-                    _SEARCH_ITEM_TYPE+=("utility")
-                    _SEARCH_ITEM_LABEL+=("$name")
-                fi
-            done
+            # Helper: emit subcategory folder entries
+            _emit_subcat_folders() {
+                local sc
+                for sc in "${_ordered_subcats[@]}"; do
+                    _SEARCH_FILTERED+=("-1")
+                    _SEARCH_ITEM_TYPE+=("subcat")
+                    _SEARCH_ITEM_LABEL+=("$sc")
+                done
+            }
+
+            # If SUBCATEGORY_AFTER_ITEMS is set for this category, plain items come first
+            if [[ -n "${SUBCATEGORY_AFTER_ITEMS[$category]:-}" ]]; then
+                _emit_plain_items
+                _emit_subcat_folders
+            else
+                _emit_subcat_folders
+                _emit_plain_items
+            fi
         fi
     fi
 

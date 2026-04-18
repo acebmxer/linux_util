@@ -54,6 +54,14 @@ register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 register_system_task "Mount Local Drive"        setup_mount_local_drive check_always_false noop_function setup_mount_local_drive get_version_mount_local_drive
 NO_RETRY["Mount Local Drive"]=1
+register_system_task "Mount SMB Share"          setup_mount_smb_share   check_always_false noop_function setup_mount_smb_share   get_version_mount_smb_share
+NO_RETRY["Mount SMB Share"]=1
+register_system_task "Mount NFS Share"          setup_mount_nfs_share   check_always_false noop_function setup_mount_nfs_share   get_version_mount_nfs_share
+NO_RETRY["Mount NFS Share"]=1
+register_system_task "Update Mount"             setup_update_mount      check_always_false noop_function setup_update_mount      get_version_update_mount
+NO_RETRY["Update Mount"]=1
+register_system_task "Unmount Share"            setup_unmount_share     check_always_false noop_function setup_unmount_share     get_version_unmount_share
+NO_RETRY["Unmount Share"]=1
 
 # Command-not-found auto-install prompt (Ubuntu, Kubuntu, KDE Neon)
 # Prerequisite: enables interactive y/N install prompt for missing commands in bash.
@@ -447,6 +455,16 @@ UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
 
+# Mount/Unmount Shares subcategory within System Tasks
+UTILITY_SUBCATEGORY["Mount Local Drive"]="Mount/Unmount Shares"
+UTILITY_SUBCATEGORY["Mount SMB Share"]="Mount/Unmount Shares"
+UTILITY_SUBCATEGORY["Mount NFS Share"]="Mount/Unmount Shares"
+UTILITY_SUBCATEGORY["Update Mount"]="Mount/Unmount Shares"
+UTILITY_SUBCATEGORY["Unmount Share"]="Mount/Unmount Shares"
+
+# Subcategory folders in System Tasks appear after the plain items
+SUBCATEGORY_AFTER_ITEMS["System Tasks"]=1
+
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Extensions|Messaging|Email Clients|File Transfer|Remote Access|VPN"
@@ -480,6 +498,11 @@ UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firew
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
+UTILITY_DESCRIPTION["Mount Local Drive"]="Interactively mounts an unformatted local block device (NTFS, ext4, exFAT, etc.) under ~/media/<name> and adds it to /etc/fstab for automatic mounting at boot."
+UTILITY_DESCRIPTION["Mount SMB Share"]="Interactively configures a Windows/Samba (SMB/CIFS) network share, stores credentials securely, mounts it under ~/media/<name>, and persists the entry in /etc/fstab."
+UTILITY_DESCRIPTION["Mount NFS Share"]="Interactively configures an NFS (v3 or v4) network export, mounts it under ~/media/<name>, and adds the entry to /etc/fstab for persistent mounting."
+UTILITY_DESCRIPTION["Update Mount"]="Update an existing linux_util-managed mount: change the server IP/hostname, remote share/export path, or local mount folder — in any combination. Automatically unmounts, rewrites /etc/fstab, and remounts."
+UTILITY_DESCRIPTION["Unmount Share"]="Unmount and remove a linux_util-managed entry from /etc/fstab. Optionally removes the local mount directory and SMB credentials file."
 UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot using the active backup backend (Timeshift or Snapper). Prompts for an optional description."
 UTILITY_DESCRIPTION["Restore Snapshot"]="Restores the system from a previously created snapshot. Lists all available snapshots and asks for confirmation before proceeding."
 UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshots. Lists all available snapshots and asks for confirmation before deleting."

@@ -20,6 +20,7 @@ declare -A UTILITY_DESCRIPTION  # maps utility name → short description for th
 declare -A UTILITY_DISPLAY_NAME # maps utility name → display label override (optional)
 declare -a CATEGORIES=()        # ordered list of category tab names (populated by installers.sh)
 declare -A SUBCATEGORY_ORDER    # maps category name → pipe-separated ordered subcategory list
+declare -A SUBCATEGORY_AFTER_ITEMS  # if set for a category, subcategory folders appear after plain items
 
 # Internal helper — shared registration logic for both system tasks and utilities.
 _register_entry() {
