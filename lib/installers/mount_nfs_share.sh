@@ -1,6 +1,6 @@
 #!/bin/bash
 # Mount NFS Share — interactively add a network NFS export to /etc/fstab
-# and mount it under the current user's ~/media/<name> directory.
+# and mount it under the current user's home directory (or a specified path).
 
 # ── Version / status ──────────────────────────────────────────────────────────
 get_version_mount_nfs_share() {
@@ -86,21 +86,33 @@ setup_mount_nfs_share() {
     default_name=$(printf '%s' "${export_path##*/}" | tr -cs 'A-Za-z0-9._-' '_')
     [[ -z "$default_name" ]] && default_name="nfs_share"
 
+    local default_mount_point="/home/${USER}/${default_name}"
     printf '\n' > /dev/tty
-    local mount_name
+    local mount_input
     while true; do
-        read -rp "Mount folder name [default: ${default_name}]: " mount_name < /dev/tty
-        [[ -z "$mount_name" ]] && mount_name="$default_name"
+        read -rp "Mount point [default: ${default_mount_point}]: " mount_input < /dev/tty
+        [[ -z "$mount_input" ]] && mount_input="$default_mount_point"
 
-        if [[ ! "$mount_name" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
-            printf '%sName must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
-                "${RED:-}" "${RESET:-}" > /dev/tty
-            continue
+        if [[ "$mount_input" == /* ]]; then
+            # Absolute path — validate each component
+            if [[ ! "$mount_input" =~ ^/[A-Za-z0-9][A-Za-z0-9_./ \-]*$ ]]; then
+                printf '%sInvalid path. Use an absolute path (e.g. /media/Apps) or a folder name.%s\n' \
+                    "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+            fi
+        else
+            # Bare name — validate and expand to home
+            if [[ ! "$mount_input" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
+                printf '%sName must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
+                    "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+            fi
+            mount_input="/home/${USER}/${mount_input}"
         fi
         break
     done
 
-    local mount_point="/home/${USER}/media/${mount_name}"
+    local mount_point="$mount_input"
     local nfs_source="${server_ip}:${export_path}"
     local fstab_opts="nfsvers=${nfs_ver},rw,soft,intr,timeo=30,retrans=2,nofail,_netdev"
 

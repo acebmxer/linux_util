@@ -44,14 +44,6 @@ check_always_false() {
 register_system_task "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update get_version_full_update
 NO_RETRY["Full System Upgrade/Update"]=1
 register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates      get_version_system_updates
-register_utility "NVIDIA Drivers"         install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
-register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
-register_system_task "Enable RDP"         install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
-register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
-register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_setup   uninstall_flatpak_setup   update_flatpak_setup      get_version_flatpak_setup
-register_system_task "UFW Firewall"       install_ufw             check_ufw             uninstall_ufw             update_ufw                get_version_ufw
-register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
-register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 register_system_task "Mount Local Drive"        setup_mount_local_drive check_always_false noop_function setup_mount_local_drive get_version_mount_local_drive
 NO_RETRY["Mount Local Drive"]=1
 register_system_task "Mount SMB Share"          setup_mount_smb_share   check_always_false noop_function setup_mount_smb_share   get_version_mount_smb_share
@@ -62,6 +54,14 @@ register_system_task "Update Mount"             setup_update_mount      check_al
 NO_RETRY["Update Mount"]=1
 register_system_task "Unmount Share"            setup_unmount_share     check_always_false noop_function setup_unmount_share     get_version_unmount_share
 NO_RETRY["Unmount Share"]=1
+register_utility "NVIDIA Drivers"         install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
+register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
+register_system_task "Enable RDP"         install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
+register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
+register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_setup   uninstall_flatpak_setup   update_flatpak_setup      get_version_flatpak_setup
+register_system_task "UFW Firewall"       install_ufw             check_ufw             uninstall_ufw             update_ufw                get_version_ufw
+register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
+register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 
 # Command-not-found auto-install prompt (Ubuntu, Kubuntu, KDE Neon)
 # Prerequisite: enables interactive y/N install prompt for missing commands in bash.
@@ -462,8 +462,8 @@ UTILITY_SUBCATEGORY["Mount NFS Share"]="Mount/Unmount Shares"
 UTILITY_SUBCATEGORY["Update Mount"]="Mount/Unmount Shares"
 UTILITY_SUBCATEGORY["Unmount Share"]="Mount/Unmount Shares"
 
-# Subcategory folders in System Tasks appear after the plain items
-SUBCATEGORY_AFTER_ITEMS["System Tasks"]=1
+# System Tasks uses interleaved mode: subcategory folders appear in registration order
+SUBCATEGORY_INTERLEAVED["System Tasks"]=1
 
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"

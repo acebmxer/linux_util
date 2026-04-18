@@ -1,6 +1,6 @@
 #!/bin/bash
 # Mount Local Drive — interactively add an unmounted block device to /etc/fstab
-# and mount it under the current user's ~/media/<name> directory.
+# and mount it under the current user's home directory (or a specified path).
 
 # ── Version / status ──────────────────────────────────────────────────────────
 get_version_mount_local_drive() {
@@ -193,33 +193,40 @@ setup_mount_local_drive() {
     local fstab_fstype
     fstab_fstype=$(_mld_resolve_fstype "$sel_fstype")
 
-    # ── Step 4: Mount folder name ─────────────────────────────────────────────
+    # ── Step 4: Mount point ───────────────────────────────────────────────────
     local default_name
     # Suggest the partition label (sanitised) or the device name as a default
     if [[ -n "$sel_label" ]]; then
-        # Replace spaces/special chars with underscores
         default_name=$(printf '%s' "$sel_label" | tr -cs 'A-Za-z0-9._-' '_')
     else
         default_name="$sel_name"
     fi
 
+    local default_mount_point="/home/${USER}/${default_name}"
     printf '\n' > /dev/tty
-    local mount_name
+    local mount_input
     while true; do
-        read -rp "Mount folder name [default: ${default_name}]: " mount_name < /dev/tty
-        # Accept blank → use default
-        [[ -z "$mount_name" ]] && mount_name="$default_name"
+        read -rp "Mount point [default: ${default_mount_point}]: " mount_input < /dev/tty
+        [[ -z "$mount_input" ]] && mount_input="$default_mount_point"
 
-        # Validate: must start with alphanumeric; only letters, digits, _, -, . allowed
-        if [[ ! "$mount_name" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
-            printf '%sName must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
-                "${RED:-}" "${RESET:-}" > /dev/tty
-            continue
+        if [[ "$mount_input" == /* ]]; then
+            if [[ ! "$mount_input" =~ ^/[A-Za-z0-9][A-Za-z0-9_./ \-]*$ ]]; then
+                printf '%sInvalid path. Use an absolute path (e.g. /mnt/Data) or a folder name.%s\n' \
+                    "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+            fi
+        else
+            if [[ ! "$mount_input" =~ ^[A-Za-z0-9][A-Za-z0-9_.\-]*$ ]]; then
+                printf '%sName must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
+                    "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+            fi
+            mount_input="/home/${USER}/${mount_input}"
         fi
         break
     done
 
-    local mount_point="/home/${USER}/media/${mount_name}"
+    local mount_point="$mount_input"
 
     # ── Step 5: Summary & confirmation ───────────────────────────────────────
     {

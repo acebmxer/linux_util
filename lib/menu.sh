@@ -310,8 +310,49 @@ _rebuild_filtered() {
                 _ordered_subcats=("${_reordered_subcats[@]}")
             fi
 
-            # Helper: emit all plain (uncategorised) items for the current category
-            _emit_plain_items() {
+            # Interleaved mode: emit items and subcategory folders in registration order.
+            # When the first item of a new subcategory is encountered, emit its folder
+            # entry at that position. Items belonging to an already-seen subcategory are
+            # skipped at the top level (they appear inside the folder when drilled into).
+            # Plain (uncategorised) items are emitted directly as they are encountered.
+            if [[ -n "${SUBCATEGORY_INTERLEAVED[$category]:-}" ]]; then
+                declare -A _seen_interleaved=()
+                for (( i=0; i<total; i++ )); do
+                    local name="${UTILITIES[$i]}"
+                    local item_cat=""
+                    if [[ "$category" == "System Tasks" ]]; then
+                        local _st
+                        for _st in "${SYSTEM_TASKS[@]}"; do
+                            [[ "$_st" == "$name" ]] && item_cat="System Tasks" && break
+                        done
+                    else
+                        item_cat="${UTILITY_CATEGORY[$name]:-}"
+                    fi
+                    if [[ "$item_cat" == "$category" ]]; then
+                        local sc="${UTILITY_SUBCATEGORY[$name]:-}"
+                        if [[ -n "$sc" ]]; then
+                            if [[ -z "${_seen_interleaved[$sc]:-}" ]]; then
+                                _seen_interleaved["$sc"]=1
+                                _SEARCH_FILTERED+=("-1")
+                                _SEARCH_ITEM_TYPE+=("subcat")
+                                _SEARCH_ITEM_LABEL+=("$sc")
+                            fi
+                        else
+                            _SEARCH_FILTERED+=("$i")
+                            _SEARCH_ITEM_TYPE+=("utility")
+                            _SEARCH_ITEM_LABEL+=("$name")
+                        fi
+                    fi
+                done
+            else
+                # Default mode: subcategory folders first (respecting SUBCATEGORY_ORDER),
+                # then plain (uncategorised) items.
+                local sc
+                for sc in "${_ordered_subcats[@]}"; do
+                    _SEARCH_FILTERED+=("-1")
+                    _SEARCH_ITEM_TYPE+=("subcat")
+                    _SEARCH_ITEM_LABEL+=("$sc")
+                done
                 for (( i=0; i<total; i++ )); do
                     local name="${UTILITIES[$i]}"
                     local item_cat=""
@@ -329,25 +370,6 @@ _rebuild_filtered() {
                         _SEARCH_ITEM_LABEL+=("$name")
                     fi
                 done
-            }
-
-            # Helper: emit subcategory folder entries
-            _emit_subcat_folders() {
-                local sc
-                for sc in "${_ordered_subcats[@]}"; do
-                    _SEARCH_FILTERED+=("-1")
-                    _SEARCH_ITEM_TYPE+=("subcat")
-                    _SEARCH_ITEM_LABEL+=("$sc")
-                done
-            }
-
-            # If SUBCATEGORY_AFTER_ITEMS is set for this category, plain items come first
-            if [[ -n "${SUBCATEGORY_AFTER_ITEMS[$category]:-}" ]]; then
-                _emit_plain_items
-                _emit_subcat_folders
-            else
-                _emit_subcat_folders
-                _emit_plain_items
             fi
         fi
     fi
