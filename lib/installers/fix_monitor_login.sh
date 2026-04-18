@@ -9,18 +9,36 @@ install_fix_monitor_login() {
     info "Opening SDDM login screen settings..."
     echo
     echo "  In the Login Screen (SDDM) settings panel that opens:"
-    echo "    1. Click 'Apply Plasma Settings'"
-    echo "    2. Enter your password if prompted"
-    echo "    3. Close the panel when done"
+    echo "    1. Click 'Apply Plasma Settings' (top-right of the panel)"
+    echo "    2. A confirmation dialog will appear — click 'Apply'"
+    echo "    3. Enter your password when prompted"
+    echo "    4. Close the panel when done"
     echo
 
-    # Launch SDDM KCM module (KDE Plasma 6 first, fall back to Plasma 5)
-    if command -v kcmshell6 &>/dev/null; then
-        kcmshell6 sddm &>/dev/null &
-    elif command -v kcmshell5 &>/dev/null; then
-        kcmshell5 sddm &>/dev/null &
-    else
-        warn "Could not find kcmshell6 or kcmshell5."
+    # Resolve the KCM module name by checking for the plugin file, avoiding the
+    # fallback where kcmshell picks up /usr/bin/sddm instead of the KCM module.
+    local kcm_module=""
+    if find /usr/lib /usr/share/plasma /usr/share/kservices5 \
+            -name "kcm_sddm*" 2>/dev/null | grep -q .; then
+        kcm_module="kcm_sddm"
+    elif find /usr/share/kservices5 /usr/share/plasma \
+            -name "sddm.desktop" 2>/dev/null | grep -q .; then
+        kcm_module="sddm"
+    fi
+
+    local launched=false
+    if [[ -n "$kcm_module" ]]; then
+        if command -v kcmshell6 &>/dev/null; then
+            kcmshell6 "$kcm_module" &>/dev/null &
+            launched=true
+        elif command -v kcmshell5 &>/dev/null; then
+            kcmshell5 "$kcm_module" &>/dev/null &
+            launched=true
+        fi
+    fi
+
+    if ! $launched; then
+        warn "Could not find the SDDM KCM module (is sddm-kcm / plasma-workspace installed?)."
         echo "  Open System Settings > Colors & Themes > Login Screen (SDDM) manually"
         echo "  and click 'Apply Plasma Settings'."
     fi
