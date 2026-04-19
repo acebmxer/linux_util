@@ -1,6 +1,6 @@
 #!/bin/bash
-# Mount NFS Share — interactively add a network NFS export to /etc/fstab
-# and mount it under the current user's home directory (or a specified path).
+# Mount NFS Share — interactively discover and mount an NFS export from a remote
+# server, writing a persistent entry to /etc/fstab.
 
 # ── Version / status ──────────────────────────────────────────────────────────
 get_version_mount_nfs_share() {
@@ -13,154 +13,209 @@ get_version_mount_nfs_share() {
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-_nfs_ensure_tools() {
-    local missing=false
-    if ! command -v mount.nfs &>/dev/null && ! command -v mount.nfs4 &>/dev/null; then
-        missing=true
+# Ensure nfs-common / nfs-utils is installed (provides mount.nfs and showmount).
+_mns_ensure_nfs_tools() {
+    if command -v showmount &>/dev/null && command -v mount.nfs &>/dev/null; then
+        return 0
     fi
+    warn "NFS client tools not found. Attempting to install..."
+    case "$DISTRO_FAMILY" in
+        debian)  sudo apt-get install -y nfs-common ;;
+        fedora)  sudo "$PKG_MGR" install -y nfs-utils ;;
+        rhel)    sudo "$PKG_MGR" install -y nfs-utils ;;
+        arch)    sudo pacman -S --noconfirm nfs-utils ;;
+        suse)    sudo zypper install -y nfs-client ;;
+        *)
+            warn "Cannot auto-install NFS tools on this distro. Install nfs-common or nfs-utils manually."
+            return 1
+            ;;
+    esac
 
-    if [[ "$missing" == "true" ]]; then
-        warn "NFS client tools are not installed. Attempting to install..."
-        case "$DISTRO_FAMILY" in
-            debian)  sudo apt-get install -y nfs-common ;;
-            fedora)  sudo "$PKG_MGR" install -y nfs-utils ;;
-            rhel)    sudo "$PKG_MGR" install -y nfs-utils ;;
-            arch)    sudo pacman -S --noconfirm nfs-utils ;;
-            suse)    sudo zypper install -y nfs-client ;;
-            *)       warn "Cannot auto-install NFS tools on this distro. Install them manually."; return 1 ;;
-        esac
+    if ! command -v showmount &>/dev/null || ! command -v mount.nfs &>/dev/null; then
+        error "NFS tools still not available after install attempt."
+        return 1
     fi
     return 0
+}
+
+# Query exports from a server and output one pipe-delimited record per export:
+#   INDEX|EXPORT_PATH|ALLOWED_CLIENTS
+_mns_export_list() {
+    local server="$1"
+    local idx=0
+    local raw
+    raw=$(showmount -e --no-headers "$server" 2>/dev/null) || return 1
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        local export_path clients
+        export_path=$(awk '{print $1}' <<< "$line")
+        clients=$(awk '{$1=""; print $0}' <<< "$line" | sed 's/^ *//')
+        [[ -z "$export_path" ]] && continue
+        (( idx++ )) || true
+        printf '%d|%s|%s\n' "$idx" "$export_path" "$clients"
+    done <<< "$raw"
+}
+
+# Add a KDE Plasma Places entry so the mount appears under "Remote" in Dolphin.
+_mns_add_kde_place() {
+    local nfs_source="$1"   # e.g. 10.100.10.183:/mnt/data/Apps
+    local mount_point="$2"  # e.g. /home/nick/media/Apps
+
+    local places_file="${HOME}/.local/share/user-places.xbel"
+    [[ -f "$places_file" ]] || return 0
+
+    local udi="/org/kde/fstab/${nfs_source}:${mount_point}"
+    grep -qF "$udi" "$places_file" && return 0
+
+    python3 - "$places_file" "$udi" <<'PYEOF'
+import sys
+path, udi = sys.argv[1], sys.argv[2]
+entry = (
+    ' <separator>\n'
+    '  <info>\n'
+    '   <metadata owner="http://www.kde.org">\n'
+    f'    <UDI>{udi}</UDI>\n'
+    '    <isSystemItem>true</isSystemItem>\n'
+    '   </metadata>\n'
+    '  </info>\n'
+    ' </separator>\n'
+)
+with open(path) as f:
+    content = f.read()
+with open(path, 'w') as f:
+    f.write(content.replace('</xbel>', entry + '</xbel>'))
+PYEOF
+    info "Added KDE Places entry: ${mount_point}"
 }
 
 # ── Main interactive function ─────────────────────────────────────────────────
 setup_mount_nfs_share() {
     echo ""
     echo "${BOLD:-}${CYAN:-}════════════════════════════════════════════════════════════════${RESET:-}"
-    echo "${BOLD:-}${CYAN:-}  Mount NFS Network Share                                        ${RESET:-}"
+    echo "${BOLD:-}${CYAN:-}  Mount NFS Share                                                ${RESET:-}"
     echo "${BOLD:-}${CYAN:-}════════════════════════════════════════════════════════════════${RESET:-}"
     echo ""
 
-    # ── Step 1: Server IP / hostname ──────────────────────────────────────────
-    local server_ip
+    # ── Step 1: Ensure NFS tools are present ─────────────────────────────────
+    _mns_ensure_nfs_tools || return 1
+
+    # ── Step 2: Prompt for server IP / hostname ───────────────────────────────
+    local server
     while true; do
-        read -rp "Server IP address or hostname: " server_ip < /dev/tty
-        server_ip="${server_ip// /}"
-        if [[ -z "$server_ip" ]]; then
+        read -rp "NFS server IP or hostname: " server < /dev/tty
+        server="${server// /}"   # strip accidental spaces
+        if [[ -z "$server" ]]; then
             printf '%sServer address cannot be empty.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
             continue
         fi
         break
     done
 
-    # ── Step 2: Export path (scan or manual) ─────────────────────────────────
-    local export_path
-    local -a nfs_exports=()
+    # ── Step 3: Discover exports ──────────────────────────────────────────────
+    info "Querying NFS exports from ${server}..."
+    local -a exports=()
+    mapfile -t exports < <(_mns_export_list "$server")
 
-    printf '\n' > /dev/tty
-    printf 'Scanning for NFS exports on %s...\n' "$server_ip" > /dev/tty
-    local showmount_out
-    if showmount_out=$(showmount -e --no-headers "$server_ip" 2>/dev/null); then
-        while IFS= read -r line; do
-            local path
-            path=$(awk '{print $1}' <<< "$line")
-            [[ "$path" == /* ]] && nfs_exports+=("$path")
-        done <<< "$showmount_out"
+    if (( ${#exports[@]} == 0 )); then
+        error "No NFS exports found on ${server}."
+        warn "Check that the server is reachable, NFS is running, and exports are configured."
+        return 1
     fi
 
-    if [[ "${#nfs_exports[@]}" -gt 0 ]]; then
-        printf '\nAvailable exports:\n' > /dev/tty
-        local i
-        for i in "${!nfs_exports[@]}"; do
-            printf '  %d) %s\n' "$((i+1))" "${nfs_exports[$i]}" > /dev/tty
+    # ── Step 4: Display exports table ────────────────────────────────────────
+    {
+        printf '\n'
+        printf '  %-4s  %-35s  %s\n' "#" "Export Path" "Allowed Clients"
+        printf '  %s\n' "────────────────────────────────────────────────────────────────────────────"
+        local export_entry
+        for export_entry in "${exports[@]}"; do
+            IFS='|' read -r idx export_path clients <<< "$export_entry"
+            printf '  %-4s  %-35s  %s\n' "${idx})" "$export_path" "$clients"
         done
-        printf '  m) Enter path manually\n\n' > /dev/tty
+        printf '\n  0)    Cancel\n\n'
+    } > /dev/tty
 
-        while true; do
-            read -rp "Select export [1-${#nfs_exports[@]} / m]: " sel < /dev/tty
-            sel="${sel// /}"
-            if [[ "$sel" == "m" || "$sel" == "M" ]]; then
-                export_path=""
-                break
-            fi
-            if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#nfs_exports[@]} )); then
-                export_path="${nfs_exports[$((sel-1))]}"
-                break
-            fi
-            printf '%sInvalid selection.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
-        done
-    else
-        printf '%sCould not retrieve export list — enter path manually.%s\n' "${YELLOW:-}" "${RESET:-}" > /dev/tty
-    fi
-
-    if [[ -z "$export_path" ]]; then
-        while true; do
-            read -rp "Export path on server (e.g. /srv/nfs/data): " export_path < /dev/tty
-            export_path="${export_path%/}"
-            if [[ -z "$export_path" ]]; then
-                printf '%sExport path cannot be empty.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
-                continue
-            fi
-            if [[ "${export_path:0:1}" != "/" ]]; then
-                printf '%sExport path must start with /.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
-                continue
-            fi
-            break
-        done
-    fi
-
-    # ── Step 3: NFS version ───────────────────────────────────────────────────
-    printf '\n' > /dev/tty
-    local nfs_ver
+    # ── Step 5: Share selection ───────────────────────────────────────────────
+    local total=${#exports[@]}
+    local choice
     while true; do
-        read -rp "NFS version [4 / 3, default: 4]: " nfs_ver < /dev/tty
-        [[ -z "$nfs_ver" ]] && nfs_ver="4"
-        if [[ "$nfs_ver" == "4" || "$nfs_ver" == "3" ]]; then
+        read -rp "Select share to mount [0-${total}]: " choice < /dev/tty
+        if [[ "$choice" == "0" ]]; then
+            info "Mount cancelled."
+            return 0
+        fi
+        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= total )); then
             break
         fi
-        printf '%sPlease enter 3 or 4.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+        printf '%sInvalid selection. Enter a number between 0 and %d.%s\n' \
+            "${RED:-}" "$total" "${RESET:-}" > /dev/tty
     done
 
-    # ── Step 4: Mount folder name ─────────────────────────────────────────────
-    local default_name
-    default_name=$(printf '%s' "${export_path##*/}" | tr -cs 'A-Za-z0-9._-' '_')
-    [[ -z "$default_name" ]] && default_name="nfs_share"
+    local sel_entry="${exports[$((choice - 1))]}"
+    IFS='|' read -r _ sel_export _ <<< "$sel_entry"
 
-    local default_mount_point="/home/${USER}"
-    printf '\n' > /dev/tty
-    local mount_input
+    # Derive a default subfolder name from the last component of the export path
+    local default_subfolder
+    default_subfolder=$(basename "$sel_export" | tr -cs 'A-Za-z0-9._-' '_')
+    default_subfolder="${default_subfolder%_}"
+    [[ -z "$default_subfolder" || "$default_subfolder" == "_" ]] && default_subfolder="nfs"
+
+    # ── Step 6: Mount location ────────────────────────────────────────────────
+    {
+        printf '\n'
+        printf '  Mount location — base directory is %s\n' "/home/${USER}"
+        printf '  Specify a subfolder path (e.g. /media/%s).\n' "$default_subfolder"
+        printf '  Press ENTER to use the default: /media/%s\n\n' "$default_subfolder"
+    } > /dev/tty
+
+    local subfolder_input mount_point
     while true; do
-        printf 'Mount point - The default location is %s/\n' "$default_mount_point" > /dev/tty
-        read -rp "Please specify a mount folder (/media/${default_name}): " mount_input < /dev/tty
-        [[ -z "$mount_input" ]] && mount_input="$default_mount_point"
+        read -rp "Subfolder [default: /media/${default_subfolder}]: " subfolder_input < /dev/tty
 
-        local re_valid='^[A-Za-z0-9][-A-Za-z0-9_./]*$'
-        # Strip leading /home/$USER/ or leading / so all variations mount under home
-        mount_input="${mount_input#/home/${USER}/}"
-        mount_input="${mount_input#/}"
-        if [[ -z "$mount_input" ]]; then
-            printf '%sPlease specify a folder name.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+        # Blank → use default
+        [[ -z "$subfolder_input" ]] && subfolder_input="/media/${default_subfolder}"
+
+        # Strip leading slash so we can re-attach cleanly, then strip trailing slashes
+        subfolder_input="${subfolder_input#/}"
+        subfolder_input="${subfolder_input%/}"
+
+        if [[ -z "$subfolder_input" ]]; then
+            printf '%sPath cannot be empty.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
             continue
         fi
-        if [[ ! "$mount_input" =~ $re_valid ]]; then
-                printf '%sInvalid folder name.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
-                continue
+
+        # Validate each path component
+        local _valid=true _component
+        while IFS= read -r -d '/' _component || [[ -n "$_component" ]]; do
+            _component="${_component%$'\n'}"  # strip trailing newline added by <<<
+            [[ -z "$_component" ]] && continue
+            if [[ ! "$_component" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
+                _valid=false
+                break
+            fi
+        done <<< "${subfolder_input}/"
+
+        if [[ "$_valid" == "false" ]]; then
+            printf '%sEach path component must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
+                "${RED:-}" "${RESET:-}" > /dev/tty
+            continue
         fi
-        mount_input="/home/${USER}/${mount_input}"
+
+        mount_point="/home/${USER}/${subfolder_input}"
         break
     done
 
-    local mount_point="$mount_input"
-    local nfs_source="${server_ip}:${export_path}"
-    local fstab_opts="nfsvers=${nfs_ver},rw,soft,intr,timeo=30,retrans=2,nofail,_netdev"
+    # ── Step 7: Summary & confirmation ───────────────────────────────────────
+    local nfs_source="${server}:${sel_export}"
+    local fstab_opts="defaults,nofail,_netdev"
 
-    # ── Step 5: Summary & confirmation ───────────────────────────────────────
     {
         printf '\n'
-        printf '  Source:      %s\n' "$nfs_source"
-        printf '  NFS version: %s\n' "$nfs_ver"
-        printf '  Mount point: %s\n' "$mount_point"
-        printf '  Options:     %s\n' "$fstab_opts"
+        printf '  Server:      %s\n'   "$server"
+        printf '  Export:      %s\n'   "$sel_export"
+        printf '  Source:      %s\n'   "$nfs_source"
+        printf '  Mount point: %s\n'   "$mount_point"
+        printf '  fstab opts:  %s  0 0\n' "$fstab_opts"
         printf '\n'
     } > /dev/tty
 
@@ -182,12 +237,9 @@ setup_mount_nfs_share() {
         return 0
     fi
 
-    # ── Step 6: Ensure tools ──────────────────────────────────────────────────
-    _nfs_ensure_tools || return 1
-
-    # ── Step 7: Guard — check fstab for collisions ────────────────────────────
-    if grep -qsF "${nfs_source} " /etc/fstab || grep -qsF "${nfs_source}	" /etc/fstab; then
-        warn "An entry for ${nfs_source} already exists in /etc/fstab."
+    # ── Step 8: Guard — check fstab for collisions ───────────────────────────
+    if grep -qsF "$nfs_source" /etc/fstab; then
+        warn "${nfs_source} already has an entry in /etc/fstab."
         local overwrite
         read -rp "Continue anyway and add a second entry? [y/N]: " overwrite < /dev/tty
         [[ "${overwrite,,}" != "y" ]] && { info "Mount cancelled."; return 0; }
@@ -198,7 +250,7 @@ setup_mount_nfs_share() {
         return 1
     fi
 
-    # ── Step 8: Create mount point directory ──────────────────────────────────
+    # ── Step 9: Create mount point directory ─────────────────────────────────
     if [[ ! -d "$mount_point" ]]; then
         mkdir -p "$mount_point" || {
             error "Failed to create directory: ${mount_point}"
@@ -209,7 +261,7 @@ setup_mount_nfs_share() {
         info "Mount point already exists: ${mount_point}"
     fi
 
-    # ── Step 9: Back up fstab ─────────────────────────────────────────────────
+    # ── Step 10: Back up fstab ────────────────────────────────────────────────
     local fstab_backup="/etc/fstab.bak.$(date +%Y%m%d_%H%M%S)"
     run_as_root cp /etc/fstab "$fstab_backup" || {
         error "Failed to back up /etc/fstab"
@@ -217,7 +269,7 @@ setup_mount_nfs_share() {
     }
     info "fstab backed up to ${fstab_backup}"
 
-    # ── Step 10: Append fstab entry ───────────────────────────────────────────
+    # ── Step 11: Append fstab entry ───────────────────────────────────────────
     local fstab_comment
     fstab_comment="# linux_util:nfs ${nfs_source} → ${mount_point} — added $(date '+%Y-%m-%d %H:%M:%S')"
 
@@ -231,12 +283,15 @@ setup_mount_nfs_share() {
         return 1
     }
 
-    # ── Step 11: Mount ────────────────────────────────────────────────────────
+    # ── Step 12: Mount ────────────────────────────────────────────────────────
     run_as_root mount "$mount_point" || {
         error "mount failed for ${mount_point}."
         warn "The fstab entry was written — review /etc/fstab and try: sudo mount ${mount_point}"
+        warn "Check that the server is reachable and the export allows this host."
         return 1
     }
+
+    _mns_add_kde_place "$nfs_source" "$mount_point"
 
     echo ""
     info "NFS share mounted successfully."
@@ -247,7 +302,7 @@ setup_mount_nfs_share() {
     return 0
 }
 
-# ── Lifecycle stubs ───────────────────────────────────────────────────────────
+# ── Lifecycle stubs (task is run-on-demand, not idempotent) ───────────────────
 check_mount_nfs_share()     { return 1; }
 uninstall_mount_nfs_share() { return 0; }
 update_mount_nfs_share()    { setup_mount_nfs_share; }

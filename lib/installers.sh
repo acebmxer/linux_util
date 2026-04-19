@@ -44,16 +44,10 @@ check_always_false() {
 register_system_task "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update get_version_full_update
 NO_RETRY["Full System Upgrade/Update"]=1
 register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates      get_version_system_updates
-register_system_task "Mount Local Drive"        setup_mount_local_drive check_always_false noop_function setup_mount_local_drive get_version_mount_local_drive
-NO_RETRY["Mount Local Drive"]=1
-register_system_task "Mount SMB Share"          setup_mount_smb_share   check_always_false noop_function setup_mount_smb_share   get_version_mount_smb_share
-NO_RETRY["Mount SMB Share"]=1
-register_system_task "Mount NFS Share"          setup_mount_nfs_share   check_always_false noop_function setup_mount_nfs_share   get_version_mount_nfs_share
-NO_RETRY["Mount NFS Share"]=1
-register_system_task "Update Mount"             setup_update_mount      check_always_false noop_function setup_update_mount      get_version_update_mount
-NO_RETRY["Update Mount"]=1
-register_system_task "Unmount Share"            setup_unmount_share     check_always_false noop_function setup_unmount_share     get_version_unmount_share
-NO_RETRY["Unmount Share"]=1
+register_system_task "Mount Local Drive"  setup_mount_local_drive check_mount_local_drive uninstall_mount_local_drive update_mount_local_drive  get_version_mount_local_drive
+register_system_task "Mount NFS Share"    setup_mount_nfs_share   check_mount_nfs_share   uninstall_mount_nfs_share   update_mount_nfs_share    get_version_mount_nfs_share
+register_system_task "Mount SMB Share"    setup_mount_smb_share   check_mount_smb_share   uninstall_mount_smb_share   update_mount_smb_share    get_version_mount_smb_share
+register_system_task "Manage Share"       setup_manage_share      check_manage_share      uninstall_manage_share      update_manage_share       get_version_manage_share
 register_utility "NVIDIA Drivers"         install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
 register_system_task "Enable RDP"         install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
@@ -455,15 +449,12 @@ UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
 
-# Mount/Unmount Shares subcategory within System Tasks
-UTILITY_SUBCATEGORY["Mount Local Drive"]="Mount/Unmount Shares"
-UTILITY_SUBCATEGORY["Mount SMB Share"]="Mount/Unmount Shares"
-UTILITY_SUBCATEGORY["Mount NFS Share"]="Mount/Unmount Shares"
-UTILITY_SUBCATEGORY["Update Mount"]="Mount/Unmount Shares"
-UTILITY_SUBCATEGORY["Unmount Share"]="Mount/Unmount Shares"
-
 # System Tasks uses interleaved mode: subcategory folders appear in registration order
 SUBCATEGORY_INTERLEAVED["System Tasks"]=1
+UTILITY_SUBCATEGORY["Mount Local Drive"]="Mount / Unmount Shares"
+UTILITY_SUBCATEGORY["Mount NFS Share"]="Mount / Unmount Shares"
+UTILITY_SUBCATEGORY["Mount SMB Share"]="Mount / Unmount Shares"
+UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
 
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
@@ -474,6 +465,10 @@ SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Extensions|Messaging|Ema
 # System Tasks
 UTILITY_DESCRIPTION["Full System Upgrade/Update"]="Performs a comprehensive system upgrade including all configured package managers and removes unused packages."
 UTILITY_DESCRIPTION["System Updates"]="Installs and configures automatic system update scheduling via systemd timers or cron."
+UTILITY_DESCRIPTION["Mount Local Drive"]="Interactively selects an unmounted block device and adds it to /etc/fstab, mounting it permanently under ~/media/<name>. Supports ext4, xfs, btrfs, NTFS, exFAT, and vFAT. Backs up fstab before any changes."
+UTILITY_DESCRIPTION["Mount NFS Share"]="Discovers NFS exports from a remote server via showmount and mounts the chosen share persistently via /etc/fstab. Installs NFS client tools if needed and backs up fstab before any changes."
+UTILITY_DESCRIPTION["Mount SMB Share"]="Connects to an SMB/CIFS server, prompts for credentials, lists available shares, and mounts the chosen share persistently via /etc/fstab. Credentials are stored in a private file under HOME. Installs cifs-utils if needed and backs up fstab before any changes."
+UTILITY_DESCRIPTION["Manage Share"]="Update or unmount an existing linux_util-managed mount. Update: change server, share path, credentials, or mount location for NFS, SMB, or local disk mounts. Unmount: remove the share, delete the mount point directory, clear the fstab entry, and remove the KDE Dolphin Places entry. Backs up fstab before any changes."
 UTILITY_DESCRIPTION["NVIDIA Drivers"]="Installs proprietary NVIDIA GPU drivers for optimal 3D graphics and compute performance."
 
 # Desktop Environments
@@ -498,11 +493,6 @@ UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firew
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
-UTILITY_DESCRIPTION["Mount Local Drive"]="Interactively mounts an unformatted local block device (NTFS, ext4, exFAT, etc.) under ~/media/<name> and adds it to /etc/fstab for automatic mounting at boot."
-UTILITY_DESCRIPTION["Mount SMB Share"]="Interactively configures a Windows/Samba (SMB/CIFS) network share, stores credentials securely, mounts it under ~/media/<name>, and persists the entry in /etc/fstab."
-UTILITY_DESCRIPTION["Mount NFS Share"]="Interactively configures an NFS (v3 or v4) network export, mounts it under ~/media/<name>, and adds the entry to /etc/fstab for persistent mounting."
-UTILITY_DESCRIPTION["Update Mount"]="Update an existing linux_util-managed mount: change the server IP/hostname, remote share/export path, or local mount folder — in any combination. Automatically unmounts, rewrites /etc/fstab, and remounts."
-UTILITY_DESCRIPTION["Unmount Share"]="Unmount and remove a linux_util-managed entry from /etc/fstab. Optionally removes the local mount directory and SMB credentials file."
 UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot using the active backup backend (Timeshift or Snapper). Prompts for an optional description."
 UTILITY_DESCRIPTION["Restore Snapshot"]="Restores the system from a previously created snapshot. Lists all available snapshots and asks for confirmation before proceeding."
 UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshots. Lists all available snapshots and asks for confirmation before deleting."

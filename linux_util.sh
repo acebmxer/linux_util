@@ -209,7 +209,7 @@ process_selected() {
     local needs_shell_reload=false
 
     # These tasks do not require a reboot after successful completion
-    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount SMB Share"]=1 ["Mount NFS Share"]=1 ["Update Mount"]=1 ["Unmount Share"]=1)
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1)
 
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do
@@ -278,7 +278,12 @@ process_selected() {
     # own snapshots or don't need one before deleting (avoids duplicates).
     local _skip_auto_snapshot=false
     for _chk in "${to_install[@]}"; do
-        [[ "$_chk" == "Create Snapshot" || "$_chk" == "Restore Snapshot" || "$_chk" == "Delete Snapshot" ]] && _skip_auto_snapshot=true
+        case "$_chk" in
+            "Create Snapshot"|"Restore Snapshot"|"Delete Snapshot"|\
+            "Create Snapshot (Snapper)"|"Restore Snapshot (Snapper)"|"Delete Snapshot (Snapper)"|\
+            "Mount Local Drive"|"Mount NFS Share"|"Mount SMB Share"|"Manage Share")
+                _skip_auto_snapshot=true ;;
+        esac
     done
 
     if [[ "$TIMESHIFT_AVAILABLE" == "true" && "$_skip_auto_snapshot" == "false" ]]; then

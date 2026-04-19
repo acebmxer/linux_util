@@ -1,6 +1,6 @@
 #!/bin/bash
 # Mount Local Drive — interactively add an unmounted block device to /etc/fstab
-# and mount it under the current user's home directory (or a specified path).
+# and mount it under the current user's ~/media/<name> directory.
 
 # ── Version / status ──────────────────────────────────────────────────────────
 get_version_mount_local_drive() {
@@ -193,39 +193,60 @@ setup_mount_local_drive() {
     local fstab_fstype
     fstab_fstype=$(_mld_resolve_fstype "$sel_fstype")
 
-    # ── Step 4: Mount point ───────────────────────────────────────────────────
-    local default_name
-    # Suggest the partition label (sanitised) or the device name as a default
+    # ── Step 4: Mount location ────────────────────────────────────────────────
+    local default_subfolder
+    # Suggest a subfolder based on the label or device name
     if [[ -n "$sel_label" ]]; then
-        default_name=$(printf '%s' "$sel_label" | tr -cs 'A-Za-z0-9._-' '_')
+        default_subfolder=$(printf '%s' "$sel_label" | tr -cs 'A-Za-z0-9._-' '_')
     else
-        default_name="$sel_name"
+        default_subfolder="$sel_name"
     fi
 
-    local default_mount_point="/home/${USER}"
-    printf '\n' > /dev/tty
-    local mount_input
-    while true; do
-        printf 'Mount point - The default location is %s/\n' "$default_mount_point" > /dev/tty
-        read -rp "Please specify a mount folder (/media/${default_name}): " mount_input < /dev/tty
-        [[ -z "$mount_input" ]] && mount_input="$default_mount_point"
+    {
+        printf '\n'
+        printf '  Mount location — base directory is %s\n' "/home/${USER}"
+        printf '  Specify a subfolder path (e.g. /media/%s or mnt/%s).\n' \
+            "$default_subfolder" "$default_subfolder"
+        printf '  Press ENTER to use the default: /media/%s\n\n' "$default_subfolder"
+    } > /dev/tty
 
-        local re_valid='^[A-Za-z0-9][-A-Za-z0-9_./]*$'
-        mount_input="${mount_input#/home/${USER}/}"
-        mount_input="${mount_input#/}"
-        if [[ -z "$mount_input" ]]; then
-            printf '%sPlease specify a folder name.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+    local subfolder_input mount_point
+    while true; do
+        read -rp "Subfolder [default: /media/${default_subfolder}]: " subfolder_input < /dev/tty
+
+        # Blank → use default
+        [[ -z "$subfolder_input" ]] && subfolder_input="/media/${default_subfolder}"
+
+        # Strip leading slash so we can re-attach cleanly, then strip any trailing slashes
+        subfolder_input="${subfolder_input#/}"
+        subfolder_input="${subfolder_input%/}"
+
+        # Must not be empty after stripping, and must only contain safe path characters
+        if [[ -z "$subfolder_input" ]]; then
+            printf '%sPath cannot be empty.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
             continue
         fi
-        if [[ ! "$mount_input" =~ $re_valid ]]; then
-            printf '%sInvalid folder name.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+
+        # Each path component must start with alphanumeric and contain only safe chars
+        local _valid=true _component
+        while IFS= read -r -d '/' _component || [[ -n "$_component" ]]; do
+            _component="${_component%$'\n'}"  # strip trailing newline added by <<<
+            [[ -z "$_component" ]] && continue
+            if [[ ! "$_component" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
+                _valid=false
+                break
+            fi
+        done <<< "${subfolder_input}/"
+
+        if [[ "$_valid" == "false" ]]; then
+            printf '%sEach path component must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
+                "${RED:-}" "${RESET:-}" > /dev/tty
             continue
         fi
-        mount_input="/home/${USER}/${mount_input}"
+
+        mount_point="/home/${USER}/${subfolder_input}"
         break
     done
-
-    local mount_point="$mount_input"
 
     # ── Step 5: Summary & confirmation ───────────────────────────────────────
     {
