@@ -103,6 +103,7 @@ register_utility "Docker"              setup_install_docker     check_docker    
 register_utility "Fastfetch"           install_fastfetch        check_fastfetch        uninstall_fastfetch        update_fastfetch           get_version_fastfetch
 register_utility "Feral Gamemode"      install_gamemode         check_gamemode         uninstall_gamemode         update_gamemode            get_version_gamemode
 register_utility "FileZilla"           install_filezilla        check_filezilla        uninstall_filezilla        update_filezilla           get_version_filezilla
+register_utility "Filelight"           install_filelight        check_filelight        uninstall_filelight        update_filelight           get_version_filelight
 register_utility "Firefox"             install_firefox          check_firefox          uninstall_firefox          update_firefox             get_version_firefox
 register_utility "Flameshot"           install_flameshot        check_flameshot        uninstall_flameshot        update_flameshot           get_version_flameshot
 register_utility "GIMP"                install_gimp             check_gimp             uninstall_gimp             update_gimp                get_version_gimp
@@ -288,6 +289,7 @@ UTILITY_CATEGORY["Docker"]="Development"
 UTILITY_CATEGORY["Fastfetch"]="System Tools"
 UTILITY_CATEGORY["Feral Gamemode"]="Gaming"
 UTILITY_CATEGORY["FileZilla"]="Internet"
+UTILITY_CATEGORY["Filelight"]="System Tools"
 UTILITY_CATEGORY["Firefox"]="Internet"
 UTILITY_CATEGORY["GIMP"]="Productivity"
 UTILITY_CATEGORY["GitHub CLI"]="Development"
@@ -589,6 +591,7 @@ UTILITY_DESCRIPTION["WPS Office"]="Microsoft Office-compatible office suite with
 
 # System Tools
 UTILITY_DESCRIPTION["Btop"]="Modern terminal-based resource monitor with a rich visual interface showing CPU, memory, disk, and network."
+UTILITY_DESCRIPTION["Filelight"]="KDE disk usage analyzer that visualizes storage consumption as an interactive radial map, making it easy to identify large files and directories."
 UTILITY_DESCRIPTION["ClamAV"]="Open-source antivirus engine for detecting trojans, viruses, malware, and other malicious threats."
 UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyboard and mouse across multiple computers on your local network."
 UTILITY_DESCRIPTION["Ventoy"]="Bootable USB solution for loading multiple ISO images from a single drive — just copy ISOs and boot."
