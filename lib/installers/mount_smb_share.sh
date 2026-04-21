@@ -189,25 +189,36 @@ setup_mount_smb_share() {
     [[ -z "$default_subfolder" || "$default_subfolder" == "_" ]] && default_subfolder="smb"
 
     # ── Step 7: Mount location ────────────────────────────────────────────────
+    local default_mount="/mnt/${default_subfolder}"
     {
         printf '\n'
-        printf '  Mount location — base directory is /home/%s\n' "$USER"
-        printf '  Specify a subfolder path (e.g. /media/%s).\n' "$default_subfolder"
-        printf '  Press ENTER to use the default: /media/%s\n\n' "$default_subfolder"
+        printf '  Enter the full path where the share should be mounted.\n'
+        printf '  Examples: /mnt/%s  or  /home/%s/mnt/%s\n' \
+            "$default_subfolder" "$USER" "$default_subfolder"
+        printf '  Press ENTER to use the default: %s\n\n' "$default_mount"
     } > /dev/tty
 
-    local subfolder_input mount_point
+    local mount_point
     while true; do
-        read -rp "Subfolder [default: /media/${default_subfolder}]: " subfolder_input < /dev/tty
-        [[ -z "$subfolder_input" ]] && subfolder_input="/media/${default_subfolder}"
-        subfolder_input="${subfolder_input#/}"
-        subfolder_input="${subfolder_input%/}"
+        read -rp "Mount point [default: ${default_mount}]: " mount_point < /dev/tty
 
-        if [[ -z "$subfolder_input" ]]; then
-            printf '%sPath cannot be empty.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+        # Blank → use default
+        [[ -z "$mount_point" ]] && mount_point="$default_mount"
+
+        # Must be an absolute path
+        if [[ "$mount_point" != /* ]]; then
+            printf '%sPath must be absolute (start with /).%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
             continue
         fi
 
+        # Strip trailing slashes, reject bare /
+        mount_point="${mount_point%/}"
+        if [[ -z "$mount_point" ]]; then
+            printf '%sCannot mount directly on /.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+            continue
+        fi
+
+        # Validate each path component
         local _valid=true _component
         while IFS= read -r -d '/' _component || [[ -n "$_component" ]]; do
             _component="${_component%$'\n'}"
@@ -216,7 +227,7 @@ setup_mount_smb_share() {
                 _valid=false
                 break
             fi
-        done <<< "${subfolder_input}/"
+        done <<< "${mount_point#/}/"
 
         if [[ "$_valid" == "false" ]]; then
             printf '%sEach path component must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
@@ -224,7 +235,6 @@ setup_mount_smb_share() {
             continue
         fi
 
-        mount_point="/home/${USER}/${subfolder_input}"
         break
     done
 
@@ -255,7 +265,11 @@ setup_mount_smb_share() {
 
     # ── Dry-run path ──────────────────────────────────────────────────────────
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        info "[Dry run] Would create directory: ${mount_point}"
+        if [[ "$mount_point" != "$HOME"* ]]; then
+            info "[Dry run] Would create directory (as root, then chown to ${USER}): ${mount_point}"
+        else
+            info "[Dry run] Would create directory: ${mount_point}"
+        fi
         info "[Dry run] Would write credentials file: ${creds_file}"
         info "[Dry run] Would back up /etc/fstab"
         info "[Dry run] Would append to /etc/fstab:"
@@ -280,10 +294,26 @@ setup_mount_smb_share() {
 
     # ── Step 10: Create mount point directory ─────────────────────────────────
     if [[ ! -d "$mount_point" ]]; then
-        mkdir -p "$mount_point" || {
-            error "Failed to create directory: ${mount_point}"
-            return 1
-        }
+        local _ancestor="$mount_point"
+        while [[ ! -e "$_ancestor" ]]; do
+            _ancestor=$(dirname "$_ancestor")
+        done
+
+        if [[ -w "$_ancestor" ]]; then
+            mkdir -p "$mount_point" || {
+                error "Failed to create directory: ${mount_point}"
+                return 1
+            }
+        else
+            run_as_root mkdir -p "$mount_point" || {
+                error "Failed to create directory: ${mount_point}"
+                return 1
+            }
+            if [[ "$mount_point" != "$HOME"* ]]; then
+                run_as_root chown "${USER}:${USER}" "$mount_point" || \
+                    warn "Could not set ownership of ${mount_point} to ${USER} — you may need to access it as root."
+            fi
+        fi
         info "Created mount point: ${mount_point}"
     else
         info "Mount point already exists: ${mount_point}"

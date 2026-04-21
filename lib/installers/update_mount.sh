@@ -11,20 +11,28 @@ get_version_update_mount() {
     [[ "$count" -gt 0 ]] && echo "${count} linux_util-managed mount(s)"
 }
 
-# ── Shared helper: prompt user for a mount point subfolder ───────────────────
+# ── Shared helper: prompt user for a full absolute mount point path ───────────
+# Accepts an optional hint for the default path suffix (e.g. "docker-data").
 # Prints the resolved absolute mount point to stdout.
 _um_prompt_mount_point() {
     local default_subfolder="$1"
-    local subfolder_input mount_point
+    local default_mount="/mnt/${default_subfolder}"
+    local mount_point
     while true; do
-        read -rp "Subfolder [default: /media/${default_subfolder}]: " subfolder_input < /dev/tty
-        [[ -z "$subfolder_input" ]] && subfolder_input="/media/${default_subfolder}"
-        subfolder_input="${subfolder_input#/}"
-        subfolder_input="${subfolder_input%/}"
-        if [[ -z "$subfolder_input" ]]; then
-            printf '%sPath cannot be empty.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+        read -rp "Mount point [default: ${default_mount}]: " mount_point < /dev/tty
+        [[ -z "$mount_point" ]] && mount_point="$default_mount"
+
+        if [[ "$mount_point" != /* ]]; then
+            printf '%sPath must be absolute (start with /).%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
             continue
         fi
+
+        mount_point="${mount_point%/}"
+        if [[ -z "$mount_point" ]]; then
+            printf '%sCannot mount directly on /.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+            continue
+        fi
+
         local _valid=true _component
         while IFS= read -r -d '/' _component || [[ -n "$_component" ]]; do
             _component="${_component%$'\n'}"
@@ -33,16 +41,38 @@ _um_prompt_mount_point() {
                 _valid=false
                 break
             fi
-        done <<< "${subfolder_input}/"
+        done <<< "${mount_point#/}/"
         if [[ "$_valid" == "false" ]]; then
             printf '%sEach path component must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
                 "${RED:-}" "${RESET:-}" > /dev/tty
             continue
         fi
-        mount_point="/home/${USER}/${subfolder_input}"
         break
     done
     printf '%s' "$mount_point"
+}
+
+# ── Shared helper: create a mount point directory, using sudo when needed ─────
+# Hands ownership to the current user when the path is outside $HOME.
+_um_create_mount_point() {
+    local dir="$1"
+    [[ -d "$dir" ]] && return 0
+
+    local _ancestor="$dir"
+    while [[ ! -e "$_ancestor" ]]; do
+        _ancestor=$(dirname "$_ancestor")
+    done
+
+    if [[ -w "$_ancestor" ]]; then
+        mkdir -p "$dir" || { error "Failed to create directory: ${dir}"; return 1; }
+    else
+        run_as_root mkdir -p "$dir" || { error "Failed to create directory: ${dir}"; return 1; }
+        if [[ "$dir" != "$HOME"* ]]; then
+            run_as_root chown "${USER}:${USER}" "$dir" || \
+                warn "Could not set ownership of ${dir} to ${USER} — you may need to access it as root."
+        fi
+    fi
+    info "Created mount point: ${dir}"
 }
 
 # ── NFS update branch ─────────────────────────────────────────────────────────
@@ -135,7 +165,7 @@ _um_update_nfs() {
             default_mp="${default_mp%_}"
             [[ -z "$default_mp" || "$default_mp" == "_" ]] && default_mp="nfs"
             {
-                printf '\n  Specify a new mount location (subfolder of /home/%s).\n' "$USER"
+                printf '\n  Specify a new mount location.\n'
                 printf '  Current: %s\n\n' "$sel_mount_point"
             } > /dev/tty
             new_mount_point=$(_um_prompt_mount_point "$default_mp")
@@ -186,7 +216,7 @@ _um_update_nfs() {
             default_mp="${default_mp%_}"
             [[ -z "$default_mp" || "$default_mp" == "_" ]] && default_mp="nfs"
             {
-                printf '\n  Mount location — specify a subfolder of /home/%s.\n' "$USER"
+                printf '\n  Specify a mount location.\n'
                 printf '  Current: %s\n\n' "$sel_mount_point"
             } > /dev/tty
             new_mount_point=$(_um_prompt_mount_point "$default_mp")
@@ -258,10 +288,7 @@ _um_update_nfs() {
     fi
 
     # ── Create new mount point ────────────────────────────────────────────────
-    if [[ ! -d "$new_mount_point" ]]; then
-        mkdir -p "$new_mount_point" || { error "Failed to create directory: ${new_mount_point}"; return 1; }
-        info "Created mount point: ${new_mount_point}"
-    fi
+    _um_create_mount_point "$new_mount_point" || return 1
 
     # ── Write new fstab entry ─────────────────────────────────────────────────
     local fstab_comment="# linux_util:nfs ${new_source} → ${new_mount_point} — updated $(date '+%Y-%m-%d %H:%M:%S')"
@@ -426,7 +453,7 @@ _um_update_smb() {
             default_mp="${default_mp%_}"
             [[ -z "$default_mp" || "$default_mp" == "_" ]] && default_mp="smb"
             {
-                printf '\n  Specify a new mount location (subfolder of /home/%s).\n' "$USER"
+                printf '\n  Specify a new mount location.\n'
                 printf '  Current: %s\n\n' "$sel_mount_point"
             } > /dev/tty
             new_mount_point=$(_um_prompt_mount_point "$default_mp")
@@ -451,7 +478,7 @@ _um_update_smb() {
             default_mp="${default_mp%_}"
             [[ -z "$default_mp" || "$default_mp" == "_" ]] && default_mp="smb"
             {
-                printf '\n  Mount location — specify a subfolder of /home/%s.\n' "$USER"
+                printf '\n  Specify a mount location.\n'
                 printf '  Current: %s\n\n' "$sel_mount_point"
             } > /dev/tty
             new_mount_point=$(_um_prompt_mount_point "$default_mp")
@@ -527,10 +554,7 @@ _um_update_smb() {
     fi
 
     # ── Create new mount point ────────────────────────────────────────────────
-    if [[ ! -d "$new_mount_point" ]]; then
-        mkdir -p "$new_mount_point" || { error "Failed to create directory: ${new_mount_point}"; return 1; }
-        info "Created mount point: ${new_mount_point}"
-    fi
+    _um_create_mount_point "$new_mount_point" || return 1
 
     # ── Write credentials file ────────────────────────────────────────────────
     printf 'username=%s\npassword=%s\n' "$new_username" "$new_password" > "$new_creds_file"
@@ -746,7 +770,7 @@ _um_update_local() {
             default_mp="${default_mp%_}"
             [[ -z "$default_mp" || "$default_mp" == "_" ]] && default_mp="disk"
             {
-                printf '\n  Specify a new mount location (subfolder of /home/%s).\n' "$USER"
+                printf '\n  Specify a new mount location.\n'
                 printf '  Current: %s\n\n' "$sel_mount_point"
             } > /dev/tty
             local new_mount_point
@@ -817,10 +841,7 @@ _um_update_local() {
             fi
 
             # Create new mount point
-            if [[ ! -d "$new_mount_point" ]]; then
-                mkdir -p "$new_mount_point" || { error "Failed to create directory: ${new_mount_point}"; return 1; }
-                info "Created mount point: ${new_mount_point}"
-            fi
+            _um_create_mount_point "$new_mount_point" || return 1
 
             # Ensure filesystem tools
             _mld_ensure_fs_tools "$fstab_fstype" || return 1

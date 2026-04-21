@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml/badge.svg)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
-An interactive multi-select TUI for installing, uninstalling, and updating system tasks and utilities across all major Linux distributions. Supports 70+ utilities organized by category, automatic pre-operation snapshots, and full CLI automation.
+An interactive multi-select TUI for installing, uninstalling, and updating system tasks and utilities across all major Linux distributions. Supports 100+ utilities organized by category, automatic pre-operation snapshots, and full CLI automation.
 
 ## Requirements
 
@@ -123,19 +123,46 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 |------|-------------|
 | **Full System Upgrade/Update** | Comprehensive system upgrade — all configured package managers, essential tools, and cache cleanup |
 | **System Updates** | Package list refresh, full upgrade, autoremove, and cache clean |
-| **KDE Desktop** | Installs KDE Plasma desktop environment with SDDM |
-| **NVIDIA Drivers** | Detects available drivers, lets you choose a version, installs 32-bit libs, nvtop, and NVIDIA Container Toolkit if Docker is present |
-| **AMD Drivers** | Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance |
-| **XEN Guest Utilities** | Mounts XCP-NG ISO and runs the tools installer |
+| **Mount Local Drive** | Interactively select an unmounted block device and add it to `/etc/fstab` |
+| **Mount NFS Share** | Discover and mount an NFS export from a remote server, persisted in `/etc/fstab` |
+| **Mount SMB Share** | Connect to an SMB/CIFS server, store credentials securely, and persist mount in `/etc/fstab` |
+| **Manage Share** | Update or unmount an existing linux_util-managed mount |
 | **Enable RDP** | Enables Remote Desktop Protocol access via XRDP server |
 | **Flatpak Setup** | Configures Flatpak and adds the Flathub repository |
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
-| **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/Neon only)* |
+| **Num Lock at Boot** | Enables Num Lock on TTY consoles and the display manager login screen |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
-| **Create Snapshot** | Creates a Timeshift snapshot with a user-provided description |
-| **Restore Snapshot** | Lists available Timeshift snapshots, takes a safety snapshot, then restores the selected one |
+| **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/KDE Neon only)* |
+| **Fix Grub on BTRFS** | Fixes GRUB boot entries after BTRFS snapshot restores *(Ubuntu/Kubuntu/KDE Neon only)* |
+| **Fix Monitor Layout at Login** | Restores monitor layout on the login screen *(Ubuntu/Kubuntu/KDE Neon only)* |
 
 ### Utilities by Category
+
+#### Drivers
+
+| Utility | Description |
+|---------|-------------|
+| **AMD Drivers** | Installs open-source AMD GPU drivers (AMDGPU/Mesa) |
+| **AMD CPU Microcode & Firmware** | Installs AMD CPU microcode updates and firmware packages |
+| **Intel CPU Microcode & Thermal** | Installs Intel CPU microcode updates and thermal management tools |
+| **LACT** | Linux AMDGPU Control Application — fan curves, power limits, overclocking |
+| **NVIDIA Drivers** | Detects available drivers, lets you choose a version, installs 32-bit libs, nvtop, and NVIDIA Container Toolkit if Docker is present |
+| **XEN Guest Utilities** | Mounts XCP-NG ISO and runs the tools installer |
+
+#### Desktop Environments
+
+| Utility | Description |
+|---------|-------------|
+| **Budgie Desktop** | Solus-origin desktop focused on simplicity and elegance |
+| **Cinnamon Desktop** | Traditional layout desktop from the Linux Mint team |
+| **COSMIC Desktop** | New Rust-based desktop from System76 |
+| **Deepin Desktop** | Visually polished desktop from the Deepin project |
+| **GNOME Desktop** | Default desktop on Ubuntu and Fedora |
+| **KDE Desktop** | KDE Plasma desktop environment with SDDM |
+| **LXQt Desktop** | Lightweight Qt-based desktop |
+| **MATE Desktop** | Continuation of the classic GNOME 2 desktop |
+| **Pantheon Desktop** | elementary OS desktop environment |
+| **Xfce Desktop** | Lightweight and fast traditional desktop |
 
 #### Backup
 
@@ -158,14 +185,26 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 
 | Utility | Description |
 |---------|-------------|
+| **Ansible** | IT automation and configuration management tool |
 | **Claude Code** | Anthropic's AI coding assistant for the terminal |
 | **Cursor IDE** | AI-powered code editor built on VS Code |
 | **DBeaver** | Universal database management tool |
 | **Docker** | Container platform — official repos, adds user to `docker` group |
 | **GitHub CLI** | Official CLI for GitHub — repos, issues, PRs, and workflows |
+| **Go SDK** | Official Go programming language toolchain |
 | **JetBrains Toolbox** | Manager for JetBrains IDEs (IntelliJ, PyCharm, WebStorm, etc.) |
+| **k9s** | Terminal UI for managing Kubernetes clusters |
+| **kubectl** | Kubernetes command-line tool |
+| **Neovim** | Extensible Vim-based text editor |
+| **Node.js** | JavaScript runtime — LTS release via NodeSource |
 | **NVM** | Node Version Manager — install and switch Node.js versions |
+| **OpenTofu** | Open-source Terraform-compatible infrastructure-as-code tool |
+| **Podman** | Daemonless OCI container engine |
 | **Postman** | API development and testing platform |
+| **pyenv** | Python version manager |
+| **Rustup** | Rust toolchain installer and version manager |
+| **Terraform** | HashiCorp infrastructure-as-code tool |
+| **Virt-Manager** | GUI for managing KVM/QEMU virtual machines |
 | **Visual Studio Code** | Microsoft's extensible code editor |
 
 #### Gaming
@@ -185,52 +224,76 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 
 | Utility | Description |
 |---------|-------------|
+| **AnyDesk** | Remote desktop application |
+| **Bitwarden Extension** | Bitwarden browser extension installer |
 | **Brave Browser** | Privacy-focused Chromium browser with built-in ad blocking |
 | **Chromium** | Open-source browser, upstream base for Chrome |
 | **Devolutions RDM** | Remote Desktop Manager — Cloudsmith repo / AUR / flatpak / snap |
 | **Discord** | Voice, video, and text communication platform |
+| **Element (Matrix)** | Matrix protocol client for decentralised messaging |
 | **FileZilla** | FTP, FTPS, and SFTP client |
 | **Firefox** | Mozilla's open-source browser |
 | **Google Chrome** | Google's browser with sync and developer tools |
+| **Joplin Web Clipper** | Browser extension for saving web content to Joplin |
 | **KMail** | KDE's email client with PGP encryption |
+| **LibreWolf** | Privacy-hardened Firefox fork |
 | **OpenSSH Server** | Secure Shell server for remote access |
 | **PIA VPN** | Private Internet Access VPN client |
 | **ProtonVPN** | Free and open-source VPN by Proton |
 | **QBittorrent** | Open-source BitTorrent client |
 | **Remmina** | Remote desktop client (RDP, VNC, SSH, SPICE) |
+| **RustDesk** | Open-source remote desktop and remote assistance tool |
 | **Signal Desktop** | End-to-end encrypted messaging |
+| **Slack** | Team messaging and collaboration platform |
+| **SponsorBlock Extension** | Browser extension to skip sponsored segments in YouTube videos |
 | **Syncthing** | Peer-to-peer file sync between devices |
 | **Tailscale** | Zero-config mesh VPN built on WireGuard |
 | **Telegram Desktop** | Cloud-based messaging with groups, channels, and file sharing |
 | **Termius SSH Client** | Modern SSH client with cross-device sync |
 | **Thorium Browser** | Speed-optimized Chromium browser |
 | **Thunderbird** | Mozilla's email client with calendar and PGP |
+| **Tor Browser** | Anonymous browsing via the Tor network |
 | **Vivaldi Browser** | Highly customizable Chromium browser |
 | **WireGuard Client** | Lightweight VPN client using WireGuard protocol |
 | **WireGuard Server** | Sets up a WireGuard VPN server |
+| **Zoom** | Video conferencing and collaboration platform |
 
 #### Productivity
 
 | Utility | Description |
 |---------|-------------|
+| **Audacity** | Open-source audio editor and recorder |
 | **Bitwarden Client** | Open-source password manager — `.deb` / `.rpm` / AUR / snap / flatpak |
+| **Flameshot** | Feature-rich screenshot tool with annotation support |
 | **GIMP** | GNU Image Manipulation Program |
+| **HandBrake** | Open-source video transcoder |
+| **Inkscape** | Professional vector graphics editor |
 | **Joplin Client** | Note-taking app with Markdown and sync (AppImage) |
+| **Kdenlive** | Open-source video editor by KDE |
+| **Krita** | Professional digital painting application |
 | **LibreOffice** | Open-source office suite — direct download / native packages / flatpak |
+| **Logseq** | Privacy-first knowledge management and outliner |
+| **Mark Text** | Simple and elegant Markdown editor |
 | **Nextcloud Desktop** | Sync client for self-hosted Nextcloud cloud storage |
 | **OBS Studio** | Video recording and live streaming |
 | **Obsidian** | Markdown-based knowledge base with graphs and plugins |
 | **OnlyOffice** | Office suite with MS Office format compatibility |
 | **Standard Notes** | End-to-end encrypted notes with cross-platform sync |
+| **VLC** | Versatile media player supporting virtually all formats |
 | **WPS Office** | MS Office-compatible office suite |
+| **Zotero** | Reference manager and research tool |
 
 #### System Tools
 
 | Utility | Description |
 |---------|-------------|
 | **Btop** | Terminal-based resource monitor with rich visuals |
+| **ClamAV** | Open-source antivirus engine |
 | **Fastfetch** | Fast system information display tool |
+| **Filelight** | Disk usage analyzer with interactive sunburst chart |
+| **Input Leap** | Software KVM — share keyboard and mouse across machines |
 | **Stacer** | Graphical system optimizer and monitor |
+| **Ventoy** | Bootable USB tool — boot multiple ISOs from one drive |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |
 
 ## Supported Distributions
@@ -363,7 +426,7 @@ linux_util/
 │   ├── menu.sh              TUI rendering, keyboard navigation, category layout
 │   ├── installers.sh        Loader + registration for all utilities/system tasks
 │   ├── profiles.sh          Curated installation presets
-│   └── installers/          Per-utility installer scripts (126 files, one per utility/task)
+│   └── installers/          Per-utility installer scripts (132 files, one per utility/task)
 ├── logs/                    Timestamped execution logs
 ├── tests/
 │   └── test_linux_util.sh   Test suite
