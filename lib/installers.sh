@@ -44,6 +44,8 @@ check_always_false() {
 register_system_task "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update get_version_full_update
 NO_RETRY["Full System Upgrade/Update"]=1
 register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates      get_version_system_updates
+register_system_task "Topgrade"           install_topgrade        check_topgrade        uninstall_topgrade        update_topgrade           get_version_topgrade
+NO_RETRY["Topgrade"]=1
 register_system_task "Mount Local Drive"  setup_mount_local_drive check_mount_local_drive uninstall_mount_local_drive update_mount_local_drive  get_version_mount_local_drive
 register_system_task "Mount NFS Share"    setup_mount_nfs_share   check_mount_nfs_share   uninstall_mount_nfs_share   update_mount_nfs_share    get_version_mount_nfs_share
 register_system_task "Mount SMB Share"    setup_mount_smb_share   check_mount_smb_share   uninstall_mount_smb_share   update_mount_smb_share    get_version_mount_smb_share
@@ -453,6 +455,9 @@ UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
 
 # System Tasks uses interleaved mode: subcategory folders appear in registration order
 SUBCATEGORY_INTERLEAVED["System Tasks"]=1
+UTILITY_SUBCATEGORY["Full System Upgrade/Update"]="System Updaters"
+UTILITY_SUBCATEGORY["System Updates"]="System Updaters"
+UTILITY_SUBCATEGORY["Topgrade"]="System Updaters"
 UTILITY_SUBCATEGORY["Mount Local Drive"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Mount NFS Share"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Mount SMB Share"]="Mount / Unmount Shares"
@@ -467,6 +472,7 @@ SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Extensions|Messaging|Ema
 # System Tasks
 UTILITY_DESCRIPTION["Full System Upgrade/Update"]="Performs a comprehensive system upgrade including all configured package managers and removes unused packages."
 UTILITY_DESCRIPTION["System Updates"]="Installs and configures automatic system update scheduling via systemd timers or cron."
+UTILITY_DESCRIPTION["Topgrade"]="Runs all configured updaters in one command: apt/dnf/pacman, Flatpak, Snap, Cargo, pip, npm, Brew, and more. On Bazzite the binary is pre-installed (use 'ujust update'); this entry manages your personal topgrade.toml config and offers Workstation, Server, and Bazzite presets. Not recommended for servers hosting sensitive services — use System Updates instead."
 UTILITY_DESCRIPTION["Mount Local Drive"]="Interactively selects an unmounted block device and adds it to /etc/fstab, mounting it permanently under ~/media/<name>. Supports ext4, xfs, btrfs, NTFS, exFAT, and vFAT. Backs up fstab before any changes."
 UTILITY_DESCRIPTION["Mount NFS Share"]="Discovers NFS exports from a remote server via showmount and mounts the chosen share persistently via /etc/fstab. Installs NFS client tools if needed and backs up fstab before any changes."
 UTILITY_DESCRIPTION["Mount SMB Share"]="Connects to an SMB/CIFS server, prompts for credentials, lists available shares, and mounts the chosen share persistently via /etc/fstab. Credentials are stored in a private file under HOME. Installs cifs-utils if needed and backs up fstab before any changes."
