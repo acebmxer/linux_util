@@ -150,7 +150,11 @@ _topgrade_install_binary() {
 # ─── Config setup ────────────────────────────────────────────────────────────
 
 # Interactively offer config template selection and deploy to ~/.config/topgrade/topgrade.toml.
+# Pass --force to skip the overwrite confirmation when the caller already obtained consent.
 _topgrade_config_setup() {
+    local force=0
+    [[ "${1:-}" == "--force" ]] && force=1
+
     local config_dir config_file
     config_dir=$(_topgrade_config_dir)
     config_file=$(_topgrade_config_file)
@@ -162,8 +166,8 @@ _topgrade_config_setup() {
         return 0
     fi
 
-    # If a config already exists, ask before overwriting
-    if [[ -f "$config_file" ]]; then
+    # If a config already exists, ask before overwriting (unless caller already confirmed)
+    if [[ -f "$config_file" && "$force" -eq 0 ]]; then
         local overwrite=""
         echo ""
         echo "  A Topgrade config already exists at: ${config_file}"
@@ -282,7 +286,7 @@ update_topgrade() {
         echo ""
         read -rp "  Replace existing Topgrade config with a fresh template? (y/N): " replace_cfg < /dev/tty
         if [[ "$replace_cfg" =~ ^[Yy]$ ]]; then
-            _topgrade_config_setup
+            _topgrade_config_setup --force
         else
             info "Config unchanged: ${config_file}"
         fi
