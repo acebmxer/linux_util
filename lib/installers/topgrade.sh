@@ -239,7 +239,21 @@ uninstall_topgrade() {
             ;;
     esac
 
-    info "Topgrade binary removed. Config at $(_topgrade_config_file) preserved."
+    local config_file
+    config_file=$(_topgrade_config_file)
+    if [[ -f "$config_file" ]]; then
+        local remove_cfg=""
+        echo ""
+        read -rp "  Remove Topgrade config at ${config_file}? (y/N): " remove_cfg < /dev/tty
+        if [[ "$remove_cfg" =~ ^[Yy]$ ]]; then
+            rm -f "$config_file"
+            info "Config removed."
+        else
+            info "Config preserved at: ${config_file}"
+        fi
+    fi
+
+    info "Topgrade uninstalled."
 }
 
 # ─── Update ──────────────────────────────────────────────────────────────────
@@ -260,6 +274,21 @@ update_topgrade() {
             ;;
     esac
     info "Topgrade updated."
+
+    local config_file
+    config_file=$(_topgrade_config_file)
+    if [[ -f "$config_file" ]]; then
+        local replace_cfg=""
+        echo ""
+        read -rp "  Replace existing Topgrade config with a fresh template? (y/N): " replace_cfg < /dev/tty
+        if [[ "$replace_cfg" =~ ^[Yy]$ ]]; then
+            _topgrade_config_setup
+        else
+            info "Config unchanged: ${config_file}"
+        fi
+    else
+        _topgrade_config_setup
+    fi
 }
 
 # ─── Version ─────────────────────────────────────────────────────────────────
