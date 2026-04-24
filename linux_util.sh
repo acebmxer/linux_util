@@ -572,6 +572,9 @@ process_selected() {
                             info "Exiting."
                             exit 0
                             ;;
+                        *)
+                            echo "  Please press Y to reload or N to exit."
+                            ;;
                     esac
                 done
                 ;;
@@ -590,6 +593,9 @@ process_selected() {
                 n|N)
                     info "Exiting."
                     exit 0
+                    ;;
+                *)
+                    echo "  Please press Y to reload or N to exit."
                     ;;
             esac
         done
