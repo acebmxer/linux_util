@@ -14,6 +14,8 @@
 # run `topgrade` directly. Keep both in sync if you customise either.
 
 [misc]
+# Skip the retry prompt on failure — avoids getting stuck when Ctrl+C breaks terminal input
+no_retry = true
 pre_sudo = true
 
 # Bazzite's system config already covers: system (rpm-ostree), flatpak, brew,
