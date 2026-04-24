@@ -56,27 +56,70 @@ install_topgrade() {
     info "Topgrade installed."
 }
 
-# Download and install the latest pre-built Topgrade binary from GitHub releases.
+# Download and install the latest pre-built Topgrade release from GitHub.
+# Prefers the native .deb on Debian-family distros; falls back to the musl
+# tarball on all other distros.
+# Release asset naming (as of v17+):
+#   tarball:  topgrade-v<VER>-<ARCH>-unknown-linux-musl.tar.gz
+#   deb:      topgrade_<VER>_<DEB_ARCH>.deb
 _topgrade_install_binary() {
     local arch
     arch=$(uname -m)
     local api_url="https://api.github.com/repos/topgrade-rs/topgrade/releases/latest"
 
-    # Map uname -m to the naming convention used in release assets
+    # Fetch the full release JSON once and reuse it
+    local release_json
+    release_json=$(curl -fsSL "$api_url") || {
+        error "Topgrade: failed to fetch release info from GitHub."
+        return 1
+    }
+
+    # Prefer .deb on Debian-family distros
+    if [[ "${DISTRO_FAMILY:-}" == "debian" ]]; then
+        local deb_arch
+        case "$arch" in
+            x86_64)  deb_arch="amd64" ;;
+            aarch64) deb_arch="arm64" ;;
+            armv7l)  deb_arch="armhf" ;;
+            *)
+                warn "Topgrade: no .deb for ${arch}, falling back to tarball."
+                deb_arch=""
+                ;;
+        esac
+
+        if [[ -n "$deb_arch" ]]; then
+            local deb_url
+            deb_url=$(echo "$release_json" \
+                | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+topgrade_[^"]+_'"${deb_arch}"'\.deb(?=")' \
+                | head -1)
+
+            if [[ -n "$deb_url" ]]; then
+                local tmpfile
+                tmpfile=$(mktemp /tmp/topgrade-XXXXXX.deb)
+                CLEANUP_FILES+=("$tmpfile")
+                info "Downloading Topgrade .deb from GitHub..."
+                curl -fsSL -o "$tmpfile" "$deb_url" || { error "Download failed."; return 1; }
+                verify_download "$tmpfile" "deb" "Topgrade" || return 1
+                sudo dpkg -i "$tmpfile" || { error "dpkg install failed."; return 1; }
+                return 0
+            fi
+        fi
+    fi
+
+    # Tarball fallback for all other distros (musl static binary)
     local asset_arch
     case "$arch" in
         x86_64)  asset_arch="x86_64" ;;
         aarch64) asset_arch="aarch64" ;;
-        armv7l)  asset_arch="armv7" ;;
         *)
-            error "Topgrade: unsupported architecture: ${arch}"
+            error "Topgrade: unsupported architecture for tarball install: ${arch}"
             return 1
             ;;
     esac
 
     local download_url
-    download_url=$(curl -fsSL "$api_url" \
-        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+topgrade-v[^"]+'"${asset_arch}"'-unknown-linux-musl\.tar\.gz"' \
+    download_url=$(echo "$release_json" \
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+topgrade-v[^"]+'"${asset_arch}"'-unknown-linux-musl\.tar\.gz(?=")' \
         | head -1)
 
     if [[ -z "$download_url" ]]; then
