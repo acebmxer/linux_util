@@ -143,6 +143,7 @@ register_utility "OpenTofu"            install_opentofu         check_opentofu  
 register_utility "PIA VPN"             install_pia_vpn          check_pia_vpn          uninstall_pia_vpn          update_pia_vpn             get_version_pia_vpn
 register_utility "Podman"              install_podman           check_podman           uninstall_podman           update_podman              get_version_podman
 register_utility "Postman"             install_postman          check_postman          uninstall_postman          update_postman             get_version_postman
+register_utility "PowerShell"          install_powershell       check_powershell       uninstall_powershell       update_powershell          get_version_powershell
 register_utility "ProtonUp-Qt"         install_protonup_qt      check_protonup_qt      uninstall_protonup_qt      update_protonup_qt         get_version_protonup_qt
 register_utility "ProtonVPN"           install_protonvpn        check_protonvpn        uninstall_protonvpn        update_protonvpn           get_version_protonvpn
 register_utility "pyenv"               install_pyenv            check_pyenv            uninstall_pyenv            update_pyenv               get_version_pyenv
@@ -312,6 +313,7 @@ UTILITY_CATEGORY["OnlyOffice"]="Productivity"
 UTILITY_CATEGORY["OpenSSH Server"]="Internet"
 UTILITY_CATEGORY["PIA VPN"]="Internet"
 UTILITY_CATEGORY["Postman"]="Development"
+UTILITY_CATEGORY["PowerShell"]="Development"
 UTILITY_CATEGORY["ProtonUp-Qt"]="Gaming"
 UTILITY_CATEGORY["ProtonVPN"]="Internet"
 UTILITY_CATEGORY["QBittorrent"]="Internet"
@@ -522,6 +524,7 @@ UTILITY_DESCRIPTION["NVM"]="Node Version Manager — install and switch between 
 UTILITY_DESCRIPTION["OpenTofu"]="Open-source Terraform fork for infrastructure-as-code provisioning across cloud providers and on-prem resources."
 UTILITY_DESCRIPTION["Podman"]="Daemonless container engine compatible with Docker CLI for building and running OCI containers without root."
 UTILITY_DESCRIPTION["Postman"]="API development and testing platform for designing, debugging, and collaborating on APIs."
+UTILITY_DESCRIPTION["PowerShell"]="Microsoft's cross-platform task automation shell and scripting language built on .NET. Provides powerful object-based pipelines, remote management via WinRM/SSH, and broad compatibility with Windows PowerShell scripts. Installed via the official Microsoft apt repository where available, otherwise via the GitHub release .deb."
 UTILITY_DESCRIPTION["pyenv"]="Python version manager for installing and switching between multiple Python versions per-project."
 UTILITY_DESCRIPTION["Rustup"]="Official Rust toolchain installer and version manager for the Rust programming language."
 UTILITY_DESCRIPTION["Terraform"]="HashiCorp's infrastructure-as-code tool for provisioning and managing cloud resources with declarative HCL configs."
