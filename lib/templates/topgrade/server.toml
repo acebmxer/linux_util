@@ -13,14 +13,20 @@ no_retry = true
 # Run `sudo -v` at the start to cache credentials and avoid mid-run password prompts
 pre_sudo = true
 
-# Only run these steps — nothing GUI-related, no firmware flashes
+# Servers: allowlist only the steps you explicitly want — no GUI tools, no firmware flashes
 only = [
     "system",
-    "snap",
     "flatpak",
+    "snap",
     "containers",
     "pip3",
 ]
+
+# Don't let pip failures abort the whole run
+ignore_failures = ["pip3", "clam_av_db"]
+
+# Clean up old temp files after each run
+cleanup = true
 
 [linux]
 # Yay/Paru (Arch AUR helpers) — pass extra flags if desired

@@ -9,34 +9,41 @@ no_retry = true
 # Run `sudo -v` at the start to cache credentials and avoid mid-run password prompts
 pre_sudo = true
 
-# Steps to run — comment out anything you don't want updated
-only = [
-    "system",
-    "flatpak",
-    "snap",
-    "firmware",
-    "cargo",
-    "pip3",
-    "node",
-    "brew_formula",
-    "brew_cask",
-    "nix",
-    "home_manager",
+# Steps to always skip — topgrade auto-discovers everything else
+# Remove entries for tools you actually want updated
+disable = [
+    "snap",     # Snap auto-updates itself; no need to trigger it here
+    "firmware", # Firmware flashes should be deliberate — enable if you're comfortable
 ]
+
+# Don't let pip failures abort the whole run
+ignore_failures = ["pip3", "clam_av_db"]
+
+# Clean up old temp files after each run
+cleanup = true
+
+# Send a desktop notification when the run finishes (only on failure)
+notify_end = "on_failure"
+
+[git]
+# Repos to pull during updates — add your dotfiles/projects here
+# repos = ["~/dotfiles", "~/src/*/"]
+max_concurrency = 5
+arguments = "--rebase --autostash"
 
 [linux]
 # Yay/Paru (Arch AUR helpers) — pass extra flags if desired
 # yay_arguments = "--nodevel"
 
 [firmware]
-# Offer to install available firmware updates
-upgrade = true
-
-[npm]
-# Use sudo if the npm global directory isn't owned by the current user
-# use_sudo = true
+# Set to true to actually install firmware updates (requires firmware step to be enabled above)
+upgrade = false
 
 [python]
 # Uncomment to also upgrade pip-installed packages
 # enable_pip_review = true
 # enable_pip_review_local = true
+
+[npm]
+# Use sudo if the npm global directory isn't owned by the current user
+# use_sudo = true

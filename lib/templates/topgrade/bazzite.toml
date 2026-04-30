@@ -20,23 +20,31 @@ no_retry = true
 # Run `sudo -v` at the start to cache credentials and avoid mid-run password prompts
 pre_sudo = true
 
-# Bazzite's system config already covers: system (rpm-ostree), flatpak, brew,
-# distrobox, firmware, and custom CSS Loader theme updates. The only list
-# below intentionally mirrors that set so you can trim steps you don't need.
-only = [
-    "system",        # rpm-ostree image update
-    "flatpak",       # Flatpak app updates
-    "brew_formula",  # Homebrew formulae (if installed)
-    "brew_cask",     # Homebrew casks (if installed)
-    "distrobox",     # Distrobox container updates
-    "firmware",      # fwupd firmware
-    "pip3",
-    "cargo",
-    "node",
+# Steps to always skip — topgrade auto-discovers everything else
+# Bazzite's ujust update handles the system image (rpm-ostree); disable firmware
+# flashes here so they remain deliberate
+disable = [
+    "firmware", # Firmware flashes should be deliberate — remove to enable
 ]
 
+# Don't let pip failures abort the whole run
+ignore_failures = ["pip3", "clam_av_db"]
+
+# Clean up old temp files after each run
+cleanup = true
+
+# Send a desktop notification when the run finishes (only on failure)
+notify_end = "on_failure"
+
+[git]
+# Repos to pull during updates — add your dotfiles/projects here
+# repos = ["~/dotfiles", "~/src/*/"]
+max_concurrency = 5
+arguments = "--rebase --autostash"
+
 [firmware]
-upgrade = true
+# Set to true to actually install firmware updates (also remove firmware from disable list above)
+upgrade = false
 
 [python]
 # Uncomment to also upgrade pip-installed packages

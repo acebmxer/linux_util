@@ -81,7 +81,10 @@ update_clamav() {
             sudo zypper install -y clamtk
             ;;
     esac
+    # Stop the update service before running freshclam manually to avoid log lock conflict
+    sudo systemctl stop clamav-freshclam 2>/dev/null || true
     sudo freshclam 2>/dev/null || true
+    sudo systemctl start clamav-freshclam 2>/dev/null || true
 }
 
 get_version_clamav() {
