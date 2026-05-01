@@ -241,7 +241,10 @@ pkg_full_upgrade() {
                  elif command -v paru &>/dev/null; then
                      "$_run" "Running full system upgrade (paru)" paru -Syu $_nc
                  else
-                     "$_run" "Running full system upgrade"        sudo pacman -Syu $_nc
+                     warn "No AUR helper (yay/paru) found. AUR packages will NOT be updated."
+                     warn "To enable AUR updates, install yay: https://github.com/Jguer/yay#installation"
+                     warn "  or paru: https://github.com/morganamilo/paru#installation"
+                     "$_run" "Running full system upgrade (pacman only)" sudo pacman -Syu $_nc
                  fi ;;
         zypper)  "$_run" "Running full system upgrade" sudo zypper update $_y ;;
     esac
@@ -521,34 +524,37 @@ _apt_codename_upgrade() {
     # Build escaped mirror pattern for sed (pipe-delimited -> backslash-escaped)
     local mirror_sed_pattern="${mirror_grep_pattern//|/\\|}"
 
-    # Step 5: Swap codenames in traditional .list files
-    # Only replace on deb/deb-src lines that ALSO contain an official mirror URL.
-    # This prevents modifying third-party repo lines in the same file.
+    # Step 5: Preview all source file changes and confirm before applying.
+    # Collect files to modify, generate a diff for each, show it to the user,
+    # then ask for confirmation before any sed -i runs.
     local sources_file
     local skipped_repos=false
+    local files_to_update=()
+    local sed_cmds=()
+
     if [[ -f /etc/apt/sources.list ]]; then
-        info "Updating codename in /etc/apt/sources.list..."
-        sudo sed -i "/^[[:space:]]*deb\(-src\)\?[[:space:]].*\(${mirror_sed_pattern}\)/s/\b${old_codename}\b/${new_codename}/g" /etc/apt/sources.list
+        files_to_update+=("/etc/apt/sources.list")
+        sed_cmds+=("/^[[:space:]]*deb\(-src\)\?[[:space:]].*\(${mirror_sed_pattern}\)/s/\b${old_codename}\b/${new_codename}/g")
     fi
     for sources_file in /etc/apt/sources.list.d/*.list; do
         [[ -f "$sources_file" ]] || continue
         if grep -qE "(${mirror_grep_pattern})" "$sources_file" 2>/dev/null; then
-            info "Updating codename in $(basename "$sources_file")..."
-            sudo sed -i "/^[[:space:]]*deb\(-src\)\?[[:space:]].*\(${mirror_sed_pattern}\)/s/\b${old_codename}\b/${new_codename}/g" "$sources_file"
+            files_to_update+=("$sources_file")
+            sed_cmds+=("/^[[:space:]]*deb\(-src\)\?[[:space:]].*\(${mirror_sed_pattern}\)/s/\b${old_codename}\b/${new_codename}/g")
         else
             verbose "Skipping third-party repo: $(basename "$sources_file")"
             skipped_repos=true
         fi
     done
 
-    # Step 6: Swap codenames in DEB822 .sources files (Suites: lines only)
+    # Step 6: Collect DEB822 .sources files (Suites: lines only)
     # DEB822 files group URIs and Suites in the same stanza, so we check
     # if the file contains an official mirror and only then swap Suites.
     for sources_file in /etc/apt/sources.list.d/*.sources; do
         [[ -f "$sources_file" ]] || continue
         if grep -qE "(${mirror_grep_pattern})" "$sources_file" 2>/dev/null; then
-            info "Updating codename in $(basename "$sources_file") (DEB822)..."
-            sudo sed -i "/^Suites:/s/\b${old_codename}\b/${new_codename}/g" "$sources_file"
+            files_to_update+=("$sources_file")
+            sed_cmds+=("/^Suites:/s/\b${old_codename}\b/${new_codename}/g")
         else
             verbose "Skipping third-party repo: $(basename "$sources_file")"
             skipped_repos=true
@@ -558,6 +564,48 @@ _apt_codename_upgrade() {
     if [[ "$skipped_repos" == "true" ]]; then
         warn "Third-party repositories were not modified. They may need manual updating for the new release."
     fi
+
+    if [[ ${#files_to_update[@]} -eq 0 ]]; then
+        warn "No official mirror source files found to update. The codename swap may have nothing to do."
+        return 1
+    fi
+
+    # Show a diff of every file that will be changed so the user can review
+    # before any destructive write happens.
+    echo ""
+    info "The following changes will be made to your APT source files:"
+    echo "  (${old_codename} -> ${new_codename})"
+    echo ""
+    local i
+    for (( i = 0; i < ${#files_to_update[@]}; i++ )); do
+        local f="${files_to_update[$i]}"
+        local cmd="${sed_cmds[$i]}"
+        local tmp_preview
+        tmp_preview=$(mktemp)
+        CLEANUP_FILES+=("$tmp_preview")
+        sudo sed "${cmd}" "$f" > "$tmp_preview" 2>/dev/null
+        if ! diff -u "$f" "$tmp_preview" > /dev/null 2>&1; then
+            echo "  --- $(basename "$f") ---"
+            diff -u "$f" "$tmp_preview" | grep -E '^[+-]' | grep -v '^[+-]{3}' | head -20 || true
+            echo ""
+        fi
+    done
+
+    local sources_confirm=""
+    read -rp "Apply these source file changes and proceed with the upgrade? (y/N): " sources_confirm
+    if [[ ! "$sources_confirm" =~ ^[Yy]$ ]]; then
+        info "Upgrade aborted. No source files were modified."
+        sudo rm -rf "$backup_dir"
+        return 1
+    fi
+
+    # Apply the changes now that the user has confirmed
+    for (( i = 0; i < ${#files_to_update[@]}; i++ )); do
+        local f="${files_to_update[$i]}"
+        local cmd="${sed_cmds[$i]}"
+        info "Updating codename in $(basename "$f")..."
+        sudo sed -i "${cmd}" "$f"
+    done
 
     # Step 7: Run apt-get update (apt-get is more stable for scripted use)
     info "Refreshing package lists for ${new_codename}..."
@@ -611,7 +659,12 @@ _apt_codename_upgrade_restore() {
 # leapp comes from AlmaLinux's ELevate project which requires its own repo.
 # RHEL proper ships leapp in its standard repos.
 _install_leapp_packages() {
-    # For community distros, install the ELevate repo first
+    # For community distros, install the ELevate repo first.
+    # Trust model: we install a noarch RPM directly from repo.almalinux.org.
+    # DNF verifies the RPM's built-in GPG signature on install, so the package
+    # itself is authenticated. This RPM then adds the ELevate repo with its GPG
+    # key, after which all subsequent ELevate packages are signature-verified.
+    # This is the standard bootstrapping pattern for third-party RHEL repos.
     if [[ "$DISTRO_ID" != "rhel" ]]; then
         if ! rpm -q elevate-release &>/dev/null; then
             info "Installing ELevate repo for upgrade support..."
@@ -831,13 +884,16 @@ pkg_check_upgrade_available() {
             return 1
             ;;
         opensuse-tumbleweed|arch|manjaro|endeavouros|garuda|artix|kali)
-            # Rolling release — no discrete version upgrades
-            return 1
+            # Rolling release — no discrete version upgrades.
+            # Return 2 (not 1) so callers can distinguish "rolling/no upgrade path"
+            # from "check failed" (1) and "upgrade available" (0).
+            return 2
             ;;
         rhel|centos|rocky|alma|ol|almalinux)
             # CentOS Stream is rolling — no discrete version upgrades
             if [[ -f /etc/centos-release ]] && grep -qi "stream" /etc/centos-release 2>/dev/null; then
-                return 1
+                info "CentOS Stream is a rolling release and does not support discrete version upgrades via this tool."
+                return 2
             fi
 
             # Install leapp if not present
@@ -855,6 +911,11 @@ pkg_check_upgrade_available() {
             # Lightweight check only — full preupgrade is deferred to
             # pkg_distro_upgrade since it takes 10-30 minutes.
             # Just verify leapp is installed and the target is a reasonable version.
+            # NOTE: This is an optimistic check. We confirm leapp is present and the
+            # target version is within the supported range (RHEL 8-11), but we do NOT
+            # run "leapp preupgrade" here. The real inhibitor analysis happens during
+            # pkg_distro_upgrade(). A return 0 here means "upgrade is likely possible",
+            # not "upgrade is guaranteed to succeed".
             if command -v leapp &>/dev/null && (( target_major >= 8 && target_major <= 11 )); then
                 echo "${target_major}.0"
                 return 0
@@ -1213,6 +1274,13 @@ pkg_distro_upgrade() {
                 error "openSUSE Leap upgrade to ${target_version} failed. Restoring repository files."
                 sudo cp "$repo_backup"/*.repo /etc/zypp/repos.d/
                 rm -rf "$repo_backup"
+                warn "Repository files have been restored to the pre-upgrade state."
+                warn "However, some packages may have already been upgraded to ${target_version} versions."
+                warn "Your system may be in a mixed-version state. Recommended steps:"
+                warn "  1. Run: sudo zypper ps   (check for processes using deleted files)"
+                warn "  2. Run: sudo zypper dup  (retry the upgrade once the issue is resolved)"
+                warn "  3. If the issue persists, consult the openSUSE upgrade guide:"
+                warn "     https://en.opensuse.org/SDB:System_upgrade"
                 return 1
             fi
             ;;
@@ -1400,6 +1468,14 @@ pkg_distro_upgrade() {
                 fi
             fi
             return 0
+            ;;
+        opensuse-tumbleweed|arch|manjaro|endeavouros|garuda|artix|cachyos|kali)
+            # Rolling releases have no discrete version upgrades — pkg_check_upgrade_available
+            # returns 2 for these distros, so this case should never be reached via the
+            # normal upgrade flow. Guard it explicitly to give a clear message if called directly.
+            warn "${DISTRO_ID} is a rolling release. There is no discrete version upgrade to perform."
+            warn "To update all packages, use the standard system update instead."
+            return 1
             ;;
         *)
             # Should never be reached (guarded by pkg_check_upgrade_available)

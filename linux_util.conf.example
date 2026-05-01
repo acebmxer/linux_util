@@ -22,6 +22,9 @@ retry_attempts=3
 # --- Network ---
 dns_check_enabled=true
 dns_timeout_seconds=10
+# Host used for connectivity check. Override if Cloudflare (1.1.1.1) is blocked
+# on your network (e.g., corporate firewalls). A fallback to 9.9.9.9 is always tried.
+# dns_check_host=1.1.1.1
 
 # --- Pre-flight ---
 # Minimum free disk space in MB before allowing installs

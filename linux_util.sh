@@ -39,6 +39,7 @@ LOCK_FILE="/tmp/linux_util_${USER:-$UID}.lock"
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
     echo "Error: Another instance of this script is already running."
+    echo "       If this is a stale lock, remove it with: rm -f ${LOCK_FILE}"
     exit 1
 fi
 

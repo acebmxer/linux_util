@@ -19,6 +19,7 @@ CFG_RETRY_ATTEMPTS=3
 
 CFG_DNS_CHECK_ENABLED=true
 CFG_DNS_TIMEOUT_SECONDS=10
+CFG_DNS_CHECK_HOST="1.1.1.1"  # Host used for connectivity check; override for corporate/restricted networks
 CFG_DISK_MIN_MB=1024       # Minimum free disk space in MB
 
 CFG_AUTO_CLEANUP=true
@@ -113,6 +114,7 @@ load_config() {
             retry_attempts)         _cfg_require_int "$key" "$value" && CFG_RETRY_ATTEMPTS="$value" ;;
             dns_check_enabled)      _cfg_require_bool "$key" "$value" && CFG_DNS_CHECK_ENABLED="$value" ;;
             dns_timeout_seconds)    _cfg_require_int "$key" "$value" && CFG_DNS_TIMEOUT_SECONDS="$value" ;;
+            dns_check_host)         CFG_DNS_CHECK_HOST="$value" ;;
             disk_min_mb)            _cfg_require_int "$key" "$value" && CFG_DISK_MIN_MB="$value" ;;
             auto_cleanup)           _cfg_require_bool "$key" "$value" && CFG_AUTO_CLEANUP="$value" ;;
             create_backups)         _cfg_require_bool "$key" "$value" && CFG_CREATE_BACKUPS="$value" ;;

@@ -88,6 +88,7 @@ _SYSINFO_HOST=""
 _SYSINFO_OS=""
 _SYSINFO_KERNEL=""
 _SYSINFO_CPU=""
+_SYSINFO_GPU=""
 _SYSINFO_MEM=""
 _SYSINFO_DISK=""
 _SYSINFO_UPTIME=""
@@ -416,6 +417,37 @@ _gather_sysinfo() {
     fi
     [[ -z "$_SYSINFO_CPU" ]] && _SYSINFO_CPU="unknown"
 
+    # GPU model — three-tier detection (no drivers required for tiers 2 & 3)
+    # Tier 1: nvidia-smi (drivers installed, gives clean name)
+    if command -v nvidia-smi &>/dev/null; then
+        _SYSINFO_GPU="$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)"
+    fi
+    # Tier 2: lspci (pciutils, reads hardware directly — no drivers needed)
+    if [[ -z "$_SYSINFO_GPU" ]] && command -v lspci &>/dev/null; then
+        _SYSINFO_GPU="$(lspci 2>/dev/null | grep -i 'vga\|3d controller\|display controller' | head -1 | sed 's/.*: //;s/ (.*//')"
+    fi
+    # Tier 3: PCI vendor ID via sysfs — works with zero tools installed
+    if [[ -z "$_SYSINFO_GPU" ]]; then
+        local _pci_dev
+        for _pci_dev in /sys/bus/pci/devices/*/class; do
+            local _class
+            _class="$(cat "$_pci_dev" 2>/dev/null)"
+            # 0x0300 = VGA, 0x0302 = 3D controller, 0x0380 = display controller
+            if [[ "$_class" == 0x0300* || "$_class" == 0x0302* || "$_class" == 0x0380* ]]; then
+                local _vendor
+                _vendor="$(cat "${_pci_dev%/class}/vendor" 2>/dev/null)"
+                case "$_vendor" in
+                    0x10de) _SYSINFO_GPU="NVIDIA (no driver)" ;;
+                    0x1002) _SYSINFO_GPU="AMD (no driver)" ;;
+                    0x8086) _SYSINFO_GPU="Intel (no driver)" ;;
+                    *)      _SYSINFO_GPU="GPU vendor ${_vendor:-unknown}" ;;
+                esac
+                break
+            fi
+        done
+    fi
+    [[ -z "$_SYSINFO_GPU" ]] && _SYSINFO_GPU="unknown"
+
     # Memory: total and available
     if [[ -f /proc/meminfo ]]; then
         local mem_total_kb mem_avail_kb
@@ -491,7 +523,7 @@ _calc_layout() {
     local _content_w=_min_w
     local _v
     for _v in "$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" \
-              "$_SYSINFO_CPU"  "$_SYSINFO_MEM" "$_SYSINFO_DISK" \
+              "$_SYSINFO_CPU" "$_SYSINFO_GPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" \
               "$_SYSINFO_UPTIME"; do
         local _needed=$(( ${#_v} + _overhead ))
         (( _needed > _content_w )) && _content_w=$_needed
@@ -510,8 +542,8 @@ _calc_layout() {
 
     _RIGHT_W=$(( _TERM_COLS - _LEFT_W ))
 
-    # Vertical: title(3) + main + status(4)
-    _MAIN_H=$(( _TERM_ROWS - 3 - 4 ))
+    # Vertical: title(4) + main + status(4)
+    _MAIN_H=$(( _TERM_ROWS - 4 - 4 ))
     (( _MAIN_H < 5 )) && _MAIN_H=5
 
     # Description panel height: ~30% of main area, clamped to [4, 10]
@@ -599,7 +631,7 @@ _render_title() {
         search_text=" ${DIM}Type to search (/)${RESET}"
     fi
     # Search label + input on right side
-    local search_label="${BOLD}${CYAN}SEARCH${RESET} "
+    local search_label=" ${BOLD}${CYAN}SEARCH${RESET} "
     local search_content="${search_label}${search_text}"
     _pad_or_truncate "$search_content" "$right_inner"
     local right_cell="${_POT_RESULT}"
@@ -610,7 +642,14 @@ _render_title() {
 
     _TITLE_LINES+=("${CYAN}${_BD_V}${left_cell}${sbc}${_BD_V}${RESET}${right_cell}${CYAN}${_BD_V}${RESET}${eol}")
 
-    # --- Line 3: separator row connecting title to panels ---
+    # --- Line 3: By: PozzaTech (left) | empty (right) ---
+    local by_text=" ${DIM}By: ${RESET}${BOLD}${BLUE}PozzaTech${RESET}"
+    _pad_or_truncate "$by_text" "$left_inner"
+    local by_cell="${_POT_RESULT}"
+    _pad_or_truncate "" "$right_inner"
+    _TITLE_LINES+=("${CYAN}${_BD_V}${RESET}${by_cell}${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}${eol}")
+
+    # --- Line 4: separator row connecting title to panels ---
     _hline "$left_inner"
     local left_sep="$_HLINE_RESULT"
     _hline "$right_inner"
@@ -714,8 +753,8 @@ _render_left() {
     (( row++ ))
 
     # Sysinfo entries: label + value
-    local -a _si_labels=("Host" "OS" "Kernel" "CPU" "Mem" "Disk" "Uptime")
-    local -a _si_values=("$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" "$_SYSINFO_CPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" "$_SYSINFO_UPTIME")
+    local -a _si_labels=("Host" "OS" "Kernel" "CPU" "GPU" "Mem" "Disk" "Uptime")
+    local -a _si_values=("$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" "$_SYSINFO_CPU" "$_SYSINFO_GPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" "$_SYSINFO_UPTIME")
 
     local label_w=8  # fixed label column width (includes leading space)
     local val_w=$(( inner_w - label_w - 2 ))  # -2 for ": " separator
@@ -812,7 +851,7 @@ _render_left() {
         fi
     fi
 
-    # Fill remaining rows with empty lines
+    # Fill any remaining rows with empty lines
     while (( row < _MAIN_H )); do
         _pad_or_truncate "" "$inner_w"
         _LEFT_LINES+=("${CYAN}${_BD_V}${RESET}${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
