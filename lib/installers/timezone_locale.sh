@@ -170,8 +170,29 @@ _select_locale() {
     done
 
     if (( ${#matches[@]} == 0 )); then
-        warn "No matching locales found for '${loc_term}'."
-        return 1
+        # On minimal systems (cloud VMs, containers), only C/POSIX are generated.
+        # Offer to generate the requested locale if locale-gen is available.
+        if command -v locale-gen &>/dev/null; then
+            local gen_candidate
+            gen_candidate=$(grep -i "^${loc_term}" /usr/share/i18n/SUPPORTED 2>/dev/null | head -1 | awk '{print $1}')
+            if [[ -n "$gen_candidate" ]]; then
+                warn "Locale '${loc_term}' is not generated yet. Nearest supported: ${gen_candidate}"
+                local confirm
+                read -rp "Generate ${gen_candidate} now? [y/N]: " confirm < /dev/tty
+                if [[ "${confirm,,}" == "y" ]]; then
+                    run_as_root locale-gen "$gen_candidate" || {
+                        warn "locale-gen failed for ${gen_candidate}."
+                        return 1
+                    }
+                    mapfile -t available_locales < <(locale -a 2>/dev/null)
+                    mapfile -t matches < <(printf '%s\n' "${available_locales[@]}" | grep -i "${loc_term}" | head -20)
+                fi
+            fi
+        fi
+        if (( ${#matches[@]} == 0 )); then
+            warn "No matching locales found for '${loc_term}'."
+            return 1
+        fi
     fi
 
     local selected_locale
