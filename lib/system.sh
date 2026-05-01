@@ -65,9 +65,14 @@ preflight_checks() {
 
     # 2. Internet connectivity
     if [[ "$CFG_DNS_CHECK_ENABLED" == "true" ]]; then
-        if ! { curl -fsS --max-time "$CFG_DNS_TIMEOUT_SECONDS" https://1.1.1.1 || \
-               ping -c1 -W"$CFG_DNS_TIMEOUT_SECONDS" 8.8.8.8; } &>/dev/null; then
+        local _check_host="${CFG_DNS_CHECK_HOST:-1.1.1.1}"
+        # Try the configured host first, then fall back to 9.9.9.9 (Quad9) as a
+        # secondary, so corporate/restricted networks that block Cloudflare still pass.
+        if ! { curl -fsS --max-time "$CFG_DNS_TIMEOUT_SECONDS" "https://${_check_host}" || \
+               curl -fsS --max-time "$CFG_DNS_TIMEOUT_SECONDS" "https://9.9.9.9"        || \
+               ping -c1 -W"$CFG_DNS_TIMEOUT_SECONDS" "$_check_host"; } &>/dev/null; then
             warn "Internet connectivity check failed. Downloads may not work."
+            warn "If on a corporate/restricted network, set dns_check_host in linux_util.conf."
             log_warning "Pre-flight: Internet connectivity check failed"
             (( checks_warned += 1 ))
         else
@@ -133,7 +138,7 @@ preflight_checks() {
             ;;
         zypper)
             # Check that at least one repo is registered.
-            if sudo zypper repos 2>/dev/null | grep -q 'http'; then
+            if zypper repos 2>/dev/null | grep -q 'http'; then
                 repo_ok=true
             fi
             ;;

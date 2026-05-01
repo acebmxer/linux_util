@@ -58,8 +58,13 @@ aur_build() {
     ensure_aur_build_deps
     local build_dir
     build_dir=$(mktemp -d) || { warn "Failed to create temp build directory"; return 1; }
-    CLEANUP_FILES+=("$build_dir")
-    git clone "https://aur.archlinux.org/${pkg_name}.git" "$build_dir/${pkg_name}"
+    # Trap cleans up on any exit path (success, error, or signal) so partial
+    # build artifacts never linger even if git clone or makepkg fails.
+    # shellcheck disable=SC2064
+    trap "rm -rf '$build_dir'" RETURN
+    git clone "https://aur.archlinux.org/${pkg_name}.git" "$build_dir/${pkg_name}" || {
+        warn "Failed to clone AUR package: $pkg_name"
+        return 1
+    }
     (cd "$build_dir/${pkg_name}" && makepkg -si --noconfirm)
-    rm -rf "$build_dir"
 }
