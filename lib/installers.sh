@@ -59,6 +59,12 @@ register_system_task "UFW Firewall"       install_ufw             check_ufw     
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 
+# Debian/Ubuntu-only system tasks
+if [[ "$DISTRO_FAMILY" == "debian" ]]; then
+    register_system_task "Configure Unattended Upgrades" install_unattended_upgrades check_unattended_upgrades uninstall_unattended_upgrades update_unattended_upgrades get_version_unattended_upgrades
+    register_system_task "Install fail2ban"              install_fail2ban            check_fail2ban            uninstall_fail2ban            update_fail2ban            get_version_fail2ban
+fi
+
 # Command-not-found auto-install prompt (Ubuntu, Kubuntu, KDE Neon)
 # Prerequisite: enables interactive y/N install prompt for missing commands in bash.
 if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DISTRO_ID" == "neon" ]]; then
