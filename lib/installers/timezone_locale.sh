@@ -170,25 +170,43 @@ _select_locale() {
     done
 
     if (( ${#matches[@]} == 0 )); then
-        # On minimal systems (cloud VMs, containers), only C/POSIX are generated.
-        # Offer to generate the requested locale if locale-gen is available.
-        if command -v locale-gen &>/dev/null; then
-            local gen_candidate
-            gen_candidate=$(grep -i "^${loc_term}" /usr/share/i18n/SUPPORTED 2>/dev/null | head -1 | awk '{print $1}')
-            if [[ -n "$gen_candidate" ]]; then
-                warn "Locale '${loc_term}' is not generated yet. Nearest supported: ${gen_candidate}"
+        # On minimal systems (cloud VMs, containers), locales may not be generated
+        # or the locales package may not be installed at all.
+        if ! command -v locale-gen &>/dev/null; then
+            if command -v apt-get &>/dev/null; then
+                warn "The 'locales' package is not installed. It is required to generate locales."
                 local confirm
-                read -rp "Generate ${gen_candidate} now? [y/N]: " confirm < /dev/tty
-                if [[ "${confirm,,}" == "y" ]]; then
-                    run_as_root locale-gen "$gen_candidate" || {
-                        warn "locale-gen failed for ${gen_candidate}."
-                        return 1
-                    }
-                    mapfile -t available_locales < <(locale -a 2>/dev/null)
-                    mapfile -t matches < <(printf '%s\n' "${available_locales[@]}" | grep -i "${loc_term}" | head -20)
+                read -rp "Install 'locales' package now? [y/N]: " confirm < /dev/tty
+                if [[ "${confirm,,}" != "y" ]]; then
+                    warn "Locale selection cancelled."
+                    return 1
                 fi
+                run_as_root apt-get install -y locales || {
+                    warn "Failed to install 'locales' package."
+                    return 1
+                }
+            else
+                warn "No matching locales found for '${loc_term}' and locale-gen is unavailable."
+                return 1
             fi
         fi
+
+        local gen_candidate
+        gen_candidate=$(grep -i "^${loc_term}" /usr/share/i18n/SUPPORTED 2>/dev/null | head -1 | awk '{print $1}')
+        if [[ -n "$gen_candidate" ]]; then
+            warn "Locale '${loc_term}' is not generated yet. Nearest supported: ${gen_candidate}"
+            local confirm
+            read -rp "Generate ${gen_candidate} now? [y/N]: " confirm < /dev/tty
+            if [[ "${confirm,,}" == "y" ]]; then
+                run_as_root locale-gen "$gen_candidate" || {
+                    warn "locale-gen failed for ${gen_candidate}."
+                    return 1
+                }
+                mapfile -t available_locales < <(locale -a 2>/dev/null)
+                mapfile -t matches < <(printf '%s\n' "${available_locales[@]}" | grep -i "${loc_term}" | head -20)
+            fi
+        fi
+
         if (( ${#matches[@]} == 0 )); then
             warn "No matching locales found for '${loc_term}'."
             return 1
@@ -214,13 +232,33 @@ _select_locale() {
         fi
     fi
 
-    if [[ "${selected_locale,,}" == "${current_lang,,}" ]]; then
-        info "Locale already set to ${selected_locale}."
+    # locale -a emits "en_US.utf8"; LANG/localectl expect "en_US.UTF-8".
+    # Normalize by uppercasing the encoding part and inserting the hyphen.
+    _normalize_locale() {
+        local raw="$1"
+        local base enc
+        if [[ "$raw" == *"."* ]]; then
+            base="${raw%%.*}"
+            enc="${raw##*.}"
+            enc="${enc^^}"              # UTF8 → UTF8
+            enc="${enc/UTF8/UTF-8}"     # UTF8 → UTF-8
+            echo "${base}.${enc}"
+        else
+            echo "$raw"
+        fi
+    }
+
+    local canonical_locale current_lang_norm selected_norm
+    canonical_locale=$(_normalize_locale "$selected_locale")
+    current_lang_norm=$(_normalize_locale "$current_lang")
+
+    if [[ "${canonical_locale,,}" == "${current_lang_norm,,}" ]]; then
+        info "Locale already set to ${current_lang}."
         return 3
     fi
 
-    local -a locale_args=("LANG=${selected_locale}")
-    locale_args+=("LC_TIME=${current_lc_time}")
+    local -a locale_args=("LANG=${canonical_locale}")
+    locale_args+=("LC_TIME=$(_normalize_locale "${current_lc_time}")")
 
     if command -v localectl &>/dev/null; then
         run_as_root localectl set-locale "${locale_args[@]}" || {
