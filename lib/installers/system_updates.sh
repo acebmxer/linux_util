@@ -1,8 +1,39 @@
 #!/bin/bash
 # System Updates functions
 
+# True when running on CachyOS or any Arch-family system with arch-update/cachy-update installed.
+# These tools handle Arch-specific post-update tasks (Arch news, kernel reboot detection,
+# service restarts, paccache cleanup) that this script does not replicate.
+_system_updates_has_arch_update() {
+    [[ "${DISTRO_FAMILY:-}" == "arch" ]] && \
+        { command -v cachy-update &>/dev/null || command -v arch-update &>/dev/null; }
+}
+
+_system_updates_arch_update_cmd() {
+    if command -v cachy-update &>/dev/null; then
+        echo "cachy-update"
+    else
+        echo "arch-update"
+    fi
+}
+
 # --- System Updates ---
 setup_system_updates() {
+    if _system_updates_has_arch_update; then
+        local _cmd
+        _cmd=$(_system_updates_arch_update_cmd)
+        info "Deferring to ${_cmd} for a complete Arch-family update..."
+        info "(Includes Arch news, AUR, Flatpak, orphan removal, cache cleanup, kernel/service checks)"
+        echo ""
+        local _snap_before _snap_after
+        _snap_before=$(pkg_snapshot)
+        "$_cmd"
+        local _rc=$?
+        _snap_after=$(pkg_snapshot)
+        [[ "$_snap_before" == "$_snap_after" ]] && return 3
+        return $_rc
+    fi
+
     info "Running system updates..."
     local _snap_before
     _snap_before=$(pkg_snapshot)

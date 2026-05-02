@@ -7,6 +7,7 @@ check_termius() {
     command -v termius &>/dev/null || \
         command -v termius-app &>/dev/null || \
         pkg_check_installed termius || \
+        pkg_check_installed termius-deb || \
         pkg_check_installed termius-app || \
         (has_snap && snap list termius-app &>/dev/null) || \
         (flatpak_is_installed termius)
@@ -24,7 +25,7 @@ install_termius() {
             rm -f "$tmp_deb"
             ;;
         arch)
-            aur_ensure termius
+            aur_ensure termius-deb
             ;;
         *)
             if has_snap; then
@@ -45,7 +46,9 @@ install_termius() {
 }
 uninstall_termius() {
     echo "Uninstalling Termius SSH Client..."
-    if pkg_check_installed termius; then
+    if pkg_check_installed termius-deb; then
+        pkg_remove termius-deb
+    elif pkg_check_installed termius; then
         pkg_remove termius
     elif pkg_check_installed termius-app; then
         pkg_remove termius-app
@@ -72,7 +75,7 @@ update_termius() {
             rm -f "$tmp_deb"
             ;;
         arch)
-            aur_ensure termius
+            aur_ensure termius-deb
             ;;
         *)
             if has_snap && snap list termius-app &>/dev/null; then
@@ -87,7 +90,9 @@ update_termius() {
     esac
 }
 get_version_termius() {
-    if pkg_check_installed termius; then
+    if pkg_check_installed termius-deb; then
+        pkg_get_version termius-deb | sed 's/^[0-9]*://; s/-.*//'
+    elif pkg_check_installed termius; then
         pkg_get_version termius | sed 's/^[0-9]*://; s/-.*//'
     elif pkg_check_installed termius-app; then
         pkg_get_version termius-app | sed 's/^[0-9]*://; s/-.*//'

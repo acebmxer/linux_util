@@ -11,8 +11,8 @@ install_btrfs_assistant() {
     echo "Installing Btrfs Assistant..."
     case "$DISTRO_FAMILY" in
         arch)
-            # btrfs-assistant is available in the AUR (btrfs-assistant)
-            pkg_install btrfs-assistant || return 1
+            # btrfs-assistant is in CachyOS repos; AUR on vanilla Arch
+            aur_ensure btrfs-assistant || return 1
             ;;
         suse)
             sudo zypper install -y btrfs-assistant || return 1
