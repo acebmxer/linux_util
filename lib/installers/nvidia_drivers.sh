@@ -291,8 +291,30 @@ install_nvidia_drivers() {
             ;;
         arch)
             echo "Detecting available NVIDIA drivers..."
-            # Arch typically has nvidia (latest), nvidia-lts, nvidia-dkms
-            available_drivers=("latest" "dkms" "lts")
+            if [[ "${DISTRO_ID:-}" == "cachyos" ]]; then
+                # CachyOS ships kernel-paired nvidia-open modules instead of vanilla
+                # nvidia/nvidia-dkms/nvidia-lts. Offer one entry per installed
+                # cachyos kernel that has a matching -nvidia-open package in repos,
+                # plus nvidia-open-dkms as a universal DKMS fallback.
+                local installed_kernels
+                mapfile -t installed_kernels < <(pacman -Q 2>/dev/null \
+                    | awk '{print $1}' \
+                    | grep '^linux-cachyos' \
+                    | grep -v '\-headers$\|-nvidia')
+                for kern in "${installed_kernels[@]}"; do
+                    local mod_pkg="${kern}-nvidia-open"
+                    if pacman -Si "$mod_pkg" &>/dev/null; then
+                        available_drivers+=("$mod_pkg")
+                    fi
+                done
+                # nvidia-open-dkms works with any kernel (DKMS rebuild on upgrade)
+                if pacman -Si nvidia-open-dkms &>/dev/null; then
+                    available_drivers+=("nvidia-open-dkms")
+                fi
+            else
+                # Vanilla Arch / Manjaro / other Arch derivatives
+                available_drivers=("latest" "dkms" "lts")
+            fi
             ;;
         suse)
             echo "Detecting available NVIDIA drivers..."
@@ -381,6 +403,10 @@ install_nvidia_drivers() {
             ;;
         arch)
             case "$driver_version" in
+                linux-cachyos*-nvidia-open|nvidia-open-dkms)
+                    # CachyOS: kernel-paired or DKMS open module + utils
+                    sudo pacman -S --noconfirm "$driver_version" nvidia-utils
+                    ;;
                 latest)
                     sudo pacman -S --noconfirm nvidia nvidia-utils
                     ;;
@@ -430,7 +456,14 @@ uninstall_nvidia_drivers() {
             sudo "$PKG_MGR" remove -y 'nvidia*' nvtop
             ;;
         pacman)
-            sudo pacman -Rs --noconfirm nvidia nvidia-utils nvtop 2>/dev/null || true
+            # Remove any installed nvidia module packages (vanilla or CachyOS kernel-paired)
+            local _nvidia_pkgs
+            mapfile -t _nvidia_pkgs < <(pacman -Q 2>/dev/null \
+                | awk '{print $1}' \
+                | grep -E '^(nvidia|linux-cachyos.*-nvidia)')
+            [[ ${#_nvidia_pkgs[@]} -gt 0 ]] && \
+                sudo pacman -Rs --noconfirm "${_nvidia_pkgs[@]}" 2>/dev/null || true
+            sudo pacman -Rs --noconfirm nvtop 2>/dev/null || true
             ;;
         zypper)
             sudo zypper remove -y 'nvidia*' nvtop

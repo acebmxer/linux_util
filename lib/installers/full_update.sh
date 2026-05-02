@@ -3,6 +3,21 @@
 
 # --- Full System Upgrade/Update ---
 setup_full_update() {
+    if _system_updates_has_arch_update; then
+        local _cmd
+        _cmd=$(_system_updates_arch_update_cmd)
+        info "Deferring to ${_cmd} for a complete Arch-family update..."
+        info "(Includes Arch news, AUR, Flatpak, orphan removal, cache cleanup, kernel/service checks)"
+        echo ""
+        local _snap_before _snap_after
+        _snap_before=$(pkg_snapshot)
+        "$_cmd"
+        local _rc=$?
+        _snap_after=$(pkg_snapshot)
+        [[ "$_snap_before" == "$_snap_after" ]] && return 3
+        return $_rc
+    fi
+
     info "Starting full system upgrade/update..."
     local _snap_before
     _snap_before=$(pkg_snapshot)
