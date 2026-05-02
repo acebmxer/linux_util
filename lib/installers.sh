@@ -622,4 +622,4 @@ UTILITY_DESCRIPTION["Btrfs Assistant"]="GUI frontend for managing Btrfs snapshot
 UTILITY_DESCRIPTION["Create Snapshot (Snapper)"]="Create a manual Snapper snapshot of the root filesystem with an optional description."
 UTILITY_DESCRIPTION["Restore Snapshot (Snapper)"]="Roll back the system to a previous Snapper snapshot."
 UTILITY_DESCRIPTION["Delete Snapshot (Snapper)"]="Permanently delete one or more Snapper snapshots to free disk space."
-UTILITY_DESCRIPTION["Zsh + Oh My Zsh"]="Installs the Z shell with Oh My Zsh framework for enhanced terminal experience, themes, and plugins."
+UTILITY_DESCRIPTION["Zsh + Oh My Zsh"]="Installs the Z shell with Oh My Zsh framework, zsh-autosuggestions, and zsh-syntax-highlighting plugins. During install you can choose from Powerlevel10k (pre-configured or interactive wizard) or one of 10 popular built-in themes. Theme can also be changed later via the update option."
