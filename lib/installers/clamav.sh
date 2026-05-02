@@ -50,9 +50,38 @@ install_clamav() {
             ;;
     esac
 
+    _configure_clamtk_prefs
+
     info "ClamAV installed."
     info "Run 'clamscan -r /path/to/scan' to scan a directory."
     info "Run 'sudo freshclam' to update virus definitions manually."
+}
+
+_configure_clamtk_prefs() {
+    local prefs_dir="$HOME/.config/clamtk"
+    local prefs="$prefs_dir/prefs"
+    mkdir -p "$prefs_dir"
+
+    if [[ ! -f "$prefs" ]]; then
+        cat > "$prefs" <<'EOF'
+Thorough=0
+TruncateLog=1
+Update=shared
+Mounted=0
+SizeLimit=0
+Whitelist=
+HTTPProxy=0
+DupeDB=1
+LastInfection=Never
+Recursive=1
+Heuristic=0
+ScanHidden=1
+GUICheck=1
+EOF
+    else
+        sed -i 's/^Recursive=.*/Recursive=1/' "$prefs"
+        sed -i 's/^ScanHidden=.*/ScanHidden=1/' "$prefs"
+    fi
 }
 
 uninstall_clamav() {
