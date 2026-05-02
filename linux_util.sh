@@ -210,7 +210,7 @@ process_selected() {
     local needs_shell_reload=false
 
     # These tasks do not require a reboot after successful completion
-    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1)
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1 ["Configure Syncthing Folders"]=1)
 
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do

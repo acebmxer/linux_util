@@ -50,6 +50,7 @@ register_system_task "Mount Local Drive"  setup_mount_local_drive check_mount_lo
 register_system_task "Mount NFS Share"    setup_mount_nfs_share   check_mount_nfs_share   uninstall_mount_nfs_share   update_mount_nfs_share    get_version_mount_nfs_share
 register_system_task "Mount SMB Share"    setup_mount_smb_share   check_mount_smb_share   uninstall_mount_smb_share   update_mount_smb_share    get_version_mount_smb_share
 register_system_task "Manage Share"       setup_manage_share      check_manage_share      uninstall_manage_share      update_manage_share       get_version_manage_share
+register_system_task "Configure Syncthing Folders" setup_syncthing_folders check_syncthing_folders uninstall_syncthing_folders update_syncthing_folders get_version_syncthing_folders
 register_utility "NVIDIA Drivers"         install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
 register_system_task "Enable RDP"         install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
