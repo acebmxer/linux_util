@@ -91,6 +91,7 @@ register_utility "Bitwarden Client"       install_bitwarden           check_bitw
 register_utility "Bitwarden Extension"    install_bitwarden_extension check_bitwarden_extension uninstall_bitwarden_extension update_bitwarden_extension    get_version_bitwarden_extension
 register_utility "Bottles"                install_bottles             check_bottles             uninstall_bottles             update_bottles                get_version_bottles
 register_utility "Brave Browser"       install_brave            check_brave            uninstall_brave            update_brave               get_version_brave
+register_utility "Brave Debloat"       install_brave_debloat    check_brave_debloat    uninstall_brave_debloat    update_brave_debloat       get_version_brave_debloat
 register_utility "Btop"                install_btop             check_btop             uninstall_btop             update_btop                get_version_btop
 register_utility "Intel CPU Microcode & Thermal" install_intel_chipset_drivers check_intel_chipset_drivers uninstall_intel_chipset_drivers update_intel_chipset_drivers get_version_intel_chipset_drivers
 register_utility "Chromium"            install_chromium         check_chromium         uninstall_chromium         update_chromium            get_version_chromium
@@ -288,6 +289,7 @@ UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
 UTILITY_CATEGORY["Bitwarden Extension"]="Internet"
 UTILITY_CATEGORY["Bottles"]="Gaming"
 UTILITY_CATEGORY["Brave Browser"]="Internet"
+UTILITY_CATEGORY["Brave Debloat"]="Internet"
 UTILITY_CATEGORY["Btop"]="System Tools"
 UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
@@ -390,6 +392,7 @@ UTILITY_CATEGORY["Zotero"]="Productivity"
 
 # Subcategory assignments — utility name → subcategory label within the parent category
 UTILITY_SUBCATEGORY["Brave Browser"]="Web Browsers"
+UTILITY_SUBCATEGORY["Brave Debloat"]="Web Browser Tweaks"
 UTILITY_SUBCATEGORY["Chromium"]="Web Browsers"
 UTILITY_SUBCATEGORY["Firefox"]="Web Browsers"
 UTILITY_SUBCATEGORY["Google Chrome"]="Web Browsers"
@@ -474,7 +477,7 @@ UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
 
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
-SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Extensions|Messaging|Email Clients|File Transfer|Remote Access|VPN"
+SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|Remote Access|VPN"
 
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
 
@@ -551,6 +554,7 @@ UTILITY_DESCRIPTION["Wine"]="Compatibility layer that enables Windows applicatio
 # Internet
 UTILITY_DESCRIPTION["Bitwarden Extension"]="Deploys Bitwarden browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, Vivaldi). The extension is force-installed on next browser launch."
 UTILITY_DESCRIPTION["Brave Browser"]="Privacy-focused web browser with built-in ad and tracker blocking based on Chromium."
+UTILITY_DESCRIPTION["Brave Debloat"]="Disables Brave Browser annoyances via enterprise policy: Rewards, Crypto Wallet, VPN, Leo AI, News, Talk, and Tor. Also disables telemetry (P3A, stats ping, metrics reporting, Safe Browsing extended reporting, and URL-keyed data collection)."
 UTILITY_DESCRIPTION["Chromium"]="Open-source web browser that serves as the upstream base for Google Chrome."
 UTILITY_DESCRIPTION["Devolutions RDM"]="Remote Desktop Manager for centrally managing remote connections, passwords, and credentials."
 UTILITY_DESCRIPTION["Discord"]="Voice, video, and text communication platform popular with gaming and developer communities."
