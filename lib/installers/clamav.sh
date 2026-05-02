@@ -33,8 +33,22 @@ install_clamav() {
         sudo systemctl stop clamav-daemon 2>/dev/null || true
     sudo freshclam 2>/dev/null || true
 
-    # Enable the freshclam update service
+    # Enable freshclam update service and the scan daemon
     sudo systemctl enable --now clamav-freshclam 2>/dev/null || true
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo systemctl enable --now clamav-daemon 2>/dev/null || true
+            ;;
+        arch)
+            sudo systemctl enable --now clamav-daemon.service 2>/dev/null || true
+            # Allow clamd to read user home directories
+            sudo usermod -aG "$(id -gn)" clamav 2>/dev/null || true
+            ;;
+        fedora|rhel)
+            sudo systemctl enable --now clamd@scan 2>/dev/null || \
+                sudo systemctl enable --now clamd 2>/dev/null || true
+            ;;
+    esac
 
     info "ClamAV installed."
     info "Run 'clamscan -r /path/to/scan' to scan a directory."
