@@ -19,12 +19,20 @@ _ensure_nodejs() {
             local nodesource_tmp
             nodesource_tmp=$(mktemp /tmp/nodesource-setup-XXXXXX.sh)
             CLEANUP_FILES+=("$nodesource_tmp")
-            if ! curl -fsSL https://deb.nodesource.com/setup_20.x -o "$nodesource_tmp"; then
+            if ! curl -fsSL https://deb.nodesource.com/setup_24.x -o "$nodesource_tmp"; then
                 echo "Error: Failed to download NodeSource setup script."
                 return 1
             fi
             sudo bash "$nodesource_tmp"
             sudo apt install -y nodejs
+            # Ubuntu packages the binary as 'nodejs'; create a 'node' symlink if needed.
+            if ! command -v node &>/dev/null && command -v nodejs &>/dev/null; then
+                sudo ln -sf "$(command -v nodejs)" /usr/local/bin/node
+            fi
+            # npm is a separate package on some Ubuntu/Kubuntu releases.
+            if ! command -v npm &>/dev/null; then
+                sudo apt install -y npm
+            fi
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" install -y nodejs npm

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Node.js installer (direct, not via NVM)
 
-NODEJS_LTS_VERSION="24.14.1"
+NODEJS_LTS_VERSION="24.15.0"
 NODEJS_CURRENT_VERSION="25.9.0"
 
 prompt_nodejs_version() {

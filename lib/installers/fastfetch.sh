@@ -35,7 +35,14 @@ _fastfetch_configure_shells() {
     if command -v zsh &>/dev/null; then
         local rc="$HOME/.zshrc"
         if ! grep -qF "$marker" "$rc" 2>/dev/null; then
-            printf '\n%s\n[[ $- == *i* ]] && fastfetch\n' "$marker" >> "$rc"
+            local p10k_prompt="# Enable Powerlevel10k instant prompt"
+            if grep -qF "$p10k_prompt" "$rc" 2>/dev/null; then
+                # Insert before p10k instant prompt block so fastfetch output
+                # isn't captured by p10k's terminal takeover
+                sed -i "/${p10k_prompt}/i ${marker}\n[[ \$- == *i* ]] && fastfetch\n" "$rc"
+            else
+                printf '\n%s\n[[ $- == *i* ]] && fastfetch\n' "$marker" >> "$rc"
+            fi
             info "Added fastfetch auto-run to $rc"
         else
             info "Fastfetch auto-run already configured in $rc"

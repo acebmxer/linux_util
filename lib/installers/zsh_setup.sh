@@ -82,7 +82,7 @@ _zsh_setup_select_theme() {
     echo "${BOLD}${CYAN}Select a Zsh Theme:${RESET}"
     echo ""
     echo "  ${BOLD}Powerlevel10k${RESET}  (external, highly customizable — requires a Nerd Font)"
-    echo "   1)  Pre-configured  — bundled config, ready to use immediately"
+    echo "   1)  Custom config   — time on left, rainbow, large icons  ${DIM}← recommended${RESET}"
     echo "   2)  Wizard          — interactive step-by-step setup on first launch"
     echo ""
     echo "  ${BOLD}Built-in Oh My Zsh Themes${RESET}"
@@ -109,16 +109,19 @@ _zsh_setup_select_theme() {
                 _zsh_setup_apply_omz_theme "powerlevel10k/powerlevel10k"
                 if [[ -f "${templates_dir}/p10k.zsh" ]]; then
                     cp "${templates_dir}/p10k.zsh" "$HOME/.p10k.zsh"
-                    info "Installed bundled Powerlevel10k config to ~/.p10k.zsh"
+                    info "Theme selected: Powerlevel10k custom config (time on left)"
+                    log_info "Theme selected: Powerlevel10k custom config (time on left)"
                 else
-                    warn "Bundled p10k config not found — wizard will run on first launch instead."
+                    warn "Bundled p10k config not found at ${templates_dir}/p10k.zsh — wizard will run on first launch instead."
+                    log_info "Theme selected: Powerlevel10k wizard (template not found)"
                 fi
                 break ;;
             2)
                 _zsh_setup_install_p10k || return 1
                 _zsh_setup_apply_omz_theme "powerlevel10k/powerlevel10k"
                 rm -f "$HOME/.p10k.zsh"
-                info "Powerlevel10k set — wizard will run on your next terminal launch."
+                info "Theme selected: Powerlevel10k wizard (will run on next terminal launch)"
+                log_info "Theme selected: Powerlevel10k wizard"
                 break ;;
             3)  _zsh_setup_apply_omz_theme "agnoster";     break ;;
             4)  _zsh_setup_apply_omz_theme "robbyrussell"; break ;;
