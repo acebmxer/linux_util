@@ -162,8 +162,9 @@ _zsh_setup_select_theme() {
                     error "Bundled p10k config not found at ${p10k_template}. Cannot apply custom theme."
                     return 1
                 fi
-                cp "$p10k_template" "$HOME/.p10k.zsh"
+                cp "$p10k_template" "$HOME/.p10k.zsh" || { error "Failed to copy p10k config to ~/.p10k.zsh"; return 1; }
                 _zsh_setup_apply_omz_theme "powerlevel10k/powerlevel10k"
+                _zsh_setup_remove_p10k_zshrc
                 _zsh_setup_ensure_p10k_zshrc
                 info "Theme set: Powerlevel10k custom config (time on left)"
                 log_info "Theme selected: Powerlevel10k custom config (time on left)"

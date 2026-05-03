@@ -59,7 +59,7 @@ _mns_export_list() {
 # Add a KDE Plasma Places entry so the mount appears under "Remote" in Dolphin.
 _mns_add_kde_place() {
     local nfs_source="$1"   # e.g. 10.100.10.183:/mnt/data/Apps
-    local mount_point="$2"  # e.g. /home/nick/media/Apps
+    local mount_point="$2"  # e.g. /home/user/media/Apps
 
     local places_file="${HOME}/.local/share/user-places.xbel"
     [[ -f "$places_file" ]] || return 0
