@@ -75,8 +75,59 @@ _zsh_setup_install_p10k() {
     fi
 }
 
+_zsh_setup_remove_p10k_zshrc() {
+    [[ -f "$HOME/.zshrc" ]] || return
+    local tmpfile
+    tmpfile=$(mktemp)
+
+    # Remove instant prompt block (comment header + if/fi block + trailing blank line)
+    awk '
+      /^# Enable Powerlevel10k instant prompt/ { in_block=1 }
+      in_block && /^fi$/ { in_block=0; drop_blank=1; next }
+      drop_blank && /^[[:space:]]*$/ { drop_blank=0; next }
+      in_block { next }
+      { print }
+    ' "$HOME/.zshrc" > "$tmpfile" && mv "$tmpfile" "$HOME/.zshrc"
+
+    # Remove p10k source line
+    tmpfile=$(mktemp)
+    grep -v 'source ~/.p10k.zsh' "$HOME/.zshrc" > "$tmpfile" && mv "$tmpfile" "$HOME/.zshrc"
+}
+
+_zsh_setup_ensure_p10k_zshrc() {
+    [[ -f "$HOME/.zshrc" ]] || return
+
+    # Add instant prompt block at the top of .zshrc (needed for POWERLEVEL9K_INSTANT_PROMPT=verbose)
+    if ! grep -qF 'Enable Powerlevel10k instant prompt' "$HOME/.zshrc"; then
+        local tmpblock tmpfile
+        tmpblock=$(mktemp)
+        tmpfile=$(mktemp)
+        cat > "$tmpblock" << 'EOF'
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+EOF
+        cat "$tmpblock" "$HOME/.zshrc" > "$tmpfile" && mv "$tmpfile" "$HOME/.zshrc"
+        rm -f "$tmpblock"
+        info "Added Powerlevel10k instant prompt block to ~/.zshrc"
+    fi
+
+    # Add source line at the bottom of .zshrc so p10k config is applied on shell start
+    if ! grep -qF 'source ~/.p10k.zsh' "$HOME/.zshrc"; then
+        printf '\n[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh\n' >> "$HOME/.zshrc"
+        info "Added p10k source line to ~/.zshrc"
+    fi
+}
+
 _zsh_setup_select_theme() {
-    local templates_dir="${SCRIPT_DIR}/lib/templates/zsh"
+    # Resolve template dir relative to this file so it works regardless of SCRIPT_DIR
+    local installer_dir
+    installer_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local templates_dir="${installer_dir}/../templates/zsh"
 
     echo ""
     echo "${BOLD}${CYAN}Select a Zsh Theme:${RESET}"
@@ -106,33 +157,35 @@ _zsh_setup_select_theme() {
         case "$choice" in
             1)
                 _zsh_setup_install_p10k || return 1
-                _zsh_setup_apply_omz_theme "powerlevel10k/powerlevel10k"
-                if [[ -f "${templates_dir}/p10k.zsh" ]]; then
-                    cp "${templates_dir}/p10k.zsh" "$HOME/.p10k.zsh"
-                    info "Theme selected: Powerlevel10k custom config (time on left)"
-                    log_info "Theme selected: Powerlevel10k custom config (time on left)"
-                else
-                    warn "Bundled p10k config not found at ${templates_dir}/p10k.zsh — wizard will run on first launch instead."
-                    log_info "Theme selected: Powerlevel10k wizard (template not found)"
+                local p10k_template="${templates_dir}/p10k.zsh"
+                if [[ ! -f "$p10k_template" ]]; then
+                    error "Bundled p10k config not found at ${p10k_template}. Cannot apply custom theme."
+                    return 1
                 fi
+                cp "$p10k_template" "$HOME/.p10k.zsh"
+                _zsh_setup_apply_omz_theme "powerlevel10k/powerlevel10k"
+                _zsh_setup_ensure_p10k_zshrc
+                info "Theme set: Powerlevel10k custom config (time on left)"
+                log_info "Theme selected: Powerlevel10k custom config (time on left)"
                 break ;;
             2)
                 _zsh_setup_install_p10k || return 1
+                _zsh_setup_remove_p10k_zshrc
                 _zsh_setup_apply_omz_theme "powerlevel10k/powerlevel10k"
                 rm -f "$HOME/.p10k.zsh"
                 info "Theme selected: Powerlevel10k wizard (will run on next terminal launch)"
                 log_info "Theme selected: Powerlevel10k wizard"
                 break ;;
-            3)  _zsh_setup_apply_omz_theme "agnoster";     break ;;
-            4)  _zsh_setup_apply_omz_theme "robbyrussell"; break ;;
-            5)  _zsh_setup_apply_omz_theme "ys";           break ;;
-            6)  _zsh_setup_apply_omz_theme "af-magic";     break ;;
-            7)  _zsh_setup_apply_omz_theme "bira";         break ;;
-            8)  _zsh_setup_apply_omz_theme "bureau";       break ;;
-            9)  _zsh_setup_apply_omz_theme "dst";          break ;;
-            10) _zsh_setup_apply_omz_theme "refined";      break ;;
-            11) _zsh_setup_apply_omz_theme "steeef";       break ;;
-            12) _zsh_setup_apply_omz_theme "jonathan";     break ;;
+            3)  _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "agnoster";     break ;;
+            4)  _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "robbyrussell"; break ;;
+            5)  _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "ys";           break ;;
+            6)  _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "af-magic";     break ;;
+            7)  _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "bira";         break ;;
+            8)  _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "bureau";       break ;;
+            9)  _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "dst";          break ;;
+            10) _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "refined";      break ;;
+            11) _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "steeef";       break ;;
+            12) _zsh_setup_remove_p10k_zshrc; rm -f "$HOME/.p10k.zsh"; _zsh_setup_apply_omz_theme "jonathan";     break ;;
             q|Q) info "Skipping theme selection."; break ;;
             *) echo "  Please enter 1-12 or q to skip." ;;
         esac
