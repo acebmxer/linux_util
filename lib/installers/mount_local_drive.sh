@@ -171,203 +171,206 @@ setup_mount_local_drive() {
 
     # ── Step 3: Drive selection ───────────────────────────────────────────────
     local total=${#entries[@]}
-    local choice
+    local -a selected=()
     while true; do
-        read -rp "Select drive to mount [0-${total}]: " choice < /dev/tty
+        read -rp "Select drives to mount [0 to cancel, e.g. 1  1,3,4  1-4]: " choice < /dev/tty
+        choice="${choice// /}"
         if [[ "$choice" == "0" ]]; then
             info "Mount cancelled."
             return 0
         fi
-        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= total )); then
-            break
-        fi
-        printf '%sInvalid selection. Enter a number between 0 and %d.%s\n' \
-            "${RED:-}" "$total" "${RESET:-}" > /dev/tty
-    done
-
-    # Extract selected device fields
-    local sel_entry="${entries[$((choice - 1))]}"
-    IFS='|' read -r _ sel_name sel_uuid sel_fstype sel_label _ <<< "$sel_entry"
-
-    # Resolve the actual fstype to write into fstab
-    local fstab_fstype
-    fstab_fstype=$(_mld_resolve_fstype "$sel_fstype")
-
-    # ── Step 4: Mount location ────────────────────────────────────────────────
-    local default_subfolder
-    # Suggest a name based on the label or device name
-    if [[ -n "$sel_label" ]]; then
-        default_subfolder=$(printf '%s' "$sel_label" | tr -cs 'A-Za-z0-9._-' '_')
-    else
-        default_subfolder="$sel_name"
-    fi
-
-    local default_mount="/mnt/${default_subfolder}"
-    {
-        printf '\n'
-        printf '  Enter the full path where the drive should be mounted.\n'
-        printf '  Examples: /mnt/%s  or  /home/%s/mnt/%s\n' \
-            "$default_subfolder" "$USER" "$default_subfolder"
-        printf '  Press ENTER to use the default: %s\n\n' "$default_mount"
-    } > /dev/tty
-
-    local mount_point
-    while true; do
-        read -rp "Mount point [default: ${default_mount}]: " mount_point < /dev/tty
-
-        # Blank → use default
-        [[ -z "$mount_point" ]] && mount_point="$default_mount"
-
-        # Must be an absolute path
-        if [[ "$mount_point" != /* ]]; then
-            printf '%sPath must be absolute (start with /).%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+        mapfile -t selected < <(_parse_multi_selection "$choice" "$total")
+        if (( ${#selected[@]} == 0 )); then
+            printf '%sInvalid selection. Use numbers 1-%d, commas, or ranges (e.g. 1,3  2-4).%s\n' \
+                "${RED:-}" "$total" "${RESET:-}" > /dev/tty
             continue
         fi
-
-        # Strip trailing slashes, reject bare /
-        mount_point="${mount_point%/}"
-        if [[ -z "$mount_point" ]]; then
-            printf '%sCannot mount directly on /.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
-            continue
-        fi
-
-        # Validate each path component
-        local _valid=true _component
-        while IFS= read -r -d '/' _component || [[ -n "$_component" ]]; do
-            _component="${_component%$'\n'}"
-            [[ -z "$_component" ]] && continue
-            if [[ ! "$_component" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
-                _valid=false
-                break
-            fi
-        done <<< "${mount_point#/}/"
-
-        if [[ "$_valid" == "false" ]]; then
-            printf '%sEach path component must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
-                "${RED:-}" "${RESET:-}" > /dev/tty
-            continue
-        fi
-
         break
     done
 
-    # ── Step 5: Summary & confirmation ───────────────────────────────────────
-    {
-        printf '\n'
-        printf '  Device:      /dev/%s\n' "$sel_name"
-        printf '  UUID:        %s\n'      "$sel_uuid"
-        printf '  Filesystem:  %s\n'      "$fstab_fstype"
-        printf '  Mount point: %s\n'      "$mount_point"
-        printf '  fstab opts:  %s  %s\n'  "$(_mld_fstab_opts "$fstab_fstype")" "$(_mld_dump_pass "$fstab_fstype")"
-        printf '\n'
-    } > /dev/tty
+    # ── Steps 4–11: Mount each selected drive ─────────────────────────────────
+    local sel_idx _drive_num=0
+    for sel_idx in "${selected[@]}"; do
+        (( _drive_num++ )) || true
 
-    local confirm
-    read -rp "Proceed? [y/N]: " confirm < /dev/tty
-    if [[ "${confirm,,}" != "y" ]]; then
-        info "Mount cancelled."
-        return 0
-    fi
+        local sel_entry="${entries[$((sel_idx - 1))]}"
+        IFS='|' read -r _ sel_name sel_uuid sel_fstype sel_label _ <<< "$sel_entry"
 
-    # ── Dry-run path ──────────────────────────────────────────────────────────
-    if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        if [[ "$mount_point" != "$HOME"* ]]; then
-            info "[Dry run] Would create directory (as root, then chown to ${USER}): ${mount_point}"
+        local fstab_fstype
+        fstab_fstype=$(_mld_resolve_fstype "$sel_fstype")
+
+        # ── Step 4: Drive header ──────────────────────────────────────────────
+        {
+            printf '\n'
+            printf '  ════════════════════════════════════════════════════════════════════════════\n'
+            printf '  Drive %d of %d: /dev/%s%s\n' \
+                "$_drive_num" "${#selected[@]}" "$sel_name" "${sel_label:+  [${sel_label}]}"
+            printf '  ════════════════════════════════════════════════════════════════════════════\n'
+            printf '\n'
+        } > /dev/tty
+
+        # ── Step 5: Mount location ────────────────────────────────────────────
+        local default_subfolder
+        if [[ -n "$sel_label" ]]; then
+            default_subfolder=$(printf '%s' "$sel_label" | tr -cs 'A-Za-z0-9._-' '_')
         else
-            info "[Dry run] Would create directory: ${mount_point}"
+            default_subfolder="$sel_name"
         fi
-        info "[Dry run] Would back up /etc/fstab"
-        info "[Dry run] Would append to /etc/fstab:"
-        printf '  # linux_util:mount /dev/%s → %s\n' "$sel_name" "$mount_point"
-        printf '  UUID=%s\t%s\t%s\t%s\t%s\n' \
-            "$sel_uuid" "$mount_point" "$fstab_fstype" \
-            "$(_mld_fstab_opts "$fstab_fstype")" "$(_mld_dump_pass "$fstab_fstype")"
-        info "[Dry run] Would run: sudo mount ${mount_point}"
-        return 0
-    fi
 
-    # ── Step 6: Ensure filesystem tools are available ────────────────────────
-    _mld_ensure_fs_tools "$fstab_fstype" || return 1
+        local default_mount="/mnt/${default_subfolder}"
+        {
+            printf '  Enter the full path where this drive should be mounted.\n'
+            printf '  Examples: /mnt/%s  or  /home/%s/mnt/%s\n' \
+                "$default_subfolder" "$USER" "$default_subfolder"
+            printf '  Press ENTER to use the default: %s\n\n' "$default_mount"
+        } > /dev/tty
 
-    # ── Step 7: Guard — check fstab for collisions ───────────────────────────
-    if grep -qsE "^UUID=${sel_uuid}[[:space:]]" /etc/fstab; then
-        warn "UUID ${sel_uuid} already has an entry in /etc/fstab."
-        local overwrite
-        read -rp "Continue anyway and add a second entry? [y/N]: " overwrite < /dev/tty
-        [[ "${overwrite,,}" != "y" ]] && { info "Mount cancelled."; return 0; }
-    fi
+        local mount_point
+        while true; do
+            read -rp "Mount point [default: ${default_mount}]: " mount_point < /dev/tty
 
-    if grep -qsE "[[:space:]]${mount_point//\//\\/}[[:space:]]" /etc/fstab; then
-        error "Mount point ${mount_point} is already present in /etc/fstab."
-        return 1
-    fi
+            [[ -z "$mount_point" ]] && mount_point="$default_mount"
 
-    # ── Step 8: Create mount point directory ─────────────────────────────────
-    if [[ ! -d "$mount_point" ]]; then
-        local _ancestor="$mount_point"
-        while [[ ! -e "$_ancestor" ]]; do
-            _ancestor=$(dirname "$_ancestor")
+            if [[ "$mount_point" != /* ]]; then
+                printf '%sPath must be absolute (start with /).%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+            fi
+
+            mount_point="${mount_point%/}"
+            if [[ -z "$mount_point" ]]; then
+                printf '%sCannot mount directly on /.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+            fi
+
+            local _valid=true _component
+            while IFS= read -r -d '/' _component || [[ -n "$_component" ]]; do
+                _component="${_component%$'\n'}"
+                [[ -z "$_component" ]] && continue
+                if [[ ! "$_component" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
+                    _valid=false
+                    break
+                fi
+            done <<< "${mount_point#/}/"
+
+            if [[ "$_valid" == "false" ]]; then
+                printf '%sEach path component must start with a letter or digit and contain only letters, numbers, underscores, hyphens, or dots.%s\n' \
+                    "${RED:-}" "${RESET:-}" > /dev/tty
+                continue
+            fi
+
+            break
         done
 
-        if [[ -w "$_ancestor" ]]; then
-            mkdir -p "$mount_point" || {
-                error "Failed to create directory: ${mount_point}"
-                return 1
-            }
-        else
-            run_as_root mkdir -p "$mount_point" || {
-                error "Failed to create directory: ${mount_point}"
-                return 1
-            }
-            if [[ "$mount_point" != "$HOME"* ]]; then
-                run_as_root chown "${USER}:${USER}" "$mount_point" || \
-                    warn "Could not set ownership of ${mount_point} to ${USER} — you may need to access it as root."
-            fi
+        # ── Step 6: Summary & confirmation ───────────────────────────────────
+        {
+            printf '\n'
+            printf '  Device:      /dev/%s\n' "$sel_name"
+            printf '  UUID:        %s\n'      "$sel_uuid"
+            printf '  Filesystem:  %s\n'      "$fstab_fstype"
+            printf '  Mount point: %s\n'      "$mount_point"
+            printf '  fstab opts:  %s  %s\n'  "$(_mld_fstab_opts "$fstab_fstype")" "$(_mld_dump_pass "$fstab_fstype")"
+            printf '\n'
+        } > /dev/tty
+
+        local confirm
+        read -rp "Proceed? [y/N]: " confirm < /dev/tty
+        if [[ "${confirm,,}" != "y" ]]; then
+            info "Skipped /dev/${sel_name}."
+            continue
         fi
-        info "Created mount point: ${mount_point}"
-    else
-        info "Mount point already exists: ${mount_point}"
-    fi
 
-    # ── Step 9: Back up fstab ─────────────────────────────────────────────────
-    local fstab_backup="/etc/fstab.bak.$(date +%Y%m%d_%H%M%S)"
-    run_as_root cp /etc/fstab "$fstab_backup" || {
-        error "Failed to back up /etc/fstab"
-        return 1
-    }
-    info "fstab backed up to ${fstab_backup}"
+        # ── Dry-run path ──────────────────────────────────────────────────────
+        if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            if [[ "$mount_point" != "$HOME"* ]]; then
+                info "[Dry run] Would create directory (as root, then chown to ${USER}): ${mount_point}"
+            else
+                info "[Dry run] Would create directory: ${mount_point}"
+            fi
+            info "[Dry run] Would back up /etc/fstab"
+            info "[Dry run] Would append to /etc/fstab:"
+            printf '  # linux_util:mount /dev/%s → %s\n' "$sel_name" "$mount_point"
+            printf '  UUID=%s\t%s\t%s\t%s\t%s\n' \
+                "$sel_uuid" "$mount_point" "$fstab_fstype" \
+                "$(_mld_fstab_opts "$fstab_fstype")" "$(_mld_dump_pass "$fstab_fstype")"
+            info "[Dry run] Would run: sudo mount ${mount_point}"
+            continue
+        fi
 
-    # ── Step 10: Append fstab entry ───────────────────────────────────────────
-    local fstab_comment
-    fstab_comment="# linux_util:mount /dev/${sel_name}${sel_label:+ (${sel_label})} → ${mount_point} — added $(date '+%Y-%m-%d %H:%M:%S')"
+        # ── Step 7: Ensure filesystem tools are available ────────────────────
+        _mld_ensure_fs_tools "$fstab_fstype" || { error "Missing FS tools for /dev/${sel_name}. Skipping."; continue; }
 
-    local fstab_entry
-    fstab_entry=$(printf 'UUID=%s\t%s\t%s\t%s\t%s' \
-        "$sel_uuid" "$mount_point" "$fstab_fstype" \
-        "$(_mld_fstab_opts "$fstab_fstype")" "$(_mld_dump_pass "$fstab_fstype")")
+        # ── Step 8: Guard — check fstab for collisions ───────────────────────
+        if grep -qsE "^UUID=${sel_uuid}[[:space:]]" /etc/fstab; then
+            warn "UUID ${sel_uuid} already has an entry in /etc/fstab."
+            local overwrite
+            read -rp "Continue anyway and add a second entry? [y/N]: " overwrite < /dev/tty
+            [[ "${overwrite,,}" != "y" ]] && { info "Skipped /dev/${sel_name}."; continue; }
+        fi
 
-    printf '\n%s\n%s\n' "$fstab_comment" "$fstab_entry" \
-        | run_as_root tee -a /etc/fstab > /dev/null || {
-        error "Failed to write to /etc/fstab. Restoring backup..."
-        run_as_root cp "$fstab_backup" /etc/fstab
-        return 1
-    }
+        if grep -qsE "[[:space:]]${mount_point//\//\\/}[[:space:]]" /etc/fstab; then
+            error "Mount point ${mount_point} is already present in /etc/fstab. Skipping."
+            continue
+        fi
 
-    # ── Step 11: Mount ────────────────────────────────────────────────────────
-    run_as_root mount "$mount_point" || {
-        error "mount failed for ${mount_point}."
-        warn "The fstab entry was written — review /etc/fstab and try: sudo mount ${mount_point}"
-        warn "If the device type is unsupported, install the required driver and retry."
-        return 1
-    }
+        # ── Step 9: Create mount point directory ─────────────────────────────
+        if [[ ! -d "$mount_point" ]]; then
+            local _ancestor="$mount_point"
+            while [[ ! -e "$_ancestor" ]]; do
+                _ancestor=$(dirname "$_ancestor")
+            done
 
-    echo ""
-    info "Drive mounted successfully."
-    info "  Device:      /dev/${sel_name}"
-    info "  Mount point: ${mount_point}"
-    info "  fstab entry: UUID=${sel_uuid} → ${mount_point} (${fstab_fstype})"
-    info "  Backup:      ${fstab_backup}"
-    echo ""
+            if [[ -w "$_ancestor" ]]; then
+                mkdir -p "$mount_point" || { error "Failed to create directory: ${mount_point}. Skipping."; continue; }
+            else
+                run_as_root mkdir -p "$mount_point" || { error "Failed to create directory: ${mount_point}. Skipping."; continue; }
+                if [[ "$mount_point" != "$HOME"* ]]; then
+                    run_as_root chown "${USER}:${USER}" "$mount_point" || \
+                        warn "Could not set ownership of ${mount_point} to ${USER} — you may need to access it as root."
+                fi
+            fi
+            info "Created mount point: ${mount_point}"
+        else
+            info "Mount point already exists: ${mount_point}"
+        fi
+
+        # ── Step 10: Back up fstab ────────────────────────────────────────────
+        local fstab_backup="/etc/fstab.bak.$(date +%Y%m%d_%H%M%S)"
+        run_as_root cp /etc/fstab "$fstab_backup" || { error "Failed to back up /etc/fstab"; return 1; }
+        info "fstab backed up to ${fstab_backup}"
+
+        # ── Step 11: Append fstab entry ───────────────────────────────────────
+        local fstab_comment
+        fstab_comment="# linux_util:mount /dev/${sel_name}${sel_label:+ (${sel_label})} → ${mount_point} — added $(date '+%Y-%m-%d %H:%M:%S')"
+
+        local fstab_entry
+        fstab_entry=$(printf 'UUID=%s\t%s\t%s\t%s\t%s' \
+            "$sel_uuid" "$mount_point" "$fstab_fstype" \
+            "$(_mld_fstab_opts "$fstab_fstype")" "$(_mld_dump_pass "$fstab_fstype")")
+
+        printf '\n%s\n%s\n' "$fstab_comment" "$fstab_entry" \
+            | run_as_root tee -a /etc/fstab > /dev/null || {
+            error "Failed to write to /etc/fstab. Restoring backup..."
+            run_as_root cp "$fstab_backup" /etc/fstab
+            return 1
+        }
+
+        # ── Step 12: Mount ────────────────────────────────────────────────────
+        run_as_root mount "$mount_point" || {
+            error "mount failed for ${mount_point}."
+            warn "The fstab entry was written — review /etc/fstab and try: sudo mount ${mount_point}"
+            warn "If the device type is unsupported, install the required driver and retry."
+            continue
+        }
+
+        echo ""
+        info "Drive mounted successfully."
+        info "  Device:      /dev/${sel_name}"
+        info "  Mount point: ${mount_point}"
+        info "  fstab entry: UUID=${sel_uuid} → ${mount_point} (${fstab_fstype})"
+        info "  Backup:      ${fstab_backup}"
+        echo ""
+    done
+
     return 0
 }
 

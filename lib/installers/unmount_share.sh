@@ -131,32 +131,37 @@ setup_unmount_share() {
         printf '\n  0)    Cancel\n\n'
     } > /dev/tty
 
-    # ── Step 3: Selection ─────────────────────────────────────────────────────
+    # ── Step 3: Multi-share selection ────────────────────────────────────────
     local total=${#entries[@]}
-    local choice
+    local -a selected=()
     while true; do
-        read -rp "Select share to unmount [0-${total}]: " choice < /dev/tty
+        read -rp "Select shares to unmount [0 to cancel, e.g. 1  1,3,4  1-4]: " choice < /dev/tty
+        choice="${choice// /}"
         if [[ "$choice" == "0" ]]; then
             info "Cancelled."
             return 0
         fi
-        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= total )); then
-            break
+        mapfile -t selected < <(_parse_multi_selection "$choice" "$total")
+        if (( ${#selected[@]} == 0 )); then
+            printf '%sInvalid selection. Use numbers 1-%d, commas, or ranges (e.g. 1,3  2-4).%s\n' \
+                "${RED:-}" "$total" "${RESET:-}" > /dev/tty
+            continue
         fi
-        printf '%sInvalid selection. Enter a number between 0 and %d.%s\n' \
-            "${RED:-}" "$total" "${RESET:-}" > /dev/tty
+        break
     done
 
-    local sel_entry="${entries[$((choice - 1))]}"
-    IFS='|' read -r _ sel_type sel_source sel_mount_point _ sel_mounted <<< "$sel_entry"
-
-    # ── Step 4: Confirmation ──────────────────────────────────────────────────
+    # ── Step 4: Batch confirmation ────────────────────────────────────────────
     {
+        printf '\n  The following share(s) will be unmounted, their directories removed,\n'
+        printf '  and their fstab entries deleted:\n\n'
+        local _i=1
+        for sel_idx in "${selected[@]}"; do
+            IFS='|' read -r _ _ _src _mp _ _mnt <<< "${entries[$((sel_idx - 1))]}"
+            local _st; [[ "$_mnt" == "yes" ]] && _st="mounted" || _st="not mounted"
+            printf '  %d)  %s  →  %s  (%s)\n' "$_i" "$_src" "$_mp" "$_st"
+            (( _i++ )) || true
+        done
         printf '\n'
-        printf '  Source:      %s\n' "$sel_source"
-        printf '  Mount point: %s\n' "$sel_mount_point"
-        printf '  Status:      %s\n' "$([[ "$sel_mounted" == "yes" ]] && echo "currently mounted" || echo "not mounted")"
-        printf '\n  This will unmount, remove the directory, and delete the fstab entry.\n\n'
     } > /dev/tty
 
     local confirm
@@ -165,14 +170,17 @@ setup_unmount_share() {
 
     # ── Dry-run path ──────────────────────────────────────────────────────────
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        [[ "$sel_mounted" == "yes" ]] && info "[Dry run] Would run: sudo umount ${sel_mount_point}"
-        info "[Dry run] Would remove fstab entry for ${sel_mount_point}"
-        info "[Dry run] Would rmdir ${sel_mount_point}"
-        [[ "$sel_type" == "nfs" || "$sel_type" == "smb" ]] && info "[Dry run] Would remove KDE Places entry"
+        for sel_idx in "${selected[@]}"; do
+            IFS='|' read -r _ sel_type _ sel_mount_point _ sel_mounted <<< "${entries[$((sel_idx - 1))]}"
+            [[ "$sel_mounted" == "yes" ]] && info "[Dry run] Would run: sudo umount ${sel_mount_point}"
+            info "[Dry run] Would remove fstab entry for ${sel_mount_point}"
+            info "[Dry run] Would rmdir ${sel_mount_point}"
+            [[ "$sel_type" == "nfs" || "$sel_type" == "smb" ]] && info "[Dry run] Would remove KDE Places entry"
+        done
         return 0
     fi
 
-    # ── Step 5: Back up fstab ─────────────────────────────────────────────────
+    # ── Step 5: Back up fstab once ───────────────────────────────────────────
     local fstab_backup="/etc/fstab.bak.$(date +%Y%m%d_%H%M%S)"
     run_as_root cp /etc/fstab "$fstab_backup" || {
         error "Failed to back up /etc/fstab"
@@ -180,35 +188,40 @@ setup_unmount_share() {
     }
     info "fstab backed up to ${fstab_backup}"
 
-    # ── Step 6: Unmount ───────────────────────────────────────────────────────
-    if [[ "$sel_mounted" == "yes" ]]; then
-        run_as_root umount "$sel_mount_point" || {
-            error "umount failed for ${sel_mount_point}. Aborting."
-            return 1
-        }
-        info "Unmounted ${sel_mount_point}"
-    fi
+    # ── Steps 6–9: Process each selected share ────────────────────────────────
+    for sel_idx in "${selected[@]}"; do
+        IFS='|' read -r _ sel_type sel_source sel_mount_point _ sel_mounted <<< "${entries[$((sel_idx - 1))]}"
 
-    # ── Step 7: Remove fstab entry ────────────────────────────────────────────
-    _ums_remove_fstab "$sel_mount_point" || return 1
-    info "Removed fstab entry for ${sel_mount_point}"
-
-    # ── Step 8: Remove mount point directory ──────────────────────────────────
-    if [[ -d "$sel_mount_point" ]]; then
-        if run_as_root rmdir "$sel_mount_point" 2>/dev/null; then
-            info "Removed directory ${sel_mount_point}"
-        else
-            warn "Directory ${sel_mount_point} is not empty — left in place."
+        # ── Step 6: Unmount ───────────────────────────────────────────────────
+        if [[ "$sel_mounted" == "yes" ]]; then
+            run_as_root umount "$sel_mount_point" || {
+                error "umount failed for ${sel_mount_point}. Skipping."
+                continue
+            }
+            info "Unmounted ${sel_mount_point}"
         fi
-    fi
 
-    # ── Step 9: Remove KDE Places entry ──────────────────────────────────────
-    _ums_remove_kde_place "$sel_mount_point"
+        # ── Step 7: Remove fstab entry ────────────────────────────────────────
+        _ums_remove_fstab "$sel_mount_point" || { error "Failed to remove fstab entry for ${sel_mount_point}. Skipping."; continue; }
+        info "Removed fstab entry for ${sel_mount_point}"
+
+        # ── Step 8: Remove mount point directory ──────────────────────────────
+        if [[ -d "$sel_mount_point" ]]; then
+            if run_as_root rmdir "$sel_mount_point" 2>/dev/null; then
+                info "Removed directory ${sel_mount_point}"
+            else
+                warn "Directory ${sel_mount_point} is not empty — left in place."
+            fi
+        fi
+
+        # ── Step 9: Remove KDE Places entry ──────────────────────────────────
+        _ums_remove_kde_place "$sel_mount_point"
+
+        info "  Removed: ${sel_source}  →  ${sel_mount_point}"
+    done
 
     echo ""
-    info "Share unmounted and removed successfully."
-    info "  Source:  ${sel_source}"
-    info "  Backup:  ${fstab_backup}"
+    info "Done. fstab backup: ${fstab_backup}"
     echo ""
     return 0
 }
