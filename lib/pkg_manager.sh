@@ -117,20 +117,54 @@ detect_distro() {
 
 # --- Package Manager Wrappers ---
 
+# How old (seconds) the apt/dnf/zypper cache may be before we re-fetch it.
+# Override via env: PKG_CACHE_MAX_AGE_SECS=0 forces a refresh every time.
+PKG_CACHE_MAX_AGE_SECS="${PKG_CACHE_MAX_AGE_SECS:-3600}"
+
+# Seconds to wait for the package manager network call before giving up.
+PKG_REFRESH_TIMEOUT_SECS="${PKG_REFRESH_TIMEOUT_SECS:-120}"
+
+_pkg_cache_is_fresh() {
+    local cache_file="$1"
+    [[ -f "$cache_file" ]] || return 1
+    local age=$(( $(date +%s) - $(stat -c %Y "$cache_file") ))
+    (( age < PKG_CACHE_MAX_AGE_SECS ))
+}
+
 pkg_refresh() {
     local mode="${1:-spinner}"
     local _run; [[ "$mode" == "direct" ]] && _run=run_direct || _run=run_with_spinner
     local _nc;  [[ "$mode" != "direct" ]] && _nc="--noconfirm" || _nc=""
     [[ "${_PKG_REFRESHED:-}" == "true" ]] && return 0
+
     # NOTE: On Arch, -Sy without -u risks partial upgrades. We use -Syu
     # here so that any subsequent pkg_install calls have a consistent DB+system.
     # $_nc is intentionally unquoted so an empty value passes no extra argument.
     # shellcheck disable=SC2086
     case "$PKG_MGR" in
-        apt)     "$_run" "Refreshing package cache"             sudo apt update ;;
-        dnf|yum) "$_run" "Refreshing package cache"             sudo "$PKG_MGR" makecache ;;
-        pacman)  "$_run" "Refreshing package cache & upgrading" sudo pacman -Syu $_nc ;;
-        zypper)  "$_run" "Refreshing package cache"             sudo zypper refresh ;;
+        apt)
+            if _pkg_cache_is_fresh /var/lib/apt/lists/lock; then
+                log_info "Package cache is fresh (< ${PKG_CACHE_MAX_AGE_SECS}s old), skipping apt update"
+            else
+                "$_run" "Refreshing package cache" \
+                    timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo apt update
+            fi
+            ;;
+        dnf|yum)
+            if _pkg_cache_is_fresh /var/cache/${PKG_MGR}/metadata/repomd.xml 2>/dev/null \
+               || _pkg_cache_is_fresh /var/cache/${PKG_MGR}/.check 2>/dev/null; then
+                log_info "Package cache is fresh, skipping ${PKG_MGR} makecache"
+            else
+                "$_run" "Refreshing package cache" \
+                    timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo "$PKG_MGR" makecache
+            fi
+            ;;
+        pacman)
+            # pacman -Syu always runs — skipping a partial sync risks DB mismatch.
+            "$_run" "Refreshing package cache & upgrading" sudo pacman -Syu $_nc ;;
+        zypper)
+            "$_run" "Refreshing package cache" \
+                timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo zypper refresh ;;
     esac
     _PKG_REFRESHED=true
 }
@@ -234,7 +268,27 @@ pkg_full_upgrade() {
     case "$PKG_MGR" in
         apt)     # Fix broken dependencies before upgrading (e.g. half-installed kernels)
                  "$_run" "Fixing broken packages" sudo apt --fix-broken install $_y || true
-                 "$_run" "Running full system upgrade" sudo apt full-upgrade $_y ;;
+                 if [[ "$mode" == "direct" ]]; then
+                     # Interactive (no -y): tee output so we can detect "Abort." (user typed N).
+                     # Exit code 2 signals "Cancelled" to the runner, suppressing retries.
+                     local _apt_out
+                     _apt_out=$(mktemp)
+                     printf "  Running full system upgrade ...\n"
+                     sudo apt full-upgrade 2>&1 | tee "$_apt_out"
+                     local _apt_rc=${PIPESTATUS[0]}
+                     if grep -q "^Abort\.$" "$_apt_out"; then
+                         printf "  ${RED}✗${RESET}  Running full system upgrade\n"
+                         rm -f "$_apt_out"
+                         return 2
+                     fi
+                     [[ $_apt_rc -eq 0 ]] \
+                         && printf "  ${GREEN}✓${RESET}  Running full system upgrade\n" \
+                         || printf "  ${RED}✗${RESET}  Running full system upgrade\n"
+                     rm -f "$_apt_out"
+                     return $_apt_rc
+                 else
+                     "$_run" "Running full system upgrade" sudo apt full-upgrade $_y
+                 fi ;;
         dnf|yum) "$_run" "Running full system upgrade" sudo "$PKG_MGR" upgrade $_y ;;
         pacman)  if command -v yay &>/dev/null; then
                      "$_run" "Running full system upgrade (yay)"  yay  -Syu $_nc
