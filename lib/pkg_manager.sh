@@ -147,7 +147,10 @@ pkg_refresh() {
                 log_info "Package cache is fresh (< ${PKG_CACHE_MAX_AGE_SECS}s old), skipping apt update"
             else
                 "$_run" "Refreshing package cache" \
-                    timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo apt update
+                    timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo apt update \
+                        -o Acquire::http::Timeout=15 \
+                        -o Acquire::https::Timeout=15 \
+                        -o Acquire::Retries=1
             fi
             ;;
         dnf|yum)
