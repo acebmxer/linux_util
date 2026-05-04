@@ -125,9 +125,9 @@ PKG_CACHE_MAX_AGE_SECS="${PKG_CACHE_MAX_AGE_SECS:-3600}"
 PKG_REFRESH_TIMEOUT_SECS="${PKG_REFRESH_TIMEOUT_SECS:-120}"
 
 _pkg_cache_is_fresh() {
-    local cache_file="$1"
-    [[ -f "$cache_file" ]] || return 1
-    local age=$(( $(date +%s) - $(stat -c %Y "$cache_file") ))
+    local cache_path="$1"
+    [[ -e "$cache_path" ]] || return 1
+    local age=$(( $(date +%s) - $(stat -c %Y "$cache_path") ))
     (( age < PKG_CACHE_MAX_AGE_SECS ))
 }
 
@@ -143,7 +143,7 @@ pkg_refresh() {
     # shellcheck disable=SC2086
     case "$PKG_MGR" in
         apt)
-            if _pkg_cache_is_fresh /var/lib/apt/lists/lock; then
+            if _pkg_cache_is_fresh /var/lib/apt/lists; then
                 log_info "Package cache is fresh (< ${PKG_CACHE_MAX_AGE_SECS}s old), skipping apt update"
             else
                 "$_run" "Refreshing package cache" \
