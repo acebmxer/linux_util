@@ -91,15 +91,27 @@ _wg_client_prompt_config() {
 
         if [[ -z "$conf_path" ]]; then
             error "No path provided."
-            read -rp "Try again? [Y/n]: " retry
-            [[ "${retry,,}" =~ ^n ]] && { echo ""; return 0; }
+            while true; do
+                read -rp "Try again? [Y/n]: " retry
+                case "${retry,,}" in
+                    y|yes|'') break ;;
+                    n|no) echo ""; return 0 ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
             continue
         fi
 
         if [[ ! -f "$conf_path" ]]; then
             error "File not found: $conf_path"
-            read -rp "Try again? [Y/n]: " retry
-            [[ "${retry,,}" =~ ^n ]] && { echo ""; return 0; }
+            while true; do
+                read -rp "Try again? [Y/n]: " retry
+                case "${retry,,}" in
+                    y|yes|'') break ;;
+                    n|no) echo ""; return 0 ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
             continue
         fi
 
@@ -110,8 +122,14 @@ _wg_client_prompt_config() {
         # Validate the config has required sections
         if ! grep -qE '^\[Interface\]' "$conf_path" 2>/dev/null; then
             error "File does not appear to be a valid WireGuard config (missing [Interface] section)."
-            read -rp "Try again? [Y/n]: " retry
-            [[ "${retry,,}" =~ ^n ]] && { echo ""; return 0; }
+            while true; do
+                read -rp "Try again? [Y/n]: " retry
+                case "${retry,,}" in
+                    y|yes|'') break ;;
+                    n|no) echo ""; return 0 ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
             continue
         fi
 
@@ -153,12 +171,19 @@ _wg_client_import_nm() {
     sudo chmod 600 "${_WG_CLIENT_DIR}/${_WG_CLIENT_IFACE}.conf"
 
     echo ""
-    read -rp "Activate the VPN connection now? [Y/n]: " activate
-    activate="${activate:-Y}"
-    if [[ "${activate,,}" =~ ^y ]]; then
-        nmcli connection up "$conn_name"
-        info "WireGuard tunnel is active."
-    fi
+    while true; do
+        read -rp "Activate the VPN connection now? [Y/n]: " activate
+        activate="${activate:-Y}"
+        case "${activate,,}" in
+            y|yes)
+                nmcli connection up "$conn_name"
+                info "WireGuard tunnel is active."
+                break
+                ;;
+            n|no) break ;;
+            *) echo "  Please enter Y or N." ;;
+        esac
+    done
 }
 
 # Import config via wg-quick (headless / no desktop environment)
@@ -173,17 +198,25 @@ _wg_client_import_wgquick() {
     info "Config imported to ${_WG_CLIENT_DIR}/${_WG_CLIENT_IFACE}.conf"
 
     echo ""
-    read -rp "Start WireGuard tunnel now and enable on boot? [Y/n]: " start_now
-    start_now="${start_now:-Y}"
-    if [[ "${start_now,,}" =~ ^y ]]; then
-        sudo systemctl enable "wg-quick@${_WG_CLIENT_IFACE}"
-        sudo systemctl start "wg-quick@${_WG_CLIENT_IFACE}"
-        info "WireGuard tunnel is active."
-        sudo wg show "$_WG_CLIENT_IFACE" 2>/dev/null || true
-    else
-        info "To start the tunnel manually: sudo wg-quick up ${_WG_CLIENT_IFACE}"
-        info "To enable on boot: sudo systemctl enable wg-quick@${_WG_CLIENT_IFACE}"
-    fi
+    while true; do
+        read -rp "Start WireGuard tunnel now and enable on boot? [Y/n]: " start_now
+        start_now="${start_now:-Y}"
+        case "${start_now,,}" in
+            y|yes)
+                sudo systemctl enable "wg-quick@${_WG_CLIENT_IFACE}"
+                sudo systemctl start "wg-quick@${_WG_CLIENT_IFACE}"
+                info "WireGuard tunnel is active."
+                sudo wg show "$_WG_CLIENT_IFACE" 2>/dev/null || true
+                break
+                ;;
+            n|no)
+                info "To start the tunnel manually: sudo wg-quick up ${_WG_CLIENT_IFACE}"
+                info "To enable on boot: sudo systemctl enable wg-quick@${_WG_CLIENT_IFACE}"
+                break
+                ;;
+            *) echo "  Please enter Y or N." ;;
+        esac
+    done
 }
 
 uninstall_wireguard_client() {

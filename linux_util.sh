@@ -314,13 +314,25 @@ process_selected() {
 
     # Run pre-flight checks before proceeding
     if ! preflight_checks; then
-        read -n 1 -rp "Pre-flight checks failed. Continue anyway? (y/N) " _pf_ans < /dev/tty
-        echo
-        if [[ ! "$_pf_ans" =~ ^[Yy]$ ]]; then
-            echo "${YELLOW}Aborted.${RESET}"
-            read -rp "Press ENTER to return to menu..." < /dev/tty
-            return 0
-        fi
+        while true; do
+            read -n 1 -rp "Pre-flight checks failed. Continue anyway? (y/N) " _pf_ans < /dev/tty
+            echo
+            [[ $'\e' == "$_pf_ans" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            _pf_ans=${_pf_ans:-N}
+            case "$_pf_ans" in
+                y|Y)
+                    break
+                    ;;
+                n|N)
+                    echo "${YELLOW}Aborted.${RESET}"
+                    read -rp "Press ENTER to return to menu..." < /dev/tty
+                    return 0
+                    ;;
+                *)
+                    echo "  Please press Y to continue or N to abort."
+                    ;;
+            esac
+        done
     fi
 
     # Update package lists first
@@ -548,38 +560,47 @@ process_selected() {
 
     # Offer reboot (only for System Tasks and Docker)
     if [[ "$needs_reboot" == "true" ]]; then
-        read -n 1 -rp "Reboot now? (y/N) " REBOOT_CHOICE < /dev/tty
-        echo
-        REBOOT_CHOICE=${REBOOT_CHOICE:-N}
-        case "$REBOOT_CHOICE" in
-            y|Y)
-                info "Rebooting…"
-                printf '\n\n'
-                sudo reboot
-                ;;
-            *)
-                info "Remember to reboot later if needed."
-                while true; do
-                    read -n 1 -rp "Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty
-                    echo
-                    [[ $'\e' == "$_RELOAD_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
-                    _RELOAD_CHOICE=${_RELOAD_CHOICE:-Y}
-                    case "$_RELOAD_CHOICE" in
-                        y|Y|"")
-                            exec 9>&-
-                            exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
-                            ;;
-                        n|N)
-                            info "Exiting."
-                            exit 0
-                            ;;
-                        *)
-                            echo "  Please press Y to reload or N to exit."
-                            ;;
-                    esac
-                done
-                ;;
-        esac
+        while true; do
+            read -n 1 -rp "Reboot now? (y/N) " REBOOT_CHOICE < /dev/tty
+            echo
+            [[ $'\e' == "$REBOOT_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            REBOOT_CHOICE=${REBOOT_CHOICE:-N}
+            case "$REBOOT_CHOICE" in
+                y|Y)
+                    info "Rebooting…"
+                    printf '\n\n'
+                    sudo reboot
+                    ;;
+                n|N)
+                    break
+                    ;;
+                *)
+                    echo "  Please press Y to reboot or N to skip."
+                    continue
+                    ;;
+            esac
+            break
+        done
+        info "Remember to reboot later if needed."
+        while true; do
+            read -n 1 -rp "Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty
+            echo
+            [[ $'\e' == "$_RELOAD_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            _RELOAD_CHOICE=${_RELOAD_CHOICE:-Y}
+            case "$_RELOAD_CHOICE" in
+                y|Y|"")
+                    exec 9>&-
+                    exec bash "$SCRIPT_PATH" "${ORIGINAL_ARGS[@]}"
+                    ;;
+                n|N)
+                    info "Exiting."
+                    exit 0
+                    ;;
+                *)
+                    echo "  Please press Y to reload or N to exit."
+                    ;;
+            esac
+        done
     else
         while true; do
             read -n 1 -rp "No reboot needed. Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty

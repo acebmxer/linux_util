@@ -246,8 +246,13 @@ install_nvidia_drivers() {
                 echo ""
                 echo "[!] RPM Fusion (nonfree) repository is required for NVIDIA drivers on Fedora/RHEL."
                 echo ""
-                read -rp "Would you like to enable RPM Fusion repositories now? (y/N): " enable_rpmfusion < /dev/tty
-                
+                while true; do
+                    read -rp "Would you like to enable RPM Fusion repositories now? (y/N): " enable_rpmfusion < /dev/tty
+                    case "${enable_rpmfusion,,}" in
+                        y|yes|n|no|'') break ;;
+                        *) echo "  Please enter Y or N." ;;
+                    esac
+                done
                 if [[ "$enable_rpmfusion" =~ ^[Yy]$ ]]; then
                     echo "Enabling RPM Fusion repositories..."
                     if [[ "$DISTRO_ID" == "fedora" ]]; then

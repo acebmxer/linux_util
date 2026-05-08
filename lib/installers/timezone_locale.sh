@@ -176,11 +176,14 @@ _select_locale() {
             if command -v apt-get &>/dev/null; then
                 warn "The 'locales' package is not installed. It is required to generate locales."
                 local confirm
-                read -rp "Install 'locales' package now? [y/N]: " confirm < /dev/tty
-                if [[ "${confirm,,}" != "y" ]]; then
-                    warn "Locale selection cancelled."
-                    return 1
-                fi
+                while true; do
+                    read -rp "Install 'locales' package now? [y/N]: " confirm < /dev/tty
+                    case "${confirm,,}" in
+                        y|yes) break ;;
+                        n|no|'') warn "Locale selection cancelled."; return 1 ;;
+                        *) echo "  Please enter Y or N." ;;
+                    esac
+                done
                 run_as_root apt-get install -y locales || {
                     warn "Failed to install 'locales' package."
                     return 1
@@ -196,15 +199,22 @@ _select_locale() {
         if [[ -n "$gen_candidate" ]]; then
             warn "Locale '${loc_term}' is not generated yet. Nearest supported: ${gen_candidate}"
             local confirm
-            read -rp "Generate ${gen_candidate} now? [y/N]: " confirm < /dev/tty
-            if [[ "${confirm,,}" == "y" ]]; then
-                run_as_root locale-gen "$gen_candidate" || {
-                    warn "locale-gen failed for ${gen_candidate}."
-                    return 1
-                }
-                mapfile -t available_locales < <(locale -a 2>/dev/null)
-                mapfile -t matches < <(printf '%s\n' "${available_locales[@]}" | grep -i "${loc_term}" | head -20)
-            fi
+            while true; do
+                read -rp "Generate ${gen_candidate} now? [y/N]: " confirm < /dev/tty
+                case "${confirm,,}" in
+                    y|yes)
+                        run_as_root locale-gen "$gen_candidate" || {
+                            warn "locale-gen failed for ${gen_candidate}."
+                            return 1
+                        }
+                        mapfile -t available_locales < <(locale -a 2>/dev/null)
+                        mapfile -t matches < <(printf '%s\n' "${available_locales[@]}" | grep -i "${loc_term}" | head -20)
+                        break
+                        ;;
+                    n|no|'') break ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
         fi
 
         if (( ${#matches[@]} == 0 )); then

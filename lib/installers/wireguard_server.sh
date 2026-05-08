@@ -99,13 +99,21 @@ EOF
 
     # Offer to generate a client configuration
     echo ""
-    read -rp "Generate a client configuration now? [Y/n]: " gen_client
-    gen_client="${gen_client:-Y}"
-    if [[ "${gen_client,,}" =~ ^y ]]; then
-        _wg_server_generate_client_config "$server_pubkey" "$public_ip" "$listen_port" "$server_network"
-    else
-        info "You can generate client configs later by re-running this installer."
-    fi
+    while true; do
+        read -rp "Generate a client configuration now? [Y/n]: " gen_client
+        gen_client="${gen_client:-Y}"
+        case "${gen_client,,}" in
+            y|yes)
+                _wg_server_generate_client_config "$server_pubkey" "$public_ip" "$listen_port" "$server_network"
+                break
+                ;;
+            n|no)
+                info "You can generate client configs later by re-running this installer."
+                break
+                ;;
+            *) echo "  Please enter Y or N." ;;
+        esac
+    done
 
     info "WireGuard Server installed successfully."
 }

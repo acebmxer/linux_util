@@ -33,12 +33,20 @@ self_update_script() {
         warn "git pull failed: $pull_err"
         warn "Local modifications in ${SCRIPT_DIR} will be discarded to sync with origin/${current_branch}."
         local _reset_confirm
-        read -n 1 -rp "Reset to origin/${current_branch}? Any local changes will be lost. (y/N) " _reset_confirm < /dev/tty
-        echo
-        if [[ ! "$_reset_confirm" =~ ^[Yy]$ ]]; then
-            warn "Self-update aborted. Resolve git conflicts manually in ${SCRIPT_DIR}."
-            return 1
-        fi
+        while true; do
+            read -n 1 -rp "Reset to origin/${current_branch}? Any local changes will be lost. (y/N) " _reset_confirm < /dev/tty
+            echo
+            [[ $'\e' == "$_reset_confirm" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            _reset_confirm="${_reset_confirm:-N}"
+            case "$_reset_confirm" in
+                y|Y) break ;;
+                n|N)
+                    warn "Self-update aborted. Resolve git conflicts manually in ${SCRIPT_DIR}."
+                    return 1
+                    ;;
+                *) echo "  Please press Y or N." ;;
+            esac
+        done
         git -C "$SCRIPT_DIR" checkout "$current_branch" 2>/dev/null
         git -C "$SCRIPT_DIR" reset --hard "origin/$current_branch" 2>/dev/null
         # Clean any remaining untracked files that conflict with tracked files

@@ -273,11 +273,14 @@ setup_mount_local_drive() {
         } > /dev/tty
 
         local confirm
-        read -rp "Proceed? [y/N]: " confirm < /dev/tty
-        if [[ "${confirm,,}" != "y" ]]; then
-            info "Skipped /dev/${sel_name}."
-            continue
-        fi
+        while true; do
+            read -rp "Proceed? [y/N]: " confirm < /dev/tty
+            case "${confirm,,}" in
+                y|yes) break ;;
+                n|no|'') info "Skipped /dev/${sel_name}."; continue 2 ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
 
         # ── Dry-run path ──────────────────────────────────────────────────────
         if [[ "${DRY_RUN:-false}" == "true" ]]; then
@@ -303,8 +306,14 @@ setup_mount_local_drive() {
         if grep -qsE "^UUID=${sel_uuid}[[:space:]]" /etc/fstab; then
             warn "UUID ${sel_uuid} already has an entry in /etc/fstab."
             local overwrite
-            read -rp "Continue anyway and add a second entry? [y/N]: " overwrite < /dev/tty
-            [[ "${overwrite,,}" != "y" ]] && { info "Skipped /dev/${sel_name}."; continue; }
+            while true; do
+                read -rp "Continue anyway and add a second entry? [y/N]: " overwrite < /dev/tty
+                case "${overwrite,,}" in
+                    y|yes) break ;;
+                    n|no|'') info "Skipped /dev/${sel_name}."; continue 2 ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
         fi
 
         if grep -qsE "[[:space:]]${mount_point//\//\\/}[[:space:]]" /etc/fstab; then

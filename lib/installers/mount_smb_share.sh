@@ -154,12 +154,15 @@ setup_mount_smb_share() {
             error "No accessible SMB shares found on ${server}."
             warn "Check credentials, server reachability, and that shares are visible."
             local _retry
-            read -rp "Try a different server? [y/N]: " _retry < /dev/tty
-            if [[ "${_retry,,}" == "y" ]]; then
-                server=""
-                continue
-            fi
-            return 1
+            while true; do
+                read -rp "Try a different server? [y/N]: " _retry < /dev/tty
+                case "${_retry,,}" in
+                    y|yes) server=""; break ;;
+                    n|no|'') return 1 ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
+            continue
         fi
 
         # ── Step 5: Display shares table ─────────────────────────────────────
@@ -280,11 +283,14 @@ setup_mount_smb_share() {
             } > /dev/tty
 
             local confirm
-            read -rp "Proceed? [y/N]: " confirm < /dev/tty
-            if [[ "${confirm,,}" != "y" ]]; then
-                info "Skipped ${smb_source}."
-                continue
-            fi
+            while true; do
+                read -rp "Proceed? [y/N]: " confirm < /dev/tty
+                case "${confirm,,}" in
+                    y|yes) break ;;
+                    n|no|'') info "Skipped ${smb_source}."; continue 2 ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
 
             # ── Dry-run path ──────────────────────────────────────────────────
             if [[ "${DRY_RUN:-false}" == "true" ]]; then
@@ -306,8 +312,14 @@ setup_mount_smb_share() {
             if grep -qsF "$smb_source" /etc/fstab; then
                 warn "${smb_source} already has an entry in /etc/fstab."
                 local overwrite
-                read -rp "Continue anyway and add a second entry? [y/N]: " overwrite < /dev/tty
-                [[ "${overwrite,,}" != "y" ]] && { info "Skipped ${smb_source}."; continue; }
+                while true; do
+                    read -rp "Continue anyway and add a second entry? [y/N]: " overwrite < /dev/tty
+                    case "${overwrite,,}" in
+                        y|yes) break ;;
+                        n|no|'') info "Skipped ${smb_source}."; continue 2 ;;
+                        *) echo "  Please enter Y or N." ;;
+                    esac
+                done
             fi
 
             if grep -qsE "[[:space:]]${mount_point//\//\\/}[[:space:]]" /etc/fstab; then
@@ -379,8 +391,14 @@ setup_mount_smb_share() {
 
         # ── Offer another server ──────────────────────────────────────────────
         local _more
-        read -rp "Mount shares from another server? [y/N]: " _more < /dev/tty
-        [[ "${_more,,}" == "y" ]] || break
+        while true; do
+            read -rp "Mount shares from another server? [y/N]: " _more < /dev/tty
+            case "${_more,,}" in
+                y|yes) break ;;
+                n|no|'') break 2 ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
     done
 
     return 0

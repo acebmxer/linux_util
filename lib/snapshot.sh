@@ -151,13 +151,17 @@ _timeshift_setup_device() {
     if [[ -n "$root_dev" && -n "$root_uuid" ]]; then
         echo "Current boot device detected: ${BOLD}${root_dev}${RESET} (UUID: ${root_uuid})"
         echo ""
-        read -n 1 -rp "Use boot device ${root_dev} for Timeshift snapshots? (Y/n) " _ts_choice
-        echo ""
-
-        if [[ ! "$_ts_choice" =~ ^[Nn]$ ]]; then
-            selected_uuid="$root_uuid"
-            selected_dev="$root_dev"
-        fi
+        while true; do
+            read -n 1 -rp "Use boot device ${root_dev} for Timeshift snapshots? (Y/n) " _ts_choice
+            echo ""
+            [[ $'\e' == "$_ts_choice" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            _ts_choice="${_ts_choice:-Y}"
+            case "$_ts_choice" in
+                y|Y) selected_uuid="$root_uuid"; selected_dev="$root_dev"; break ;;
+                n|N) break ;;
+                *) echo "  Please press Y or N." ;;
+            esac
+        done
     else
         echo "${YELLOW}Could not auto-detect boot device.${RESET}"
         echo ""
@@ -530,13 +534,21 @@ _timeshift_btrfs_restore() {
     echo ""
 
     local _confirm
-    read -n 1 -rp "${YELLOW}Proceed with btrfs subvolume restore? (y/N) ${RESET}" _confirm < /dev/tty
-    echo ""
-    if [[ ! "$_confirm" =~ ^[Yy]$ ]]; then
-        echo "${YELLOW}Restore cancelled.${RESET}"
-        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
-        return 0
-    fi
+    while true; do
+        read -n 1 -rp "${YELLOW}Proceed with btrfs subvolume restore? (y/N) ${RESET}" _confirm < /dev/tty
+        echo ""
+        [[ $'\e' == "$_confirm" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+        _confirm="${_confirm:-N}"
+        case "$_confirm" in
+            y|Y) break ;;
+            n|N)
+                echo "${YELLOW}Restore cancelled.${RESET}"
+                [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+                return 0
+                ;;
+            *) echo "  Please press Y or N." ;;
+        esac
+    done
 
     local timestamp
     timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
@@ -788,13 +800,21 @@ _timeshift_rsync_restore() {
     echo ""
 
     local _confirm
-    read -n 1 -rp "${YELLOW}Proceed with rsync restore? (y/N) ${RESET}" _confirm < /dev/tty
-    echo ""
-    if [[ ! "$_confirm" =~ ^[Yy]$ ]]; then
-        echo "${YELLOW}Restore cancelled.${RESET}"
-        [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
-        return 0
-    fi
+    while true; do
+        read -n 1 -rp "${YELLOW}Proceed with rsync restore? (y/N) ${RESET}" _confirm < /dev/tty
+        echo ""
+        [[ $'\e' == "$_confirm" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+        _confirm="${_confirm:-N}"
+        case "$_confirm" in
+            y|Y) break ;;
+            n|N)
+                echo "${YELLOW}Restore cancelled.${RESET}"
+                [[ "$_did_mount" == "true" ]] && sudo umount "$mount_point" 2>/dev/null
+                return 0
+                ;;
+            *) echo "  Please press Y or N." ;;
+        esac
+    done
 
     echo ""
     echo "${CYAN}Restoring via rsync (this may take several minutes)...${RESET}"

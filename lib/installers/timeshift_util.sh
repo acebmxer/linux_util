@@ -17,21 +17,30 @@ install_timeshift() {
                 warn "Snapper is installed and is not compatible with TimeShift."
                 warn "CachyOS ships Snapper as its default snapshot solution."
                 echo ""
-                read -n 1 -rp "Would you like to remove Snapper to install TimeShift? [y/N] " snapper_ans
-                echo ""
-                if [[ "$snapper_ans" =~ ^[Yy]$ ]]; then
-                    echo "Removing Snapper..."
-                    # Stop and disable snapper timers/services before removal to prevent
-                    # stale snapper command errors from btrfs-assistant or running timers.
-                    sudo systemctl stop snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
-                    sudo systemctl disable snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
-                    sudo pacman -R --noconfirm snapper || true
-                    sudo pacman -Rsn --noconfirm cachyos-snapper-support btrfs-assistant 2>/dev/null || true
-                    echo "Snapper successfully uninstalled. Now installing TimeShift..."
-                else
-                    warn "Skipping TimeShift installation. Snapper was not removed."
-                    return 2
-                fi
+                while true; do
+                    read -n 1 -rp "Would you like to remove Snapper to install TimeShift? [y/N] " snapper_ans
+                    echo ""
+                    [[ $'\e' == "$snapper_ans" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+                    snapper_ans="${snapper_ans:-N}"
+                    case "$snapper_ans" in
+                        y|Y)
+                            echo "Removing Snapper..."
+                            # Stop and disable snapper timers/services before removal to prevent
+                            # stale snapper command errors from btrfs-assistant or running timers.
+                            sudo systemctl stop snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
+                            sudo systemctl disable snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
+                            sudo pacman -R --noconfirm snapper || true
+                            sudo pacman -Rsn --noconfirm cachyos-snapper-support btrfs-assistant 2>/dev/null || true
+                            echo "Snapper successfully uninstalled. Now installing TimeShift..."
+                            break
+                            ;;
+                        n|N)
+                            warn "Skipping TimeShift installation. Snapper was not removed."
+                            return 2
+                            ;;
+                        *) echo "  Please press Y or N." ;;
+                    esac
+                done
             fi
             pkg_install timeshift || return 1
             ;;
@@ -69,15 +78,25 @@ install_timeshift() {
     # Skipped in dry-run mode since no actual installation occurred.
     if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" && "${DRY_RUN:-false}" == "false" ]]; then
         echo ""
-        read -n 1 -rp "Create an initial Timeshift snapshot now? [Y/n] " _ts_snap_now < /dev/tty
-        echo ""
-        if [[ ! "$_ts_snap_now" =~ ^[Nn]$ ]]; then
-            setup_create_snapshot
-            # Refresh the cached snapshot timestamp shown in the left panel
-            _timeshift_cache_last_snapshot
-        else
-            echo "Skipping initial snapshot. You can create one later via 'Create Snapshot'."
-        fi
+        while true; do
+            read -n 1 -rp "Create an initial Timeshift snapshot now? [Y/n] " _ts_snap_now < /dev/tty
+            echo ""
+            [[ $'\e' == "$_ts_snap_now" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            _ts_snap_now="${_ts_snap_now:-Y}"
+            case "$_ts_snap_now" in
+                y|Y)
+                    setup_create_snapshot
+                    # Refresh the cached snapshot timestamp shown in the left panel
+                    _timeshift_cache_last_snapshot
+                    break
+                    ;;
+                n|N)
+                    echo "Skipping initial snapshot. You can create one later via 'Create Snapshot'."
+                    break
+                    ;;
+                *) echo "  Please press Y or N." ;;
+            esac
+        done
     fi
 }
 

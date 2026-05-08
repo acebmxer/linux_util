@@ -15,16 +15,25 @@ install_snapper() {
             if pkg_check_installed timeshift; then
                 warn "Timeshift is installed and conflicts with Snapper on Arch-based systems."
                 echo ""
-                read -n 1 -rp "Would you like to remove Timeshift to install Snapper? [y/N] " snapper_ans
-                echo ""
-                if [[ "$snapper_ans" =~ ^[Yy]$ ]]; then
-                    echo "Removing Timeshift..."
-                    sudo pacman -Rs --noconfirm timeshift || true
-                    echo "Timeshift removed. Now installing Snapper..."
-                else
-                    warn "Skipping Snapper installation. Timeshift was not removed."
-                    return 2
-                fi
+                while true; do
+                    read -n 1 -rp "Would you like to remove Timeshift to install Snapper? [y/N] " snapper_ans
+                    echo ""
+                    [[ $'\e' == "$snapper_ans" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+                    snapper_ans="${snapper_ans:-N}"
+                    case "$snapper_ans" in
+                        y|Y)
+                            echo "Removing Timeshift..."
+                            sudo pacman -Rs --noconfirm timeshift || true
+                            echo "Timeshift removed. Now installing Snapper..."
+                            break
+                            ;;
+                        n|N)
+                            warn "Skipping Snapper installation. Timeshift was not removed."
+                            return 2
+                            ;;
+                        *) echo "  Please press Y or N." ;;
+                    esac
+                done
             fi
             pkg_install snapper || return 1
             ;;

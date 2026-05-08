@@ -559,12 +559,18 @@ _apt_codename_upgrade() {
         echo "$held_packages"
         echo ""
         local hold_confirm=""
-        read -rp "Continue with held packages? (y/N): " hold_confirm
-        if [[ ! "$hold_confirm" =~ ^[Yy]$ ]]; then
-            info "Upgrade aborted due to held packages."
-            sudo rm -rf "$backup_dir"
-            return 1
-        fi
+        while true; do
+            read -rp "Continue with held packages? (y/N): " hold_confirm
+            case "${hold_confirm,,}" in
+                y|yes) break ;;
+                n|no|'')
+                    info "Upgrade aborted due to held packages."
+                    sudo rm -rf "$backup_dir"
+                    return 1
+                    ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
     fi
 
     # Step 4: Build a grep pattern to match official mirror URLs
@@ -649,12 +655,18 @@ _apt_codename_upgrade() {
     done
 
     local sources_confirm=""
-    read -rp "Apply these source file changes and proceed with the upgrade? (y/N): " sources_confirm
-    if [[ ! "$sources_confirm" =~ ^[Yy]$ ]]; then
-        info "Upgrade aborted. No source files were modified."
-        sudo rm -rf "$backup_dir"
-        return 1
-    fi
+    while true; do
+        read -rp "Apply these source file changes and proceed with the upgrade? (y/N): " sources_confirm
+        case "${sources_confirm,,}" in
+            y|yes) break ;;
+            n|no|'')
+                info "Upgrade aborted. No source files were modified."
+                sudo rm -rf "$backup_dir"
+                return 1
+                ;;
+            *) echo "  Please enter Y or N." ;;
+        esac
+    done
 
     # Apply the changes now that the user has confirmed
     for (( i = 0; i < ${#files_to_update[@]}; i++ )); do
@@ -774,17 +786,25 @@ _leapp_pre_remediate() {
             warn "RHEL 10+ requires NetworkManager keyfile format."
             echo ""
             local migrate_confirm=""
-            read -rp "  Migrate network configs to keyfile format now? (Y/n): " migrate_confirm < /dev/tty
-            if [[ ! "$migrate_confirm" =~ ^[Nn]$ ]]; then
-                if sudo nmcli connection migrate 2>&1; then
-                    info "Network configuration migrated to keyfile format."
-                    (( fixes_applied++ ))
-                else
-                    warn "Network migration failed. You may need to migrate manually: sudo nmcli connection migrate"
-                fi
-            else
-                warn "Skipped. This will likely cause a leapp inhibitor."
-            fi
+            while true; do
+                read -rp "  Migrate network configs to keyfile format now? (Y/n): " migrate_confirm < /dev/tty
+                case "${migrate_confirm,,}" in
+                    y|yes|'')
+                        if sudo nmcli connection migrate 2>&1; then
+                            info "Network configuration migrated to keyfile format."
+                            (( fixes_applied++ ))
+                        else
+                            warn "Network migration failed. You may need to migrate manually: sudo nmcli connection migrate"
+                        fi
+                        break
+                        ;;
+                    n|no)
+                        warn "Skipped. This will likely cause a leapp inhibitor."
+                        break
+                        ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
         fi
     fi
 
@@ -794,14 +814,22 @@ _leapp_pre_remediate() {
             warn "firewalld AllowZoneDrifting=yes is deprecated and blocks EL9 upgrades."
             echo ""
             local fwd_confirm=""
-            read -rp "  Set AllowZoneDrifting=no now? (Y/n): " fwd_confirm < /dev/tty
-            if [[ ! "$fwd_confirm" =~ ^[Nn]$ ]]; then
-                sudo sed -i 's/^AllowZoneDrifting=yes/AllowZoneDrifting=no/' /etc/firewalld/firewalld.conf
-                info "AllowZoneDrifting set to no."
-                (( fixes_applied++ ))
-            else
-                warn "Skipped. This will likely cause a leapp inhibitor."
-            fi
+            while true; do
+                read -rp "  Set AllowZoneDrifting=no now? (Y/n): " fwd_confirm < /dev/tty
+                case "${fwd_confirm,,}" in
+                    y|yes|'')
+                        sudo sed -i 's/^AllowZoneDrifting=yes/AllowZoneDrifting=no/' /etc/firewalld/firewalld.conf
+                        info "AllowZoneDrifting set to no."
+                        (( fixes_applied++ ))
+                        break
+                        ;;
+                    n|no)
+                        warn "Skipped. This will likely cause a leapp inhibitor."
+                        break
+                        ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
         fi
     fi
 
@@ -810,20 +838,28 @@ _leapp_pre_remediate() {
         warn "/etc/resolv.conf is a symlink, which can cause DNS failures during the upgrade."
         echo ""
         local resolv_confirm=""
-        read -rp "  Convert to a regular file now? (Y/n): " resolv_confirm < /dev/tty
-        if [[ ! "$resolv_confirm" =~ ^[Nn]$ ]]; then
-            local resolv_target
-            resolv_target=$(readlink -f /etc/resolv.conf)
-            if [[ -f "$resolv_target" ]]; then
-                sudo cp --remove-destination "$resolv_target" /etc/resolv.conf
-                info "/etc/resolv.conf converted to a regular file."
-                (( fixes_applied++ ))
-            else
-                warn "Symlink target not found. Skipping."
-            fi
-        else
-            warn "Skipped. This may cause DNS resolution failures during upgrade."
-        fi
+        while true; do
+            read -rp "  Convert to a regular file now? (Y/n): " resolv_confirm < /dev/tty
+            case "${resolv_confirm,,}" in
+                y|yes|'')
+                    local resolv_target
+                    resolv_target=$(readlink -f /etc/resolv.conf)
+                    if [[ -f "$resolv_target" ]]; then
+                        sudo cp --remove-destination "$resolv_target" /etc/resolv.conf
+                        info "/etc/resolv.conf converted to a regular file."
+                        (( fixes_applied++ ))
+                    else
+                        warn "Symlink target not found. Skipping."
+                    fi
+                    break
+                    ;;
+                n|no)
+                    warn "Skipped. This may cause DNS resolution failures during upgrade."
+                    break
+                    ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
     fi
 
     if (( fixes_applied > 0 )); then

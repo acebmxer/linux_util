@@ -305,16 +305,22 @@ clean_logs() {
     [[ ${#excess_files[@]} -gt 0 ]] && \
         echo "${BOLD}${YELLOW}Found ${#excess_files[@]} log(s) exceeding ${max_per_day} per day.${RESET}"
 
-    read -p "Are you sure? (y/N) " -n 1 -r
-    echo
-
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        [[ ${#age_files[@]} -gt 0 ]] && rm -f "${age_files[@]}"
-        [[ ${#excess_files[@]} -gt 0 ]] && rm -f "${excess_files[@]}"
-        echo "${GREEN}✓ Logs cleaned.${RESET}"
-    else
-        echo "Cancelled."
-    fi
+    while true; do
+        read -p "Are you sure? (y/N) " -n 1 -r
+        echo
+        [[ $'\e' == "$REPLY" ]] && { read -r -n 10 -t 0.05 _ 2>/dev/null || true; continue; }
+        REPLY="${REPLY:-N}"
+        case "$REPLY" in
+            y|Y)
+                [[ ${#age_files[@]} -gt 0 ]] && rm -f "${age_files[@]}"
+                [[ ${#excess_files[@]} -gt 0 ]] && rm -f "${excess_files[@]}"
+                echo "${GREEN}✓ Logs cleaned.${RESET}"
+                break
+                ;;
+            n|N) echo "Cancelled."; break ;;
+            *) echo "  Please press Y or N." ;;
+        esac
+    done
 }
 
 compress_logs() {

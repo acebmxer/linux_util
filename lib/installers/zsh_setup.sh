@@ -308,8 +308,14 @@ update_zsh_setup() {
     _zsh_setup_configure_plugins
 
     echo ""
-    read -rp "  Would you like to change your theme? [y/N]: " change_theme < /dev/tty
-    [[ "$change_theme" =~ ^[Yy]$ ]] && _zsh_setup_select_theme
+    while true; do
+        read -rp "  Would you like to change your theme? [y/N]: " change_theme < /dev/tty
+        case "${change_theme,,}" in
+            y|yes) _zsh_setup_select_theme; break ;;
+            n|no|'') break ;;
+            *) echo "  Please enter Y or N." ;;
+        esac
+    done
 
     info "Zsh setup updated."
 }

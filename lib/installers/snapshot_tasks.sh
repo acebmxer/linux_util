@@ -91,12 +91,17 @@ setup_restore_snapshot() {
     echo ""
 
     # Confirm before proceeding
-    read -n 1 -rp "${YELLOW}This will restore your system to snapshot ${_selected}. Continue? (y/N) ${RESET}" _confirm < /dev/tty
-    echo ""
-    if [[ ! "$_confirm" =~ ^[Yy]$ ]]; then
-        echo "${YELLOW}Restore cancelled.${RESET}"
-        return 2
-    fi
+    while true; do
+        read -n 1 -rp "${YELLOW}This will restore your system to snapshot ${_selected}. Continue? (y/N) ${RESET}" _confirm < /dev/tty
+        echo ""
+        [[ $'\e' == "$_confirm" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+        _confirm="${_confirm:-N}"
+        case "$_confirm" in
+            y|Y) break ;;
+            n|N) echo "${YELLOW}Restore cancelled.${RESET}"; return 2 ;;
+            *) echo "  Please press Y or N." ;;
+        esac
+    done
 
     # Create a safety snapshot before restoring
     echo ""
@@ -185,12 +190,17 @@ setup_delete_snapshot() {
     echo ""
 
     local _confirm
-    read -n 1 -rp "${YELLOW}Proceed? (y/N) ${RESET}" _confirm < /dev/tty
-    echo ""
-    if [[ ! "$_confirm" =~ ^[Yy]$ ]]; then
-        echo "${YELLOW}Delete cancelled.${RESET}"
-        return 2
-    fi
+    while true; do
+        read -n 1 -rp "${YELLOW}Proceed? (y/N) ${RESET}" _confirm < /dev/tty
+        echo ""
+        [[ $'\e' == "$_confirm" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+        _confirm="${_confirm:-N}"
+        case "$_confirm" in
+            y|Y) break ;;
+            n|N) echo "${YELLOW}Delete cancelled.${RESET}"; return 2 ;;
+            *) echo "  Please press Y or N." ;;
+        esac
+    done
 
     if [[ "$SNAPSHOT_BACKEND" == "snapper" ]]; then
         _snapper_delete_snapshots "${_to_delete[@]}"

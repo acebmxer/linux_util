@@ -55,34 +55,48 @@ setup_xen_guest_utilities() {
         local ver
         ver=$(pkg_get_version xe-guest-utilities)
         info "xe-guest-utilities is installed, version $ver."
-        read -n 1 -rp "Would you like to uninstall existing xe-guest-utilities (v$ver) before installing new tools? [y/N] " ans
-        echo
-        case "$ans" in
-            y|Y)
-                info "Uninstalling existing xe-guest-utilities..."
-                pkg_remove xe-guest-utilities || warn "Failed to remove xe-guest-utilities."
-                ;;
-            *)
-                info "Keeping existing xe-guest-utilities."
-                ;;
-        esac
+        while true; do
+            read -n 1 -rp "Would you like to uninstall existing xe-guest-utilities (v$ver) before installing new tools? [y/N] " ans
+            echo
+            [[ $'\e' == "$ans" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            ans="${ans:-N}"
+            case "$ans" in
+                y|Y)
+                    info "Uninstalling existing xe-guest-utilities..."
+                    pkg_remove xe-guest-utilities || warn "Failed to remove xe-guest-utilities."
+                    break
+                    ;;
+                n|N)
+                    info "Keeping existing xe-guest-utilities."
+                    break
+                    ;;
+                *) echo "  Please press Y or N." ;;
+            esac
+        done
     fi
 
     if pkg_check_installed xen-guest-agent; then
         local ver
         ver=$(pkg_get_version xen-guest-agent)
         info "xen-guest-agent is installed, version $ver."
-        read -n 1 -rp "Would you like to uninstall existing xen-guest-agent (v$ver) before installing new tools? [y/N] " ans
-        echo
-        case "$ans" in
-            y|Y)
-                info "Uninstalling existing xen-guest-agent..."
-                pkg_remove xen-guest-agent || warn "Failed to remove xen-guest-agent."
-                ;;
-            *)
-                info "Keeping existing xen-guest-agent."
-                ;;
-        esac
+        while true; do
+            read -n 1 -rp "Would you like to uninstall existing xen-guest-agent (v$ver) before installing new tools? [y/N] " ans
+            echo
+            [[ $'\e' == "$ans" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            ans="${ans:-N}"
+            case "$ans" in
+                y|Y)
+                    info "Uninstalling existing xen-guest-agent..."
+                    pkg_remove xen-guest-agent || warn "Failed to remove xen-guest-agent."
+                    break
+                    ;;
+                n|N)
+                    info "Keeping existing xen-guest-agent."
+                    break
+                    ;;
+                *) echo "  Please press Y or N." ;;
+            esac
+        done
     fi
 
     # Mount the guest tools ISO (per XCP-NG docs: mount /dev/cdrom /mnt)
@@ -93,8 +107,13 @@ setup_xen_guest_utilities() {
             warn "Could not mount /dev/cdrom to ${MOUNT_POINT}."
             warn "Please ensure the XCP-NG guest tools ISO is inserted in the VM's CD drive."
             echo ""
-            read -n 1 -rp "Would you like to retry mounting? [y/N] " retry_ans
-            echo
+            while true; do
+                read -n 1 -rp "Would you like to retry mounting? [y/N] " retry_ans
+                echo
+                [[ $'\e' == "$retry_ans" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+                retry_ans="${retry_ans:-N}"
+                case "$retry_ans" in y|Y|n|N) break ;; *) echo "  Please press Y or N." ;; esac
+            done
             if [[ "$retry_ans" =~ ^[Yy]$ ]]; then
                 if ! sudo mount /dev/cdrom "${MOUNT_POINT}"; then
                     warn "Mount failed again. Falling back to repository installation..."

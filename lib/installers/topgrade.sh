@@ -171,8 +171,14 @@ _topgrade_config_setup() {
         local overwrite=""
         echo ""
         echo "  A Topgrade config already exists at: ${config_file}"
-        read -rp "  Replace it with a preset template? (y/N): " overwrite < /dev/tty
-        [[ "$overwrite" =~ ^[Yy]$ ]] || return 0
+        while true; do
+            read -rp "  Replace it with a preset template? (y/N): " overwrite < /dev/tty
+            case "${overwrite,,}" in
+                y|yes) break ;;
+                n|no|'') return 0 ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
     fi
 
     # Build a menu from available templates
@@ -248,13 +254,21 @@ uninstall_topgrade() {
     if [[ -f "$config_file" ]]; then
         local remove_cfg=""
         echo ""
-        read -rp "  Remove Topgrade config at ${config_file}? (y/N): " remove_cfg < /dev/tty
-        if [[ "$remove_cfg" =~ ^[Yy]$ ]]; then
-            rm -f "$config_file"
-            info "Config removed."
-        else
-            info "Config preserved at: ${config_file}"
-        fi
+        while true; do
+            read -rp "  Remove Topgrade config at ${config_file}? (y/N): " remove_cfg < /dev/tty
+            case "${remove_cfg,,}" in
+                y|yes)
+                    rm -f "$config_file"
+                    info "Config removed."
+                    break
+                    ;;
+                n|no|'')
+                    info "Config preserved at: ${config_file}"
+                    break
+                    ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
     fi
 
     info "Topgrade uninstalled."
@@ -284,12 +298,14 @@ update_topgrade() {
     if [[ -f "$config_file" ]]; then
         local replace_cfg=""
         echo ""
-        read -rp "  Replace existing Topgrade config with a fresh template? (y/N): " replace_cfg < /dev/tty
-        if [[ "$replace_cfg" =~ ^[Yy]$ ]]; then
-            _topgrade_config_setup --force
-        else
-            info "Config unchanged: ${config_file}"
-        fi
+        while true; do
+            read -rp "  Replace existing Topgrade config with a fresh template? (y/N): " replace_cfg < /dev/tty
+            case "${replace_cfg,,}" in
+                y|yes) _topgrade_config_setup --force; break ;;
+                n|no|'') info "Config unchanged: ${config_file}"; break ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
     else
         _topgrade_config_setup
     fi

@@ -165,8 +165,14 @@ setup_unmount_share() {
     } > /dev/tty
 
     local confirm
-    read -rp "Proceed? [y/N]: " confirm < /dev/tty
-    [[ "${confirm,,}" != "y" ]] && { info "Cancelled."; return 0; }
+    while true; do
+        read -rp "Proceed? [y/N]: " confirm < /dev/tty
+        case "${confirm,,}" in
+            y|yes) break ;;
+            n|no|'') info "Cancelled."; return 0 ;;
+            *) echo "  Please enter Y or N." ;;
+        esac
+    done
 
     # ── Dry-run path ──────────────────────────────────────────────────────────
     if [[ "${DRY_RUN:-false}" == "true" ]]; then

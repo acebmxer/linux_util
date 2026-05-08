@@ -190,14 +190,22 @@ setup_syncthing_folders() {
     if ! systemctl --user is-active --quiet syncthing.service 2>/dev/null; then
         warn "The Syncthing user service is not running."
         local start_svc
-        read -rp "Start it now? [y/N]: " start_svc < /dev/tty
-        if [[ "${start_svc,,}" == "y" ]]; then
-            systemctl --user start syncthing.service
-            info "Syncthing service started."
-        else
-            info "You can start it later with:  systemctl --user start syncthing.service"
-            info "Continuing with folder configuration..."
-        fi
+        while true; do
+            read -rp "Start it now? [y/N]: " start_svc < /dev/tty
+            case "${start_svc,,}" in
+                y|yes)
+                    systemctl --user start syncthing.service
+                    info "Syncthing service started."
+                    break
+                    ;;
+                n|no|'')
+                    info "You can start it later with:  systemctl --user start syncthing.service"
+                    info "Continuing with folder configuration..."
+                    break
+                    ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
     else
         info "Syncthing service is running."
     fi
@@ -325,8 +333,14 @@ setup_syncthing_folders() {
         local create_data_folder=false
         if [[ ! -d "$data_folder" ]]; then
             local mk_confirm
-            read -rp "  Directory does not exist. Create it? [y/N]: " mk_confirm < /dev/tty
-            [[ "${mk_confirm,,}" == "y" ]] && create_data_folder=true
+            while true; do
+                read -rp "  Directory does not exist. Create it? [y/N]: " mk_confirm < /dev/tty
+                case "${mk_confirm,,}" in
+                    y|yes) create_data_folder=true; break ;;
+                    n|no|'') break ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
         fi
         selected_folders+=("$data_folder")
 
@@ -361,7 +375,13 @@ setup_syncthing_folders() {
             printf '        ~/Pictures   ->  %s/Pictures\n' "$data_folder"
             printf '\n'
         } > /dev/tty
-        read -rp "  Create symlinks? [y/N]: " symlink_confirm < /dev/tty
+        while true; do
+            read -rp "  Create symlinks? [y/N]: " symlink_confirm < /dev/tty
+            case "${symlink_confirm,,}" in
+                y|yes|n|no|'') break ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
 
         if [[ "${symlink_confirm,,}" == "y" ]]; then
             do_symlinks=true
@@ -481,8 +501,14 @@ setup_syncthing_folders() {
 
     # ── Step 5: Dotfiles advice ───────────────────────────────────────────────
     local dotfiles_confirm
-    read -rp "Would you like guidance on syncing dotfiles? [y/N]: " dotfiles_confirm < /dev/tty
-    [[ "${dotfiles_confirm,,}" == "y" ]] && _st_dotfiles_info
+    while true; do
+        read -rp "Would you like guidance on syncing dotfiles? [y/N]: " dotfiles_confirm < /dev/tty
+        case "${dotfiles_confirm,,}" in
+            y|yes) _st_dotfiles_info; break ;;
+            n|no|'') break ;;
+            *) echo "  Please enter Y or N." ;;
+        esac
+    done
 
     # ── Step 6: Firewall ──────────────────────────────────────────────────────
     local ufw_done=false
@@ -494,10 +520,14 @@ setup_syncthing_folders() {
             printf '    21027/udp  (local discovery)\n\n'
         } > /dev/tty
         local ufw_confirm
-        read -rp "  Open these ports in UFW? [y/N]: " ufw_confirm < /dev/tty
-        if [[ "${ufw_confirm,,}" == "y" ]]; then
-            ufw_done=true
-        fi
+        while true; do
+            read -rp "  Open these ports in UFW? [y/N]: " ufw_confirm < /dev/tty
+            case "${ufw_confirm,,}" in
+                y|yes) ufw_done=true; break ;;
+                n|no|'') break ;;
+                *) echo "  Please enter Y or N." ;;
+            esac
+        done
     fi
 
     # ── Step 7: Summary & confirmation ───────────────────────────────────────
@@ -528,11 +558,14 @@ setup_syncthing_folders() {
     } > /dev/tty
 
     local final_confirm
-    read -rp "Proceed with the above? [y/N]: " final_confirm < /dev/tty
-    if [[ "${final_confirm,,}" != "y" ]]; then
-        info "Wizard cancelled — no changes made."
-        return 0
-    fi
+    while true; do
+        read -rp "Proceed with the above? [y/N]: " final_confirm < /dev/tty
+        case "${final_confirm,,}" in
+            y|yes) break ;;
+            n|no|'') info "Wizard cancelled — no changes made."; return 0 ;;
+            *) echo "  Please enter Y or N." ;;
+        esac
+    done
 
     # ── Step 8a: Apply strategy 2 filesystem changes ─────────────────────────
     if [[ "$strategy" == "2" ]]; then
