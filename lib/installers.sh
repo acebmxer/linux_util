@@ -84,6 +84,7 @@ NO_RETRY["Bottles"]=1
 
 # --- Utilities (alphabetical order) ---
 register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   check_amd_chipset_drivers   uninstall_amd_chipset_drivers   update_amd_chipset_drivers   get_version_amd_chipset_drivers
+register_utility "Angry IP Scanner"    install_angry_ip_scanner check_angry_ip_scanner uninstall_angry_ip_scanner update_angry_ip_scanner    get_version_angry_ip_scanner
 register_utility "Ansible"             install_ansible          check_ansible          uninstall_ansible          update_ansible             get_version_ansible
 register_utility "AnyDesk"             install_anydesk          check_anydesk          uninstall_anydesk          update_anydesk             get_version_anydesk
 register_utility "Audacity"            install_audacity         check_audacity         uninstall_audacity         update_audacity            get_version_audacity
@@ -269,6 +270,7 @@ fi
 CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Drivers" "Gaming" "Internet" "Productivity" "System Tools")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
+UTILITY_CATEGORY["Angry IP Scanner"]="Internet"
 UTILITY_CATEGORY["AMD CPU Microcode & Firmware"]="Drivers"
 UTILITY_CATEGORY["AMD Drivers"]="Drivers"
 UTILITY_CATEGORY["Intel CPU Microcode & Thermal"]="Drivers"
@@ -577,6 +579,7 @@ UTILITY_DESCRIPTION["Thorium Browser"]="Chromium-based browser optimized for spe
 UTILITY_DESCRIPTION["Thunderbird"]="Open-source email client by Mozilla with calendar integration and PGP support."
 UTILITY_DESCRIPTION["Vivaldi Browser"]="Highly customizable Chromium-based browser with advanced tab management and built-in tools."
 UTILITY_DESCRIPTION["WireGuard Client"]="Modern, fast, and lightweight VPN client using the WireGuard protocol."
+UTILITY_DESCRIPTION["Angry IP Scanner"]="Fast and friendly network scanner that pings IP ranges, resolves hostnames, scans ports, and exports results to CSV, TXT, or XML. Requires Java."
 UTILITY_DESCRIPTION["AnyDesk"]="Fast remote desktop application with low latency for support and remote access across platforms."
 UTILITY_DESCRIPTION["Element (Matrix)"]="Open-source Matrix client for decentralized, end-to-end encrypted messaging and collaboration."
 UTILITY_DESCRIPTION["LibreWolf"]="Privacy-hardened Firefox fork with tracking protection, telemetry removed, and strong security defaults."
