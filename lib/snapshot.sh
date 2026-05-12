@@ -55,12 +55,12 @@ timeshift_init() {
         return 0
     fi
 
-    # On Arch-based and openSUSE systems, check for Snapper as an alternative
-    if [[ "${DISTRO_FAMILY:-}" == "arch" || "${DISTRO_FAMILY:-}" == "suse" ]] && command -v snapper &>/dev/null; then
+    # Check for Snapper as an alternative on any supported distro
+    if command -v snapper &>/dev/null; then
         if _snapper_has_config; then
             SNAPSHOT_BACKEND="snapper"
             TIMESHIFT_AVAILABLE=true
-            verbose "Snapper: Detected and available (${DISTRO_FAMILY}-based system)"
+            verbose "Snapper: Detected and available"
             _snapper_cache_last_snapshot
             return 0
         else

@@ -181,16 +181,19 @@ NO_RETRY["Restore Snapshot"]=1
 register_utility "Delete Snapshot"     setup_delete_snapshot    check_always_false     noop_function              setup_delete_snapshot
 NO_RETRY["Delete Snapshot"]=1
 
-# Snapper and Btrfs Assistant: Arch and openSUSE only
-if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]]; then
+# Snapper: available on Arch, openSUSE, Debian/Ubuntu, and Fedora
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "fedora" ]]; then
     register_utility "Snapper"                   install_snapper          check_snapper          uninstall_snapper          update_snapper             get_version_snapper
-    register_utility "Btrfs Assistant"           install_btrfs_assistant  check_btrfs_assistant  uninstall_btrfs_assistant  update_btrfs_assistant     get_version_btrfs_assistant
     register_utility "Create Snapshot (Snapper)" setup_create_snapshot    check_always_false     noop_function              setup_create_snapshot
     NO_RETRY["Create Snapshot (Snapper)"]=1
     register_utility "Restore Snapshot (Snapper)" setup_restore_snapshot  check_always_false     noop_function              setup_restore_snapshot
     NO_RETRY["Restore Snapshot (Snapper)"]=1
     register_utility "Delete Snapshot (Snapper)" setup_delete_snapshot    check_always_false     noop_function              setup_delete_snapshot
     NO_RETRY["Delete Snapshot (Snapper)"]=1
+fi
+# Btrfs Assistant: Arch and openSUSE only
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]]; then
+    register_utility "Btrfs Assistant"           install_btrfs_assistant  check_btrfs_assistant  uninstall_btrfs_assistant  update_btrfs_assistant     get_version_btrfs_assistant
 fi
 register_utility "Tor Browser"         install_tor_browser      check_tor_browser      uninstall_tor_browser      update_tor_browser         get_version_tor_browser
 register_utility "Ventoy"              install_ventoy           check_ventoy           uninstall_ventoy           update_ventoy              get_version_ventoy
@@ -624,7 +627,7 @@ UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incrementa
 UTILITY_DESCRIPTION["Déjà Dup"]="(GNOME) Simple, beginner-friendly backup tool for backing up files and folders to local drives, network shares, or cloud storage. Uses duplicity under the hood for encrypted, incremental backups."
 UTILITY_DESCRIPTION["Vorta"]="GUI frontend for BorgBackup — a fast, deduplicating backup tool with encryption and compression. Installs both Borg (CLI) and Vorta (GUI). On RHEL-based systems, only BorgBackup is installed via EPEL as Vorta is not packaged there."
 UTILITY_DESCRIPTION["Duplicati"]="Cloud backup tool with a web-based GUI supporting S3, Google Drive, OneDrive, SFTP, and many more backends. Features encryption, deduplication, and scheduling. Installed via Flatpak — run 'Flatpak Setup' first if not already configured."
-UTILITY_DESCRIPTION["Snapper"]="Btrfs and LVM snapshot manager from openSUSE. Supports automatic pre/post snapshots on Arch and openSUSE. Conflicts with Timeshift on Arch-based systems."
+UTILITY_DESCRIPTION["Snapper"]="Btrfs and LVM snapshot manager. Supports automatic pre/post snapshots on Arch, openSUSE, Debian/Ubuntu, and Fedora. Conflicts with Timeshift on Arch-based systems."
 UTILITY_DESCRIPTION["Btrfs Assistant"]="GUI frontend for managing Btrfs snapshots and subvolumes. Works alongside Snapper to provide a visual interface for snapshot operations."
 UTILITY_DESCRIPTION["Create Snapshot (Snapper)"]="Create a manual Snapper snapshot of the root filesystem with an optional description."
 UTILITY_DESCRIPTION["Restore Snapshot (Snapper)"]="Roll back the system to a previous Snapper snapshot."

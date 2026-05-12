@@ -1,5 +1,5 @@
 #!/bin/bash
-# Snapper installer functions (Arch and openSUSE only)
+# Snapper installer functions (Arch, openSUSE, Debian/Ubuntu, Fedora)
 
 # --- Snapper ---
 
@@ -41,8 +41,15 @@ install_snapper() {
             # openSUSE ships snapper-zypp-plugin for automatic pre/post snapshots
             sudo zypper install -y snapper snapper-zypp-plugin || return 1
             ;;
+        debian)
+            sudo apt install -y snapper || return 1
+            ;;
+        fedora)
+            sudo "$PKG_MGR" install -y snapper || return 1
+            ;;
         *)
-            warn "Snapper is only supported on Arch-based and openSUSE systems."
+            warn "Snapper installation not supported for ${DISTRO_NAME}."
+            warn "Supported distros: Arch/Manjaro, openSUSE, Debian/Ubuntu, Fedora."
             return 1
             ;;
     esac
@@ -64,6 +71,29 @@ install_snapper() {
 
     # Re-initialize snapshot support so Snapper becomes active immediately
     timeshift_init
+
+    # Offer to take an initial snapshot right after setup.
+    if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" && "${DRY_RUN:-false}" == "false" ]]; then
+        echo ""
+        while true; do
+            read -n 1 -rp "Create an initial Snapper snapshot now? [Y/n] " _snap_now < /dev/tty
+            echo ""
+            [[ $'\e' == "$_snap_now" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            _snap_now="${_snap_now:-Y}"
+            case "$_snap_now" in
+                y|Y)
+                    setup_create_snapshot
+                    _snapper_cache_last_snapshot
+                    break
+                    ;;
+                n|N)
+                    echo "Skipping initial snapshot. You can create one later via 'Create Snapshot (Snapper)'."
+                    break
+                    ;;
+                *) echo "  Please press Y or N." ;;
+            esac
+        done
+    fi
 }
 
 uninstall_snapper() {
@@ -77,6 +107,17 @@ uninstall_snapper() {
         suse)
             sudo zypper remove -y snapper snapper-zypp-plugin || true
             ;;
+        debian)
+            sudo systemctl stop snapper-timeline.timer snapper-cleanup.timer 2>/dev/null || true
+            sudo systemctl disable snapper-timeline.timer snapper-cleanup.timer 2>/dev/null || true
+            sudo apt purge --autoremove -y snapper
+            sudo apt autoclean
+            ;;
+        fedora)
+            sudo systemctl stop snapper-timeline.timer snapper-cleanup.timer 2>/dev/null || true
+            sudo systemctl disable snapper-timeline.timer snapper-cleanup.timer 2>/dev/null || true
+            sudo "$PKG_MGR" remove -y snapper
+            ;;
     esac
 }
 
@@ -88,6 +129,12 @@ update_snapper() {
             ;;
         suse)
             sudo zypper update -y snapper snapper-zypp-plugin || true
+            ;;
+        debian)
+            sudo apt-get install -y --only-upgrade snapper
+            ;;
+        fedora)
+            pkg_upgrade snapper
             ;;
     esac
 }
