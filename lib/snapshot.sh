@@ -737,11 +737,11 @@ _timeshift_rsync_restore() {
         # On btrfs, mount the top-level subvolume (subvolid=5) so that the
         # timeshift snapshot directory is visible — a default mount would only
         # show the root subvolume (e.g. Fedora's "root" subvol).
-        local mount_opts=""
+        local -a mount_opts=()
         if _is_btrfs_root; then
-            mount_opts="-o subvolid=5"
+            mount_opts=(-o subvolid=5)
         fi
-        if ! sudo mount $mount_opts "$backup_dev" "$mount_point"; then
+        if ! sudo mount "${mount_opts[@]}" "$backup_dev" "$mount_point"; then
             echo "${RED}✗ Failed to mount backup device ${backup_dev}${RESET}"
             return 1
         fi
