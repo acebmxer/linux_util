@@ -184,6 +184,12 @@ NO_RETRY["Delete Snapshot"]=1
 # Snapper: available on Arch, openSUSE, Debian/Ubuntu, and Fedora
 if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "fedora" ]]; then
     register_utility "Snapper"                   install_snapper          check_snapper          uninstall_snapper          update_snapper             get_version_snapper
+fi
+# Snapper GUI: Debian/Ubuntu and Arch
+if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "arch" ]]; then
+    register_utility "Snapper GUI"               install_snapper_gui      check_snapper_gui      uninstall_snapper_gui      update_snapper_gui         get_version_snapper_gui
+fi
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "fedora" ]]; then
     register_utility "Create Snapshot (Snapper)" setup_create_snapshot    check_always_false     noop_function              setup_create_snapshot
     NO_RETRY["Create Snapshot (Snapper)"]=1
     register_utility "Restore Snapshot (Snapper)" setup_restore_snapshot  check_always_false     noop_function              setup_restore_snapshot
@@ -191,9 +197,19 @@ if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMIL
     register_utility "Delete Snapshot (Snapper)" setup_delete_snapshot    check_always_false     noop_function              setup_delete_snapshot
     NO_RETRY["Delete Snapshot (Snapper)"]=1
 fi
-# Btrfs Assistant: Arch and openSUSE only
-if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]]; then
+
+# Btrfs Assistant: useful for any btrfs system regardless of snapshot tool
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "fedora" ]]; then
     register_utility "Btrfs Assistant"           install_btrfs_assistant  check_btrfs_assistant  uninstall_btrfs_assistant  update_btrfs_assistant     get_version_btrfs_assistant
+fi
+
+# Btrfs Tools: maintenance, backup, and deduplication utilities
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "fedora" ]]; then
+    register_utility "btrfsmaintenance"          install_btrfsmaintenance check_btrfsmaintenance uninstall_btrfsmaintenance update_btrfsmaintenance    get_version_btrfsmaintenance
+fi
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "fedora" ]]; then
+    register_utility "btrbk"                     install_btrbk            check_btrbk            uninstall_btrbk            update_btrbk               get_version_btrbk
+    register_utility "duperemove"                install_duperemove       check_duperemove       uninstall_duperemove       update_duperemove          get_version_duperemove
 fi
 register_utility "Tor Browser"         install_tor_browser      check_tor_browser      uninstall_tor_browser      update_tor_browser         get_version_tor_browser
 register_utility "Ventoy"              install_ventoy           check_ventoy           uninstall_ventoy           update_ventoy              get_version_ventoy
@@ -348,7 +364,11 @@ UTILITY_CATEGORY["Create Snapshot"]="Backup"
 UTILITY_CATEGORY["Restore Snapshot"]="Backup"
 UTILITY_CATEGORY["Delete Snapshot"]="Backup"
 UTILITY_CATEGORY["Snapper"]="Backup"
+UTILITY_CATEGORY["Snapper GUI"]="Backup"
 UTILITY_CATEGORY["Btrfs Assistant"]="Backup"
+UTILITY_CATEGORY["btrfsmaintenance"]="Backup"
+UTILITY_CATEGORY["btrbk"]="Backup"
+UTILITY_CATEGORY["duperemove"]="Backup"
 UTILITY_CATEGORY["Create Snapshot (Snapper)"]="Backup"
 UTILITY_CATEGORY["Restore Snapshot (Snapper)"]="Backup"
 UTILITY_CATEGORY["Delete Snapshot (Snapper)"]="Backup"
@@ -452,7 +472,11 @@ UTILITY_SUBCATEGORY["Create Snapshot"]="Timeshift"
 UTILITY_SUBCATEGORY["Restore Snapshot"]="Timeshift"
 UTILITY_SUBCATEGORY["Delete Snapshot"]="Timeshift"
 UTILITY_SUBCATEGORY["Snapper"]="Snapper"
-UTILITY_SUBCATEGORY["Btrfs Assistant"]="Snapper"
+UTILITY_SUBCATEGORY["Snapper GUI"]="Snapper"
+UTILITY_SUBCATEGORY["Btrfs Assistant"]="Btrfs Tools"
+UTILITY_SUBCATEGORY["btrfsmaintenance"]="Btrfs Tools"
+UTILITY_SUBCATEGORY["btrbk"]="Btrfs Tools"
+UTILITY_SUBCATEGORY["duperemove"]="Btrfs Tools"
 UTILITY_SUBCATEGORY["Create Snapshot (Snapper)"]="Snapper"
 UTILITY_SUBCATEGORY["Restore Snapshot (Snapper)"]="Snapper"
 UTILITY_SUBCATEGORY["Delete Snapshot (Snapper)"]="Snapper"
@@ -627,8 +651,12 @@ UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incrementa
 UTILITY_DESCRIPTION["Déjà Dup"]="(GNOME) Simple, beginner-friendly backup tool for backing up files and folders to local drives, network shares, or cloud storage. Uses duplicity under the hood for encrypted, incremental backups."
 UTILITY_DESCRIPTION["Vorta"]="GUI frontend for BorgBackup — a fast, deduplicating backup tool with encryption and compression. Installs both Borg (CLI) and Vorta (GUI). On RHEL-based systems, only BorgBackup is installed via EPEL as Vorta is not packaged there."
 UTILITY_DESCRIPTION["Duplicati"]="Cloud backup tool with a web-based GUI supporting S3, Google Drive, OneDrive, SFTP, and many more backends. Features encryption, deduplication, and scheduling. Installed via Flatpak — run 'Flatpak Setup' first if not already configured."
-UTILITY_DESCRIPTION["Snapper"]="Btrfs and LVM snapshot manager. Supports automatic pre/post snapshots on Arch, openSUSE, Debian/Ubuntu, and Fedora. Conflicts with Timeshift on Arch-based systems."
-UTILITY_DESCRIPTION["Btrfs Assistant"]="GUI frontend for managing Btrfs snapshots and subvolumes. Works alongside Snapper to provide a visual interface for snapshot operations."
+UTILITY_DESCRIPTION["Snapper"]="Btrfs and LVM snapshot manager. Supports automatic pre/post snapshots on Arch, openSUSE, Debian/Ubuntu, and Fedora. Conflicts with Timeshift — the installer will prompt to remove it first."
+UTILITY_DESCRIPTION["Snapper GUI"]="GTK graphical interface for Snapper. Browse, create, delete, and compare snapshots visually. Works on any filesystem Snapper supports — does not require Btrfs."
+UTILITY_DESCRIPTION["Btrfs Assistant"]="Qt GUI for managing Btrfs filesystems and Snapper snapshots. Includes subvolume management, snapshot browsing, and scrub/balance operations. Available on Arch, Debian/Ubuntu, Fedora, and openSUSE."
+UTILITY_DESCRIPTION["btrfsmaintenance"]="Automates routine Btrfs maintenance tasks — scrub, balance, trim, and defrag — on a configurable schedule via systemd timers or cron. Edit /etc/btrfsmaintenance/btrfsmaintenance.conf to tune intervals and mountpoints."
+UTILITY_DESCRIPTION["btrbk"]="Powerful Btrfs snapshot and backup tool. Creates snapshots locally and sends them to remote hosts via SSH using btrfs send/receive. Supports flexible retention policies and incremental transfers. Configure via /etc/btrbk/btrbk.conf."
+UTILITY_DESCRIPTION["duperemove"]="Extent-based deduplication tool for Btrfs (and other filesystems). Scans for duplicate data blocks and replaces them with shared extents to reclaim disk space. Best run periodically on data-heavy volumes."
 UTILITY_DESCRIPTION["Create Snapshot (Snapper)"]="Create a manual Snapper snapshot of the root filesystem with an optional description."
 UTILITY_DESCRIPTION["Restore Snapshot (Snapper)"]="Roll back the system to a previous Snapper snapshot."
 UTILITY_DESCRIPTION["Delete Snapshot (Snapper)"]="Permanently delete one or more Snapper snapshots to free disk space."

@@ -14,11 +14,18 @@ install_btrfs_assistant() {
             # btrfs-assistant is in CachyOS repos; AUR on vanilla Arch
             aur_ensure btrfs-assistant || return 1
             ;;
+        debian)
+            sudo apt install -y btrfs-assistant || return 1
+            ;;
+        fedora)
+            sudo "$PKG_MGR" install -y btrfs-assistant || return 1
+            ;;
         suse)
             sudo zypper install -y btrfs-assistant || return 1
             ;;
         *)
-            warn "Btrfs Assistant is only supported on Arch-based and openSUSE systems."
+            warn "Btrfs Assistant is not available for ${DISTRO_NAME}."
+            warn "Supported distros: Arch/Manjaro, Debian/Ubuntu, Fedora, openSUSE."
             return 1
             ;;
     esac
@@ -31,6 +38,13 @@ uninstall_btrfs_assistant() {
         arch)
             sudo pacman -Rs --noconfirm btrfs-assistant 2>/dev/null || true
             ;;
+        debian)
+            sudo apt purge --autoremove -y btrfs-assistant
+            sudo apt autoclean
+            ;;
+        fedora)
+            sudo "$PKG_MGR" remove -y btrfs-assistant
+            ;;
         suse)
             sudo zypper remove -y btrfs-assistant || true
             ;;
@@ -41,6 +55,12 @@ update_btrfs_assistant() {
     echo "Updating Btrfs Assistant..."
     case "$DISTRO_FAMILY" in
         arch)
+            pkg_upgrade btrfs-assistant
+            ;;
+        debian)
+            sudo apt-get install -y --only-upgrade btrfs-assistant
+            ;;
+        fedora)
             pkg_upgrade btrfs-assistant
             ;;
         suse)
