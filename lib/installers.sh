@@ -581,7 +581,7 @@ UTILITY_DESCRIPTION["Steam App"]="Valve's gaming platform for purchasing, downlo
 UTILITY_DESCRIPTION["Wine"]="Compatibility layer that enables Windows applications and games to run natively on Linux without a virtual machine."
 
 # Internet
-UTILITY_DESCRIPTION["Bitwarden Extension"]="Deploys Bitwarden browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, Vivaldi). The extension is force-installed on next browser launch."
+UTILITY_DESCRIPTION["Bitwarden Extension"]="Deploys Bitwarden browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, LibreWolf, Thorium, Vivaldi). The extension is force-installed on next browser launch."
 UTILITY_DESCRIPTION["Brave Browser"]="Privacy-focused web browser with built-in ad and tracker blocking based on Chromium."
 UTILITY_DESCRIPTION["Brave Debloat"]="Disables Brave Browser annoyances via enterprise policy: Rewards, Crypto Wallet, VPN, Leo AI, News, Talk, and Tor. Also disables telemetry (P3A, stats ping, metrics reporting, Safe Browsing extended reporting, and URL-keyed data collection)."
 UTILITY_DESCRIPTION["Chromium"]="Open-source web browser that serves as the upstream base for Google Chrome."
@@ -597,7 +597,7 @@ UTILITY_DESCRIPTION["ProtonVPN"]="Free and open-source VPN service by Proton for
 UTILITY_DESCRIPTION["QBittorrent"]="Open-source BitTorrent client with a clean interface and no ads."
 UTILITY_DESCRIPTION["Remmina"]="Remote desktop client supporting RDP, VNC, SSH, SPICE, and other protocols."
 UTILITY_DESCRIPTION["Signal Desktop"]="End-to-end encrypted messaging application focused on privacy and security."
-UTILITY_DESCRIPTION["SponsorBlock Extension"]="Deploys SponsorBlock browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, Vivaldi). Automatically skips YouTube sponsors, intros, outros, and other unwanted segments using a crowdsourced database."
+UTILITY_DESCRIPTION["SponsorBlock Extension"]="Deploys SponsorBlock browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, LibreWolf, Thorium, Vivaldi). Automatically skips YouTube sponsors, intros, outros, and other unwanted segments using a crowdsourced database."
 UTILITY_DESCRIPTION["Syncthing"]="Continuous peer-to-peer file synchronization between your devices without a central server."
 UTILITY_DESCRIPTION["Tailscale"]="Zero-config mesh VPN built on WireGuard for secure networking between your devices."
 UTILITY_DESCRIPTION["Telegram Desktop"]="Cloud-based messaging app with fast delivery, group chats, channels, and file sharing."
@@ -630,7 +630,7 @@ UTILITY_DESCRIPTION["Mark Text"]="Simple, elegant Markdown editor focused on wri
 UTILITY_DESCRIPTION["VLC"]="Versatile open-source media player supporting virtually every audio and video format without additional codecs."
 UTILITY_DESCRIPTION["Zotero"]="Free reference manager for collecting, organizing, annotating, and citing research sources."
 UTILITY_DESCRIPTION["Joplin Client"]="Open-source note-taking and to-do application with Markdown support and sync."
-UTILITY_DESCRIPTION["Joplin Web Clipper"]="Deploys Joplin Web Clipper browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, Vivaldi). Captures web pages and screenshots directly into Joplin — requires the Joplin desktop app running with Web Clipper service enabled."
+UTILITY_DESCRIPTION["Joplin Web Clipper"]="Deploys Joplin Web Clipper browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, LibreWolf, Thorium, Vivaldi). Captures web pages and screenshots directly into Joplin — requires the Joplin desktop app running with Web Clipper service enabled."
 UTILITY_DESCRIPTION["LibreOffice"]="Full-featured open-source office suite compatible with Microsoft Office formats."
 UTILITY_DESCRIPTION["Nextcloud Desktop"]="Desktop sync client for Nextcloud, providing self-hosted cloud file storage and sharing."
 UTILITY_DESCRIPTION["OBS Studio"]="Open-source software for video recording and live streaming with scene composition."
