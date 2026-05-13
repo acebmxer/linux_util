@@ -9,39 +9,40 @@ check_timeshift() {
 
 install_timeshift() {
     echo "Installing Timeshift..."
+
+    # Check for Snapper on all distros — running both is not recommended as
+    # they may snapshot overlapping data. Prompt to uninstall first.
+    if command -v snapper &>/dev/null || pkg_check_installed snapper; then
+        echo ""
+        warn "Snapper is already installed on this system."
+        echo "  Running both Snapper and Timeshift is not recommended — they may"
+        echo "  snapshot the same data, wasting disk space and causing confusion."
+        echo "  It is strongly advised to use only one snapshot tool at a time."
+        echo ""
+        while true; do
+            read -n 1 -rp "Uninstall Snapper and continue installing Timeshift? [y/N] " _snap_remove
+            echo ""
+            [[ $'\e' == "$_snap_remove" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            _snap_remove="${_snap_remove:-N}"
+            case "$_snap_remove" in
+                y|Y)
+                    echo "Uninstalling Snapper..."
+                    uninstall_snapper
+                    echo "Snapper removed. Continuing with Timeshift installation..."
+                    echo ""
+                    break
+                    ;;
+                n|N)
+                    warn "Skipping Timeshift installation. Snapper was not removed."
+                    return 2
+                    ;;
+                *) echo "  Please press Y or N." ;;
+            esac
+        done
+    fi
+
     case "$DISTRO_FAMILY" in
         arch)
-            # On CachyOS, snapper and cachyos-snapper-support conflict with timeshift.
-            # Prompt the user to remove them before proceeding.
-            if pkg_check_installed snapper || pkg_check_installed cachyos-snapper-support; then
-                warn "Snapper is installed and is not compatible with TimeShift."
-                warn "CachyOS ships Snapper as its default snapshot solution."
-                echo ""
-                while true; do
-                    read -n 1 -rp "Would you like to remove Snapper to install TimeShift? [y/N] " snapper_ans
-                    echo ""
-                    [[ $'\e' == "$snapper_ans" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
-                    snapper_ans="${snapper_ans:-N}"
-                    case "$snapper_ans" in
-                        y|Y)
-                            echo "Removing Snapper..."
-                            # Stop and disable snapper timers/services before removal to prevent
-                            # stale snapper command errors from btrfs-assistant or running timers.
-                            sudo systemctl stop snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
-                            sudo systemctl disable snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
-                            sudo pacman -R --noconfirm snapper || true
-                            sudo pacman -Rsn --noconfirm cachyos-snapper-support btrfs-assistant 2>/dev/null || true
-                            echo "Snapper successfully uninstalled. Now installing TimeShift..."
-                            break
-                            ;;
-                        n|N)
-                            warn "Skipping TimeShift installation. Snapper was not removed."
-                            return 2
-                            ;;
-                        *) echo "  Please press Y or N." ;;
-                    esac
-                done
-            fi
             pkg_install timeshift || return 1
             ;;
         debian)
