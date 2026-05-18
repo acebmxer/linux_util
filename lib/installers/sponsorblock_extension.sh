@@ -5,8 +5,8 @@
 # force-installed on first launch for every detected browser.
 #
 # Supported browsers:
-#   Chromium-family : Brave, Chrome, Chromium, Vivaldi  (ExtensionInstallForcelist policy)
-#   Firefox         : package/snap/flatpak              (ExtensionSettings policy)
+#   Chromium-family : Brave, Chrome, Chromium, Thorium, Vivaldi  (ExtensionInstallForcelist policy)
+#   Firefox-family  : Firefox (package/snap), LibreWolf          (ExtensionSettings policy)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -25,6 +25,7 @@ declare -A _SB_CHROMIUM_POLICY_DIRS=(
     ["brave"]="/etc/brave/policies/managed"
     ["google-chrome"]="/etc/opt/chrome/policies/managed"
     ["chromium"]="/etc/chromium/policies/managed"
+    ["thorium"]="/etc/thorium/policies/managed"
     ["vivaldi"]="/etc/vivaldi/policies/managed"
 )
 
@@ -117,6 +118,8 @@ _sb_ext_detected_chromium_browsers() {
     for browser in "${!_SB_CHROMIUM_POLICY_DIRS[@]}"; do
         if [[ "$browser" == "brave" ]]; then
             (command -v brave &>/dev/null || command -v brave-browser &>/dev/null) && echo "$browser"
+        elif [[ "$browser" == "thorium" ]]; then
+            command -v thorium-browser &>/dev/null && echo "$browser"
         else
             command -v "$browser" &>/dev/null && echo "$browser"
         fi
@@ -134,6 +137,13 @@ _sb_ext_firefox_policy_path() {
         echo "/etc/firefox/policies/policies.json"
         return
     fi
+}
+
+# _sb_ext_librewolf_policy_path
+#   Prints the LibreWolf policy file path, or empty if LibreWolf not found.
+#   Note: Flatpak LibreWolf cannot be managed via system-level policies.
+_sb_ext_librewolf_policy_path() {
+    command -v librewolf &>/dev/null && echo "/etc/librewolf/policies/policies.json"
 }
 
 # _sb_ext_extract_firefox_entries POLICY_FILE
@@ -280,6 +290,18 @@ _sb_ext_apply_firefox() {
     echo "  → Ensured SponsorBlock extension policy for Firefox: ${policy_file}"
 }
 
+# _sb_ext_apply_librewolf POLICY_FILE
+#   Creates/merges the ExtensionSettings policy JSON for LibreWolf.
+_sb_ext_apply_librewolf() {
+    local policy_file="$1"
+    local policy_dir
+    policy_dir="$(dirname "$policy_file")"
+
+    sudo mkdir -p "$policy_dir"
+    _sb_ext_apply_firefox_entry "$policy_file" "${_SB_FF_GUID}" "${_SB_FF_URL}"
+    echo "  → Ensured SponsorBlock extension policy for LibreWolf: ${policy_file}"
+}
+
 # ---------------------------------------------------------------------------
 # Public functions required by the registry
 # ---------------------------------------------------------------------------
@@ -295,12 +317,16 @@ check_sponsorblock_extension() {
     local ff_path
     ff_path="$(_sb_ext_firefox_policy_path)"
     [[ -n "$ff_path" && -f "$ff_path" ]] && sudo grep -q "\"${_SB_FF_GUID}\"" "$ff_path" 2>/dev/null && return 0
+    local lw_path
+    lw_path="$(_sb_ext_librewolf_policy_path)"
+    [[ -n "$lw_path" && -f "$lw_path" ]] && sudo grep -q "\"${_SB_FF_GUID}\"" "$lw_path" 2>/dev/null && return 0
     # Check if the extension is already present in any browser profile directory
     local root
     for root in \
         "$HOME/.config/BraveSoftware/Brave-Browser" \
         "$HOME/.config/google-chrome" \
         "$HOME/.config/chromium" \
+        "$HOME/.config/thorium" \
         "$HOME/.config/vivaldi"; do
         [[ -d "$root" ]] || continue
         find "$root" -maxdepth 3 -type d \
@@ -326,6 +352,14 @@ install_sponsorblock_extension() {
     ff_path="$(_sb_ext_firefox_policy_path)"
     if [[ -n "$ff_path" ]]; then
         _sb_ext_apply_firefox "$ff_path"
+        (( installed_count++ ))
+    fi
+
+    # --- LibreWolf ---
+    local lw_path
+    lw_path="$(_sb_ext_librewolf_policy_path)"
+    if [[ -n "$lw_path" ]]; then
+        _sb_ext_apply_librewolf "$lw_path"
         (( installed_count++ ))
     fi
 
@@ -363,6 +397,14 @@ uninstall_sponsorblock_extension() {
         _sb_ext_remove_firefox_entry "$ff_path" "${_SB_FF_GUID}"
         echo "  → Removed SponsorBlock Firefox entry from: ${ff_path}"
         sudo rmdir --ignore-fail-on-non-empty "$(dirname "$ff_path")" 2>/dev/null || true
+    fi
+
+    local lw_path
+    lw_path="$(_sb_ext_librewolf_policy_path)"
+    if [[ -n "$lw_path" && -f "$lw_path" ]]; then
+        _sb_ext_remove_firefox_entry "$lw_path" "${_SB_FF_GUID}"
+        echo "  → Removed SponsorBlock LibreWolf entry from: ${lw_path}"
+        sudo rmdir --ignore-fail-on-non-empty "$(dirname "$lw_path")" 2>/dev/null || true
     fi
 
     echo "SponsorBlock extension policy files removed."
