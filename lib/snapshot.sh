@@ -938,6 +938,33 @@ _snapper_delete_snapshots() {
 # Snapshot Creation
 # ============================================================================
 
+# Prompt the user before creating an automatic snapshot, then create it.
+# Use this for snapshots the script takes on the user's behalf (pre-install,
+# pre-update, pre-restore safety net). Manual snapshots (the Create Snapshot
+# menu) call timeshift_create_snapshot directly — no prompt needed.
+# Arguments:
+#   $1 - Comment/description for the snapshot (optional)
+# Always returns 0 — a declined or failed snapshot does not block the caller.
+timeshift_prompt_create_snapshot() {
+    [[ "$TIMESHIFT_AVAILABLE" != "true" ]] && return 0
+
+    local _backend_label="Timeshift"
+    [[ "$SNAPSHOT_BACKEND" == "snapper" ]] && _backend_label="Snapper"
+
+    local _ans
+    while true; do
+        read -n 1 -rp "Would you like to take a ${_backend_label} snapshot? [Y/n] " _ans < /dev/tty
+        echo ""
+        [[ $'\e' == "$_ans" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+        _ans="${_ans:-Y}"
+        case "$_ans" in
+            y|Y) timeshift_create_snapshot "$@"; return 0 ;;
+            n|N) echo "${YELLOW}Skipping snapshot.${RESET}"; return 0 ;;
+            *) echo "  Please press Y or N." ;;
+        esac
+    done
+}
+
 # Create a snapshot before performing operations (dispatches to active backend).
 # Arguments:
 #   $1 - Comment/description for the snapshot (optional)

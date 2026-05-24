@@ -103,10 +103,9 @@ setup_restore_snapshot() {
         esac
     done
 
-    # Create a safety snapshot before restoring
+    # Offer a safety snapshot before restoring
     echo ""
-    echo "${CYAN}Creating safety snapshot before restore...${RESET}"
-    timeshift_create_snapshot "before restore"
+    timeshift_prompt_create_snapshot "before restore"
 
     # Perform the restore
     timeshift_restore_snapshot "$_selected"

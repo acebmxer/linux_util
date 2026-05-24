@@ -309,7 +309,7 @@ process_selected() {
         [[ ${#to_uninstall[@]} -gt 0 ]] && _ts_comment+=" Before uninstalling ${to_uninstall[*]},"
         [[ ${#to_update[@]} -gt 0 ]] && _ts_comment+=" Before updating ${to_update[*]},"
         _ts_comment="${_ts_comment%,}"  # Remove trailing comma
-        timeshift_create_snapshot "$_ts_comment"
+        timeshift_prompt_create_snapshot "$_ts_comment"
     fi
 
     # Run pre-flight checks before proceeding
@@ -644,7 +644,7 @@ _cli_op() {
     else
         _snap_msg="linux_util: Before ${_op}ing ${_util}"
     fi
-    timeshift_create_snapshot "$_snap_msg"
+    timeshift_prompt_create_snapshot "$_snap_msg"
     if $_func; then
         echo "${_op^}ed: ${_util}"; exit 0
     else
@@ -802,7 +802,7 @@ EOF
                 shift
                 echo "Updating all installed utilities..."
                 pkg_refresh
-                timeshift_create_snapshot "linux_util: Before updating all installed utilities"
+                timeshift_prompt_create_snapshot "linux_util: Before updating all installed utilities"
                 local _updated=0 _failed=0
                 for _util in "${UTILITIES[@]}"; do
                     local _check="${CHECK_FUNCS[$_util]:-}"
