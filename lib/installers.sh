@@ -227,6 +227,22 @@ register_utility "Zoom"                install_zoom             check_zoom      
 register_utility "Zotero"              install_zotero           check_zotero           uninstall_zotero           update_zotero              get_version_zotero
 register_utility "Zsh + Oh My Zsh"     install_zsh_setup        check_zsh_setup        uninstall_zsh_setup        update_zsh_setup           get_version_zsh_setup
 
+# --- File Managers ---
+# Most file managers are available on all supported distros (RHEL via EPEL).
+# Exception: PCManFM-Qt is not packaged for RHEL/EPEL and is hidden there.
+register_utility "Nautilus"            install_nautilus         check_nautilus         uninstall_nautilus         update_nautilus            get_version_nautilus
+register_utility "Dolphin"             install_dolphin          check_dolphin          uninstall_dolphin          update_dolphin             get_version_dolphin
+register_utility "Thunar"              install_thunar           check_thunar           uninstall_thunar           update_thunar              get_version_thunar
+register_utility "Nemo"                install_nemo             check_nemo             uninstall_nemo             update_nemo                get_version_nemo
+register_utility "Caja"                install_caja             check_caja             uninstall_caja             update_caja                get_version_caja
+if [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "PCManFM-Qt"      install_pcmanfm_qt       check_pcmanfm_qt       uninstall_pcmanfm_qt       update_pcmanfm_qt          get_version_pcmanfm_qt
+fi
+register_utility "Krusader"            install_krusader         check_krusader         uninstall_krusader         update_krusader            get_version_krusader
+register_utility "Midnight Commander"  install_midnight_commander check_midnight_commander uninstall_midnight_commander update_midnight_commander get_version_midnight_commander
+register_utility "Ranger"              install_ranger           check_ranger           uninstall_ranger           update_ranger              get_version_ranger
+register_utility "nnn"                 install_nnn              check_nnn              uninstall_nnn              update_nnn                 get_version_nnn
+
 # --- Desktop Environment Utilities ---
 # Elementary OS uses Pantheon exclusively; any other DE causes display manager
 # and PAM session conflicts. The elementary project explicitly advises against it.
@@ -285,9 +301,28 @@ if [[ "$DISTRO_FAMILY" == "arch" ]] || [[ "$DISTRO_ID" == "opensuse-tumbleweed" 
     register_utility "Pantheon Desktop"    install_pantheon         check_pantheon         uninstall_pantheon         update_pantheon            get_version_pantheon
 fi
 
+# --- Window Managers ---
+# Most WMs are packaged on every supported distro (RHEL via EPEL).
+# Hyprland is the exception — see its conditional gate below.
+register_utility "awesome"             install_awesome          check_awesome          uninstall_awesome          update_awesome             get_version_awesome
+register_utility "bspwm"               install_bspwm            check_bspwm            uninstall_bspwm            update_bspwm               get_version_bspwm
+register_utility "dwm"                 install_dwm              check_dwm              uninstall_dwm              update_dwm                 get_version_dwm
+register_utility "i3"                  install_i3               check_i3               uninstall_i3               update_i3                  get_version_i3
+register_utility "Openbox"             install_openbox          check_openbox          uninstall_openbox          update_openbox             get_version_openbox
+register_utility "Sway"                install_sway             check_sway             uninstall_sway             update_sway                get_version_sway
+
+# Hyprland: official packages on Arch, Fedora (39+), and openSUSE Tumbleweed.
+# Debian stable and Ubuntu < 24.04 lack it; RHEL/EPEL has no build.
+if [[ "$DISTRO_FAMILY" == "arch" ]] || \
+   [[ "$DISTRO_ID" == "fedora" ]] || \
+   [[ "$DISTRO_ID" == "opensuse-tumbleweed" ]] || \
+   [[ "$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -ge 24 ]]; then
+    register_utility "Hyprland"        install_hyprland         check_hyprland         uninstall_hyprland         update_hyprland            get_version_hyprland
+fi
+
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Drivers" "Gaming" "Internet" "Productivity" "System Tools")
+CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Drivers" "File Managers" "Gaming" "Internet" "Productivity" "System Tools" "Window Managers")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Angry IP Scanner"]="Internet"
@@ -297,6 +332,16 @@ UTILITY_CATEGORY["Intel CPU Microcode & Thermal"]="Drivers"
 UTILITY_CATEGORY["LACT"]="Drivers"
 UTILITY_CATEGORY["NVIDIA Drivers"]="Drivers"
 UTILITY_CATEGORY["XEN Guest Utilities"]="Drivers"
+UTILITY_CATEGORY["Nautilus"]="File Managers"
+UTILITY_CATEGORY["Dolphin"]="File Managers"
+UTILITY_CATEGORY["Thunar"]="File Managers"
+UTILITY_CATEGORY["Nemo"]="File Managers"
+UTILITY_CATEGORY["Caja"]="File Managers"
+UTILITY_CATEGORY["PCManFM-Qt"]="File Managers"
+UTILITY_CATEGORY["Krusader"]="File Managers"
+UTILITY_CATEGORY["Midnight Commander"]="File Managers"
+UTILITY_CATEGORY["Ranger"]="File Managers"
+UTILITY_CATEGORY["nnn"]="File Managers"
 UTILITY_CATEGORY["Budgie Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Cinnamon Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["COSMIC Desktop"]="Desktop Environments"
@@ -307,6 +352,13 @@ UTILITY_CATEGORY["LXQt Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["MATE Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Pantheon Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Xfce Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["awesome"]="Window Managers"
+UTILITY_CATEGORY["bspwm"]="Window Managers"
+UTILITY_CATEGORY["dwm"]="Window Managers"
+UTILITY_CATEGORY["Hyprland"]="Window Managers"
+UTILITY_CATEGORY["i3"]="Window Managers"
+UTILITY_CATEGORY["Openbox"]="Window Managers"
+UTILITY_CATEGORY["Sway"]="Window Managers"
 UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
 UTILITY_CATEGORY["Bitwarden Extension"]="Internet"
 UTILITY_CATEGORY["Bottles"]="Gaming"
@@ -489,6 +541,16 @@ UTILITY_SUBCATEGORY["AMD Drivers"]="GPU Drivers"
 UTILITY_SUBCATEGORY["Intel CPU Microcode & Thermal"]="CPU Microcode"
 UTILITY_SUBCATEGORY["LACT"]="GPU Drivers"
 UTILITY_SUBCATEGORY["NVIDIA Drivers"]="GPU Drivers"
+UTILITY_SUBCATEGORY["Nautilus"]="Graphical"
+UTILITY_SUBCATEGORY["Dolphin"]="Graphical"
+UTILITY_SUBCATEGORY["Thunar"]="Graphical"
+UTILITY_SUBCATEGORY["Nemo"]="Graphical"
+UTILITY_SUBCATEGORY["Caja"]="Graphical"
+UTILITY_SUBCATEGORY["PCManFM-Qt"]="Graphical"
+UTILITY_SUBCATEGORY["Krusader"]="Graphical"
+UTILITY_SUBCATEGORY["Midnight Commander"]="Terminal"
+UTILITY_SUBCATEGORY["Ranger"]="Terminal"
+UTILITY_SUBCATEGORY["nnn"]="Terminal"
 
 # Display name overrides — shown in the menu instead of the utility key
 UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
@@ -507,6 +569,7 @@ UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
 
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
+SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|Remote Access|VPN"
 
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
@@ -662,3 +725,24 @@ UTILITY_DESCRIPTION["Create Snapshot (Snapper)"]="Create a manual Snapper snapsh
 UTILITY_DESCRIPTION["Restore Snapshot (Snapper)"]="Roll back the system to a previous Snapper snapshot."
 UTILITY_DESCRIPTION["Delete Snapshot (Snapper)"]="Permanently delete one or more Snapper snapshots to free disk space."
 UTILITY_DESCRIPTION["Zsh + Oh My Zsh"]="Installs the Z shell with Oh My Zsh framework, zsh-autosuggestions, and zsh-syntax-highlighting plugins. During install you can choose from Powerlevel10k (pre-configured or interactive wizard) or one of 10 popular built-in themes. Theme can also be changed later via the update option."
+
+# File Managers
+UTILITY_DESCRIPTION["Nautilus"]="GNOME's default file manager (also known as 'Files'). Clean, simple GTK interface with sidebar navigation and built-in network browsing. Pulls in GNOME/GTK libraries; works on any desktop but feels most at home on GNOME."
+UTILITY_DESCRIPTION["Dolphin"]="KDE Plasma's default file manager. Powerful Qt-based interface with split views, tabs, embedded terminal, and deep integration with KIO protocols (sftp://, fish://, smb://, trash://). Pulls in KDE Frameworks; works on any desktop but feels most at home on KDE Plasma."
+UTILITY_DESCRIPTION["Thunar"]="Xfce's default file manager. Fast, lightweight GTK file manager with bulk rename, custom actions, and volume management. Excellent on low-resource systems; works on any desktop."
+UTILITY_DESCRIPTION["Nemo"]="Cinnamon's default file manager — a Nautilus fork that retains classic features like dual-pane view, type-ahead search, and an editable address bar. Pulls in some Cinnamon libraries; works on any desktop but is the natural choice on Cinnamon."
+UTILITY_DESCRIPTION["Caja"]="MATE's default file manager — a GNOME 2-era Nautilus fork with a traditional layout, dual-pane view, and extensible plugin system. Pulls in MATE libraries; works on any desktop but is the natural choice on MATE."
+UTILITY_DESCRIPTION["PCManFM-Qt"]="LXQt's default file manager. Extremely lightweight Qt-based file manager with tabs, dual panes, and trash support. Pulls in LXQt/Qt libraries; works on any desktop but is the natural choice on LXQt. Not packaged for RHEL-based distros."
+UTILITY_DESCRIPTION["Krusader"]="Advanced twin-panel (orthodox) file manager for KDE, inspired by Total Commander. Supports archive handling, batch rename, file comparison, and synchronization. Pulls in KDE Frameworks; works on any desktop."
+UTILITY_DESCRIPTION["Midnight Commander"]="Classic text-mode twin-panel file manager (mc) with menu-driven navigation, built-in editor (mcedit), archive browsing, and FTP/SFTP support. Runs in any terminal — no desktop environment required."
+UTILITY_DESCRIPTION["Ranger"]="Vim-inspired terminal file manager with a three-pane Miller column view, file previews, and heavy keyboard customization. Runs in any terminal — no desktop environment required."
+UTILITY_DESCRIPTION["nnn"]="Tiny, blazing-fast terminal file manager with optional file previews, plugins, and a context-based workflow. Minimal dependencies; runs in any terminal — no desktop environment required."
+
+# Window Managers
+UTILITY_DESCRIPTION["awesome"]="Highly configurable X11 window manager with dynamic tiling and floating layouts. Configured in Lua and extensible via a rich widget library. Suits users who want a tiling WM that doubles as a programmable framework."
+UTILITY_DESCRIPTION["bspwm"]="Lightweight X11 tiling window manager that arranges windows as leaves of a binary tree. Controlled entirely via messages from the bspc CLI and paired with sxhkd for keybindings (installed automatically). Highly scriptable."
+UTILITY_DESCRIPTION["dwm"]="Suckless dynamic X11 window manager — minimal, fast, and under 2000 lines of C. The packaged binary ships upstream defaults; meaningful customization requires editing config.h and recompiling."
+UTILITY_DESCRIPTION["Hyprland"]="Modern, animated Wayland tiling compositor with smooth visuals, dynamic tiling, and rich theming. Available on Arch, Fedora, openSUSE Tumbleweed, and Ubuntu 24.04+. Not packaged for RHEL or Debian stable."
+UTILITY_DESCRIPTION["i3"]="Classic X11 tiling window manager with simple text-based configuration, fast performance, and a large ecosystem of status bars, launchers, and themes. The go-to choice for tiling on X11."
+UTILITY_DESCRIPTION["Openbox"]="Minimal, fast X11 stacking window manager with a clean right-click menu and XML configuration. Ideal for building lightweight custom desktops or running on low-resource hardware."
+UTILITY_DESCRIPTION["Sway"]="Wayland tiling compositor that is a drop-in replacement for i3 — reads i3 config files and behaves the same way. The most popular tiling option for Wayland users coming from i3."
