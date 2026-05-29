@@ -121,6 +121,7 @@ register_utility "GIMP"                install_gimp             check_gimp      
 register_utility "GitHub CLI"          install_github_cli       check_github_cli       uninstall_github_cli       update_github_cli          get_version_github_cli
 register_utility "Go SDK"              install_golang           check_golang           uninstall_golang           update_golang              get_version_golang
 register_utility "Google Chrome"       install_google_chrome    check_google_chrome    uninstall_google_chrome    update_google_chrome       get_version_google_chrome
+register_utility "GParted"             install_gparted          check_gparted          uninstall_gparted          update_gparted             get_version_gparted
 register_utility "HandBrake"           install_handbrake        check_handbrake        uninstall_handbrake        update_handbrake           get_version_handbrake
 register_utility "Heroic Games Launcher" install_heroic         check_heroic           uninstall_heroic           update_heroic              get_version_heroic
 register_utility "Inkscape"            install_inkscape         check_inkscape         uninstall_inkscape         update_inkscape            get_version_inkscape
@@ -322,7 +323,7 @@ fi
 
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Drivers" "File Managers" "Gaming" "Internet" "Productivity" "System Tools" "Window Managers")
+CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Productivity" "System Tools" "Window Managers")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Angry IP Scanner"]="Internet"
@@ -418,10 +419,10 @@ UTILITY_CATEGORY["Restore Snapshot"]="Backup"
 UTILITY_CATEGORY["Delete Snapshot"]="Backup"
 UTILITY_CATEGORY["Snapper"]="Backup"
 UTILITY_CATEGORY["Snapper GUI"]="Backup"
-UTILITY_CATEGORY["Btrfs Assistant"]="Backup"
-UTILITY_CATEGORY["btrfsmaintenance"]="Backup"
-UTILITY_CATEGORY["btrbk"]="Backup"
-UTILITY_CATEGORY["duperemove"]="Backup"
+UTILITY_CATEGORY["Btrfs Assistant"]="Disk Utilities"
+UTILITY_CATEGORY["btrfsmaintenance"]="Disk Utilities"
+UTILITY_CATEGORY["btrbk"]="Disk Utilities"
+UTILITY_CATEGORY["duperemove"]="Disk Utilities"
 UTILITY_CATEGORY["Create Snapshot (Snapper)"]="Backup"
 UTILITY_CATEGORY["Restore Snapshot (Snapper)"]="Backup"
 UTILITY_CATEGORY["Delete Snapshot (Snapper)"]="Backup"
@@ -462,7 +463,8 @@ UTILITY_CATEGORY["Rustup"]="Development"
 UTILITY_CATEGORY["Slack"]="Internet"
 UTILITY_CATEGORY["Terraform"]="Development"
 UTILITY_CATEGORY["Tor Browser"]="Internet"
-UTILITY_CATEGORY["Ventoy"]="System Tools"
+UTILITY_CATEGORY["Ventoy"]="Disk Utilities"
+UTILITY_CATEGORY["GParted"]="Disk Utilities"
 UTILITY_CATEGORY["Virt-Manager"]="Development"
 UTILITY_CATEGORY["VLC"]="Productivity"
 UTILITY_CATEGORY["Zoom"]="Internet"
@@ -709,6 +711,7 @@ UTILITY_DESCRIPTION["Filelight"]="KDE disk usage analyzer that visualizes storag
 UTILITY_DESCRIPTION["ClamAV"]="Open-source antivirus engine for detecting trojans, viruses, malware, and other malicious threats."
 UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyboard and mouse across multiple computers on your local network."
 UTILITY_DESCRIPTION["Ventoy"]="Bootable USB solution for loading multiple ISO images from a single drive — just copy ISOs and boot."
+UTILITY_DESCRIPTION["GParted"]="Graphical partition editor for creating, resizing, moving, copying, and deleting disk partitions. Supports ext2/3/4, btrfs, xfs, ntfs, fat32, and more — ideal for managing drives and preparing disks."
 UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written in C, displaying OS, hardware, and software details."
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
 UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS. Install this first to enable Create, Restore, and Delete Snapshot."

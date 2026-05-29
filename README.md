@@ -173,13 +173,23 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Restore Snapshot** | Lists snapshots, takes a safety snapshot, then restores the selected one |
 | **Delete Snapshot** | Lists and deletes existing Timeshift snapshots |
 | **Snapper** | Btrfs/LVM snapshot manager used on Arch-based distros |
-| **Btrfs Assistant** | GUI for managing Btrfs subvolumes and Snapper snapshots |
 | **Create Snapshot (Snapper)** | Creates a Snapper snapshot with a user-provided description |
 | **Restore Snapshot (Snapper)** | Restores from a Snapper snapshot |
 | **Delete Snapshot (Snapper)** | Lists and deletes existing Snapper snapshots |
 | **Déjà Dup** | Simple GNOME backup tool with cloud and local storage support |
 | **Vorta** | Borg Backup GUI — deduplicating, encrypted backups |
 | **Duplicati** | Browser-based backup tool with cloud provider support |
+
+#### Disk Utilities
+
+| Utility | Description |
+|---------|-------------|
+| **GParted** | Graphical partition editor — create, resize, move, and delete partitions |
+| **Ventoy** | Bootable USB tool — boot multiple ISOs from one drive |
+| **Btrfs Assistant** | GUI for managing Btrfs subvolumes and Snapper snapshots *(Btrfs Tools)* |
+| **btrfsmaintenance** | Automates scheduled Btrfs scrub, balance, trim, and defrag *(Btrfs Tools)* |
+| **btrbk** | Btrfs snapshot and backup tool with remote send/receive *(Btrfs Tools)* |
+| **duperemove** | Extent-based deduplication tool for Btrfs *(Btrfs Tools)* |
 
 #### Development
 
@@ -293,7 +303,6 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Filelight** | Disk usage analyzer with interactive sunburst chart |
 | **Input Leap** | Software KVM — share keyboard and mouse across machines |
 | **Stacer** | Graphical system optimizer and monitor |
-| **Ventoy** | Bootable USB tool — boot multiple ISOs from one drive |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |
 
 ## Supported Distributions
