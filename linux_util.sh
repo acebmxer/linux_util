@@ -569,7 +569,7 @@ process_selected() {
                 y|Y)
                     info "Rebooting…"
                     printf '\n\n'
-                    sudo reboot
+                    sudo systemctl reboot
                     ;;
                 n|N)
                     break
