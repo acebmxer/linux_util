@@ -569,7 +569,9 @@ process_selected() {
                 y|Y)
                     info "Rebooting…"
                     printf '\n\n'
+                    exec 9>&-  # release lock fd before the system goes down
                     sudo systemctl reboot
+                    exit 0     # don't fall through to reload/remind prompts
                     ;;
                 n|N)
                     break
