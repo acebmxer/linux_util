@@ -321,9 +321,27 @@ if [[ "$DISTRO_FAMILY" == "arch" ]] || \
     register_utility "Hyprland"        install_hyprland         check_hyprland         uninstall_hyprland         update_hyprland            get_version_hyprland
 fi
 
+# --- Package Managers (additional / third-party — native managers untouched) ---
+# Cross-distro managers that run alongside the native package manager.
+register_utility "Homebrew"            install_homebrew         check_homebrew         uninstall_homebrew         update_homebrew            get_version_homebrew
+register_utility "Nix"                 install_nix              check_nix              uninstall_nix              update_nix                 get_version_nix
+register_utility "Snap (snapd)"        install_snap             check_snap             uninstall_snap             update_snap                get_version_snap
+
+# Debian/Ubuntu-family only: third-party .deb / AUR-style helpers
+if [[ "$DISTRO_FAMILY" == "debian" ]]; then
+    register_utility "deb-get"         install_deb_get          check_deb_get          uninstall_deb_get          update_deb_get             get_version_deb_get
+    register_utility "Pacstall"        install_pacstall         check_pacstall         uninstall_pacstall         update_pacstall            get_version_pacstall
+fi
+
+# Arch-family only: AUR helpers
+if [[ "$DISTRO_FAMILY" == "arch" ]]; then
+    register_utility "yay"             install_yay              check_yay              uninstall_yay              update_yay                 get_version_yay
+    register_utility "paru"            install_paru             check_paru             uninstall_paru             update_paru                get_version_paru
+fi
+
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Productivity" "System Tools" "Window Managers")
+CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Package Managers" "Productivity" "System Tools" "Window Managers")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Angry IP Scanner"]="Internet"
@@ -360,6 +378,13 @@ UTILITY_CATEGORY["Hyprland"]="Window Managers"
 UTILITY_CATEGORY["i3"]="Window Managers"
 UTILITY_CATEGORY["Openbox"]="Window Managers"
 UTILITY_CATEGORY["Sway"]="Window Managers"
+UTILITY_CATEGORY["Homebrew"]="Package Managers"
+UTILITY_CATEGORY["Nix"]="Package Managers"
+UTILITY_CATEGORY["Snap (snapd)"]="Package Managers"
+UTILITY_CATEGORY["deb-get"]="Package Managers"
+UTILITY_CATEGORY["Pacstall"]="Package Managers"
+UTILITY_CATEGORY["yay"]="Package Managers"
+UTILITY_CATEGORY["paru"]="Package Managers"
 UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
 UTILITY_CATEGORY["Bitwarden Extension"]="Internet"
 UTILITY_CATEGORY["Bottles"]="Gaming"
@@ -749,3 +774,13 @@ UTILITY_DESCRIPTION["Hyprland"]="Modern, animated Wayland tiling compositor with
 UTILITY_DESCRIPTION["i3"]="Classic X11 tiling window manager with simple text-based configuration, fast performance, and a large ecosystem of status bars, launchers, and themes. The go-to choice for tiling on X11."
 UTILITY_DESCRIPTION["Openbox"]="Minimal, fast X11 stacking window manager with a clean right-click menu and XML configuration. Ideal for building lightweight custom desktops or running on low-resource hardware."
 UTILITY_DESCRIPTION["Sway"]="Wayland tiling compositor that is a drop-in replacement for i3 — reads i3 config files and behaves the same way. The most popular tiling option for Wayland users coming from i3."
+
+# Package Managers (additional / third-party — these run alongside your native
+# package manager, which is never replaced or removed)
+UTILITY_DESCRIPTION["Homebrew"]="Cross-distro package manager (Linuxbrew) that installs into your home directory and runs entirely in user space. Great for getting newer CLI tool versions without root or touching system packages. Installs as a normal user; cannot be installed as root."
+UTILITY_DESCRIPTION["Nix"]="Powerful cross-distro, purely-functional package manager with reproducible, isolated, and rollback-able installs. Works alongside the native package manager. Installed via the Determinate Systems installer for a clean, non-interactive setup and tidy uninstall."
+UTILITY_DESCRIPTION["Snap (snapd)"]="Canonical's cross-distro package manager for sandboxed, self-contained 'snap' apps. Native on Debian/Ubuntu and Fedora, via EPEL on RHEL, the system:snappy repo on openSUSE, and the AUR on Arch. Enables the snapd socket and sets up the /snap path automatically."
+UTILITY_DESCRIPTION["deb-get"]="apt-get-style management of .deb packages from third-party repositories and direct downloads (Chrome, VS Code, Discord, etc.) that aren't in the official repos. Debian/Ubuntu family only; installed apps stay tracked by dpkg/apt."
+UTILITY_DESCRIPTION["Pacstall"]="The 'AUR for Ubuntu/Debian' — installs software from community build scripts (pacscripts) that fetch or compile upstream packages not available in apt. Debian/Ubuntu family only. Community-maintained, so review scripts before installing."
+UTILITY_DESCRIPTION["yay"]="Popular AUR helper for Arch-family distros, written in Go. Wraps pacman to search, build, and install packages from the Arch User Repository. Arch family only; installed from the repo on Manjaro/EndeavourOS or built from the AUR otherwise."
+UTILITY_DESCRIPTION["paru"]="Feature-rich AUR helper for Arch-family distros, written in Rust — an alternative to yay with the same pacman-style workflow. Arch family only; installed from the repo where available or built from the AUR."
