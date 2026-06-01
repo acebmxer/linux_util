@@ -34,14 +34,33 @@ JSON_OUTPUT=false
 # Preserve original CLI arguments for self-update re-exec
 ORIGINAL_ARGS=("$@")
 
-# Prevent concurrent runs via flock
+# Prevent concurrent runs via flock.
+#
+# Read-only, informational commands (--help/-h, --version, --list, --check)
+# are skipped: they don't mutate the system, so mutual exclusion is meaningless
+# for them, and they must stay runnable even while another instance is mid-
+# operation. Skipping the lock also means that if such a command is killed
+# (e.g. by a `timeout` in the test suite) it cannot orphan a child holding the
+# lock fd and block subsequent invocations.
 LOCK_FILE="/tmp/linux_util_${USER:-$UID}.lock"
-exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
-    echo "Error: Another instance of this script is already running."
-    echo "       If this is a stale lock, remove it with: rm -f ${LOCK_FILE}"
-    exit 1
+_lu_needs_lock=true
+for _lu_arg in "$@"; do
+    case "$_lu_arg" in
+        --help|-h|--version|--list|--check)
+            _lu_needs_lock=false
+            break
+            ;;
+    esac
+done
+if [[ "$_lu_needs_lock" == true ]]; then
+    exec 9>"$LOCK_FILE"
+    if ! flock -n 9; then
+        echo "Error: Another instance of this script is already running."
+        echo "       If this is a stale lock, remove it with: rm -f ${LOCK_FILE}"
+        exit 1
+    fi
 fi
+unset _lu_needs_lock _lu_arg
 
 # ============================================================================
 # LOGGING SETUP
