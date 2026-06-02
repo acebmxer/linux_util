@@ -76,6 +76,12 @@ if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DIS
     register_system_task "Fix Monitor Layout at Login" install_fix_monitor_login check_always_false     noop_function              install_fix_monitor_login
 fi
 
+# Package repair tasks (all distros) — kept at the end of the System Tasks section
+register_system_task "Fix Broken Packages"   setup_fix_broken_packages check_always_false noop_function setup_fix_broken_packages
+register_system_task "Fix Package Repos"      setup_fix_repos           check_always_false noop_function setup_fix_repos
+register_system_task "Reset Repos to Default" setup_reset_repos         check_always_false noop_function setup_reset_repos
+NO_RETRY["Reset Repos to Default"]=1
+
 # These fail immediately when Flatpak is absent — retrying adds no value
 NO_RETRY["ProtonUp-Qt"]=1
 NO_RETRY["Bottles"]=1
@@ -629,6 +635,9 @@ UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firew
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
+UTILITY_DESCRIPTION["Fix Broken Packages"]="Repairs half-installed packages and unmet dependencies (dpkg --configure -a / apt --fix-broken, dnf distro-sync, pacman -Syu, zypper verify). Read-only checks run automatically; any step that adds or removes packages is confirmed first."
+UTILITY_DESCRIPTION["Fix Package Repos"]="Refreshes repository metadata and repairs common repo errors (stale caches, unreachable mirrors, missing keys). Clearing caches or reinitializing the keyring is confirmed before it runs."
+UTILITY_DESCRIPTION["Reset Repos to Default"]="Restores base distro repositories toward their stock state. Backs up all repo config first, keeps third-party repos that installed packages depend on, and prompts (keep/disable/remove) for each unused third-party repo."
 UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot using the active backup backend (Timeshift or Snapper). Prompts for an optional description."
 UTILITY_DESCRIPTION["Restore Snapshot"]="Restores the system from a previously created snapshot. Lists all available snapshots and asks for confirmation before proceeding."
 UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshots. Lists all available snapshots and asks for confirmation before deleting."
