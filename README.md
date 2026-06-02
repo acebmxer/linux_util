@@ -135,6 +135,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
 | **Num Lock at Boot** | Enables Num Lock on TTY consoles and the display manager login screen |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
+| **Window Button Layout** | Restores minimize/maximize/close on window title bars for GTK apps (GNOME/Cinnamon/MATE/Xfce); fixes the missing buttons seen on Ubuntu under WSLg |
 | **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/KDE Neon only)* |
 | **Fix Grub on BTRFS** | Fixes GRUB boot entries after BTRFS snapshot restores *(Ubuntu/Kubuntu/KDE Neon only)* |
 | **Fix Monitor Layout at Login** | Restores monitor layout on the login screen *(Ubuntu/Kubuntu/KDE Neon only)* |
@@ -346,6 +347,11 @@ When running under WSL:
   immediately (expected) and the distro auto-starts the next time you open a
   terminal or run `wsl -d <DistroName>`. If the `wsl.exe` bridge is unavailable,
   the script prints the exact PowerShell commands above for you to run manually.
+- Under WSLg, GTK apps (e.g. Remmina, Nautilus, Files) often launch with only a
+  close button — GNOME's default window-manager layout omits minimize/maximize.
+  The **Window Button Layout** system task restores all three by setting
+  `org.gnome.desktop.wm.preferences button-layout` to `:minimize,maximize,close`.
+  Qt/KDE apps such as Konsole are unaffected because they do not read this key.
 
 On a normal Linux host or VM, reboot behavior is unchanged (`sudo systemctl reboot`).
 

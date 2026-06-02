@@ -57,6 +57,7 @@ register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_
 register_system_task "UFW Firewall"       install_ufw             check_ufw             uninstall_ufw             update_ufw                get_version_ufw
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
+register_system_task "Window Button Layout" install_window_buttons check_always_false noop_function install_window_buttons get_version_window_buttons
 
 # Debian/Ubuntu-only system tasks
 if [[ "$DISTRO_FAMILY" == "debian" ]]; then
