@@ -92,6 +92,10 @@ _SYSINFO_GPU=""
 _SYSINFO_MEM=""
 _SYSINFO_DISK=""
 _SYSINFO_UPTIME=""
+_SYSINFO_OS_AGE=""
+_SYSINFO_PACKAGES=""
+_SYSINFO_WM=""
+_SYSINFO_DE=""
 
 # Layout geometry (recalculated on resize)
 _TERM_ROWS=0
@@ -396,6 +400,79 @@ _rebuild_filtered() {
 # SYSTEM INFO GATHERER
 # ============================================================================
 
+# _humanize_duration <seconds>
+# Echoes a compact human-readable duration: "Xy Ymo" / "Xmo Yd" / "Xd" / "Xh".
+# Calendar units are approximate (year=365d, month=30d) — good enough for an
+# "age" readout, not for precise date math.
+_humanize_duration() {
+    local secs=$(( ${1:-0} ))
+    (( secs < 0 )) && secs=0
+    local years=$(( secs / 31536000 ))            # 365d
+    local months=$(( (secs % 31536000) / 2592000 )) # 30d
+    local days=$(( (secs % 2592000) / 86400 ))
+    local hours=$(( (secs % 86400) / 3600 ))
+    if (( years > 0 )); then
+        printf '%dy %dmo' "$years" "$months"
+    elif (( months > 0 )); then
+        printf '%dmo %dd' "$months" "$days"
+    elif (( days > 0 )); then
+        printf '%dd' "$days"
+    else
+        printf '%dh' "$hours"
+    fi
+}
+
+# _detect_install_epoch
+# Echoes a best-effort Unix epoch for when the OS was installed, or nothing if
+# undetectable. Heuristic cascade, most install-correlated source first; the
+# install date is not canonically recorded on Linux, so this is approximate.
+_detect_install_epoch() {
+    local epoch=""
+
+    # 1) Debian/Ubuntu installer log directory mtime.
+    if [[ -d /var/log/installer ]]; then
+        epoch="$(stat -c %Y /var/log/installer 2>/dev/null)"
+    fi
+
+    # 2) Filesystem birth time of / (ext4/xfs/btrfs w/ birthtime + new coreutils).
+    if [[ -z "$epoch" ]]; then
+        local _bw
+        _bw="$(stat -c %W / 2>/dev/null)"
+        # %W is 0 or '?' when birthtime is unsupported.
+        [[ "$_bw" =~ ^[0-9]+$ && "$_bw" -gt 0 ]] && epoch="$_bw"
+    fi
+
+    # 3) /lost+found mtime — created by mke2fs at filesystem creation.
+    if [[ -z "$epoch" && -d /lost+found ]]; then
+        epoch="$(stat -c %Y /lost+found 2>/dev/null)"
+    fi
+
+    # 4a) Arch: first timestamp recorded in the pacman log.
+    if [[ -z "$epoch" && -f /var/log/pacman.log ]]; then
+        local _line
+        _line="$(awk 'NF{print; exit}' /var/log/pacman.log 2>/dev/null)"
+        # Format: [2023-01-15T10:00:00+0000] ... — extract the bracketed stamp.
+        if [[ "$_line" =~ ^\[([0-9]{4}-[0-9]{2}-[0-9]{2})[T\ ]([0-9]{2}:[0-9]{2}:[0-9]{2}) ]]; then
+            epoch="$(date -d "${BASH_REMATCH[1]} ${BASH_REMATCH[2]}" +%s 2>/dev/null)"
+        fi
+    fi
+
+    # 4b) RHEL/Fedora/SUSE: oldest rpm INSTALLTIME (the base system packages).
+    if [[ -z "$epoch" ]] && command -v rpm &>/dev/null; then
+        epoch="$(rpm -qa --qf '%{INSTALLTIME}\n' 2>/dev/null | sort -n | awk 'NF{print; exit}')"
+    fi
+
+    # 5) Last-resort proxy: machine-id mtime (written on first boot/install).
+    if [[ -z "$epoch" && -f /etc/machine-id ]]; then
+        epoch="$(stat -c %Y /etc/machine-id 2>/dev/null)"
+    fi
+
+    # Sanity-check: must be a plausible epoch (after 2000-01-01, not in future).
+    if [[ "$epoch" =~ ^[0-9]+$ ]] && (( epoch > 946684800 )) && (( epoch <= $(date +%s) )); then
+        printf '%s' "$epoch"
+    fi
+}
+
 _gather_sysinfo() {
     # Hostname
     _SYSINFO_HOST="${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}"
@@ -484,6 +561,89 @@ _gather_sysinfo() {
         fi
     fi
     [[ -z "$_SYSINFO_UPTIME" ]] && _SYSINFO_UPTIME="unknown"
+
+    # OS Age — time since the distro was installed (best-effort; see
+    # _detect_install_epoch). Shown as "<age> (<install date>)".
+    local _install_epoch
+    _install_epoch="$(_detect_install_epoch)"
+    if [[ -n "$_install_epoch" ]]; then
+        local _now _age_secs _age_human _install_date
+        _now="$(date +%s)"
+        _age_secs=$(( _now - _install_epoch ))
+        _age_human="$(_humanize_duration "$_age_secs")"
+        _install_date="$(date -d "@${_install_epoch}" '+%d %b %Y' 2>/dev/null)"
+        if [[ -n "$_install_date" ]]; then
+            _SYSINFO_OS_AGE="${_age_human} (${_install_date})"
+        else
+            _SYSINFO_OS_AGE="$_age_human"
+        fi
+    fi
+    [[ -z "$_SYSINFO_OS_AGE" ]] && _SYSINFO_OS_AGE="unknown"
+
+    # Installed package count + manager (uses the already-detected $PKG_MGR).
+    # Each branch is guarded by command -v so a missing tool yields "" → unknown.
+    local _pkg_count="" _pkg_mgr_label=""
+    case "${PKG_MGR:-}" in
+        apt)
+            if command -v dpkg-query &>/dev/null; then
+                _pkg_count="$(dpkg-query -f '.\n' -W 2>/dev/null | wc -l)"
+                _pkg_mgr_label="dpkg"
+            fi
+            ;;
+        dnf|yum|zypper)
+            if command -v rpm &>/dev/null; then
+                _pkg_count="$(rpm -qa 2>/dev/null | wc -l)"
+                _pkg_mgr_label="rpm"
+            fi
+            ;;
+        pacman)
+            if command -v pacman &>/dev/null; then
+                _pkg_count="$(pacman -Qq 2>/dev/null | wc -l)"
+                _pkg_mgr_label="pacman"
+            fi
+            ;;
+    esac
+    # wc -l emits leading whitespace on some systems; trim it.
+    _pkg_count="${_pkg_count//[[:space:]]/}"
+    if [[ -n "$_pkg_count" && "$_pkg_count" != 0 ]]; then
+        _SYSINFO_PACKAGES="${_pkg_count} (${_pkg_mgr_label})"
+    fi
+    [[ -z "$_SYSINFO_PACKAGES" ]] && _SYSINFO_PACKAGES="unknown"
+
+    # Desktop Environment — reuse the existing detect_window_button_de() helper
+    # (sourced from lib/installers/window_buttons.sh) and map its token to a
+    # human-readable name. Fall back to the raw XDG hint when undetected.
+    local _de_token=""
+    if declare -F detect_window_button_de &>/dev/null; then
+        _de_token="$(detect_window_button_de 2>/dev/null)"
+    fi
+    case "$_de_token" in
+        gnome)    _SYSINFO_DE="GNOME" ;;
+        kde)      _SYSINFO_DE="KDE Plasma" ;;
+        xfce)     _SYSINFO_DE="XFCE" ;;
+        cinnamon) _SYSINFO_DE="Cinnamon" ;;
+        mate)     _SYSINFO_DE="MATE" ;;
+        *)        _SYSINFO_DE="${XDG_CURRENT_DESKTOP:-}" ;;
+    esac
+    # Strip the common "ubuntu:" / "X-" session prefixes from raw XDG hints.
+    _SYSINFO_DE="${_SYSINFO_DE##*:}"
+    [[ -z "$_SYSINFO_DE" ]] && _SYSINFO_DE="unknown"
+
+    # Window Manager — best-effort, inherently unreliable without a display.
+    # Order: WSLg special-case → wmctrl (_NET_WM_NAME) → env hints → unknown.
+    _SYSINFO_WM=""
+    if is_wsl && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+        _SYSINFO_WM="WSLg"
+    elif command -v wmctrl &>/dev/null; then
+        _SYSINFO_WM="$(wmctrl -m 2>/dev/null | awk -F': ' '/^Name:/ {print $2; exit}')"
+    fi
+    if [[ -z "$_SYSINFO_WM" ]]; then
+        # Fall back to environment hints when no probe tool is available.
+        if [[ -n "${XDG_SESSION_TYPE:-}" && "${XDG_SESSION_TYPE}" == "wayland" ]]; then
+            _SYSINFO_WM="${XDG_CURRENT_DESKTOP:+${XDG_CURRENT_DESKTOP##*:} (Wayland)}"
+        fi
+    fi
+    [[ -z "$_SYSINFO_WM" ]] && _SYSINFO_WM="unknown"
 }
 
 # ============================================================================
@@ -524,7 +684,8 @@ _calc_layout() {
     local _v
     for _v in "$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" \
               "$_SYSINFO_CPU" "$_SYSINFO_GPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" \
-              "$_SYSINFO_UPTIME"; do
+              "$_SYSINFO_UPTIME" "$_SYSINFO_OS_AGE" "$_SYSINFO_PACKAGES" \
+              "$_SYSINFO_WM" "$_SYSINFO_DE"; do
         local _needed=$(( ${#_v} + _overhead ))
         (( _needed > _content_w )) && _content_w=$_needed
     done
@@ -753,8 +914,8 @@ _render_left() {
     (( row++ ))
 
     # Sysinfo entries: label + value
-    local -a _si_labels=("Host" "OS" "Kernel" "CPU" "GPU" "Mem" "Disk" "Uptime")
-    local -a _si_values=("$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" "$_SYSINFO_CPU" "$_SYSINFO_GPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" "$_SYSINFO_UPTIME")
+    local -a _si_labels=("Host" "OS" "Kernel" "CPU" "GPU" "Mem" "Disk" "Uptime" "OS Age" "Packages" "WM" "DE")
+    local -a _si_values=("$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" "$_SYSINFO_CPU" "$_SYSINFO_GPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" "$_SYSINFO_UPTIME" "$_SYSINFO_OS_AGE" "$_SYSINFO_PACKAGES" "$_SYSINFO_WM" "$_SYSINFO_DE")
 
     # Surface a WSL indicator when running under Windows Subsystem for Linux.
     if is_wsl; then

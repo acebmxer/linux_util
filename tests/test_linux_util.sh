@@ -1486,10 +1486,151 @@ test_get_version_window_buttons_reports_de() {
     assert_eq "GNOME" "$out" "get_version_window_buttons reports detected DE label"
 }
 
+# ----------------------------------------------------------------------------
+# System info gatherer: Packages / WM / DE fields (lib/menu.sh)
+# ----------------------------------------------------------------------------
+# menu.sh only declares functions/variables at source time (no side effects),
+# so it is safe to source here to exercise _gather_sysinfo's new branches.
+source "${SCRIPT_DIR}/lib/menu.sh"
+
+# _humanize_duration: compact age formatting across unit boundaries.
+test_humanize_duration_hours() {
+    assert_eq "5h" "$(_humanize_duration 18000)" "_humanize_duration formats sub-day as hours"
+}
+test_humanize_duration_days() {
+    assert_eq "18d" "$(_humanize_duration 1555200)" "_humanize_duration formats sub-month as days"
+}
+test_humanize_duration_months() {
+    assert_eq "5mo 6d" "$(_humanize_duration 13478400)" "_humanize_duration formats sub-year as months+days"
+}
+test_humanize_duration_years() {
+    assert_eq "2y 3mo" "$(_humanize_duration 71000000)" "_humanize_duration formats multi-year as years+months"
+}
+
+# OS Age: formats "<age> (<install date>)" from a detected install epoch.
+test_gather_os_age_format() {
+    local out
+    out=$(
+        # Force UTC so the epoch renders to a fixed calendar date regardless of
+        # the host timezone. 1710460800 = 2024-03-15 00:00:00 UTC.
+        export TZ=UTC
+        PKG_MGR=""
+        is_wsl() { return 1; }
+        detect_window_button_de() { printf 'unknown'; }
+        # _gather_sysinfo uses live `date` for "now", so assert only on the
+        # parenthesized install date, which is deterministic under fixed TZ.
+        _detect_install_epoch() { printf '1710460800'; }
+        _gather_sysinfo
+        printf '%s' "$_SYSINFO_OS_AGE"
+    )
+    assert_contains "$out" "(15 Mar 2024)" "_gather_sysinfo formats OS Age with install date"
+}
+
+# OS Age: unknown when no install epoch can be detected.
+test_gather_os_age_unknown() {
+    local out
+    out=$(
+        PKG_MGR=""
+        is_wsl() { return 1; }
+        detect_window_button_de() { printf 'unknown'; }
+        _detect_install_epoch() { printf ''; }
+        _gather_sysinfo
+        printf '%s' "$_SYSINFO_OS_AGE"
+    )
+    assert_eq "unknown" "$out" "_gather_sysinfo reports unknown OS Age when undetectable"
+}
+
+# Packages: apt branch formats "<count> (dpkg)" from dpkg-query output.
+test_gather_packages_apt_format() {
+    local out
+    out=$(
+        PKG_MGR=apt
+        # Stub command -v so only dpkg-query is reported present, and stub the
+        # query itself to emit a fixed three-line result.
+        command() {
+            if [[ "${1:-}" == "-v" ]]; then
+                [[ "${2:-}" == "dpkg-query" ]] && return 0 || return 1
+            fi
+            builtin command "$@"
+        }
+        dpkg-query() { printf '.\n.\n.\n'; }
+        is_wsl() { return 1; }
+        detect_window_button_de() { printf 'unknown'; }
+        _gather_sysinfo
+        printf '%s' "$_SYSINFO_PACKAGES"
+    )
+    assert_eq "3 (dpkg)" "$out" "_gather_sysinfo formats apt package count as '<n> (dpkg)'"
+}
+
+# Packages: unknown when the package manager / query tool is unavailable.
+test_gather_packages_unknown_when_no_tool() {
+    local out
+    out=$(
+        PKG_MGR=""
+        is_wsl() { return 1; }
+        detect_window_button_de() { printf 'unknown'; }
+        _gather_sysinfo
+        printf '%s' "$_SYSINFO_PACKAGES"
+    )
+    assert_eq "unknown" "$out" "_gather_sysinfo reports unknown packages when no manager"
+}
+
+# DE: maps the detect_window_button_de token to a display name.
+test_gather_de_maps_kde_token() {
+    local out
+    out=$(
+        PKG_MGR=""
+        is_wsl() { return 1; }
+        detect_window_button_de() { printf 'kde'; }
+        _gather_sysinfo
+        printf '%s' "$_SYSINFO_DE"
+    )
+    assert_eq "KDE Plasma" "$out" "_gather_sysinfo maps kde token to 'KDE Plasma'"
+}
+
+# DE: falls back to the XDG hint (prefix-stripped) on an unknown token.
+test_gather_de_falls_back_to_xdg_hint() {
+    local out
+    out=$(
+        PKG_MGR=""
+        XDG_CURRENT_DESKTOP="ubuntu:GNOME"
+        is_wsl() { return 1; }
+        detect_window_button_de() { printf 'unknown'; }
+        _gather_sysinfo
+        printf '%s' "$_SYSINFO_DE"
+    )
+    assert_eq "GNOME" "$out" "_gather_sysinfo falls back to XDG hint and strips prefix"
+}
+
+# WM: reports WSLg under WSL with a Wayland display.
+test_gather_wm_wslg_under_wsl() {
+    local out
+    out=$(
+        PKG_MGR=""
+        WAYLAND_DISPLAY="wayland-0"
+        is_wsl() { return 0; }
+        detect_window_button_de() { printf 'unknown'; }
+        _gather_sysinfo
+        printf '%s' "$_SYSINFO_WM"
+    )
+    assert_eq "WSLg" "$out" "_gather_sysinfo reports WSLg under WSL with Wayland display"
+}
+
 test_detect_de_gnome_from_hint
 test_detect_de_kde_from_hint
 test_detect_de_xfce_from_hint
 test_detect_de_fallback_to_gnome_schema
+test_humanize_duration_hours
+test_humanize_duration_days
+test_humanize_duration_months
+test_humanize_duration_years
+test_gather_os_age_format
+test_gather_os_age_unknown
+test_gather_packages_apt_format
+test_gather_packages_unknown_when_no_tool
+test_gather_de_maps_kde_token
+test_gather_de_falls_back_to_xdg_hint
+test_gather_wm_wslg_under_wsl
 test_install_window_buttons_gnome_sets_layout
 test_install_window_buttons_xfce_uses_xfconf
 test_install_window_buttons_kde_skips
