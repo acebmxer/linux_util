@@ -123,6 +123,9 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 |------|-------------|
 | **Full System Upgrade/Update** | Comprehensive system upgrade — all configured package managers, essential tools, and cache cleanup |
 | **System Updates** | Package list refresh, full upgrade, autoremove, and cache clean |
+| **Fix Package Repos** | Refreshes repository metadata and repairs common repo errors (stale caches, unreachable mirrors, missing keys); cache wipe / keyring reinit is confirmed first |
+| **Fix Broken Packages** | Repairs half-installed packages and unmet dependencies (`dpkg --configure -a` / `apt --fix-broken`, `dnf distro-sync`, `pacman -Syu`, `zypper verify`) |
+| **Reset Repos to Default** | Restores base distro repos toward stock state — backs up all repo config, keeps third-party repos with installed dependents, prompts keep/disable/remove for the rest |
 | **Mount Local Drive** | Interactively select an unmounted block device and add it to `/etc/fstab` |
 | **Mount NFS Share** | Discover and mount an NFS export from a remote server, persisted in `/etc/fstab` |
 | **Mount SMB Share** | Connect to an SMB/CIFS server, store credentials securely, and persist mount in `/etc/fstab` |
