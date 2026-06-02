@@ -1234,6 +1234,11 @@ test_wsl_distro_name_echoes_var() {
 # do_reboot under WSL must use the wsl.exe interop bridge and must NOT call
 # systemctl. We stub command -v to report wsl.exe present, stub wsl.exe and
 # exit so the function does not actually terminate the test process.
+#
+# The wsl.exe stub distinguishes `--terminate` from the post-terminate
+# `--list --running` poll: --list reports the distro as no longer running
+# (empty output) so the wait loop exits on its first iteration instead of
+# blocking for the full timeout.
 test_do_reboot_wsl_uses_interop_not_systemctl() {
     local out
     out=$(
@@ -1243,7 +1248,10 @@ test_do_reboot_wsl_uses_interop_not_systemctl() {
             if [[ "${1:-}" == "-v" && "${2:-}" == "wsl.exe" ]]; then return 0; fi
             builtin command "$@"
         }
-        wsl.exe() { echo "INTEROP:wsl.exe $*"; }
+        wsl.exe() {
+            if [[ "${1:-}" == "--list" ]]; then return 0; fi   # distro gone
+            echo "INTEROP:wsl.exe $*"
+        }
         systemctl() { echo "SYSTEMCTL_CALLED"; }
         exit() { return 0; }   # neutralize the real exit so the test continues
         do_reboot 2>&1
@@ -1252,6 +1260,42 @@ test_do_reboot_wsl_uses_interop_not_systemctl() {
         "do_reboot (WSL) terminates distro via wsl.exe"
     assert_false "do_reboot (WSL) does not call systemctl" \
         grep -q "SYSTEMCTL_CALLED" <<< "$out"
+}
+
+# do_reboot under WSL waits for the distro to leave the running list before
+# returning. We make `--list --running` report the distro as still running for
+# the first two polls, then gone; the loop must spin (not break immediately)
+# and must not hang. A counter file tracks poll invocations.
+test_do_reboot_wsl_waits_for_distro_to_stop() {
+    local out cnt_file polls
+    cnt_file=$(mktemp)
+    printf '0' > "$cnt_file"
+    out=$(
+        _IS_WSL=true
+        WSL_DISTRO_NAME="Ubuntu"
+        command() {
+            if [[ "${1:-}" == "-v" && "${2:-}" == "wsl.exe" ]]; then return 0; fi
+            builtin command "$@"
+        }
+        wsl.exe() {
+            if [[ "${1:-}" == "--list" ]]; then
+                local n; n=$(<"$cnt_file")
+                n=$((n + 1)); printf '%s' "$n" > "$cnt_file"
+                # Still running for first two polls, then drop off the list.
+                if (( n <= 2 )); then printf 'Ubuntu\n'; fi
+                return 0
+            fi
+            echo "INTEROP:wsl.exe $*"
+        }
+        sleep() { :; }         # don't actually wait between polls
+        exit() { return 0; }
+        do_reboot 2>&1
+    )
+    polls=$(<"$cnt_file"); rm -f "$cnt_file"
+    assert_contains "$out" "INTEROP:wsl.exe --terminate Ubuntu" \
+        "do_reboot (WSL wait) still terminates the distro"
+    assert_eq "3" "$polls" \
+        "do_reboot (WSL wait) polls --list until distro stops (2 running + 1 gone)"
 }
 
 # do_reboot under WSL with no wsl.exe available prints manual instructions and
@@ -1292,6 +1336,7 @@ test_is_wsl_true_via_proc_version
 test_is_wsl_caches_result
 test_wsl_distro_name_echoes_var
 test_do_reboot_wsl_uses_interop_not_systemctl
+test_do_reboot_wsl_waits_for_distro_to_stop
 test_do_reboot_wsl_fallback_prints_instructions
 test_do_reboot_host_uses_systemctl
 

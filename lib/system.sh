@@ -240,6 +240,22 @@ do_reboot() {
             info "Terminating WSL distro '${distro}'. Relaunch with: wsl -d ${distro}"
             printf '\n\n'
             wsl.exe --terminate "$distro"
+            # --terminate only *requests* shutdown; a systemd distro needs a
+            # moment to drain its units. Relaunching before the old session is
+            # gone races user@<uid>.service and can fail with "Device or
+            # resource busy" (systemd ends up 'degraded', and `wsl -d` reports
+            # "Failed to start the systemd user session"). Wait until the distro
+            # no longer appears in the running list, bounded so we never hang.
+            local i
+            for i in $(seq 1 20); do
+                # `wsl.exe --list` emits UTF-16LE; strip NULs before matching.
+                if ! wsl.exe --list --running 2>/dev/null \
+                     | tr -d '\000' \
+                     | grep -qiE "(^|[[:space:]])${distro}([[:space:]]|\$)"; then
+                    break
+                fi
+                sleep 0.5
+            done
             exit 0
         fi
         # Fallback: interop unavailable or distro name unknown — print the exact
