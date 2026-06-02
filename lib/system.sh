@@ -190,3 +190,66 @@ setup_logrotate() {
     info "Logrotate configuration installed to ${logrotate_dest}"
     return 0
 }
+
+# ============================================================================
+# WSL (Windows Subsystem for Linux) Support
+# ============================================================================
+
+# is_wsl returns 0 (true) when running inside a WSL distribution, 1 otherwise.
+# The result is cached in _IS_WSL so detection runs at most once per process.
+#
+# Detection signals (any match → WSL):
+#   - $WSL_DISTRO_NAME is set (present in WSL 0.0.something onward)
+#   - /proc/version contains "microsoft" or the "-WSL2" kernel suffix
+is_wsl() {
+    if [[ -z "${_IS_WSL:-}" ]]; then
+        if [[ -n "${WSL_DISTRO_NAME:-}" ]] \
+           || grep -qiE 'microsoft|-WSL2' /proc/version 2>/dev/null; then
+            _IS_WSL=true
+        else
+            _IS_WSL=false
+        fi
+    fi
+    [[ "$_IS_WSL" == true ]]
+}
+
+# wsl_distro_name echoes the running WSL distribution name (e.g. "Ubuntu"),
+# or an empty string when unknown/not under WSL.
+wsl_distro_name() { printf '%s' "${WSL_DISTRO_NAME:-}"; }
+
+# do_reboot performs a system reboot appropriate to the environment.
+#
+# On a normal Linux host/VM this runs the same `sudo systemctl reboot` the
+# script has always used. Under WSL a real reboot is not possible from inside
+# the distro: Windows owns the VM lifecycle and there is no bootloader. The
+# correct equivalent is to terminate the distro from the Windows side (via the
+# wsl.exe interop bridge) and relaunch it. Terminating ends this process, so
+# the function does not return on the WSL interop path — it exits.
+#
+# Caller note: release any held lock fd (e.g. `exec 9>&-`) before invoking,
+# because the process will be replaced/terminated.
+do_reboot() {
+    if is_wsl; then
+        local distro
+        distro="$(wsl_distro_name)"
+        warn "Under WSL a reboot terminates and relaunches the distro from Windows (Windows itself is not affected)."
+        # Preferred path: use the wsl.exe interop bridge to terminate this
+        # distro. The running session ends immediately; the distro auto-starts
+        # the next time a terminal/app opens it, or via `wsl -d <distro>`.
+        if command -v wsl.exe >/dev/null 2>&1 && [[ -n "$distro" ]]; then
+            info "Terminating WSL distro '${distro}'. Relaunch with: wsl -d ${distro}"
+            printf '\n\n'
+            wsl.exe --terminate "$distro"
+            exit 0
+        fi
+        # Fallback: interop unavailable or distro name unknown — print the exact
+        # commands for the user to run from Windows PowerShell themselves.
+        warn "Could not auto-terminate (wsl.exe not reachable or distro name unknown)."
+        echo "  Run these in Windows PowerShell:"
+        echo "    wsl --terminate ${distro:-<DistroName>}"
+        echo "    wsl -d ${distro:-<DistroName>}"
+        return 0
+    fi
+    # Normal Linux host/VM — unchanged behavior.
+    sudo systemctl reboot
+}

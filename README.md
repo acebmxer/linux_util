@@ -320,6 +320,35 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then by auto-detecting the available package manager.
 
+## WSL (Windows Subsystem for Linux)
+
+The script runs on WSL distributions (e.g. Ubuntu under WSL2) and detects the
+WSL environment automatically. WSL is identified via the `WSL_DISTRO_NAME`
+environment variable or the `microsoft`/`-WSL2` marker in `/proc/version`.
+
+When running under WSL:
+
+- A one-line notice is shown at startup, and the menu's **System Details** panel
+  includes an `Env: WSL (<distro>)` row.
+- The **Reboot** action behaves differently. A real reboot is not possible from
+  inside a WSL distribution — Windows owns the virtual machine lifecycle and
+  there is no bootloader (`sudo systemctl reboot` is unreliable, and on
+  distros without systemd it fails outright). Instead, choosing to reboot
+  **restarts only the current distribution** (Windows itself is never affected)
+  by terminating it from the Windows side via the `wsl.exe` interop bridge:
+
+  ```powershell
+  wsl --terminate <DistroName>
+  wsl -d <DistroName>
+  ```
+
+  The script performs the `--terminate` step for you. Your session ends
+  immediately (expected) and the distro auto-starts the next time you open a
+  terminal or run `wsl -d <DistroName>`. If the `wsl.exe` bridge is unavailable,
+  the script prints the exact PowerShell commands above for you to run manually.
+
+On a normal Linux host or VM, reboot behavior is unchanged (`sudo systemctl reboot`).
+
 ## Automatic Snapshots
 
 A system snapshot is automatically created before every install, uninstall, or update operation, providing an easy rollback point.

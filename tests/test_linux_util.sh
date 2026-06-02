@@ -1181,6 +1181,121 @@ test_json_list_alternate_is_valid_json
 test_json_check_unknown_exits_nonzero
 
 # ============================================================================
+# Test: WSL Support (is_wsl / wsl_distro_name / do_reboot)
+# ============================================================================
+echo ""
+echo "=== WSL Support Tests ==="
+
+# is_wsl detects WSL when $WSL_DISTRO_NAME is set. Run in a subshell so the
+# cached _IS_WSL and the env override do not leak into other tests.
+test_is_wsl_true_when_distro_name_set() {
+    local rc
+    ( unset _IS_WSL; WSL_DISTRO_NAME="Ubuntu"; is_wsl ); rc=$?
+    assert_eq "0" "$rc" "is_wsl returns true when WSL_DISTRO_NAME is set"
+}
+
+# is_wsl returns false when no WSL marker is present. We unset the env var and
+# shadow grep so /proc/version cannot match microsoft/-WSL2.
+test_is_wsl_false_without_markers() {
+    local rc
+    (
+        unset _IS_WSL WSL_DISTRO_NAME
+        grep() { return 1; }
+        is_wsl
+    ); rc=$?
+    assert_eq "1" "$rc" "is_wsl returns false when no WSL markers present"
+}
+
+# is_wsl detects WSL via /proc/version markers even without the env var.
+test_is_wsl_true_via_proc_version() {
+    local rc
+    (
+        unset _IS_WSL WSL_DISTRO_NAME
+        grep() { return 0; }   # simulate microsoft/-WSL2 match
+        is_wsl
+    ); rc=$?
+    assert_eq "0" "$rc" "is_wsl returns true when /proc/version matches"
+}
+
+# is_wsl caches its result in _IS_WSL on first call.
+test_is_wsl_caches_result() {
+    local cached
+    cached=$( unset _IS_WSL; WSL_DISTRO_NAME="Ubuntu"; is_wsl; printf '%s' "$_IS_WSL" )
+    assert_eq "true" "$cached" "is_wsl caches result in _IS_WSL"
+}
+
+# wsl_distro_name echoes the running distro name.
+test_wsl_distro_name_echoes_var() {
+    local out
+    out=$( WSL_DISTRO_NAME="Ubuntu" wsl_distro_name )
+    assert_eq "Ubuntu" "$out" "wsl_distro_name echoes WSL_DISTRO_NAME"
+}
+
+# do_reboot under WSL must use the wsl.exe interop bridge and must NOT call
+# systemctl. We stub command -v to report wsl.exe present, stub wsl.exe and
+# exit so the function does not actually terminate the test process.
+test_do_reboot_wsl_uses_interop_not_systemctl() {
+    local out
+    out=$(
+        _IS_WSL=true
+        WSL_DISTRO_NAME="Ubuntu"
+        command() {
+            if [[ "${1:-}" == "-v" && "${2:-}" == "wsl.exe" ]]; then return 0; fi
+            builtin command "$@"
+        }
+        wsl.exe() { echo "INTEROP:wsl.exe $*"; }
+        systemctl() { echo "SYSTEMCTL_CALLED"; }
+        exit() { return 0; }   # neutralize the real exit so the test continues
+        do_reboot 2>&1
+    )
+    assert_contains "$out" "INTEROP:wsl.exe --terminate Ubuntu" \
+        "do_reboot (WSL) terminates distro via wsl.exe"
+    assert_false "do_reboot (WSL) does not call systemctl" \
+        grep -q "SYSTEMCTL_CALLED" <<< "$out"
+}
+
+# do_reboot under WSL with no wsl.exe available prints manual instructions and
+# still does not call systemctl.
+test_do_reboot_wsl_fallback_prints_instructions() {
+    local out
+    out=$(
+        _IS_WSL=true
+        WSL_DISTRO_NAME="Ubuntu"
+        command() {
+            if [[ "${1:-}" == "-v" && "${2:-}" == "wsl.exe" ]]; then return 1; fi
+            builtin command "$@"
+        }
+        systemctl() { echo "SYSTEMCTL_CALLED"; }
+        do_reboot 2>&1
+    )
+    assert_contains "$out" "wsl --terminate Ubuntu" \
+        "do_reboot (WSL fallback) prints terminate instruction"
+    assert_false "do_reboot (WSL fallback) does not call systemctl" \
+        grep -q "SYSTEMCTL_CALLED" <<< "$out"
+}
+
+# do_reboot on a normal host runs `sudo systemctl reboot` (unchanged behavior).
+test_do_reboot_host_uses_systemctl() {
+    local out
+    out=$(
+        _IS_WSL=false
+        sudo() { echo "SUDO:$*"; }
+        do_reboot 2>&1
+    )
+    assert_contains "$out" "SUDO:systemctl reboot" \
+        "do_reboot (host) runs sudo systemctl reboot"
+}
+
+test_is_wsl_true_when_distro_name_set
+test_is_wsl_false_without_markers
+test_is_wsl_true_via_proc_version
+test_is_wsl_caches_result
+test_wsl_distro_name_echoes_var
+test_do_reboot_wsl_uses_interop_not_systemctl
+test_do_reboot_wsl_fallback_prints_instructions
+test_do_reboot_host_uses_systemctl
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""

@@ -579,8 +579,15 @@ process_selected() {
 
     # Offer reboot (only for System Tasks and Docker)
     if [[ "$needs_reboot" == "true" ]]; then
+        # Under WSL, "reboot" restarts the distro from Windows, not the host.
+        # Adjust the prompt wording so the user knows what will happen.
+        local _reboot_prompt="Reboot now? (y/N) "
+        if is_wsl; then
+            echo "${YELLOW}Note: under WSL this restarts the '${WSL_DISTRO_NAME:-distro}' distribution (not Windows).${RESET}"
+            _reboot_prompt="Restart WSL distro now? (y/N) "
+        fi
         while true; do
-            read -n 1 -rp "Reboot now? (y/N) " REBOOT_CHOICE < /dev/tty
+            read -n 1 -rp "$_reboot_prompt" REBOOT_CHOICE < /dev/tty
             echo
             [[ $'\e' == "$REBOOT_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
             REBOOT_CHOICE=${REBOOT_CHOICE:-N}
@@ -589,7 +596,7 @@ process_selected() {
                     info "Rebooting…"
                     printf '\n\n'
                     exec 9>&-  # release lock fd before the system goes down
-                    sudo systemctl reboot
+                    do_reboot  # WSL-aware: systemctl reboot on host, wsl.exe --terminate under WSL
                     exit 0     # don't fall through to reload/remind prompts
                     ;;
                 n|N)
@@ -928,6 +935,12 @@ main() {
 
     self_update_script "$@"
     parse_args "$@"
+
+    # One-time WSL notice (the TUI clears the screen, so it must be shown here,
+    # before entering the menu loop).
+    if is_wsl; then
+        info "Running under WSL (${WSL_DISTRO_NAME:-unknown}). 'Reboot' restarts this distro, not Windows."
+    fi
 
     # Main loop: show menu, process selections, repeat
     while true; do

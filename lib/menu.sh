@@ -756,6 +756,12 @@ _render_left() {
     local -a _si_labels=("Host" "OS" "Kernel" "CPU" "GPU" "Mem" "Disk" "Uptime")
     local -a _si_values=("$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" "$_SYSINFO_CPU" "$_SYSINFO_GPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" "$_SYSINFO_UPTIME")
 
+    # Surface a WSL indicator when running under Windows Subsystem for Linux.
+    if is_wsl; then
+        _si_labels+=("Env")
+        _si_values+=("WSL${WSL_DISTRO_NAME:+ (${WSL_DISTRO_NAME})}")
+    fi
+
     local label_w=8  # fixed label column width (includes leading space)
     local val_w=$(( inner_w - label_w - 2 ))  # -2 for ": " separator
 
