@@ -93,6 +93,10 @@ load_config() {
         # Skip INI section headers like [Logging]
         [[ "$line" =~ ^[[:space:]]*\[.*\] ]] && continue
 
+        # Strip a trailing carriage return so CRLF config files (e.g. edited
+        # on Windows) parse correctly. $'\r' is bash ANSI-C quoting.
+        line="${line%$'\r'}"
+
         # Extract key=value
         key="${line%%=*}"
         value="${line#*=}"

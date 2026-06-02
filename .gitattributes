@@ -1,0 +1,12 @@
+# Shell scripts must always use LF line endings (they run under Linux/WSL).
+# These attributes override core.autocrlf for matched files.
+*.sh        text eol=lf
+*.bash      text eol=lf
+
+# Config/data files consumed by the scripts — keep LF.
+*.conf      text eol=lf
+*.example   text eol=lf
+*.logrotate text eol=lf
+
+# Let git auto-detect line endings for everything else.
+*           text=auto
