@@ -130,7 +130,6 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Mount NFS Share** | Discover and mount an NFS export from a remote server, persisted in `/etc/fstab` |
 | **Mount SMB Share** | Connect to an SMB/CIFS server, store credentials securely, and persist mount in `/etc/fstab` |
 | **Manage Share** | Update or unmount an existing linux_util-managed mount |
-| **Enable RDP** | Enables Remote Desktop Protocol access via XRDP server |
 | **Flatpak Setup** | Configures Flatpak and adds the Flathub repository |
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
 | **Num Lock at Boot** | Enables Num Lock on TTY consoles and the display manager login screen |
@@ -238,11 +237,9 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 
 | Utility | Description |
 |---------|-------------|
-| **AnyDesk** | Remote desktop application |
 | **Bitwarden Extension** | Bitwarden browser extension installer |
 | **Brave Browser** | Privacy-focused Chromium browser with built-in ad blocking |
 | **Chromium** | Open-source browser, upstream base for Chrome |
-| **Devolutions RDM** | Remote Desktop Manager — Cloudsmith repo / AUR / flatpak / snap |
 | **Discord** | Voice, video, and text communication platform |
 | **Element (Matrix)** | Matrix protocol client for decentralised messaging |
 | **FileZilla** | FTP, FTPS, and SFTP client |
@@ -251,19 +248,15 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Joplin Web Clipper** | Browser extension for saving web content to Joplin |
 | **KMail** | KDE's email client with PGP encryption |
 | **LibreWolf** | Privacy-hardened Firefox fork |
-| **OpenSSH Server** | Secure Shell server for remote access |
 | **PIA VPN** | Private Internet Access VPN client |
 | **ProtonVPN** | Free and open-source VPN by Proton |
 | **QBittorrent** | Open-source BitTorrent client |
-| **Remmina** | Remote desktop client (RDP, VNC, SSH, SPICE) |
-| **RustDesk** | Open-source remote desktop and remote assistance tool |
 | **Signal Desktop** | End-to-end encrypted messaging |
 | **Slack** | Team messaging and collaboration platform |
 | **SponsorBlock Extension** | Browser extension to skip sponsored segments in YouTube videos |
 | **Syncthing** | Peer-to-peer file sync between devices |
 | **Tailscale** | Zero-config mesh VPN built on WireGuard |
 | **Telegram Desktop** | Cloud-based messaging with groups, channels, and file sharing |
-| **Termius SSH Client** | Modern SSH client with cross-device sync |
 | **Thorium Browser** | Speed-optimized Chromium browser |
 | **Thunderbird** | Mozilla's email client with calendar and PGP |
 | **Tor Browser** | Anonymous browsing via the Tor network |
@@ -296,6 +289,19 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **VLC** | Versatile media player supporting virtually all formats |
 | **WPS Office** | MS Office-compatible office suite |
 | **Zotero** | Reference manager and research tool |
+
+#### Remote Admin Tools
+
+| Utility | Description |
+|---------|-------------|
+| **AnyDesk** | Remote desktop application *(Remote Access)* |
+| **Devolutions RDM** | Remote Desktop Manager — Cloudsmith repo / AUR / flatpak / snap *(Remote Access)* |
+| **Enable RDP** | Enables Remote Desktop Protocol access via XRDP server *(Remote Access)* |
+| **OpenSSH Server** | Secure Shell server for remote access *(Remote Access)* |
+| **Remmina** | Remote desktop client (RDP, VNC, SSH, SPICE) *(Remote Access)* |
+| **RustDesk** | Open-source remote desktop and remote assistance tool *(Remote Access)* |
+| **Termius SSH Client** | Modern SSH client with cross-device sync *(Remote Access)* |
+| **OpenRSAT** | Active Directory management console (Microsoft RSAT-like) from Tranquil IT — installs the latest GitHub release as a `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL x86_64), or standalone binary (openSUSE); not available on Arch |
 
 #### System Tools
 

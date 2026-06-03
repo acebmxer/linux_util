@@ -51,7 +51,8 @@ register_system_task "Manage Share"       setup_manage_share      check_manage_s
 register_system_task "Configure Syncthing Folders" setup_syncthing_folders check_syncthing_folders uninstall_syncthing_folders update_syncthing_folders get_version_syncthing_folders
 register_utility "NVIDIA Drivers"         install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
-register_system_task "Enable RDP"         install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
+register_utility "Enable RDP"             install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
+register_utility "OpenRSAT"               install_openrsat        check_openrsat        uninstall_openrsat        update_openrsat           get_version_openrsat
 register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
 register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_setup   uninstall_flatpak_setup   update_flatpak_setup      get_version_flatpak_setup
 register_system_task "UFW Firewall"       install_ufw             check_ufw             uninstall_ufw             update_ufw                get_version_ufw
@@ -346,7 +347,7 @@ fi
 
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Package Managers" "Productivity" "System Tools" "Window Managers")
+CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Package Managers" "Productivity" "Remote Admin Tools" "System Tools" "Window Managers")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Angry IP Scanner"]="Internet"
@@ -400,7 +401,7 @@ UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
 UTILITY_CATEGORY["Cursor IDE"]="Development"
 UTILITY_CATEGORY["DBeaver"]="Development"
-UTILITY_CATEGORY["Devolutions RDM"]="Internet"
+UTILITY_CATEGORY["Devolutions RDM"]="Remote Admin Tools"
 UTILITY_CATEGORY["Discord"]="Internet"
 UTILITY_CATEGORY["Docker"]="Development"
 UTILITY_CATEGORY["Fastfetch"]="System Tools"
@@ -424,14 +425,14 @@ UTILITY_CATEGORY["NVM"]="Development"
 UTILITY_CATEGORY["OBS Studio"]="Productivity"
 UTILITY_CATEGORY["Obsidian"]="Productivity"
 UTILITY_CATEGORY["OnlyOffice"]="Productivity"
-UTILITY_CATEGORY["OpenSSH Server"]="Internet"
+UTILITY_CATEGORY["OpenSSH Server"]="Remote Admin Tools"
 UTILITY_CATEGORY["PIA VPN"]="Internet"
 UTILITY_CATEGORY["Postman"]="Development"
 UTILITY_CATEGORY["PowerShell"]="Development"
 UTILITY_CATEGORY["ProtonUp-Qt"]="Gaming"
 UTILITY_CATEGORY["ProtonVPN"]="Internet"
 UTILITY_CATEGORY["QBittorrent"]="Internet"
-UTILITY_CATEGORY["Remmina"]="Internet"
+UTILITY_CATEGORY["Remmina"]="Remote Admin Tools"
 UTILITY_CATEGORY["Signal Desktop"]="Internet"
 UTILITY_CATEGORY["SponsorBlock Extension"]="Internet"
 UTILITY_CATEGORY["Stacer"]="System Tools"
@@ -440,7 +441,7 @@ UTILITY_CATEGORY["Steam App"]="Gaming"
 UTILITY_CATEGORY["Syncthing"]="Internet"
 UTILITY_CATEGORY["Tailscale"]="Internet"
 UTILITY_CATEGORY["Telegram Desktop"]="Internet"
-UTILITY_CATEGORY["Termius SSH Client"]="Internet"
+UTILITY_CATEGORY["Termius SSH Client"]="Remote Admin Tools"
 UTILITY_CATEGORY["Thorium Browser"]="Internet"
 UTILITY_CATEGORY["Thunderbird"]="Internet"
 UTILITY_CATEGORY["Timeshift"]="Backup"
@@ -467,7 +468,7 @@ UTILITY_CATEGORY["WireGuard Server"]="Internet"
 UTILITY_CATEGORY["WPS Office"]="Productivity"
 UTILITY_CATEGORY["Zsh + Oh My Zsh"]="System Tools"
 UTILITY_CATEGORY["Ansible"]="Development"
-UTILITY_CATEGORY["AnyDesk"]="Internet"
+UTILITY_CATEGORY["AnyDesk"]="Remote Admin Tools"
 UTILITY_CATEGORY["Audacity"]="Productivity"
 UTILITY_CATEGORY["ClamAV"]="System Tools"
 UTILITY_CATEGORY["Element (Matrix)"]="Internet"
@@ -488,7 +489,9 @@ UTILITY_CATEGORY["Node.js"]="Development"
 UTILITY_CATEGORY["OpenTofu"]="Development"
 UTILITY_CATEGORY["Podman"]="Development"
 UTILITY_CATEGORY["pyenv"]="Development"
-UTILITY_CATEGORY["RustDesk"]="Internet"
+UTILITY_CATEGORY["RustDesk"]="Remote Admin Tools"
+UTILITY_CATEGORY["Enable RDP"]="Remote Admin Tools"
+UTILITY_CATEGORY["OpenRSAT"]="Remote Admin Tools"
 UTILITY_CATEGORY["Rustup"]="Development"
 UTILITY_CATEGORY["Slack"]="Internet"
 UTILITY_CATEGORY["Terraform"]="Development"
@@ -521,6 +524,7 @@ UTILITY_SUBCATEGORY["Remmina"]="Remote Access"
 UTILITY_SUBCATEGORY["Termius SSH Client"]="Remote Access"
 UTILITY_SUBCATEGORY["OpenSSH Server"]="Remote Access"
 UTILITY_SUBCATEGORY["Devolutions RDM"]="Remote Access"
+UTILITY_SUBCATEGORY["Enable RDP"]="Remote Access"
 UTILITY_SUBCATEGORY["PIA VPN"]="VPN"
 UTILITY_SUBCATEGORY["ProtonVPN"]="VPN"
 UTILITY_SUBCATEGORY["Tailscale"]="VPN"
@@ -601,7 +605,8 @@ UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
-SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|Remote Access|VPN"
+SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
+SUBCATEGORY_ORDER["Remote Admin Tools"]="Remote Access"
 
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
 
@@ -627,6 +632,7 @@ UTILITY_DESCRIPTION["Pantheon Desktop"]="Elegant, opinionated desktop from the e
 UTILITY_DESCRIPTION["Xfce Desktop"]="Lightweight and fast desktop that is visually clean, reliable, and ideal for older or lower-end hardware."
 UTILITY_DESCRIPTION["XEN Guest Utilities"]="Installs XEN guest agent for improved virtual machine performance, clipboard sharing, and host integration."
 UTILITY_DESCRIPTION["Enable RDP"]="Enables Remote Desktop Protocol access to this machine using the XRDP server."
+UTILITY_DESCRIPTION["OpenRSAT"]="Cross-platform Active Directory management console from Tranquil IT (a modern Microsoft RSAT-like tool) for managing users, groups, OUs, and DNS records. Installs the latest GitHub release: a .deb on Debian/Ubuntu, an .rpm on Fedora/RHEL (x86_64), or the standalone Linux binary on openSUSE. Not available on Arch."
 UTILITY_DESCRIPTION["AMD CPU Microcode & Firmware"]="Installs AMD CPU microcode updates and linux-firmware blobs (PSP/SMU, Wi-Fi, Bluetooth, and other device firmware) for Ryzen, Threadripper, and EPYC platforms."
 UTILITY_DESCRIPTION["Intel CPU Microcode & Thermal"]="Installs Intel CPU microcode updates and the thermald thermal management daemon for 10th Gen through Core Ultra (Arrow Lake) platforms."
 UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance."
