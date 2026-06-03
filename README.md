@@ -126,6 +126,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Fix Package Repos** | Refreshes repository metadata and repairs common repo errors (stale caches, unreachable mirrors, missing keys); cache wipe / keyring reinit is confirmed first |
 | **Fix Broken Packages** | Repairs half-installed packages and unmet dependencies (`dpkg --configure -a` / `apt --fix-broken`, `dnf distro-sync`, `pacman -Syu`, `zypper verify`) |
 | **Reset Repos to Default** | Restores base distro repos toward stock state — backs up all repo config, keeps third-party repos with installed dependents, prompts keep/disable/remove for the rest |
+| **Delete Default Cloud-Init User** | Removes the stock cloud-image account and its home directory (`ubuntu`/`debian`/`centos`/`alpine`) via `deluser --remove-home` (`userdel --remove` where `deluser` is absent); shows "Cloud Init user found" in status while one exists, confirms before deleting, and refuses to delete the logged-in user |
 | **Mount Local Drive** | Interactively select an unmounted block device and add it to `/etc/fstab` |
 | **Mount NFS Share** | Discover and mount an NFS export from a remote server, persisted in `/etc/fstab` |
 | **Mount SMB Share** | Connect to an SMB/CIFS server, store credentials securely, and persist mount in `/etc/fstab` |

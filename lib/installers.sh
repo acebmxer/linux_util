@@ -78,6 +78,10 @@ if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DIS
     register_system_task "Fix Monitor Layout at Login" install_fix_monitor_login check_always_false     noop_function              install_fix_monitor_login
 fi
 
+# Delete the stock cloud-image user (ubuntu/debian/centos/alpine). Always listed;
+# the status column reflects whether one of those accounts currently exists.
+register_system_task "Delete Default Cloud-Init User" delete_cloud_init_user check_always_false noop_function delete_cloud_init_user get_version_delete_cloud_init_user
+
 # Package repair tasks (all distros) — kept at the end of the System Tasks section
 register_system_task "Fix Broken Packages"   setup_fix_broken_packages check_always_false noop_function setup_fix_broken_packages
 register_system_task "Fix Package Repos"      setup_fix_repos           check_always_false noop_function setup_fix_repos
@@ -642,6 +646,7 @@ UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firew
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
+UTILITY_DESCRIPTION["Delete Default Cloud-Init User"]="Removes the stock user that cloud/VM images ship with, along with its home directory. Detects the known default accounts (ubuntu, debian, centos, alpine) by presence — the status shows 'Cloud Init user found' while one exists and goes blank once removed. Uses deluser --remove-home (userdel --remove where deluser is absent). Confirms before deleting, refuses to delete the account you are logged in as, and is a no-op when none exist."
 UTILITY_DESCRIPTION["Fix Broken Packages"]="Repairs half-installed packages and unmet dependencies (dpkg --configure -a / apt --fix-broken, dnf distro-sync, pacman -Syu, zypper verify). Read-only checks run automatically; any step that adds or removes packages is confirmed first."
 UTILITY_DESCRIPTION["Fix Package Repos"]="Refreshes repository metadata and repairs common repo errors (stale caches, unreachable mirrors, missing keys). Clearing caches or reinitializing the keyring is confirmed before it runs."
 UTILITY_DESCRIPTION["Reset Repos to Default"]="Restores base distro repositories toward their stock state. Backs up all repo config first, keeps third-party repos that installed packages depend on, and prompts (keep/disable/remove) for each unused third-party repo."
