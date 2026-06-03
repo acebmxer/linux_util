@@ -1351,6 +1351,30 @@ test_do_reboot_host_uses_systemctl() {
         "do_reboot (host) runs sudo systemctl reboot"
 }
 
+# do_reboot with no argument terminates this distro only under WSL (must never
+# escalate to a full --shutdown of the whole VM).
+test_do_reboot_wsl_default_still_terminates() {
+    local out
+    out=$(
+        _IS_WSL=true
+        WSL_DISTRO_NAME="Ubuntu"
+        command() {
+            if [[ "${1:-}" == "-v" && "${2:-}" == "wsl.exe" ]]; then return 0; fi
+            builtin command "$@"
+        }
+        wsl.exe() {
+            if [[ "${1:-}" == "--list" ]]; then return 0; fi
+            echo "INTEROP:wsl.exe $*"
+        }
+        exit() { return 0; }
+        do_reboot 2>&1
+    )
+    assert_contains "$out" "INTEROP:wsl.exe --terminate Ubuntu" \
+        "do_reboot (WSL) terminates this distro only"
+    assert_false "do_reboot (WSL) does not run a full --shutdown" \
+        grep -q -- "--shutdown" <<< "$out"
+}
+
 test_is_wsl_true_when_distro_name_set
 test_is_wsl_false_without_markers
 test_is_wsl_true_via_proc_version
@@ -1360,6 +1384,7 @@ test_do_reboot_wsl_uses_interop_not_systemctl
 test_do_reboot_wsl_waits_for_distro_to_stop
 test_do_reboot_wsl_fallback_prints_instructions
 test_do_reboot_host_uses_systemctl
+test_do_reboot_wsl_default_still_terminates
 
 # ============================================================================
 # Test: Window Button Layout (detect_window_button_de / install_window_buttons)

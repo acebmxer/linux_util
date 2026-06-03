@@ -596,7 +596,9 @@ process_selected() {
                     info "Rebooting…"
                     printf '\n\n'
                     exec 9>&-  # release lock fd before the system goes down
-                    do_reboot  # WSL-aware: systemctl reboot on host, wsl.exe --terminate under WSL
+                    # WSL-aware: systemctl reboot on host; under WSL this runs
+                    # `wsl.exe --terminate` (restarts this distro only).
+                    do_reboot
                     exit 0     # don't fall through to reload/remind prompts
                     ;;
                 n|N)

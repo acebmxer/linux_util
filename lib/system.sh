@@ -233,9 +233,9 @@ do_reboot() {
         local distro
         distro="$(wsl_distro_name)"
         warn "Under WSL a reboot terminates and relaunches the distro from Windows (Windows itself is not affected)."
-        # Preferred path: use the wsl.exe interop bridge to terminate this
-        # distro. The running session ends immediately; the distro auto-starts
-        # the next time a terminal/app opens it, or via `wsl -d <distro>`.
+        # Preferred path: use the wsl.exe interop bridge to terminate just this
+        # distro. The running session ends immediately and the distro auto-starts
+        # on the next terminal/app, or via `wsl -d <distro>`.
         if command -v wsl.exe >/dev/null 2>&1 && [[ -n "$distro" ]]; then
             info "Terminating WSL distro '${distro}'. Relaunch with: wsl -d ${distro}"
             printf '\n\n'

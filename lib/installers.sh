@@ -58,7 +58,7 @@ register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_
 register_system_task "UFW Firewall"       install_ufw             check_ufw             uninstall_ufw             update_ufw                get_version_ufw
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
-register_system_task "Window Button Layout" install_window_buttons check_always_false noop_function install_window_buttons get_version_window_buttons
+register_system_task "GTK Window Fix" install_window_buttons check_always_false noop_function install_window_buttons get_version_window_buttons
 
 # Debian/Ubuntu-only system tasks
 if [[ "$DISTRO_FAMILY" == "debian" ]]; then
@@ -593,14 +593,14 @@ UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
 
-# System Tasks uses interleaved mode: subcategory folders appear in registration order
-SUBCATEGORY_INTERLEAVED["System Tasks"]=1
+# System Tasks: subcategory folders appear at the top, plain tasks keep their order.
 UTILITY_SUBCATEGORY["Full System Upgrade/Update"]="System Updaters"
 UTILITY_SUBCATEGORY["System Updates"]="System Updaters"
 UTILITY_SUBCATEGORY["Mount Local Drive"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Mount NFS Share"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Mount SMB Share"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
+UTILITY_SUBCATEGORY["GTK Window Fix"]="WSL Fixes"
 
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
@@ -648,6 +648,7 @@ UTILITY_DESCRIPTION["Reset Repos to Default"]="Restores base distro repositories
 UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot using the active backup backend (Timeshift or Snapper). Prompts for an optional description."
 UTILITY_DESCRIPTION["Restore Snapshot"]="Restores the system from a previously created snapshot. Lists all available snapshots and asks for confirmation before proceeding."
 UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshots. Lists all available snapshots and asks for confirmation before deleting."
+UTILITY_DESCRIPTION["GTK Window Fix"]="Restores the minimize, maximize, and close buttons on GTK app title bars (GNOME, Cinnamon, MATE, Xfce). Under WSLg the default window-manager layout omits minimize/maximize, leaving GTK apps such as Remmina, Nautilus, and Files with only a close button. Sets the per-user window-manager button-layout preference; KDE shows all three by default and is skipped."
 
 # Development
 UTILITY_DESCRIPTION["Ansible"]="IT automation tool for provisioning, configuration management, and application deployment using agentless SSH-based playbooks."
