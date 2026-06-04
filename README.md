@@ -240,6 +240,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 |---------|-------------|
 | **Bitwarden Extension** | Bitwarden browser extension installer |
 | **Brave Browser** | Privacy-focused Chromium browser with built-in ad blocking |
+| **Brave Origin** | Streamlined Brave build without Rewards, Wallet, VPN, and Leo AI |
 | **Chromium** | Open-source browser, upstream base for Chrome |
 | **Discord** | Voice, video, and text communication platform |
 | **Element (Matrix)** | Matrix protocol client for decentralised messaging |

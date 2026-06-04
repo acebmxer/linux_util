@@ -145,6 +145,7 @@ declare -A DEPS_MAP
 _init_deps_map() {
     DEPS_MAP["Docker"]="curl:curl ca-certificates:ca-certificates"
     DEPS_MAP["Brave Browser"]="curl:curl gpg:gnupg"
+    DEPS_MAP["Brave Origin"]="curl:curl gpg:gnupg"
     DEPS_MAP["Firefox"]="curl:curl gpg:gnupg"
     DEPS_MAP["Visual Studio Code"]="curl:curl gpg:gnupg wget:wget"
     DEPS_MAP["Syncthing"]="curl:curl"
