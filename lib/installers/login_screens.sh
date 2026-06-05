@@ -209,8 +209,9 @@ _clear_sddm_theme_override() {
     run_as_root rm -f /etc/sddm.conf.d/90-linux_util-theme.conf 2>/dev/null || true
 }
 
-# Best-effort QML runtime for community SDDM themes (Sugar Candy / Astronaut are
-# QtQuick themes and render blank without these). Non-fatal if a name is missing.
+# Best-effort Qt5 QtQuick runtime for community SDDM themes (Sugar Candy renders
+# blank without these). Astronaut is Qt6-only and uses _install_sddm_qml_deps_qt6
+# instead. Non-fatal if a name is missing.
 _install_sddm_qml_deps() {
     case "$PKG_MGR" in
         apt)     pkg_install qml-module-qtquick-controls2 qml-module-qtgraphicaleffects \
@@ -221,10 +222,49 @@ _install_sddm_qml_deps() {
     esac || warn "Some QtQuick dependencies may be missing; the theme could render blank."
 }
 
+# True when this system's SDDM is built against Qt6. The SDDM daemon and the
+# greeter that renders QtQuick themes share the same Qt build, so the daemon's
+# linkage is a reliable proxy; a dedicated sddm-greeter-qt6 binary (shipped by
+# some distros) is an extra positive signal. Qt6 matters because newer community
+# themes (e.g. Astronaut) import Qt6-only QML modules — a Qt5 greeter rejects
+# them with "Library import requires a version".
+_sddm_is_qt6() {
+    command -v sddm-greeter-qt6 &>/dev/null && return 0
+    local bin
+    for bin in "$(command -v sddm 2>/dev/null)" /usr/bin/sddm /usr/sbin/sddm; do
+        [[ -x "$bin" ]] && ldd "$bin" 2>/dev/null | grep -q 'libQt6Core' && return 0
+    done
+    return 1
+}
+
+# Best-effort Qt6 QtQuick runtime for the Astronaut theme (upstream master is
+# Qt6-only: it imports QtQuick.Effects and QtMultimedia without versions). Each
+# package is installed on its own because apt/dnf/pacman/zypper all abort the
+# whole batch on a single unknown name, and these module names vary by distro.
+_install_sddm_qml_deps_qt6() {
+    local pkgs=() p
+    case "$PKG_MGR" in
+        apt)     pkgs=(qml6-module-qtquick-controls qml6-module-qtquick-layouts
+                       qml6-module-qtquick-effects qml6-module-qtquick-window
+                       qml6-module-qtmultimedia qml6-module-qtquick-virtualkeyboard
+                       libqt6svg6) ;;
+        dnf|yum) pkgs=(qt6-qtdeclarative qt6-qtsvg qt6-qtmultimedia
+                       qt6-qtvirtualkeyboard) ;;
+        pacman)  pkgs=(qt6-declarative qt6-svg qt6-multimedia qt6-virtualkeyboard) ;;
+        zypper)  pkgs=(libQt6Svg6 qt6-multimedia-imports qt6-quickcontrols2-imports
+                       qt6-virtualkeyboard-imports) ;;
+    esac
+    for p in "${pkgs[@]}"; do
+        pkg_install "$p" >/dev/null 2>&1 || \
+            warn "Optional Qt6 module '${p}' unavailable; the theme may render incomplete."
+    done
+}
+
 # Download a community SDDM theme tarball and install it into the themes dir.
 #   $1 = label   $2 = theme dir name   $3 = tarball URL
+#   $4 = QML runtime generation: "qt5" (default) or "qt6"
 _install_sddm_community_theme() {
-    local label="$1" dir="$2" url="$3"
+    local label="$1" dir="$2" url="$3" qt_gen="${4:-qt5}"
     if [[ ! -d "$SDDM_THEMES_DIR" ]]; then
         error "SDDM is not installed. Install the SDDM login screen first (Login Screens > SDDM)."
         return 1
@@ -232,7 +272,11 @@ _install_sddm_community_theme() {
     ensure_tools
     check_internet || true
     info "Installing ${label} SDDM theme..."
-    _install_sddm_qml_deps
+    if [[ "$qt_gen" == "qt6" ]]; then
+        _install_sddm_qml_deps_qt6
+    else
+        _install_sddm_qml_deps
+    fi
 
     local tmp; tmp="$(mktemp -d)"
     if ! download_file "$url" "${tmp}/theme.tar.gz"; then
@@ -314,8 +358,27 @@ get_version_sddmtheme_sugar_candy() { [[ "$(_sddm_active_theme)" == "sugar-candy
 # ----------------------------------------------------------------------------
 # SDDM theme: Astronaut (QtQuick theme bundle)
 # ----------------------------------------------------------------------------
+# Upstream master is Qt6-only (qt6 >= 6.8; Main.qml imports QtQuick.Effects and
+# QtMultimedia, both Qt6) with no Qt5 branch or release to fall back to. On a Qt5
+# SDDM the greeter shows "Library import requires a version", so refuse there and
+# point at Sugar Candy (the Qt5-compatible option) rather than activating a theme
+# that can only render as that red error screen.
 _ASTRONAUT_URL="https://github.com/Keyitdev/sddm-astronaut-theme/archive/refs/heads/master.tar.gz"
-install_sddmtheme_astronaut()   { _install_sddm_community_theme "Astronaut" "sddm-astronaut-theme" "$_ASTRONAUT_URL"; }
+install_sddmtheme_astronaut() {
+    if [[ ! -d "$SDDM_THEMES_DIR" ]]; then
+        error "SDDM is not installed. Install the SDDM login screen first (Login Screens > SDDM)."
+        return 1
+    fi
+    if ! _sddm_is_qt6; then
+        error "The Astronaut theme requires an SDDM built with Qt6, but this system's SDDM"
+        error "is Qt5. Its Main.qml imports Qt6-only modules (QtQuick.Effects, QtMultimedia),"
+        error "so a Qt5 login screen rejects it with 'Library import requires a version'."
+        error "Use the Sugar Candy theme instead (Qt5-compatible), or move to a distro"
+        error "release whose SDDM is built on Qt6."
+        return 1
+    fi
+    _install_sddm_community_theme "Astronaut" "sddm-astronaut-theme" "$_ASTRONAUT_URL" qt6
+}
 check_sddmtheme_astronaut()     { [[ -d "${SDDM_THEMES_DIR}/sddm-astronaut-theme" ]]; }
 uninstall_sddmtheme_astronaut() { _uninstall_sddm_community_theme "Astronaut" "sddm-astronaut-theme"; }
 update_sddmtheme_astronaut()    { install_sddmtheme_astronaut; }
