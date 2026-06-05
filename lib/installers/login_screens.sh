@@ -283,7 +283,10 @@ get_version_sddmtheme_breeze() { [[ "$(_sddm_active_theme)" == "breeze" ]] && ec
 # ----------------------------------------------------------------------------
 # SDDM theme: Sugar Candy (popular QtQuick theme)
 # ----------------------------------------------------------------------------
-_SUGAR_CANDY_URL="https://github.com/MarianArlt/sddm-sugar-candy/archive/refs/heads/master.tar.gz"
+# The original MarianArlt/sddm-sugar-candy repo (and account) was deleted from
+# GitHub, so its tarball 404s permanently. Kangie/sddm-sugar-candy is the stable
+# GPL-3.0 mirror (archived/read-only, which is fine — the theme is feature-frozen).
+_SUGAR_CANDY_URL="https://github.com/Kangie/sddm-sugar-candy/archive/refs/heads/master.tar.gz"
 install_sddmtheme_sugar_candy()   { _install_sddm_community_theme "Sugar Candy" "sugar-candy" "$_SUGAR_CANDY_URL"; }
 check_sddmtheme_sugar_candy()     { [[ -d "${SDDM_THEMES_DIR}/sugar-candy" ]]; }
 uninstall_sddmtheme_sugar_candy() { _uninstall_sddm_community_theme "Sugar Candy" "sugar-candy"; }
