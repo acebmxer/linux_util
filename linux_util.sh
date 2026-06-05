@@ -577,7 +577,22 @@ process_selected() {
         echo ""
     fi
 
-    # Offer reboot (only for System Tasks and Docker)
+    # Debian/Ubuntu flag a pending reboot via /var/run/reboot-required (e.g. a
+    # kernel or shared-library update pulled in by apt during this run). Honour it
+    # even when none of the selected tasks individually require a reboot, so we
+    # never claim "No reboot needed" while the OS has one queued — that mismatch
+    # is what lets unattended-upgrades reboot out from under the user.
+    if [[ "$needs_reboot" != "true" && -f /var/run/reboot-required ]]; then
+        needs_reboot=true
+        warn "The system has flagged a pending reboot (/var/run/reboot-required)."
+        if [[ -r /var/run/reboot-required.pkgs ]]; then
+            local _rb_pkgs
+            _rb_pkgs="$(sort -u /var/run/reboot-required.pkgs | paste -sd', ' -)"
+            [[ -n "$_rb_pkgs" ]] && info "Triggered by: ${_rb_pkgs}"
+        fi
+    fi
+
+    # Offer reboot (System Tasks, Docker, Drivers, or an OS-flagged pending reboot)
     if [[ "$needs_reboot" == "true" ]]; then
         # Under WSL, "reboot" restarts the distro from Windows, not the host.
         # Adjust the prompt wording so the user knows what will happen.
