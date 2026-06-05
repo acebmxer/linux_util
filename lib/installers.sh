@@ -332,6 +332,24 @@ if [[ "$DISTRO_FAMILY" == "arch" ]] || \
     register_utility "Hyprland"        install_hyprland         check_hyprland         uninstall_hyprland         update_hyprland            get_version_hyprland
 fi
 
+# --- Login Screens (display managers + login themes) ---
+# Standalone building blocks: install a login screen on a headless box, or theme
+# an existing one. Only one display manager is enabled at a time (see
+# login_screens.sh). Display managers are broadly packaged, so all are offered on
+# every distro — an install fails cleanly where a package is genuinely absent.
+register_utility "SDDM"                install_dm_sddm          check_dm_sddm          uninstall_dm_sddm          update_dm_sddm             get_version_dm_sddm
+register_utility "GDM"                 install_dm_gdm           check_dm_gdm           uninstall_dm_gdm           update_dm_gdm              get_version_dm_gdm
+register_utility "LightDM"             install_dm_lightdm       check_dm_lightdm       uninstall_dm_lightdm       update_dm_lightdm          get_version_dm_lightdm
+register_utility "ly"                  install_dm_ly            check_dm_ly            uninstall_dm_ly            update_dm_ly               get_version_dm_ly
+register_utility "LXDM"                install_dm_lxdm          check_dm_lxdm          uninstall_dm_lxdm          update_dm_lxdm             get_version_dm_lxdm
+register_utility "SDDM Breeze Theme"   install_sddmtheme_breeze       check_sddmtheme_breeze       uninstall_sddmtheme_breeze       update_sddmtheme_breeze       get_version_sddmtheme_breeze
+register_utility "SDDM Sugar Candy"    install_sddmtheme_sugar_candy  check_sddmtheme_sugar_candy  uninstall_sddmtheme_sugar_candy  update_sddmtheme_sugar_candy  get_version_sddmtheme_sugar_candy
+register_utility "SDDM Astronaut"      install_sddmtheme_astronaut    check_sddmtheme_astronaut    uninstall_sddmtheme_astronaut    update_sddmtheme_astronaut    get_version_sddmtheme_astronaut
+register_utility "LightDM Slick Greeter" install_lightdmtheme_slick   check_lightdmtheme_slick     uninstall_lightdmtheme_slick     update_lightdmtheme_slick     get_version_lightdmtheme_slick
+# Community SDDM themes are fetched from GitHub — no point retrying on a failed download.
+NO_RETRY["SDDM Sugar Candy"]=1
+NO_RETRY["SDDM Astronaut"]=1
+
 # --- Package Managers (additional / third-party — native managers untouched) ---
 # Cross-distro managers that run alongside the native package manager.
 register_utility "Homebrew"            install_homebrew         check_homebrew         uninstall_homebrew         update_homebrew            get_version_homebrew
@@ -352,7 +370,7 @@ fi
 
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Package Managers" "Productivity" "Remote Admin Tools" "System Tools" "Window Managers")
+CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Login Screens" "Package Managers" "Productivity" "Remote Admin Tools" "System Tools" "Window Managers")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Angry IP Scanner"]="Internet"
@@ -389,6 +407,15 @@ UTILITY_CATEGORY["Hyprland"]="Window Managers"
 UTILITY_CATEGORY["i3"]="Window Managers"
 UTILITY_CATEGORY["Openbox"]="Window Managers"
 UTILITY_CATEGORY["Sway"]="Window Managers"
+UTILITY_CATEGORY["SDDM"]="Login Screens"
+UTILITY_CATEGORY["GDM"]="Login Screens"
+UTILITY_CATEGORY["LightDM"]="Login Screens"
+UTILITY_CATEGORY["ly"]="Login Screens"
+UTILITY_CATEGORY["LXDM"]="Login Screens"
+UTILITY_CATEGORY["SDDM Breeze Theme"]="Login Screens"
+UTILITY_CATEGORY["SDDM Sugar Candy"]="Login Screens"
+UTILITY_CATEGORY["SDDM Astronaut"]="Login Screens"
+UTILITY_CATEGORY["LightDM Slick Greeter"]="Login Screens"
 UTILITY_CATEGORY["Homebrew"]="Package Managers"
 UTILITY_CATEGORY["Nix"]="Package Managers"
 UTILITY_CATEGORY["Snap (snapd)"]="Package Managers"
@@ -594,6 +621,15 @@ UTILITY_SUBCATEGORY["Krusader"]="Graphical"
 UTILITY_SUBCATEGORY["Midnight Commander"]="Terminal"
 UTILITY_SUBCATEGORY["Ranger"]="Terminal"
 UTILITY_SUBCATEGORY["nnn"]="Terminal"
+UTILITY_SUBCATEGORY["SDDM"]="Display Managers"
+UTILITY_SUBCATEGORY["GDM"]="Display Managers"
+UTILITY_SUBCATEGORY["LightDM"]="Display Managers"
+UTILITY_SUBCATEGORY["ly"]="Display Managers"
+UTILITY_SUBCATEGORY["LXDM"]="Display Managers"
+UTILITY_SUBCATEGORY["SDDM Breeze Theme"]="SDDM Themes"
+UTILITY_SUBCATEGORY["SDDM Sugar Candy"]="SDDM Themes"
+UTILITY_SUBCATEGORY["SDDM Astronaut"]="SDDM Themes"
+UTILITY_SUBCATEGORY["LightDM Slick Greeter"]="LightDM Greeters"
 
 # Display name overrides — shown in the menu instead of the utility key
 UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
@@ -614,6 +650,7 @@ SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
 SUBCATEGORY_ORDER["Remote Admin Tools"]="Remote Access"
+SUBCATEGORY_ORDER["Login Screens"]="Display Managers|SDDM Themes|LightDM Greeters"
 
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
 
@@ -796,6 +833,17 @@ UTILITY_DESCRIPTION["Hyprland"]="Modern, animated Wayland tiling compositor with
 UTILITY_DESCRIPTION["i3"]="Classic X11 tiling window manager with simple text-based configuration, fast performance, and a large ecosystem of status bars, launchers, and themes. The go-to choice for tiling on X11."
 UTILITY_DESCRIPTION["Openbox"]="Minimal, fast X11 stacking window manager with a clean right-click menu and XML configuration. Ideal for building lightweight custom desktops or running on low-resource hardware."
 UTILITY_DESCRIPTION["Sway"]="Wayland tiling compositor that is a drop-in replacement for i3 — reads i3 config files and behaves the same way. The most popular tiling option for Wayland users coming from i3."
+
+# Login Screens (display managers + login themes)
+UTILITY_DESCRIPTION["SDDM"]="Simple Desktop Display Manager — the Qt-based login screen used by KDE Plasma and LXQt, with full theming support. Installs SDDM and, if no login screen is active, enables it (otherwise asks before replacing the current one). Pair with an SDDM theme below. Does not start immediately — reboot to use it."
+UTILITY_DESCRIPTION["GDM"]="GNOME Display Manager — the GTK login screen used by GNOME (package 'gdm3' on Debian/Ubuntu, 'gdm' elsewhere). Installs GDM and enables it when no login screen is active, or asks before replacing the current one. GDM theming is intentionally not offered (it requires recompiling gresource bundles). Reboot to use it."
+UTILITY_DESCRIPTION["LightDM"]="Lightweight, cross-desktop display manager used by Xfce, MATE, Cinnamon, and Budgie. Installs LightDM plus a GTK greeter so a login form renders, and enables it when no login screen is active (otherwise asks first). Themeable via the Slick greeter below. Reboot to use it."
+UTILITY_DESCRIPTION["ly"]="Minimal TUI (text-mode) display manager that runs on the console — no X/Wayland greeter needed. Ideal for window-manager users who want a tiny login screen. Packaged on Arch and openSUSE; the install fails cleanly where it is not available. Reboot to use it."
+UTILITY_DESCRIPTION["LXDM"]="Lightweight GTK display manager from the LXDE project. A small, fast login screen suited to low-resource systems and minimal desktops. Installs LXDM and enables it when no login screen is active, or asks before replacing the current one. Reboot to use it."
+UTILITY_DESCRIPTION["SDDM Breeze Theme"]="Sets the upstream KDE Breeze theme as the SDDM login screen via an /etc/sddm.conf.d drop-in (overrides distro defaults such as the Kubuntu theme). Breeze ships with KDE Plasma; on Debian/Ubuntu the standalone sddm-theme-breeze package is pulled in if needed. Requires SDDM."
+UTILITY_DESCRIPTION["SDDM Sugar Candy"]="Popular, highly configurable QtQuick SDDM theme with a clean blurred-background login. Downloaded from GitHub into /usr/share/sddm/themes and set as the active SDDM theme; pulls in the QtQuick runtime it needs. Requires SDDM and an internet connection."
+UTILITY_DESCRIPTION["SDDM Astronaut"]="Modern QtQuick SDDM theme bundle (multiple sci-fi styles) downloaded from GitHub into /usr/share/sddm/themes and set as the active SDDM theme; pulls in the QtQuick runtime it needs. Requires SDDM and an internet connection."
+UTILITY_DESCRIPTION["LightDM Slick Greeter"]="Installs the Slick greeter (the themeable GTK greeter used by Linux Mint) and selects it for LightDM via an /etc/lightdm/lightdm.conf.d drop-in. Customise background, GTK theme, and icons in /etc/lightdm/slick-greeter.conf. Requires LightDM; not packaged on every distro."
 
 # Package Managers (additional / third-party — these run alongside your native
 # package manager, which is never replaced or removed)
