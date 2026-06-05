@@ -178,12 +178,30 @@ _set_sddm_theme() {
     run_as_root mkdir -p /etc/sddm.conf.d
     printf '[Theme]\nCurrent=%s\n' "$theme" | run_as_root tee /etc/sddm.conf.d/90-linux_util-theme.conf >/dev/null
     info "SDDM login theme set to '${theme}'."
+    _dedupe_ubuntu_sddm_theme
 }
 
 # Echo the currently configured SDDM theme name (last Current= wins).
 _sddm_active_theme() {
     grep -rhoP '^\s*Current\s*=\s*\K\S+' \
         /etc/sddm.conf /etc/sddm.conf.d/ /usr/lib/sddm/sddm.conf.d/ 2>/dev/null | tail -1
+}
+
+# Ubuntu registers its SDDM theme packages (sddm-theme-breeze, sddm-theme-maya, …)
+# under the `sddm-ubuntu-theme` update-alternatives group, which creates
+# /usr/share/sddm/themes/ubuntu-theme as a symlink to the highest-priority theme.
+# KDE's SDDM KCM then lists that symlink as a *second* tile for whatever real theme
+# it resolves to (e.g. Breeze appears twice). Drop the alternatives group so each
+# theme shows once. Guarded: apt-only, a no-op if the symlink is absent, and never
+# removed while SDDM is actually configured to use "ubuntu-theme" (removing it then
+# would leave the login screen pointing at a missing theme).
+_dedupe_ubuntu_sddm_theme() {
+    [[ "$PKG_MGR" == "apt" ]] || return 0
+    [[ -L /usr/share/sddm/themes/ubuntu-theme ]] || return 0
+    [[ "$(_sddm_active_theme)" == "ubuntu-theme" ]] && return 0
+    if run_as_root update-alternatives --remove-all sddm-ubuntu-theme >/dev/null 2>&1; then
+        info "Removed Ubuntu's duplicate 'ubuntu-theme' alternative (it showed the active theme twice in the SDDM theme list)."
+    fi
 }
 
 # Remove our theme drop-in (reverts SDDM to the distro default theme).
