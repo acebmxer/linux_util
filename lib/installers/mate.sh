@@ -77,32 +77,85 @@ setup_install_mate() {
     info "Installing MATE Desktop..."
     ensure_tools
 
+    local tier
+    tier=$(_prompt_de_tier "MATE")
+
     case "$PKG_MGR" in
         apt)
             run_as_root apt-get update
-            info "Installing MATE Desktop Environment..."
-            run_as_root apt-get install -y mate-desktop-environment-core \
-                mate-desktop-environment lightdm lightdm-gtk-greeter || {
-                error "Failed to install MATE Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing MATE (Minimal/Core)..."
+                    run_as_root apt-get install -y mate-desktop-environment-core \
+                        lightdm lightdm-gtk-greeter || {
+                        error "Failed to install MATE (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing MATE (Full Suite)..."
+                    # ubuntu-mate-desktop on Ubuntu; fall back to the extras meta on Debian.
+                    run_as_root apt-get install -y ubuntu-mate-desktop lightdm || \
+                    run_as_root apt-get install -y mate-desktop-environment-extras \
+                        lightdm lightdm-gtk-greeter || {
+                        error "Failed to install MATE (Full Suite)"
+                        return 1
+                    }
+                    ;;
+                *)
+                    info "Installing MATE (Standard)..."
+                    run_as_root apt-get install -y mate-desktop-environment-core \
+                        mate-desktop-environment lightdm lightdm-gtk-greeter || {
+                        error "Failed to install MATE (Standard)"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm || warn "Failed to enable lightdm"
             run_as_root systemctl start lightdm || warn "Failed to start lightdm"
             ;;
 
         dnf|yum)
-            info "Installing MATE Desktop Environment..."
-            if ! run_as_root "$PKG_MGR" group install -y 'MATE Desktop' 2>/dev/null && \
-               ! run_as_root "$PKG_MGR" group install -y @mate-desktop 2>/dev/null; then
-                info "Group install not available, installing MATE packages individually..."
-                run_as_root "$PKG_MGR" install -y mate-desktop mate-session-manager \
-                    mate-panel mate-control-center mate-terminal caja \
-                    mate-screensaver mate-media lightdm lightdm-gtk || {
-                    error "Failed to install MATE Desktop Environment packages"
-                    return 1
-                }
-            fi
+            case "$tier" in
+                minimal)
+                    info "Installing MATE (Minimal/Core)..."
+                    run_as_root "$PKG_MGR" install -y mate-desktop mate-session-manager \
+                        mate-panel mate-control-center mate-terminal caja \
+                        lightdm lightdm-gtk || {
+                        error "Failed to install MATE (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing MATE (Full Suite)..."
+                    if ! run_as_root "$PKG_MGR" group install -y 'MATE Desktop' 2>/dev/null && \
+                       ! run_as_root "$PKG_MGR" group install -y @mate-desktop 2>/dev/null; then
+                        run_as_root "$PKG_MGR" install -y mate-desktop mate-session-manager \
+                            mate-panel mate-control-center mate-terminal caja \
+                            mate-screensaver mate-media lightdm lightdm-gtk || {
+                            error "Failed to install MATE (Full Suite) packages"
+                            return 1
+                        }
+                    fi
+                    run_as_root "$PKG_MGR" group install -y 'MATE Applications' @mate-applications 2>/dev/null || true
+                    run_as_root "$PKG_MGR" install -y mate-applets mate-utils \
+                        mate-calc atril eom pluma engrampa caja-extensions 2>/dev/null || true
+                    ;;
+                *)
+                    info "Installing MATE (Standard)..."
+                    if ! run_as_root "$PKG_MGR" group install -y 'MATE Desktop' 2>/dev/null && \
+                       ! run_as_root "$PKG_MGR" group install -y @mate-desktop 2>/dev/null; then
+                        info "Group install not available, installing MATE packages individually..."
+                        run_as_root "$PKG_MGR" install -y mate-desktop mate-session-manager \
+                            mate-panel mate-control-center mate-terminal caja \
+                            mate-screensaver mate-media lightdm lightdm-gtk || {
+                            error "Failed to install MATE (Standard) packages"
+                            return 1
+                        }
+                    fi
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
@@ -110,13 +163,37 @@ setup_install_mate() {
             ;;
 
         zypper)
-            info "Installing MATE Desktop Environment..."
-            run_as_root zypper install -y -t pattern mate 2>/dev/null || \
-                run_as_root zypper install -y mate-desktop mate-panel \
-                    mate-session-manager caja lightdm lightdm-gtk-greeter || {
-                error "Failed to install MATE Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing MATE (Minimal/Core)..."
+                    run_as_root zypper install -y -t pattern mate_basis 2>/dev/null || \
+                        run_as_root zypper install -y mate-desktop mate-panel \
+                            mate-session-manager caja lightdm lightdm-gtk-greeter || {
+                        error "Failed to install MATE (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing MATE (Full Suite)..."
+                    run_as_root zypper install -y -t pattern mate 2>/dev/null || \
+                        run_as_root zypper install -y mate-desktop mate-panel \
+                            mate-session-manager caja lightdm lightdm-gtk-greeter || {
+                        error "Failed to install MATE (Full Suite)"
+                        return 1
+                    }
+                    run_as_root zypper install -y mate-applets mate-utils mate-calc \
+                        atril eom pluma engrampa 2>/dev/null || true
+                    ;;
+                *)
+                    info "Installing MATE (Standard)..."
+                    run_as_root zypper install -y -t pattern mate 2>/dev/null || \
+                        run_as_root zypper install -y mate-desktop mate-panel \
+                            mate-session-manager caja lightdm lightdm-gtk-greeter || {
+                        error "Failed to install MATE (Standard)"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
@@ -124,12 +201,24 @@ setup_install_mate() {
             ;;
 
         pacman)
-            info "Installing MATE Desktop Environment..."
-            run_as_root pacman -S --noconfirm mate mate-extra \
-                lightdm lightdm-gtk-greeter || {
-                error "Failed to install MATE Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing MATE (Minimal/Core)..."
+                    run_as_root pacman -S --noconfirm mate lightdm lightdm-gtk-greeter || {
+                        error "Failed to install MATE (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                *)
+                    # Arch ships MATE as the 'mate' and 'mate-extra' groups (standard + full alike).
+                    info "Installing MATE ($([[ $tier == full ]] && echo 'Full Suite' || echo 'Standard'))..."
+                    run_as_root pacman -S --noconfirm mate mate-extra \
+                        lightdm lightdm-gtk-greeter || {
+                        error "Failed to install MATE Desktop Environment"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm
             run_as_root systemctl start lightdm || warn "Failed to start lightdm"

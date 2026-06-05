@@ -75,35 +75,86 @@ setup_install_cinnamon() {
     info "Installing Cinnamon Desktop..."
     ensure_tools
 
+    local tier
+    tier=$(_prompt_de_tier "Cinnamon")
+
     case "$PKG_MGR" in
         apt)
             run_as_root apt-get update
-            info "Installing Cinnamon Desktop Environment..."
-            run_as_root apt-get install -y cinnamon-desktop-environment lightdm || {
-                # Fallback: core package set
-                run_as_root apt-get install -y cinnamon cinnamon-core \
-                    nemo lightdm lightdm-settings slick-greeter || {
-                    error "Failed to install Cinnamon Desktop Environment"
-                    return 1
-                }
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing Cinnamon (Minimal/Core)..."
+                    run_as_root apt-get install -y cinnamon-core lightdm lightdm-gtk-greeter || {
+                        run_as_root apt-get install -y cinnamon nemo lightdm lightdm-gtk-greeter || {
+                            error "Failed to install Cinnamon (Minimal/Core)"
+                            return 1
+                        }
+                    }
+                    ;;
+                full)
+                    info "Installing Cinnamon (Full Suite)..."
+                    run_as_root apt-get install -y cinnamon-desktop-environment lightdm || {
+                        run_as_root apt-get install -y cinnamon cinnamon-core \
+                            nemo lightdm lightdm-settings slick-greeter || {
+                            error "Failed to install Cinnamon (Full Suite)"
+                            return 1
+                        }
+                    }
+                    ;;
+                *)
+                    info "Installing Cinnamon (Standard)..."
+                    run_as_root apt-get install -y cinnamon nemo lightdm lightdm-gtk-greeter || {
+                        run_as_root apt-get install -y cinnamon cinnamon-core \
+                            nemo lightdm lightdm-settings slick-greeter || {
+                            error "Failed to install Cinnamon (Standard)"
+                            return 1
+                        }
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm || warn "Failed to enable lightdm"
             run_as_root systemctl start lightdm || warn "Failed to start lightdm"
             ;;
 
         dnf|yum)
-            info "Installing Cinnamon Desktop Environment..."
-            if ! run_as_root "$PKG_MGR" group install -y 'Cinnamon Desktop' 2>/dev/null && \
-               ! run_as_root "$PKG_MGR" group install -y @cinnamon-desktop 2>/dev/null; then
-                info "Group install not available, installing Cinnamon packages individually..."
-                run_as_root "$PKG_MGR" install -y cinnamon cinnamon-screensaver \
-                    nemo nemo-fileroller cinnamon-control-center \
-                    lightdm lightdm-gtk || {
-                    error "Failed to install Cinnamon Desktop Environment packages"
-                    return 1
-                }
-            fi
+            case "$tier" in
+                minimal)
+                    info "Installing Cinnamon (Minimal/Core)..."
+                    run_as_root "$PKG_MGR" install -y cinnamon nemo \
+                        cinnamon-control-center lightdm lightdm-gtk || {
+                        error "Failed to install Cinnamon (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing Cinnamon (Full Suite)..."
+                    if ! run_as_root "$PKG_MGR" group install -y 'Cinnamon Desktop' 2>/dev/null && \
+                       ! run_as_root "$PKG_MGR" group install -y @cinnamon-desktop 2>/dev/null; then
+                        run_as_root "$PKG_MGR" install -y cinnamon cinnamon-screensaver \
+                            nemo nemo-fileroller cinnamon-control-center \
+                            lightdm lightdm-gtk || {
+                            error "Failed to install Cinnamon (Full Suite) packages"
+                            return 1
+                        }
+                    fi
+                    run_as_root "$PKG_MGR" install -y nemo-preview nemo-image-converter \
+                        gnome-terminal gnome-calculator 2>/dev/null || true
+                    ;;
+                *)
+                    info "Installing Cinnamon (Standard)..."
+                    if ! run_as_root "$PKG_MGR" group install -y 'Cinnamon Desktop' 2>/dev/null && \
+                       ! run_as_root "$PKG_MGR" group install -y @cinnamon-desktop 2>/dev/null; then
+                        info "Group install not available, installing Cinnamon packages individually..."
+                        run_as_root "$PKG_MGR" install -y cinnamon cinnamon-screensaver \
+                            nemo nemo-fileroller cinnamon-control-center \
+                            lightdm lightdm-gtk || {
+                            error "Failed to install Cinnamon (Standard) packages"
+                            return 1
+                        }
+                    fi
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
@@ -111,12 +162,34 @@ setup_install_cinnamon() {
             ;;
 
         zypper)
-            info "Installing Cinnamon Desktop Environment..."
-            run_as_root zypper install -y cinnamon cinnamon-gschemas \
-                nemo lightdm lightdm-slick-greeter 2>/dev/null || {
-                error "Failed to install Cinnamon Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing Cinnamon (Minimal/Core)..."
+                    run_as_root zypper install -y cinnamon cinnamon-gschemas \
+                        nemo lightdm lightdm-gtk-greeter 2>/dev/null || {
+                        error "Failed to install Cinnamon (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing Cinnamon (Full Suite)..."
+                    run_as_root zypper install -y cinnamon cinnamon-gschemas \
+                        nemo lightdm lightdm-slick-greeter 2>/dev/null || {
+                        error "Failed to install Cinnamon (Full Suite)"
+                        return 1
+                    }
+                    run_as_root zypper install -y nemo-extensions cinnamon-screensaver \
+                        gnome-terminal 2>/dev/null || true
+                    ;;
+                *)
+                    info "Installing Cinnamon (Standard)..."
+                    run_as_root zypper install -y cinnamon cinnamon-gschemas \
+                        nemo lightdm lightdm-slick-greeter 2>/dev/null || {
+                        error "Failed to install Cinnamon (Standard)"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
@@ -124,12 +197,31 @@ setup_install_cinnamon() {
             ;;
 
         pacman)
-            info "Installing Cinnamon Desktop Environment..."
-            run_as_root pacman -S --noconfirm cinnamon nemo \
-                lightdm lightdm-gtk-greeter || {
-                error "Failed to install Cinnamon Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing Cinnamon (Minimal/Core)..."
+                    run_as_root pacman -S --noconfirm cinnamon lightdm lightdm-gtk-greeter || {
+                        error "Failed to install Cinnamon (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing Cinnamon (Full Suite)..."
+                    run_as_root pacman -S --noconfirm cinnamon nemo nemo-fileroller \
+                        cinnamon-translations gnome-terminal lightdm lightdm-gtk-greeter || {
+                        error "Failed to install Cinnamon (Full Suite)"
+                        return 1
+                    }
+                    ;;
+                *)
+                    info "Installing Cinnamon (Standard)..."
+                    run_as_root pacman -S --noconfirm cinnamon nemo \
+                        lightdm lightdm-gtk-greeter || {
+                        error "Failed to install Cinnamon (Standard)"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm
             run_as_root systemctl start lightdm || warn "Failed to start lightdm"

@@ -46,6 +46,27 @@ _repair_done() {
     return 3
 }
 
+# Prompt for a desktop-environment install tier (Minimal / Standard / Full).
+# $1 = DE display name, used in the prompt text only (e.g. "KDE Plasma").
+# Echoes one of: minimal | standard | full  (capture with $(...)).
+# All prompt output goes to stderr so it doesn't pollute the captured value.
+# Defaults to "standard" on empty input, EOF, or when no terminal is attached.
+_prompt_de_tier() {
+    local de="$1" reply=""
+    {
+        printf '\n%sSelect a %s installation type:%s\n' "${BOLD:-}" "$de" "${RESET:-}"
+        printf '  1) Minimal/Core   — base desktop only, fewest packages\n'
+        printf '  2) Standard       — desktop plus common applications (Recommended)\n'
+        printf '  3) Full Suite     — every default %s application\n\n' "$de"
+    } >&2
+    read -rp "${YELLOW:-}Enter choice [1-3] (default 2): ${RESET:-}" reply < /dev/tty 2>/dev/null || reply=""
+    case "$reply" in
+        1) echo "minimal" ;;
+        3) echo "full" ;;
+        *) echo "standard" ;;
+    esac
+}
+
 # Parse a multi-select string (e.g. "1,3-5") into deduplicated indices (input order preserved).
 # Prints one index per line; returns 1 on invalid input.
 _parse_multi_selection() {

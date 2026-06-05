@@ -88,61 +88,148 @@ update_kde() {
 }
 
 setup_install_kde() {
-    info "Installing KDE Desktop..."
+    info "Installing KDE Plasma Desktop..."
     ensure_tools
+
+    local tier
+    tier=$(_prompt_de_tier "KDE Plasma")
 
     case "$PKG_MGR" in
         apt)
             run_as_root apt-get update
-            info "Installing KDE Full Desktop Environment..."
-            run_as_root apt-get install -y kde-full sddm || {
-                error "Failed to install KDE Full Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing KDE Plasma (Minimal/Core)..."
+                    run_as_root apt-get install -y plasma-desktop sddm || {
+                        error "Failed to install KDE Plasma (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing KDE Plasma (Full Suite)..."
+                    # kubuntu-desktop on Ubuntu; fall back to kde-full on Debian.
+                    run_as_root apt-get install -y kubuntu-desktop sddm || \
+                    run_as_root apt-get install -y kde-full sddm || {
+                        error "Failed to install KDE Plasma (Full Suite)"
+                        return 1
+                    }
+                    ;;
+                *)
+                    info "Installing KDE Plasma (Standard)..."
+                    run_as_root apt-get install -y kde-standard sddm || {
+                        error "Failed to install KDE Plasma (Standard)"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable sddm || warn "Failed to enable sddm"
             run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         dnf|yum)
-            info "Installing KDE Full Desktop Environment..."
-            if ! run_as_root "$PKG_MGR" groupinstall -y 'KDE Plasma Workspaces' 2>/dev/null && \
-               ! run_as_root "$PKG_MGR" group install -y @kde-desktop-environment 2>/dev/null; then
-                info "Group install not available, installing KDE packages individually..."
-                run_as_root "$PKG_MGR" install -y epel-release 2>/dev/null || true
-                run_as_root crb enable 2>/dev/null || run_as_root "$PKG_MGR" config-manager --set-enabled crb 2>/dev/null || true
-                run_as_root "$PKG_MGR" install -y plasma-desktop plasma-workspace sddm \
-                    plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons plasma-thunderbolt \
-                    bluedevil breeze-gtk kscreen kinfocenter kwrited \
-                    konsole dolphin kate ark gwenview okular spectacle \
-                    kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde \
-                    phonon-qt5-backend-gstreamer || {
-                    error "Failed to install KDE Full Desktop Environment packages"
-                    return 1
-                }
-            fi
+            # EPEL / CRB are needed on RHEL clones for the Plasma packages.
+            run_as_root "$PKG_MGR" install -y epel-release 2>/dev/null || true
+            run_as_root crb enable 2>/dev/null || run_as_root "$PKG_MGR" config-manager --set-enabled crb 2>/dev/null || true
+            case "$tier" in
+                minimal)
+                    info "Installing KDE Plasma (Minimal/Core)..."
+                    run_as_root "$PKG_MGR" install -y plasma-desktop plasma-workspace sddm \
+                        kscreen plasma-nm kde-settings-plasma xdg-desktop-portal-kde || {
+                        error "Failed to install KDE Plasma (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing KDE Plasma (Full Suite)..."
+                    if ! run_as_root "$PKG_MGR" group install -y 'KDE Plasma Workspaces' 'KDE Applications' 'KDE Multimedia Support' 2>/dev/null && \
+                       ! run_as_root "$PKG_MGR" group install -y @kde-desktop-environment @kde-apps @kde-media 2>/dev/null; then
+                        info "Group install not available, installing KDE packages individually..."
+                        run_as_root "$PKG_MGR" install -y plasma-desktop plasma-workspace sddm \
+                            plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons plasma-thunderbolt \
+                            bluedevil breeze-gtk kscreen kinfocenter kwrited \
+                            konsole dolphin kate ark gwenview okular spectacle \
+                            kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde \
+                            phonon-qt5-backend-gstreamer || {
+                            error "Failed to install KDE Plasma (Full Suite) packages"
+                            return 1
+                        }
+                    fi
+                    ;;
+                *)
+                    info "Installing KDE Plasma (Standard)..."
+                    if ! run_as_root "$PKG_MGR" group install -y 'KDE Plasma Workspaces' 2>/dev/null && \
+                       ! run_as_root "$PKG_MGR" group install -y @kde-desktop-environment 2>/dev/null; then
+                        info "Group install not available, installing KDE packages individually..."
+                        run_as_root "$PKG_MGR" install -y plasma-desktop plasma-workspace sddm \
+                            plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons \
+                            bluedevil breeze-gtk kscreen kinfocenter \
+                            konsole dolphin kate ark gwenview okular spectacle \
+                            kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde || {
+                            error "Failed to install KDE Plasma (Standard) packages"
+                            return 1
+                        }
+                    fi
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable sddm || run_as_root systemctl set-default graphical.target
             run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         zypper)
-            info "Installing KDE Full Desktop Environment..."
-            run_as_root zypper install -y -t pattern kde kde_plasma kde_utilities kde_imaging kde_multimedia kde_office kde_games || {
-                error "Failed to install KDE Full Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing KDE Plasma (Minimal/Core)..."
+                    run_as_root zypper install -y -t pattern kde_plasma || {
+                        error "Failed to install KDE Plasma (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing KDE Plasma (Full Suite)..."
+                    run_as_root zypper install -y -t pattern kde kde_plasma kde_utilities kde_imaging kde_multimedia kde_office kde_games || {
+                        error "Failed to install KDE Plasma (Full Suite)"
+                        return 1
+                    }
+                    ;;
+                *)
+                    info "Installing KDE Plasma (Standard)..."
+                    run_as_root zypper install -y -t pattern kde kde_plasma || {
+                        error "Failed to install KDE Plasma (Standard)"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable sddm || run_as_root systemctl set-default graphical.target
             run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         pacman)
-            info "Installing KDE Full Desktop Environment..."
-            run_as_root pacman -S --noconfirm plasma-meta kde-applications-meta sddm || {
-                error "Failed to install KDE Full Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing KDE Plasma (Minimal/Core)..."
+                    run_as_root pacman -S --noconfirm plasma-desktop sddm || {
+                        error "Failed to install KDE Plasma (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing KDE Plasma (Full Suite)..."
+                    run_as_root pacman -S --noconfirm plasma-meta kde-applications-meta sddm || {
+                        error "Failed to install KDE Plasma (Full Suite)"
+                        return 1
+                    }
+                    ;;
+                *)
+                    info "Installing KDE Plasma (Standard)..."
+                    run_as_root pacman -S --noconfirm plasma-meta sddm || {
+                        error "Failed to install KDE Plasma (Standard)"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable sddm
             run_as_root systemctl start sddm || warn "Failed to start sddm"
@@ -154,6 +241,6 @@ setup_install_kde() {
             ;;
     esac
 
-    info "KDE Desktop installed successfully. Reboot to start using KDE."
+    info "KDE Plasma Desktop installed successfully. Reboot to start using KDE."
     return 0
 }

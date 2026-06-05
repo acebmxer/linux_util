@@ -75,33 +75,87 @@ setup_install_xfce() {
     info "Installing Xfce Desktop..."
     ensure_tools
 
+    local tier
+    tier=$(_prompt_de_tier "Xfce")
+
     case "$PKG_MGR" in
         apt)
             run_as_root apt-get update
-            info "Installing Xfce Desktop Environment..."
-            run_as_root apt-get install -y xfce4 xfce4-goodies lightdm \
-                lightdm-gtk-greeter || {
-                error "Failed to install Xfce Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing Xfce (Minimal/Core)..."
+                    run_as_root apt-get install -y xfce4 lightdm lightdm-gtk-greeter || {
+                        error "Failed to install Xfce (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing Xfce (Full Suite)..."
+                    # xubuntu-desktop on Ubuntu; fall back to xfce4 + goodies on Debian.
+                    run_as_root apt-get install -y xubuntu-desktop lightdm || \
+                    run_as_root apt-get install -y xfce4 xfce4-goodies lightdm lightdm-gtk-greeter || {
+                        error "Failed to install Xfce (Full Suite)"
+                        return 1
+                    }
+                    ;;
+                *)
+                    info "Installing Xfce (Standard)..."
+                    run_as_root apt-get install -y xfce4 xfce4-goodies lightdm \
+                        lightdm-gtk-greeter || {
+                        error "Failed to install Xfce (Standard)"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm || warn "Failed to enable lightdm"
             run_as_root systemctl start lightdm || warn "Failed to start lightdm"
             ;;
 
         dnf|yum)
-            info "Installing Xfce Desktop Environment..."
-            if ! run_as_root "$PKG_MGR" group install -y 'Xfce Desktop' 2>/dev/null && \
-               ! run_as_root "$PKG_MGR" group install -y @xfce-desktop-environment 2>/dev/null; then
-                info "Group install not available, installing Xfce packages individually..."
-                run_as_root "$PKG_MGR" install -y xfce4-session xfwm4 xfdesktop \
-                    xfce4-panel xfce4-terminal thunar xfce4-appfinder \
-                    xfce4-settings xfce4-notifyd xfce4-screensaver \
-                    lightdm lightdm-gtk || {
-                    error "Failed to install Xfce Desktop Environment packages"
-                    return 1
-                }
-            fi
+            case "$tier" in
+                minimal)
+                    info "Installing Xfce (Minimal/Core)..."
+                    run_as_root "$PKG_MGR" install -y xfce4-session xfwm4 xfdesktop \
+                        xfce4-panel xfce4-terminal thunar xfce4-settings \
+                        lightdm lightdm-gtk || {
+                        error "Failed to install Xfce (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing Xfce (Full Suite)..."
+                    if ! run_as_root "$PKG_MGR" group install -y 'Xfce Desktop' 2>/dev/null && \
+                       ! run_as_root "$PKG_MGR" group install -y @xfce-desktop-environment 2>/dev/null; then
+                        run_as_root "$PKG_MGR" install -y xfce4-session xfwm4 xfdesktop \
+                            xfce4-panel xfce4-terminal thunar xfce4-appfinder \
+                            xfce4-settings xfce4-notifyd xfce4-screensaver \
+                            lightdm lightdm-gtk || {
+                            error "Failed to install Xfce (Full Suite) packages"
+                            return 1
+                        }
+                    fi
+                    # Extra Xfce plugins and applications (best-effort).
+                    run_as_root "$PKG_MGR" group install -y 'Xfce Applications' @xfce-apps 2>/dev/null || true
+                    run_as_root "$PKG_MGR" install -y xfce4-whiskermenu-plugin \
+                        xfce4-pulseaudio-plugin xfce4-clipman-plugin xfce4-screenshooter \
+                        xfce4-taskmanager mousepad ristretto 2>/dev/null || true
+                    ;;
+                *)
+                    info "Installing Xfce (Standard)..."
+                    if ! run_as_root "$PKG_MGR" group install -y 'Xfce Desktop' 2>/dev/null && \
+                       ! run_as_root "$PKG_MGR" group install -y @xfce-desktop-environment 2>/dev/null; then
+                        info "Group install not available, installing Xfce packages individually..."
+                        run_as_root "$PKG_MGR" install -y xfce4-session xfwm4 xfdesktop \
+                            xfce4-panel xfce4-terminal thunar xfce4-appfinder \
+                            xfce4-settings xfce4-notifyd xfce4-screensaver \
+                            lightdm lightdm-gtk || {
+                            error "Failed to install Xfce (Standard) packages"
+                            return 1
+                        }
+                    fi
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
@@ -109,11 +163,30 @@ setup_install_xfce() {
             ;;
 
         zypper)
-            info "Installing Xfce Desktop Environment..."
-            run_as_root zypper install -y -t pattern xfce xfce_basis || {
-                error "Failed to install Xfce Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing Xfce (Minimal/Core)..."
+                    run_as_root zypper install -y -t pattern xfce_basis || {
+                        error "Failed to install Xfce (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                full)
+                    info "Installing Xfce (Full Suite)..."
+                    run_as_root zypper install -y -t pattern xfce xfce_basis || {
+                        error "Failed to install Xfce (Full Suite)"
+                        return 1
+                    }
+                    run_as_root zypper install -y -t pattern xfce_office 2>/dev/null || true
+                    ;;
+                *)
+                    info "Installing Xfce (Standard)..."
+                    run_as_root zypper install -y -t pattern xfce xfce_basis || {
+                        error "Failed to install Xfce (Standard)"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
@@ -121,12 +194,24 @@ setup_install_xfce() {
             ;;
 
         pacman)
-            info "Installing Xfce Desktop Environment..."
-            run_as_root pacman -S --noconfirm xfce4 xfce4-goodies \
-                lightdm lightdm-gtk-greeter || {
-                error "Failed to install Xfce Desktop Environment"
-                return 1
-            }
+            case "$tier" in
+                minimal)
+                    info "Installing Xfce (Minimal/Core)..."
+                    run_as_root pacman -S --noconfirm xfce4 lightdm lightdm-gtk-greeter || {
+                        error "Failed to install Xfce (Minimal/Core)"
+                        return 1
+                    }
+                    ;;
+                *)
+                    # Arch's xfce4-goodies group covers the standard and full sets alike.
+                    info "Installing Xfce ($([[ $tier == full ]] && echo 'Full Suite' || echo 'Standard'))..."
+                    run_as_root pacman -S --noconfirm xfce4 xfce4-goodies \
+                        lightdm lightdm-gtk-greeter || {
+                        error "Failed to install Xfce Desktop Environment"
+                        return 1
+                    }
+                    ;;
+            esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm
             run_as_root systemctl start lightdm || warn "Failed to start lightdm"
