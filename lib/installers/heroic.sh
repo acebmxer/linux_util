@@ -8,7 +8,7 @@ check_heroic() { _check_standard heroic heroic com.heroicgameslauncher.hgl; }
 _heroic_latest_url() {
     local ext="$1"  # deb or rpm
     curl -fsSL "https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest" \
-        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+\.'"$ext"'"' | head -1
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+\.'"$ext"'(?=")' | head -1
 }
 
 install_heroic() {

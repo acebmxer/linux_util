@@ -41,7 +41,7 @@ _btop_install_binary() {
     arch=$(uname -m)
     local url
     url=$(curl -fsSL "https://api.github.com/repos/aristocratos/btop/releases/latest" \
-        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+btop-'"$arch"'-linux-musl\.tbz"' | head -1)
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+btop-'"$arch"'-linux-musl\.tbz(?=")' | head -1)
     [[ -z "$url" ]] && { error "Could not find btop binary for ${arch}."; return 1; }
 
     local tmpfile

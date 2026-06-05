@@ -8,7 +8,7 @@ check_fastfetch() { _check_standard fastfetch fastfetch ""; }
 _fastfetch_latest_url() {
     local ext="$1"
     curl -fsSL "https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest" \
-        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+linux-amd64\.'"$ext"'"' | head -1
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+linux-amd64\.'"$ext"'(?=")' | head -1
 }
 
 _fastfetch_configure_shells() {

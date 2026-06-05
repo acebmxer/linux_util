@@ -16,7 +16,7 @@ check_standard_notes() {
 _sn_latest_url() {
     local ext="$1"
     curl -fsSL "https://api.github.com/repos/standardnotes/app/releases/latest" \
-        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+linux[^"]*\.'"$ext"'"' \
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+linux[^"]*\.'"$ext"'(?=")' \
         | grep -v "arm\|i386" | head -1
 }
 

@@ -8,7 +8,7 @@ check_obsidian() { _check_standard obsidian obsidian md.obsidian.Obsidian; }
 _obsidian_latest_url() {
     local ext="$1"
     curl -fsSL "https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest" \
-        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+\.'"$ext"'"' | head -1
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+\.'"$ext"'(?=")' | head -1
 }
 
 install_obsidian() {
