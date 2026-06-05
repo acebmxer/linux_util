@@ -58,8 +58,12 @@ _prompt_de_tier() {
         printf '  1) Minimal/Core   — base desktop only, fewest packages\n'
         printf '  2) Standard       — desktop plus common applications (Recommended)\n'
         printf '  3) Full Suite     — every default %s application\n\n' "$de"
+        printf '%sEnter choice [1-3] (default 2): %s' "${YELLOW:-}" "${RESET:-}"
     } >&2
-    read -rp "${YELLOW:-}Enter choice [1-3] (default 2): ${RESET:-}" reply < /dev/tty 2>/dev/null || reply=""
+    # Prompt is emitted above (to stderr) rather than via `read -rp`, because the
+    # 2>/dev/null needed to silence a missing-/dev/tty error would also hide read's
+    # own prompt, leaving a blank line that looks like a hang.
+    read -r reply < /dev/tty 2>/dev/null || reply=""
     case "$reply" in
         1) echo "minimal" ;;
         3) echo "full" ;;
