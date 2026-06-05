@@ -100,7 +100,9 @@ setup_install_kde() {
             case "$tier" in
                 minimal)
                     info "Installing KDE Plasma (Minimal/Core)..."
-                    run_as_root apt-get install -y plasma-desktop sddm || {
+                    # plasma-desktop ships only the X11 session; plasma-workspace-wayland
+                    # adds kwin-wayland and the Plasma (Wayland) SDDM session entry.
+                    run_as_root apt-get install -y plasma-desktop plasma-workspace-wayland sddm || {
                         error "Failed to install KDE Plasma (Minimal/Core)"
                         return 1
                     }
@@ -134,7 +136,7 @@ setup_install_kde() {
             case "$tier" in
                 minimal)
                     info "Installing KDE Plasma (Minimal/Core)..."
-                    run_as_root "$PKG_MGR" install -y plasma-desktop plasma-workspace sddm \
+                    run_as_root "$PKG_MGR" install -y plasma-desktop plasma-workspace plasma-workspace-wayland sddm \
                         kscreen plasma-nm kde-settings-plasma xdg-desktop-portal-kde || {
                         error "Failed to install KDE Plasma (Minimal/Core)"
                         return 1
