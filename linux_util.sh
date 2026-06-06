@@ -155,9 +155,8 @@ source "${SCRIPT_DIR}/lib/utilities.sh" || { echo "Error: Failed to source utili
 source "${SCRIPT_DIR}/lib/menu.sh" || { echo "Error: Failed to source menu.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/installers.sh" || { echo "Error: Failed to source installers.sh"; exit 1; }
 
-# Initialize dependency map and health checks (must be after installers.sh registers utilities)
+# Initialize dependency map (must be after installers.sh registers utilities)
 _init_deps_map
-_init_health_checks
 
 # Load profiles module — must come after installers.sh so all utility names
 # are registered before the profile registration calls in profiles.sh run.

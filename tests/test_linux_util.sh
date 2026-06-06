@@ -332,21 +332,12 @@ test_resolve_dependencies_no_deps
 echo ""
 echo "=== Health Check Tests ==="
 
-test_health_checks_init() {
-    _init_health_checks
-    # HEALTH_CHECK_CMDS is intentionally empty — utilities rely on their
-    # check_*() functions rather than explicit command strings.
-    assert_true "health_check map initialises without error" true
-}
-
 test_health_check_no_check() {
-    HEALTH_CHECK_CMDS=()
     CHECK_FUNCS=()
-    # No health check and no check func should succeed
+    # No check function registered should succeed (no-op health check)
     assert_true "health_check succeeds when no check available" health_check "Unknown App"
 }
 
-test_health_checks_init
 test_health_check_no_check
 
 # ============================================================================
@@ -1446,6 +1437,7 @@ test_install_window_buttons_gnome_sets_layout() {
     out=$(
         DBUS_SESSION_BUS_ADDRESS="unix:path=/run/fake"
         XDG_CURRENT_DESKTOP="GNOME"
+        DESKTOP_SESSION=""
         gsettings() { echo "GSETTINGS:$*"; return 0; }
         sudo() { echo "SUDO_CALLED"; }
         install_window_buttons 2>&1
@@ -1462,6 +1454,7 @@ test_install_window_buttons_xfce_uses_xfconf() {
     out=$(
         DBUS_SESSION_BUS_ADDRESS="unix:path=/run/fake"
         XDG_CURRENT_DESKTOP="XFCE"
+        DESKTOP_SESSION=""
         xfconf-query() { echo "XFCONF:$*"; return 0; }
         gsettings() { echo "GSETTINGS_CALLED"; }
         install_window_buttons 2>&1
@@ -1478,6 +1471,7 @@ test_install_window_buttons_kde_skips() {
     out=$(
         DBUS_SESSION_BUS_ADDRESS="unix:path=/run/fake"
         XDG_CURRENT_DESKTOP="KDE"
+        DESKTOP_SESSION=""
         gsettings() { echo "GSETTINGS_CALLED"; }
         xfconf-query() { echo "XFCONF_CALLED"; }
         install_window_buttons 2>&1
@@ -1507,7 +1501,7 @@ test_install_window_buttons_no_session_skips() {
 # get_version_window_buttons reports a human-readable DE label for the menu.
 test_get_version_window_buttons_reports_de() {
     local out
-    out=$( XDG_CURRENT_DESKTOP="GNOME" get_version_window_buttons )
+    out=$( XDG_CURRENT_DESKTOP="GNOME" DESKTOP_SESSION="" get_version_window_buttons )
     assert_eq "GNOME" "$out" "get_version_window_buttons reports detected DE label"
 }
 

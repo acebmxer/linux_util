@@ -202,60 +202,36 @@ resolve_dependencies() {
 
 # ============================================================================
 # Health Checks — Post-Installation Verification
-# Verifies that a utility was installed correctly and is functional.
+# Verifies that a utility was installed correctly and is functional by
+# re-running its registered check_*() function after an install/update.
 # ============================================================================
-declare -A HEALTH_CHECK_CMDS
-
-# Register health check commands for utilities.
-# Format: HEALTH_CHECK_CMDS["Utility Name"]="command_to_verify"
-_init_health_checks() {
-    # All utilities fall through to their check_*() functions, which are
-    # more robust (cover multiple package names, install methods, and paths).
-    # Only register an explicit command here when a utility has no check_*()
-    # function or the check function is insufficient.
-    :
-}
 
 # Run a health check for a utility after install/update.
 # Usage: health_check "Utility Name"
 # Returns 0 on pass, 1 on fail. Logs result.
 health_check() {
     local util_name="$1"
-    local check_cmd="${HEALTH_CHECK_CMDS[$util_name]:-}"
 
     # Refresh shell command hash table so newly installed binaries are found
     hash -r 2>/dev/null
 
-    if [[ -z "$check_cmd" ]]; then
-        # No health check registered; use the utility's own check function
-        local check_func="${CHECK_FUNCS[$util_name]:-}"
-        # Skip health check for tasks with no meaningful installed state
-        if [[ "$check_func" == "check_always_false" ]]; then
-            verbose "Skipping health check for ${util_name} (always-run task)"
+    local check_func="${CHECK_FUNCS[$util_name]:-}"
+    # Skip health check for tasks with no meaningful installed state
+    if [[ "$check_func" == "check_always_false" ]]; then
+        verbose "Skipping health check for ${util_name} (always-run task)"
+        return 0
+    fi
+    if [[ -n "$check_func" ]] && declare -f "$check_func" &>/dev/null; then
+        if $check_func 2>/dev/null; then
+            verbose "Health check passed for ${util_name} (via check function)"
+            log_success "Health check passed: ${util_name}"
             return 0
+        else
+            warn "Health check failed for ${util_name}"
+            log_warning "Health check failed: ${util_name}"
+            return 1
         fi
-        if [[ -n "$check_func" ]] && declare -f "$check_func" &>/dev/null; then
-            if $check_func 2>/dev/null; then
-                verbose "Health check passed for ${util_name} (via check function)"
-                log_success "Health check passed: ${util_name}"
-                return 0
-            else
-                warn "Health check failed for ${util_name}"
-                log_warning "Health check failed: ${util_name}"
-                return 1
-            fi
-        fi
-        verbose "No health check available for ${util_name}"
-        return 0
     fi
-
-    if bash -c "$check_cmd" &>/dev/null; then
-        verbose "Health check passed for ${util_name}"
-        log_success "Health check passed: ${util_name}"
-        return 0
-    else
-        warn "Health check failed for ${util_name}"
-        log_warning "Health check failed: ${util_name}"
-        return 1
-    fi
+    verbose "No health check available for ${util_name}"
+    return 0
 }
