@@ -70,5 +70,9 @@ update_btrfs_assistant() {
 }
 
 get_version_btrfs_assistant() {
-    _ver_from_cmd btrfs-assistant || _ver_from_pkg btrfs-assistant || echo ""
+    # Do NOT use `btrfs-assistant --version`: on some builds (e.g. Ubuntu's
+    # 2.2-1) the binary still iterates btrfs subvolumes via libbtrfsutil even
+    # for --version and segfaults, dumping a core on every version check.
+    # The package manager is the safe source.
+    _ver_from_pkg btrfs-assistant || echo ""
 }
