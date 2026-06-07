@@ -55,7 +55,7 @@ update_gnome() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y gnome gnome-shell
+            sudo apt install -y --only-upgrade gnome gnome-shell
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @gnome-desktop 2>/dev/null || \

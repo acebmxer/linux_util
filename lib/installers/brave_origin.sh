@@ -66,7 +66,7 @@ update_brave_origin() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y brave-origin
+            sudo apt install -y --only-upgrade brave-origin
             ;;
         arch)
             aur_ensure brave-origin-bin

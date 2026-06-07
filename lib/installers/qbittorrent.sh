@@ -62,7 +62,7 @@ update_qbittorrent() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y qbittorrent
+            sudo apt install -y --only-upgrade qbittorrent
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" upgrade -y qbittorrent

@@ -67,7 +67,7 @@ update_vscode() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y code
+            sudo apt install -y --only-upgrade code
             ;;
         arch)
             aur_ensure visual-studio-code-bin

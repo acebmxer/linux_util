@@ -48,8 +48,8 @@ update_budgie() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y budgie-desktop ubuntu-budgie-desktop 2>/dev/null || \
-                sudo apt upgrade -y budgie-desktop
+            sudo apt install -y --only-upgrade budgie-desktop ubuntu-budgie-desktop 2>/dev/null || \
+                sudo apt install -y --only-upgrade budgie-desktop
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" upgrade -y budgie-desktop budgie-session budgie-desktop-libs

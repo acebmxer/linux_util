@@ -56,7 +56,7 @@ update_xfce() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y xfce4 xfce4-goodies
+            sudo apt install -y --only-upgrade xfce4 xfce4-goodies
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @xfce-desktop-environment 2>/dev/null || \

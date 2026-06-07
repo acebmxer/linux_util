@@ -84,7 +84,7 @@ update_syncthing() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y syncthing
+            sudo apt install -y --only-upgrade syncthing
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" upgrade -y syncthing

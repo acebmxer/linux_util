@@ -62,7 +62,7 @@ update_openssh_server() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y openssh-server
+            sudo apt install -y --only-upgrade openssh-server
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" upgrade -y openssh-server

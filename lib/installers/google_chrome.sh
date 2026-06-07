@@ -72,7 +72,7 @@ update_google_chrome() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y google-chrome-stable
+            sudo apt install -y --only-upgrade google-chrome-stable
             ;;
         arch)
             aur_ensure google-chrome

@@ -197,7 +197,7 @@ pkg_upgrade() {
     local _label="Upgrading: $*"
     case "$PKG_MGR" in
         apt)     run_with_spinner "Refreshing package cache" sudo apt update &&
-                 run_with_spinner "$_label" sudo apt upgrade -y "$@" ;;
+                 run_with_spinner "$_label" sudo apt install -y --only-upgrade "$@" ;;
         dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" upgrade -y "$@" ;;
         pacman)  run_with_spinner "$_label" sudo pacman -S --noconfirm "$@" ;;
         zypper)  run_with_spinner "$_label" sudo zypper update -y "$@" ;;

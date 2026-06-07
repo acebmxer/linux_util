@@ -62,7 +62,7 @@ update_brave() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y brave-browser
+            sudo apt install -y --only-upgrade brave-browser
             ;;
         arch)
             aur_ensure brave-bin

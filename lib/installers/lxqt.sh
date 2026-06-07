@@ -54,7 +54,7 @@ update_lxqt() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y lxqt lxqt-session
+            sudo apt install -y --only-upgrade lxqt lxqt-session
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @lxqt 2>/dev/null || \

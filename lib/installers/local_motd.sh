@@ -117,6 +117,6 @@ uninstall_landscape_motd() {
 
 update_landscape_motd() {
     info "Updating Landscape Client..."
-    run_as_root_sh "apt-get update && apt-get upgrade -y landscape-client" || warn "Failed to update landscape-client"
+    run_as_root_sh "apt-get update && apt-get install -y --only-upgrade landscape-client" || warn "Failed to update landscape-client"
     info "Landscape Client updated."
 }

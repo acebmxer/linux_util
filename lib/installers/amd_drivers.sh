@@ -109,7 +109,7 @@ update_amd_drivers() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y mesa-vulkan-drivers libgl1-mesa-dri libglx-mesa0 mesa-utils 2>/dev/null || true
+            sudo apt install -y --only-upgrade mesa-vulkan-drivers libgl1-mesa-dri libglx-mesa0 mesa-utils 2>/dev/null || true
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" upgrade -y mesa-dri-drivers mesa-vulkan-drivers 2>/dev/null || true

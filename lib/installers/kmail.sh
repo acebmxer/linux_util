@@ -53,7 +53,7 @@ update_kmail() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y kmail
+            sudo apt install -y --only-upgrade kmail
             ;;
         arch)
             pkg_install kmail

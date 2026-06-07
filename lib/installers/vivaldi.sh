@@ -74,7 +74,7 @@ update_vivaldi() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y vivaldi-stable
+            sudo apt install -y --only-upgrade vivaldi-stable
             ;;
         arch)
             aur_ensure vivaldi

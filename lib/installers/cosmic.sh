@@ -56,7 +56,7 @@ update_cosmic() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y cosmic-session cosmic-comp cosmic-panel \
+            sudo apt install -y --only-upgrade cosmic-session cosmic-comp cosmic-panel \
                 cosmic-applets cosmic-settings cosmic-greeter 2>/dev/null || true
             ;;
         fedora|rhel)

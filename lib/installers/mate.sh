@@ -58,7 +58,7 @@ update_mate() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y mate-desktop-environment mate-desktop-environment-core
+            sudo apt install -y --only-upgrade mate-desktop-environment mate-desktop-environment-core
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @mate-desktop 2>/dev/null || \

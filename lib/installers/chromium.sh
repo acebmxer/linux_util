@@ -54,7 +54,7 @@ update_chromium() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y chromium chromium-browser 2>/dev/null || true
+            sudo apt install -y --only-upgrade chromium chromium-browser 2>/dev/null || true
             ;;
         arch)
             pkg_install chromium

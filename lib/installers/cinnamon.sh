@@ -56,7 +56,7 @@ update_cinnamon() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y cinnamon cinnamon-core
+            sudo apt install -y --only-upgrade cinnamon cinnamon-core
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @cinnamon-desktop 2>/dev/null || \

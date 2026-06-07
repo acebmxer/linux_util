@@ -64,7 +64,7 @@ update_thunderbird() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y thunderbird
+            sudo apt install -y --only-upgrade thunderbird
             ;;
         arch)
             pkg_install thunderbird

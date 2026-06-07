@@ -236,7 +236,7 @@ update_steam() {
         case "$DISTRO_FAMILY" in
             debian)
                 sudo apt update
-                sudo apt upgrade -y steam
+                sudo apt install -y --only-upgrade steam
                 ;;
             *)
                 pkg_upgrade steam

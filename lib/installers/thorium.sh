@@ -92,7 +92,7 @@ update_thorium() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y thorium-browser
+            sudo apt install -y --only-upgrade thorium-browser
             ;;
         fedora|rhel|suse)
             # Re-run install to fetch and upgrade to the latest GitHub release RPM

@@ -128,7 +128,7 @@ update_amd_chipset_drivers() {
         debian)
             local apt_out
             apt_out=$(sudo apt-get install -y --only-upgrade amd64-microcode linux-firmware 2>&1 || \
-                      sudo apt-get upgrade -y amd64-microcode linux-firmware 2>&1 || true)
+                      sudo apt-get install -y --only-upgrade amd64-microcode linux-firmware 2>&1 || true)
             printf '%s\n' "$apt_out"
             echo "$apt_out" | grep -q "^0 upgraded, 0 newly installed" || pkg_updated=1
             ;;

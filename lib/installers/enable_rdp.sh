@@ -59,7 +59,7 @@ update_krdp() {
     case "$DISTRO_FAMILY" in
         debian)
             run_as_root apt-get update
-            run_as_root apt-get upgrade -y krdp
+            run_as_root apt-get install -y --only-upgrade krdp
             ;;
         arch)
             run_as_root pacman -S --noconfirm krdp

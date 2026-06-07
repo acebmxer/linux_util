@@ -75,7 +75,7 @@ update_firefox() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y firefox
+            sudo apt install -y --only-upgrade firefox
             ;;
         arch)
             pkg_install firefox

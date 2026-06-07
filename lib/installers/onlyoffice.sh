@@ -93,7 +93,7 @@ update_onlyoffice() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y onlyoffice-desktopeditors
+            sudo apt install -y --only-upgrade onlyoffice-desktopeditors
             ;;
         arch)
             aur_ensure onlyoffice-bin

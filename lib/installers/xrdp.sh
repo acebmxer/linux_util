@@ -117,7 +117,7 @@ update_xrdp() {
     case "$DISTRO_FAMILY" in
         debian)
             run_as_root apt-get update
-            run_as_root apt-get upgrade -y xrdp
+            run_as_root apt-get install -y --only-upgrade xrdp
             ;;
         fedora|rhel)
             run_as_root "$PKG_MGR" upgrade -y xrdp

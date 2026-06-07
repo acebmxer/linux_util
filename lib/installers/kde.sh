@@ -64,7 +64,7 @@ update_kde() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt upgrade -y kde-full plasma-desktop
+            sudo apt install -y --only-upgrade kde-full plasma-desktop
             ;;
         fedora|rhel)
             if ! sudo "$PKG_MGR" group update -y @kde-desktop-environment 2>/dev/null && \
