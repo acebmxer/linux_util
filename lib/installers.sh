@@ -91,6 +91,8 @@ NO_RETRY["Reset Repos to Default"]=1
 # These fail immediately when Flatpak is absent — retrying adds no value
 NO_RETRY["ProtonUp-Qt"]=1
 NO_RETRY["Bottles"]=1
+NO_RETRY["BoxBuddy"]=1
+NO_RETRY["DistroShelf"]=1
 
 # --- Utilities (alphabetical order) ---
 register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   check_amd_chipset_drivers   uninstall_amd_chipset_drivers   update_amd_chipset_drivers   get_version_amd_chipset_drivers
@@ -122,6 +124,10 @@ register_utility "Devolutions RDM"     install_devolutions_rdm  check_devolution
 register_utility "Discord"             install_discord          check_discord          uninstall_discord          update_discord             get_version_discord
 register_utility "Element (Matrix)"    install_element          check_element          uninstall_element          update_element             get_version_element
 register_utility "Docker"              setup_install_docker     check_docker           uninstall_docker           update_docker              get_version_docker
+# DistroBox subcategory: the container tool plus optional graphical front-ends
+register_utility "Distrobox"           install_distrobox        check_distrobox        uninstall_distrobox        update_distrobox           get_version_distrobox
+register_utility "BoxBuddy"            install_boxbuddy         check_boxbuddy         uninstall_boxbuddy         update_boxbuddy            get_version_boxbuddy
+register_utility "DistroShelf"         install_distroshelf      check_distroshelf      uninstall_distroshelf      update_distroshelf         get_version_distroshelf
 register_utility "Fastfetch"           install_fastfetch        check_fastfetch        uninstall_fastfetch        update_fastfetch           get_version_fastfetch
 register_utility "Feral Gamemode"      install_gamemode         check_gamemode         uninstall_gamemode         update_gamemode            get_version_gamemode
 register_utility "FileZilla"           install_filezilla        check_filezilla        uninstall_filezilla        update_filezilla           get_version_filezilla
@@ -437,6 +443,9 @@ UTILITY_CATEGORY["DBeaver"]="Development"
 UTILITY_CATEGORY["Devolutions RDM"]="Remote Admin Tools"
 UTILITY_CATEGORY["Discord"]="Internet"
 UTILITY_CATEGORY["Docker"]="Development"
+UTILITY_CATEGORY["Distrobox"]="Development"
+UTILITY_CATEGORY["BoxBuddy"]="Development"
+UTILITY_CATEGORY["DistroShelf"]="Development"
 UTILITY_CATEGORY["Fastfetch"]="System Tools"
 UTILITY_CATEGORY["Feral Gamemode"]="Gaming"
 UTILITY_CATEGORY["FileZilla"]="Internet"
@@ -574,6 +583,9 @@ UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Distrobox"]="Distrobox"
+UTILITY_SUBCATEGORY["BoxBuddy"]="Distrobox"
+UTILITY_SUBCATEGORY["DistroShelf"]="Distrobox"
 UTILITY_SUBCATEGORY["Steam App"]="Game Launchers"
 UTILITY_SUBCATEGORY["Lutris"]="Game Launchers"
 UTILITY_SUBCATEGORY["Heroic Games Launcher"]="Game Launchers"
@@ -635,6 +647,8 @@ UTILITY_SUBCATEGORY["LightDM Slick Greeter"]="LightDM Greeters"
 UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
+UTILITY_DISPLAY_NAME["BoxBuddy"]="BoxBuddy (Requires Flatpak)"
+UTILITY_DISPLAY_NAME["DistroShelf"]="DistroShelf (Requires Flatpak)"
 
 # System Tasks: subcategory folders appear at the top, plain tasks keep their order.
 UTILITY_SUBCATEGORY["Full System Upgrade/Update"]="System Updaters"
@@ -646,6 +660,7 @@ UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["GTK Window Fix"]="WSL Fixes"
 
 # Explicit subcategory display order within each category tab
+SUBCATEGORY_ORDER["Development"]="IDEs & Editors|Distrobox"
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
@@ -701,6 +716,9 @@ UTILITY_DESCRIPTION["Claude Code"]="Anthropic's AI coding assistant that runs in
 UTILITY_DESCRIPTION["Cursor IDE"]="AI-powered code editor built on VS Code with deeply integrated AI features for code completion and chat."
 UTILITY_DESCRIPTION["DBeaver"]="Universal database management tool supporting PostgreSQL, MySQL, SQLite, Oracle, and many more."
 UTILITY_DESCRIPTION["Docker"]="Container platform for building, shipping, and running applications in isolated environments."
+UTILITY_DESCRIPTION["Distrobox"]="Runs any Linux distribution inside your terminal, tightly integrated with the host (shared home, X11/Wayland, audio, and devices). Use it to run software from another distro without touching your base system. Installed from the native package where available (EPEL on RHEL), otherwise via the upstream rootless installer into ~/.local. Requires a container backend — Podman or Docker."
+UTILITY_DESCRIPTION["BoxBuddy"]="Simple GTK4/libadwaita graphical front-end for Distrobox. Create, enter, upgrade, and delete boxes, install packages, and export apps without memorising commands. Installed via Flatpak from Flathub; it does not bundle Distrobox, so install Distrobox first."
+UTILITY_DESCRIPTION["DistroShelf"]="Modern GTK4/libadwaita graphical manager for Distrobox containers — view status and details, install packages, manage exported applications, open terminal sessions, and clone or delete boxes. Installed via Flatpak from Flathub; requires Distrobox on the host."
 UTILITY_DESCRIPTION["GitHub CLI"]="Official command-line interface for GitHub — manage repos, issues, PRs, and workflows from the terminal."
 UTILITY_DESCRIPTION["Go SDK"]="Official Go programming language SDK with the compiler, standard library, and toolchain."
 UTILITY_DESCRIPTION["JetBrains Toolbox"]="Manager for installing and updating JetBrains IDEs such as IntelliJ, PyCharm, and WebStorm."

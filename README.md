@@ -203,6 +203,9 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Claude Code** | Anthropic's AI coding assistant for the terminal |
 | **Cursor IDE** | AI-powered code editor built on VS Code |
 | **DBeaver** | Universal database management tool |
+| **Distrobox** | Run any Linux distro in an integrated terminal container (needs Podman/Docker) |
+| **BoxBuddy** | GTK4 graphical front-end for Distrobox (Flatpak) |
+| **DistroShelf** | GTK4 graphical manager for Distrobox containers (Flatpak) |
 | **Docker** | Container platform — official repos, adds user to `docker` group |
 | **GitHub CLI** | Official CLI for GitHub — repos, issues, PRs, and workflows |
 | **Go SDK** | Official Go programming language toolchain |
