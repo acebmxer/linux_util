@@ -160,7 +160,6 @@ register_utility "MangoHud"            install_mangohud         check_mangohud  
 register_utility "Mark Text"           install_marktext         check_marktext         uninstall_marktext         update_marktext            get_version_marktext
 register_utility "Neovim"              install_neovim           check_neovim           uninstall_neovim           update_neovim              get_version_neovim
 register_utility "Nextcloud Desktop"   install_nextcloud_desktop check_nextcloud_desktop uninstall_nextcloud_desktop update_nextcloud_desktop get_version_nextcloud_desktop
-register_utility "Nextcloud Talk"      install_nextcloud_talk   check_nextcloud_talk   uninstall_nextcloud_talk   update_nextcloud_talk      get_version_nextcloud_talk
 register_utility "NVM"                 install_nvm              check_nvm              uninstall_nvm              update_nvm                 get_version_nvm
 register_utility "Node.js"             install_nodejs           check_nodejs           uninstall_nodejs           update_nodejs              get_version_nodejs
 register_utility "OBS Studio"          install_obs_studio       check_obs_studio       uninstall_obs_studio       update_obs_studio          get_version_obs_studio
