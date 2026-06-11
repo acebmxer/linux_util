@@ -250,7 +250,7 @@ install_zsh_setup() {
         chsh -s "$zsh_path" || warn "Could not change default shell. Run: chsh -s $zsh_path"
     fi
 
-    info "Zsh + Oh My Zsh installed. Open a new terminal or run 'zsh' to start using it."
+    info "Zsh + Oh My Zsh installed. Log out and back in for new terminals to use Zsh, or run 'zsh' to start it now."
 }
 
 uninstall_zsh_setup() {
@@ -281,7 +281,7 @@ uninstall_zsh_setup() {
         suse)        sudo zypper remove -y zsh 2>/dev/null || true ;;
     esac
 
-    info "Zsh setup removed. Default shell restored to bash."
+    info "Zsh setup removed. Default shell set to bash (takes effect after you log out and back in)."
 }
 
 update_zsh_setup() {
