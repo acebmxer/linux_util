@@ -5,7 +5,8 @@
 # force-installed on first launch for every detected browser.
 #
 # Supported browsers:
-#   Chromium-family : Brave, Chrome, Chromium, Thorium, Vivaldi  (ExtensionInstallForcelist policy)
+#   Chromium-family : Brave, Brave Origin, Chrome, Chromium, Thorium, Vivaldi  (ExtensionInstallForcelist policy)
+#                     (Brave Origin reads the same /etc/brave policy dir as Brave)
 #   Firefox-family  : Firefox (package/snap), LibreWolf          (ExtensionSettings policy)
 
 # ---------------------------------------------------------------------------
@@ -117,7 +118,7 @@ _sb_ext_detected_chromium_browsers() {
     local browser
     for browser in "${!_SB_CHROMIUM_POLICY_DIRS[@]}"; do
         if [[ "$browser" == "brave" ]]; then
-            (command -v brave &>/dev/null || command -v brave-browser &>/dev/null) && echo "$browser"
+            (command -v brave &>/dev/null || command -v brave-browser &>/dev/null || command -v brave-origin &>/dev/null) && echo "$browser"
         elif [[ "$browser" == "thorium" ]]; then
             command -v thorium-browser &>/dev/null && echo "$browser"
         else
@@ -324,6 +325,7 @@ check_sponsorblock_extension() {
     local root
     for root in \
         "$HOME/.config/BraveSoftware/Brave-Browser" \
+        "$HOME/.config/BraveSoftware/Brave-Origin" \
         "$HOME/.config/google-chrome" \
         "$HOME/.config/chromium" \
         "$HOME/.config/thorium" \
