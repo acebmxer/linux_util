@@ -40,6 +40,8 @@ install_syncthing() {
     systemctl --user enable syncthing.service
     systemctl --user start syncthing.service
 
+    _st_install_desktop_entries
+
     echo ""
     echo "Syncthing installed successfully!"
     echo "Service has been enabled and started."
@@ -49,8 +51,62 @@ install_syncthing() {
     setup_syncthing_folders
 }
 
+# Write user-local menu entries on distros whose package ships none.
+# The Debian package from apt.syncthing.net already provides these
+# system-wide; the Arch package, for example, ships no .desktop files.
+_st_install_desktop_entries() {
+    [[ -f /usr/share/applications/syncthing-ui.desktop ]] && return 0
+
+    local apps_dir="$HOME/.local/share/applications"
+    local icon_dir="$HOME/.local/share/icons/hicolor/scalable/apps"
+    mkdir -p "$apps_dir"
+
+    if [[ ! -f "$icon_dir/syncthing.svg" ]]; then
+        mkdir -p "$icon_dir"
+        curl -fsSL "https://raw.githubusercontent.com/syncthing/syncthing/main/assets/logo-only.svg" \
+            -o "$icon_dir/syncthing.svg" 2>/dev/null || true
+    fi
+
+    cat > "$apps_dir/syncthing-start.desktop" <<'EOF'
+[Desktop Entry]
+Name=Start Syncthing
+GenericName=File synchronization
+Comment=Starts the main syncthing process in the background.
+Exec=syncthing serve --no-browser
+Icon=syncthing
+Terminal=false
+Type=Application
+Keywords=synchronization;
+Categories=Network;FileTransfer;P2P;
+EOF
+
+    # "syncthing browser" (v2+) opens the configured GUI address; fall back
+    # to the default address on older versions that lack the subcommand.
+    cat > "$apps_dir/syncthing-ui.desktop" <<'EOF'
+[Desktop Entry]
+Name=Syncthing Web UI
+GenericName=File synchronization UI
+Comment=Opens Syncthing's Web UI in the default browser.
+Exec=sh -c "syncthing browser || xdg-open http://127.0.0.1:8384"
+Icon=syncthing
+Terminal=false
+Type=Application
+Keywords=synchronization;interface;
+Categories=Network;FileTransfer;P2P;
+EOF
+
+    update-desktop-database "$apps_dir" 2>/dev/null || true
+    info "Added application menu entries: Syncthing Web UI, Start Syncthing."
+}
+
 uninstall_syncthing() {
     echo "Uninstalling Syncthing..."
+
+    # Remove user-local menu entries (no-op if the package provided them)
+    rm -f ~/.local/share/applications/syncthing-start.desktop \
+          ~/.local/share/applications/syncthing-ui.desktop \
+          ~/.local/share/icons/hicolor/scalable/apps/syncthing.svg
+    update-desktop-database ~/.local/share/applications 2>/dev/null || true
 
     # Stop and disable the service if running
     systemctl --user stop syncthing.service 2>/dev/null || true
