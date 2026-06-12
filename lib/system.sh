@@ -269,3 +269,48 @@ do_reboot() {
     # Normal Linux host/VM — unchanged behavior.
     sudo systemctl reboot
 }
+
+# ============================================================================
+# Desktop Menu / Icon Cache Refresh
+# ============================================================================
+
+# refresh_desktop_caches nudges the desktop environment after writing or
+# removing user-local .desktop entries and hicolor icons.
+#
+# Copying an icon into ~/.local/share/icons/hicolor is not enough for it to
+# show up immediately: GTK consults an icon-theme.cache, and long-running KDE
+# processes (plasmashell) index the theme directories at session start and
+# cache failed lookups — so a freshly installed app appears in the menu and
+# task manager with a blank icon until the next login. Every step here is
+# best-effort: missing tools are skipped silently and nothing here can fail
+# the caller.
+refresh_desktop_caches() {
+    local apps_dir="$HOME/.local/share/applications"
+    local icon_dir="$HOME/.local/share/icons/hicolor"
+
+    # Rescan .desktop entries (menus, MIME handlers)
+    command -v update-desktop-database &>/dev/null && \
+        update-desktop-database "$apps_dir" 2>/dev/null || true
+
+    # Bump the theme directory mtime so toolkits notice added/removed icons
+    [[ -d "$icon_dir" ]] && touch "$icon_dir" 2>/dev/null || true
+
+    # Regenerate the GTK icon cache (-t: the user-local hicolor dir ships no
+    # index.theme; -f: rebuild even when a cache file already exists)
+    command -v gtk-update-icon-cache &>/dev/null && \
+        gtk-update-icon-cache -q -f -t "$icon_dir" 2>/dev/null || true
+
+    # Run the desktop-specific refresh hooks xdg-utils knows about
+    command -v xdg-icon-resource &>/dev/null && \
+        xdg-icon-resource forceupdate --theme hicolor 2>/dev/null || true
+
+    # Tell running KDE processes (including plasmashell) to drop their
+    # in-process icon caches; without this signal Plasma keeps showing a
+    # blank icon until the session is restarted.
+    if [[ "${XDG_CURRENT_DESKTOP:-}" == *KDE* ]] && command -v dbus-send &>/dev/null; then
+        dbus-send --session --type=signal /KIconLoader \
+            org.kde.KIconLoader.iconChanged int32:0 2>/dev/null || true
+    fi
+
+    return 0
+}

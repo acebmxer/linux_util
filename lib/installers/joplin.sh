@@ -92,6 +92,9 @@ install_joplin() {
         sudo sysctl --system >/dev/null 2>&1
         info "AppImage user namespace restriction disabled."
     fi
+
+    # The upstream script writes the .desktop entry and icon itself
+    refresh_desktop_caches
 }
 uninstall_joplin() {
     info "Uninstalling Joplin Client..."
@@ -103,8 +106,7 @@ uninstall_joplin() {
     rm -f ~/.local/bin/joplin
     rm -rf ~/.config/joplin-desktop
     rm -rf ~/.config/joplin
-    command -v update-desktop-database &>/dev/null && update-desktop-database ~/.local/share/applications || true
-    command -v gtk-update-icon-cache &>/dev/null && gtk-update-icon-cache ~/.local/share/icons/hicolor || true
+    refresh_desktop_caches
 }
 update_joplin() {
     info "Updating Joplin Client..."

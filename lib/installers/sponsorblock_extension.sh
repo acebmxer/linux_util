@@ -7,7 +7,8 @@
 # Supported browsers:
 #   Chromium-family : Brave, Brave Origin, Chrome, Chromium, Thorium, Vivaldi  (ExtensionInstallForcelist policy)
 #                     (Brave Origin reads the same /etc/brave policy dir as Brave)
-#   Firefox-family  : Firefox (package/snap), LibreWolf          (ExtensionSettings policy)
+#   Firefox-family  : Firefox (package/snap), LibreWolf, Zen Browser  (ExtensionSettings policy)
+#                     (Zen reads <install dir>/distribution/policies.json)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -147,13 +148,35 @@ _sb_ext_librewolf_policy_path() {
     command -v librewolf &>/dev/null && echo "/etc/librewolf/policies/policies.json"
 }
 
+# _sb_ext_zen_policy_path
+#   Prints the Zen Browser policy file path, or empty if Zen not found.
+#   Zen (a Firefox fork) reads <install dir>/distribution/policies.json.
+#   Note: Flatpak Zen cannot be managed via policy files.
+_sb_ext_zen_policy_path() {
+    # Tarball install from this tool (see lib/installers/zen_browser.sh)
+    local tarball_dir="$HOME/.local/share/zen-browser/zen"
+    if [[ -x "$tarball_dir/zen" ]]; then
+        echo "$tarball_dir/distribution/policies.json"
+        return
+    fi
+    # System package (e.g. AUR zen-browser-bin): resolve the real install dir
+    local bin install_dir
+    bin="$(command -v zen-browser 2>/dev/null)" || return 0
+    install_dir="$(dirname "$(readlink -f "$bin")")"
+    [[ -f "$install_dir/application.ini" ]] && echo "$install_dir/distribution/policies.json"
+}
+
 # _sb_ext_extract_firefox_entries POLICY_FILE
 #   Prints existing Firefox ExtensionSettings entries as GUID|URL.
 _sb_ext_extract_firefox_entries() {
     local policy_file="$1"
     [[ -f "$policy_file" ]] || return 0
 
-    sudo awk '
+    # Zen policies live in the user's home; no sudo needed (or wanted) there
+    local -a awk_cmd=(sudo awk)
+    [[ "$policy_file" == "$HOME"/* ]] && awk_cmd=(awk)
+
+    "${awk_cmd[@]}" '
         BEGIN { in_settings=0; depth=0; guid="" }
         /"ExtensionSettings"[[:space:]]*:[[:space:]]*\{/ {
             in_settings=1
@@ -185,6 +208,10 @@ _sb_ext_write_firefox_entries() {
     shift
     local entries=("$@")
 
+    # Zen policies live in the user's home; don't create root-owned files there
+    local -a write_cmd=(sudo tee)
+    [[ "$policy_file" == "$HOME"/* ]] && write_cmd=(tee)
+
     {
         echo "{"
         echo "    \"policies\": {"
@@ -203,7 +230,7 @@ _sb_ext_write_firefox_entries() {
         echo "        }"
         echo "    }"
         echo "}"
-    } | sudo tee "$policy_file" > /dev/null
+    } | "${write_cmd[@]}" "$policy_file" > /dev/null
 }
 
 # _sb_ext_apply_firefox_entry POLICY_FILE GUID URL
@@ -249,7 +276,11 @@ _sb_ext_remove_firefox_entry() {
     unset 'settings[$guid]'
 
     if (( ${#settings[@]} == 0 )); then
-        sudo rm -f "$policy_file"
+        if [[ "$policy_file" == "$HOME"/* ]]; then
+            rm -f "$policy_file"
+        else
+            sudo rm -f "$policy_file"
+        fi
         return 0
     fi
 
@@ -303,6 +334,22 @@ _sb_ext_apply_librewolf() {
     echo "  → Ensured SponsorBlock extension policy for LibreWolf: ${policy_file}"
 }
 
+# _sb_ext_apply_zen POLICY_FILE
+#   Creates/merges the ExtensionSettings policy JSON for Zen Browser.
+_sb_ext_apply_zen() {
+    local policy_file="$1"
+    local policy_dir
+    policy_dir="$(dirname "$policy_file")"
+
+    if [[ "$policy_dir" == "$HOME"/* ]]; then
+        mkdir -p "$policy_dir"
+    else
+        sudo mkdir -p "$policy_dir"
+    fi
+    _sb_ext_apply_firefox_entry "$policy_file" "${_SB_FF_GUID}" "${_SB_FF_URL}"
+    echo "  → Ensured SponsorBlock extension policy for Zen Browser: ${policy_file}"
+}
+
 # ---------------------------------------------------------------------------
 # Public functions required by the registry
 # ---------------------------------------------------------------------------
@@ -321,6 +368,9 @@ check_sponsorblock_extension() {
     local lw_path
     lw_path="$(_sb_ext_librewolf_policy_path)"
     [[ -n "$lw_path" && -f "$lw_path" ]] && sudo grep -q "\"${_SB_FF_GUID}\"" "$lw_path" 2>/dev/null && return 0
+    local zen_path
+    zen_path="$(_sb_ext_zen_policy_path)"
+    [[ -n "$zen_path" && -f "$zen_path" ]] && grep -q "\"${_SB_FF_GUID}\"" "$zen_path" 2>/dev/null && return 0
     # Check if the extension is already present in any browser profile directory
     local root
     for root in \
@@ -362,6 +412,14 @@ install_sponsorblock_extension() {
     lw_path="$(_sb_ext_librewolf_policy_path)"
     if [[ -n "$lw_path" ]]; then
         _sb_ext_apply_librewolf "$lw_path"
+        (( installed_count++ ))
+    fi
+
+    # --- Zen Browser ---
+    local zen_path
+    zen_path="$(_sb_ext_zen_policy_path)"
+    if [[ -n "$zen_path" ]]; then
+        _sb_ext_apply_zen "$zen_path"
         (( installed_count++ ))
     fi
 
@@ -407,6 +465,14 @@ uninstall_sponsorblock_extension() {
         _sb_ext_remove_firefox_entry "$lw_path" "${_SB_FF_GUID}"
         echo "  → Removed SponsorBlock LibreWolf entry from: ${lw_path}"
         sudo rmdir --ignore-fail-on-non-empty "$(dirname "$lw_path")" 2>/dev/null || true
+    fi
+
+    local zen_path
+    zen_path="$(_sb_ext_zen_policy_path)"
+    if [[ -n "$zen_path" && -f "$zen_path" ]]; then
+        _sb_ext_remove_firefox_entry "$zen_path" "${_SB_FF_GUID}"
+        echo "  → Removed SponsorBlock Zen Browser entry from: ${zen_path}"
+        rmdir --ignore-fail-on-non-empty "$(dirname "$zen_path")" 2>/dev/null || true
     fi
 
     echo "SponsorBlock extension policy files removed."

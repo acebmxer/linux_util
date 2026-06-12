@@ -59,7 +59,7 @@ Categories=Development;IDE;TextEditor;
 MimeType=text/plain;inode/directory;
 StartupWMClass=Cursor
 EOF
-    command -v update-desktop-database &>/dev/null && update-desktop-database ~/.local/share/applications 2>/dev/null || true
+    refresh_desktop_caches
     info "Cursor IDE installed. Ensure ~/.local/bin is in your PATH."
 }
 
@@ -71,7 +71,7 @@ uninstall_cursor() {
     rm -f "$HOME/.local/share/icons/hicolor/512x512/apps/cursor.png"
     rm -rf "$HOME/.config/Cursor"
     rm -rf "$HOME/.local/share/cursor"
-    command -v update-desktop-database &>/dev/null && update-desktop-database ~/.local/share/applications 2>/dev/null || true
+    refresh_desktop_caches
     info "Cursor IDE uninstalled."
 }
 

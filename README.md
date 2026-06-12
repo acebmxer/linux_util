@@ -268,6 +268,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Vivaldi Browser** | Highly customizable Chromium browser |
 | **WireGuard Client** | Lightweight VPN client using WireGuard protocol |
 | **WireGuard Server** | Sets up a WireGuard VPN server |
+| **Zen Browser** | Privacy-focused Firefox-based browser with vertical tabs and split view (beta) |
 | **Zoom** | Video conferencing and collaboration platform |
 
 #### Productivity

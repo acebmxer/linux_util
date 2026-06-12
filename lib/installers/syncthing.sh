@@ -95,7 +95,7 @@ Keywords=synchronization;interface;
 Categories=Network;FileTransfer;P2P;
 EOF
 
-    update-desktop-database "$apps_dir" 2>/dev/null || true
+    refresh_desktop_caches
     info "Added application menu entries: Syncthing Web UI, Start Syncthing."
 }
 
@@ -106,7 +106,7 @@ uninstall_syncthing() {
     rm -f ~/.local/share/applications/syncthing-start.desktop \
           ~/.local/share/applications/syncthing-ui.desktop \
           ~/.local/share/icons/hicolor/scalable/apps/syncthing.svg
-    update-desktop-database ~/.local/share/applications 2>/dev/null || true
+    refresh_desktop_caches
 
     # Stop and disable the service if running
     systemctl --user stop syncthing.service 2>/dev/null || true

@@ -240,6 +240,7 @@ register_utility "Wine"               install_wine             check_wine       
 register_utility "WireGuard Client"    install_wireguard_client check_wireguard_client uninstall_wireguard_client update_wireguard_client    get_version_wireguard_client
 register_utility "WireGuard Server"    install_wireguard_server check_wireguard_server uninstall_wireguard_server update_wireguard_server    get_version_wireguard_server
 register_utility "WPS Office"          install_wps_office       check_wps_office       uninstall_wps_office       update_wps_office          get_version_wps_office
+register_utility "Zen Browser"         install_zen_browser      check_zen_browser      uninstall_zen_browser      update_zen_browser         get_version_zen_browser
 register_utility "Zoom"                install_zoom             check_zoom             uninstall_zoom             update_zoom                get_version_zoom
 register_utility "Zotero"              install_zotero           check_zotero           uninstall_zotero           update_zotero              get_version_zotero
 register_utility "Zsh + Oh My Zsh"     install_zsh_setup        check_zsh_setup        uninstall_zsh_setup        update_zsh_setup           get_version_zsh_setup
@@ -541,6 +542,7 @@ UTILITY_CATEGORY["Ventoy"]="Disk Utilities"
 UTILITY_CATEGORY["GParted"]="Disk Utilities"
 UTILITY_CATEGORY["Virt-Manager"]="Development"
 UTILITY_CATEGORY["VLC"]="Productivity"
+UTILITY_CATEGORY["Zen Browser"]="Internet"
 UTILITY_CATEGORY["Zoom"]="Internet"
 UTILITY_CATEGORY["Zotero"]="Productivity"
 
@@ -553,6 +555,7 @@ UTILITY_SUBCATEGORY["Firefox"]="Web Browsers"
 UTILITY_SUBCATEGORY["Google Chrome"]="Web Browsers"
 UTILITY_SUBCATEGORY["Thorium Browser"]="Web Browsers"
 UTILITY_SUBCATEGORY["Vivaldi Browser"]="Web Browsers"
+UTILITY_SUBCATEGORY["Zen Browser"]="Web Browsers"
 UTILITY_SUBCATEGORY["Bitwarden Extension"]="Web Browser Extensions"
 UTILITY_SUBCATEGORY["Joplin Web Clipper"]="Web Browser Extensions"
 UTILITY_SUBCATEGORY["SponsorBlock Extension"]="Web Browser Extensions"
@@ -648,6 +651,7 @@ UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["BoxBuddy"]="BoxBuddy (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["DistroShelf"]="DistroShelf (Requires Flatpak)"
+UTILITY_DISPLAY_NAME["Zen Browser"]="Zen Browser (Beta)"
 
 # System Tasks: subcategory folders appear at the top, plain tasks keep their order.
 UTILITY_SUBCATEGORY["Full System Upgrade/Update"]="System Updaters"
@@ -772,6 +776,7 @@ UTILITY_DESCRIPTION["Termius SSH Client"]="Modern SSH client with sync across de
 UTILITY_DESCRIPTION["Thorium Browser"]="Chromium-based browser optimized for speed and performance with compiler optimizations."
 UTILITY_DESCRIPTION["Thunderbird"]="Open-source email client by Mozilla with calendar integration and PGP support."
 UTILITY_DESCRIPTION["Vivaldi Browser"]="Highly customizable Chromium-based browser with advanced tab management and built-in tools."
+UTILITY_DESCRIPTION["Zen Browser"]="Privacy-focused Firefox-based browser with vertical tabs, split view, and workspaces. Still in beta. Installs the official tarball to ~/.local/share/zen-browser, falling back to Flatpak if the tarball cannot be installed."
 UTILITY_DESCRIPTION["WireGuard Client"]="Modern, fast, and lightweight VPN client using the WireGuard protocol."
 UTILITY_DESCRIPTION["Angry IP Scanner"]="Fast and friendly network scanner that pings IP ranges, resolves hostnames, scans ports, and exports results to CSV, TXT, or XML. Requires Java."
 UTILITY_DESCRIPTION["AnyDesk"]="Fast remote desktop application with low latency for support and remote access across platforms."
