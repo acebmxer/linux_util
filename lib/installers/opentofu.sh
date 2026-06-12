@@ -10,21 +10,40 @@ install_opentofu() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            # Official OpenTofu apt repository via installer script
-            curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh | \
-                sudo bash -s -- --install-method deb
+            local tmpfile
+            tmpfile=$(mktemp /tmp/opentofu-install-XXXXXX.sh)
+            CLEANUP_FILES+=("$tmpfile")
+            if ! curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh \
+                    -o "$tmpfile"; then
+                error "Failed to download OpenTofu installer."
+                return 1
+            fi
+            sudo bash "$tmpfile" -- --install-method deb
             ;;
         fedora|rhel)
-            curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh | \
-                sudo bash -s -- --install-method rpm
+            local tmpfile
+            tmpfile=$(mktemp /tmp/opentofu-install-XXXXXX.sh)
+            CLEANUP_FILES+=("$tmpfile")
+            if ! curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh \
+                    -o "$tmpfile"; then
+                error "Failed to download OpenTofu installer."
+                return 1
+            fi
+            sudo bash "$tmpfile" -- --install-method rpm
             ;;
         arch)
             aur_ensure opentofu
             ;;
         suse)
-            curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh | \
-                sudo bash -s -- --install-method standalone || {
-                # Standalone installs to /usr/local/bin/tofu
+            local tmpfile
+            tmpfile=$(mktemp /tmp/opentofu-install-XXXXXX.sh)
+            CLEANUP_FILES+=("$tmpfile")
+            if ! curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh \
+                    -o "$tmpfile"; then
+                error "Failed to download OpenTofu installer."
+                return 1
+            fi
+            sudo bash "$tmpfile" -- --install-method standalone || {
                 error "OpenTofu standalone install failed."
                 return 1
             }

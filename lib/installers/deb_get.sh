@@ -21,11 +21,20 @@ install_deb_get() {
 
     # The upstream installer downloads deb-get and installs it as a .deb,
     # so it ends up tracked by dpkg/apt like any other package.
-    if ! curl -fsSL "https://raw.githubusercontent.com/wimpysworld/deb-get/main/deb-get" \
-            | sudo -E bash -s install deb-get; then
-        error "deb-get installation failed."
+    local tmpfile
+    tmpfile=$(mktemp /tmp/deb-get-install-XXXXXX.sh)
+    if ! curl -fsSL "https://raw.githubusercontent.com/wimpysworld/deb-get/77c4917ec9ff4df80da8fafa5ec18e03314af74e/deb-get" \
+            -o "$tmpfile"; then
+        error "deb-get installation failed: could not download installer."
+        rm -f "$tmpfile"
         return 1
     fi
+    if ! sudo -E bash "$tmpfile" install deb-get; then
+        error "deb-get installation failed."
+        rm -f "$tmpfile"
+        return 1
+    fi
+    rm -f "$tmpfile"
     info "deb-get installed. Try: deb-get list   |   deb-get install <app>"
 }
 

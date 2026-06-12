@@ -17,19 +17,32 @@ install_pacstall() {
         return 1
     fi
     ensure_tools
-    # Official one-line installer (curl with wget fallback, per upstream docs).
-    if ! sudo bash -c "$(curl -fsSL https://pacstall.dev/q/install || wget -q https://pacstall.dev/q/install -O -)"; then
-        error "Pacstall installation failed."
+    local tmpfile
+    tmpfile=$(mktemp /tmp/pacstall-install-XXXXXX.sh)
+    if ! curl -fsSL https://pacstall.dev/q/install -o "$tmpfile"; then
+        error "Pacstall installation failed: could not download installer."
+        rm -f "$tmpfile"
         return 1
     fi
+    if ! sudo bash "$tmpfile"; then
+        error "Pacstall installation failed."
+        rm -f "$tmpfile"
+        return 1
+    fi
+    rm -f "$tmpfile"
     info "Pacstall installed. Try: pacstall -S <package>   |   pacstall -U  (refresh)"
 }
 
 uninstall_pacstall() {
     info "Uninstalling Pacstall..."
     warn "Packages installed via Pacstall were not removed. Remove them first with 'pacstall -R <pkg>' if needed."
-    # Official uninstall script; fall back to manual file removal.
-    if ! sudo bash -c "$(curl -fsSL https://pacstall.dev/q/uninstall || wget -q https://pacstall.dev/q/uninstall -O -)" 2>/dev/null; then
+    local tmpfile
+    tmpfile=$(mktemp /tmp/pacstall-uninstall-XXXXXX.sh)
+    if curl -fsSL https://pacstall.dev/q/uninstall -o "$tmpfile" 2>/dev/null && \
+            sudo bash "$tmpfile" 2>/dev/null; then
+        rm -f "$tmpfile"
+    else
+        rm -f "$tmpfile"
         sudo rm -f /bin/pacstall /usr/bin/pacstall 2>/dev/null || true
         sudo rm -rf /usr/share/pacstall /var/cache/pacstall /var/log/pacstall 2>/dev/null || true
     fi
