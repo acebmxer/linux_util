@@ -377,6 +377,18 @@ if [[ "$DISTRO_FAMILY" == "arch" ]]; then
     register_utility "paru"            install_paru             check_paru             uninstall_paru             update_paru                get_version_paru
 fi
 
+# --- Kernel Managers (System Tools › Kernel Managers) ---
+# Tools that install/switch alternate kernels. Each is registered on every distro
+# so the "Kernel Managers" folder always lists the options; the install function
+# itself warns and stops when run on a distro it does not support. Mainline is
+# listed first (registration order sets the order inside the folder).
+register_utility "Mainline"               install_mainline                 check_mainline                 uninstall_mainline                 update_mainline                 get_version_mainline
+register_utility "CachyOS Kernel Manager" install_cachyos_kernel_manager   check_cachyos_kernel_manager   uninstall_cachyos_kernel_manager   update_cachyos_kernel_manager   get_version_cachyos_kernel_manager
+register_utility "Fedora Mainline Kernel" install_fedora_mainline_kernel   check_fedora_mainline_kernel   uninstall_fedora_mainline_kernel   update_fedora_mainline_kernel   get_version_fedora_mainline_kernel
+register_utility "linux-tkg"              install_linux_tkg                check_linux_tkg                uninstall_linux_tkg                update_linux_tkg                get_version_linux_tkg
+# Building a kernel from source is a long, interactive job — never auto-retry it.
+NO_RETRY["linux-tkg"]=1
+
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
 CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Login Screens" "Package Managers" "Productivity" "Remote Admin Tools" "System Tools" "Window Managers")
@@ -432,6 +444,10 @@ UTILITY_CATEGORY["deb-get"]="Package Managers"
 UTILITY_CATEGORY["Pacstall"]="Package Managers"
 UTILITY_CATEGORY["yay"]="Package Managers"
 UTILITY_CATEGORY["paru"]="Package Managers"
+UTILITY_CATEGORY["Mainline"]="System Tools"
+UTILITY_CATEGORY["CachyOS Kernel Manager"]="System Tools"
+UTILITY_CATEGORY["Fedora Mainline Kernel"]="System Tools"
+UTILITY_CATEGORY["linux-tkg"]="System Tools"
 UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
 UTILITY_CATEGORY["Bitwarden Extension"]="Internet"
 UTILITY_CATEGORY["Bottles"]="Gaming"
@@ -648,6 +664,12 @@ UTILITY_SUBCATEGORY["SDDM Sugar Candy"]="SDDM Themes"
 UTILITY_SUBCATEGORY["SDDM Astronaut"]="SDDM Themes"
 UTILITY_SUBCATEGORY["LightDM Slick Greeter"]="LightDM Greeters"
 
+# Kernel Managers (grouped under the System Tools tab)
+UTILITY_SUBCATEGORY["Mainline"]="Kernel Managers"
+UTILITY_SUBCATEGORY["CachyOS Kernel Manager"]="Kernel Managers"
+UTILITY_SUBCATEGORY["Fedora Mainline Kernel"]="Kernel Managers"
+UTILITY_SUBCATEGORY["linux-tkg"]="Kernel Managers"
+
 # Display name overrides — shown in the menu instead of the utility key
 UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
@@ -672,6 +694,7 @@ SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
 SUBCATEGORY_ORDER["Remote Admin Tools"]="Remote Access"
 SUBCATEGORY_ORDER["Login Screens"]="Display Managers|SDDM Themes|LightDM Greeters"
+SUBCATEGORY_ORDER["System Tools"]="Kernel Managers"
 
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
 
@@ -816,6 +839,10 @@ UTILITY_DESCRIPTION["Standard Notes"]="End-to-end encrypted note-taking app with
 UTILITY_DESCRIPTION["WPS Office"]="Microsoft Office-compatible office suite with a familiar interface and polished formatting."
 
 # System Tools
+UTILITY_DESCRIPTION["Mainline"]="Ubuntu mainline-kernel installer (the cappelikan/bkw777 fork of ukuu) — a GTK GUI (mainline-gtk) plus 'mainline' CLI that downloads, installs, lists, and removes mainline kernels from kernel.ubuntu.com. Debian/Ubuntu family only: installed from ppa:cappelikan/ppa where add-apt-repository is available, otherwise from the latest upstream .deb. Warns and stops on Arch/Fedora/openSUSE."
+UTILITY_DESCRIPTION["CachyOS Kernel Manager"]="GUI to install, build, swap, and remove kernels on Arch-family systems (a pacman front-end that also configures sched-ext schedulers). The package ships only in the CachyOS repository — not the AUR — so it installs out of the box on CachyOS or any Arch system with the CachyOS repo enabled. This task does not add the CachyOS repo for you; if the package is not in a configured repo it warns and links the setup guide. Arch family only."
+UTILITY_DESCRIPTION["Fedora Mainline Kernel"]="Enables the community @kernel-vanilla/mainline Copr and installs the latest upstream (vanilla) mainline kernel on Fedora — the standard way to test an upstream kernel there, since Fedora has no dedicated GUI manager. Fedora only. Mainline kernels are unsigned, so Secure Boot must be disabled to boot them; the stock Fedora kernel is kept as a fallback."
+UTILITY_DESCRIPTION["linux-tkg"]="Frogging-Family custom-kernel builder. Unlike the other kernel managers it BUILDS a kernel from source — you pick the CPU scheduler (BORE, EEVDF, PDS, …), compiler, and config. Cross-distro: makepkg on Arch, or ./install.sh on Debian/Ubuntu, Fedora, and openSUSE (it produces and installs a .deb/.rpm). The build is interactive and can take 20-60+ minutes; kernels carry 'tkg' in the name and are removed manually (./install.sh uninstall-help). Build deps are installed automatically where possible."
 UTILITY_DESCRIPTION["Btop"]="Modern terminal-based resource monitor with a rich visual interface showing CPU, memory, disk, and network."
 UTILITY_DESCRIPTION["Filelight"]="KDE disk usage analyzer that visualizes storage consumption as an interactive radial map, making it easy to identify large files and directories."
 UTILITY_DESCRIPTION["ClamAV"]="Open-source antivirus engine for detecting trojans, viruses, malware, and other malicious threats."

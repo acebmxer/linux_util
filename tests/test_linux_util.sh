@@ -1635,6 +1635,95 @@ test_gather_wm_wslg_under_wsl() {
     assert_eq "WSLg" "$out" "_gather_sysinfo reports WSLg under WSL with Wayland display"
 }
 
+# ============================================================================
+# Test: Kernel Managers (Mainline / CachyOS Kernel Manager / Fedora Mainline)
+# ============================================================================
+echo ""
+echo "=== Kernel Manager Tests ==="
+
+# These per-utility files are not sourced by default — source them here. They
+# only define functions and constants, so sourcing has no side effects.
+source "${SCRIPT_DIR}/lib/installers/mainline_kernel.sh"
+source "${SCRIPT_DIR}/lib/installers/cachyos_kernel_manager.sh"
+source "${SCRIPT_DIR}/lib/installers/fedora_mainline_kernel.sh"
+source "${SCRIPT_DIR}/lib/installers/linux_tkg.sh"
+
+# Mainline is Debian/Ubuntu-only; on another family it must warn and stop before
+# touching the package manager.
+test_install_mainline_warns_off_debian() {
+    local out rc
+    out=$( DISTRO_FAMILY="arch" install_mainline 2>&1 ); rc=$?
+    assert_eq "1" "$rc" "install_mainline returns 1 on a non-Debian family"
+    assert_contains "$out" "Debian/Ubuntu-only" \
+        "install_mainline warns it is a Debian/Ubuntu-only tool off-family"
+}
+
+# CachyOS Kernel Manager is Arch-only; off-family it warns and stops.
+test_install_cachyos_km_warns_off_arch() {
+    local out rc
+    out=$( DISTRO_FAMILY="debian" install_cachyos_kernel_manager 2>&1 ); rc=$?
+    assert_eq "1" "$rc" "install_cachyos_kernel_manager returns 1 on a non-Arch family"
+    assert_contains "$out" "Arch-family" \
+        "install_cachyos_kernel_manager warns it is an Arch-family tool off-family"
+}
+
+# On Arch, but with the package absent from every configured repo, it must refuse
+# (it never adds the CachyOS repo itself) rather than failing obscurely.
+test_install_cachyos_km_requires_repo() {
+    local out rc
+    out=$(
+        DISTRO_FAMILY="arch"
+        pacman() { return 1; }          # simulate: package not in any repo
+        pkg_install() { echo "PKG_INSTALL_CALLED"; }
+        install_cachyos_kernel_manager 2>&1
+    ); rc=$?
+    assert_eq "1" "$rc" "install_cachyos_kernel_manager returns 1 when the package is not in a repo"
+    assert_contains "$out" "not found in any configured pacman repository" \
+        "install_cachyos_kernel_manager explains the package is not in a configured repo"
+    assert_false "install_cachyos_kernel_manager does not attempt the install when the package is absent" \
+        grep -q "PKG_INSTALL_CALLED" <<< "$out"
+}
+
+# Fedora Mainline Kernel is Fedora-only; off-family it warns and stops.
+test_install_fedora_mainline_warns_off_fedora() {
+    local out rc
+    out=$( DISTRO_FAMILY="debian" install_fedora_mainline_kernel 2>&1 ); rc=$?
+    assert_eq "1" "$rc" "install_fedora_mainline_kernel returns 1 off Fedora"
+    assert_contains "$out" "only works on Fedora" \
+        "install_fedora_mainline_kernel warns it only works on Fedora"
+}
+
+# With the Copr not enabled, the check reports not-installed and the version is blank.
+test_check_fedora_mainline_kernel_absent() {
+    assert_false "check_fedora_mainline_kernel is false without the kernel-vanilla Copr" \
+        check_fedora_mainline_kernel
+    local out
+    out=$( get_version_fedora_mainline_kernel )
+    assert_eq "" "$out" "get_version_fedora_mainline_kernel is empty without the Copr"
+}
+
+# linux-tkg refuses distros it cannot build on, before touching anything.
+test_install_linux_tkg_unsupported_distro() {
+    local out rc
+    out=$( DISTRO_FAMILY="gentoo" install_linux_tkg 2>&1 ); rc=$?
+    assert_eq "1" "$rc" "install_linux_tkg returns 1 on an unsupported distribution"
+    assert_contains "$out" "not supported on this distribution" \
+        "install_linux_tkg explains it cannot build on an unsupported distribution"
+}
+
+# Without a tkg kernel running or installed, the check reports not-installed.
+test_check_linux_tkg_absent() {
+    assert_false "check_linux_tkg is false when no tkg kernel is present" check_linux_tkg
+}
+
+test_install_mainline_warns_off_debian
+test_install_cachyos_km_warns_off_arch
+test_install_cachyos_km_requires_repo
+test_install_fedora_mainline_warns_off_fedora
+test_check_fedora_mainline_kernel_absent
+test_install_linux_tkg_unsupported_distro
+test_check_linux_tkg_absent
+
 test_detect_de_gnome_from_hint
 test_detect_de_kde_from_hint
 test_detect_de_xfce_from_hint

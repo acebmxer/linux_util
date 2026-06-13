@@ -322,6 +322,15 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Stacer** | Graphical system optimizer and monitor |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |
 
+Grouped under a **Kernel Managers** folder inside the System Tools tab — tools for installing and switching alternate kernels. Each is listed on every distro but installs only on the family it supports (warning and stopping otherwise):
+
+| Utility | Description |
+|---------|-------------|
+| **Mainline** | Ubuntu mainline-kernel installer (cappelikan/bkw777 fork of ukuu) — GUI + CLI for kernels from kernel.ubuntu.com. Debian/Ubuntu only (PPA, or upstream `.deb` fallback) |
+| **CachyOS Kernel Manager** | GUI to install/build/swap kernels on Arch (also configures sched-ext). Ships only in the CachyOS repo, not the AUR; installs where that repo is enabled |
+| **Fedora Mainline Kernel** | Enables the `@kernel-vanilla/mainline` Copr and installs the latest upstream mainline kernel. Fedora only (requires Secure Boot disabled) |
+| **linux-tkg** | Frogging-Family custom-kernel **builder** — compiles a kernel from source with your choice of scheduler (BORE/EEVDF/PDS), compiler, and config. Cross-distro (Arch via makepkg; Debian/Ubuntu, Fedora, openSUSE via `install.sh`). Interactive, long compile |
+
 ## Supported Distributions
 
 | Family | Distributions | Package Manager |

@@ -10,6 +10,7 @@ Bottles
 Brave Browser
 Btop
 Budgie Desktop
+CachyOS Kernel Manager
 Chromium
 Cinnamon Desktop
 Claude Code
@@ -24,6 +25,7 @@ Discord
 Docker
 Enable RDP
 Fastfetch
+Fedora Mainline Kernel
 Feral Gamemode
 FileZilla
 Firefox
@@ -40,9 +42,11 @@ Joplin Web Clipper
 KDE Desktop
 KMail
 LibreOffice
+linux-tkg
 Local Time Zone / Locale
 Lutris
 LXQt Desktop
+Mainline
 MangoHud
 MATE Desktop
 Nextcloud Desktop
