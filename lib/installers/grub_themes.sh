@@ -243,7 +243,11 @@ install_grubtheme_vinceliuice() {
     fi
     info "Installing the 'tela' variant via the vinceliuice grub2-themes installer..."
     info "(Other variants: vimix, stylish, whitesur, slaze — rerun install.sh -t <name> to switch.)"
-    if ! run_as_root bash "$_GRUB_SRC/install.sh" -t tela -s 1080p; then
+    # -b installs into /boot/grub(2)/themes; without it upstream defaults to
+    # /usr/share/grub/themes, which our themes-dir scanner never sees — the theme
+    # would then only register while it was the active GRUB_THEME and vanish from
+    # the installed list / selector the moment you switched away.
+    if ! run_as_root bash "$_GRUB_SRC/install.sh" -b -t tela -s 1080p; then
         error "vinceliuice GRUB Themes: the upstream installer reported an error."
         rm -rf "$tmp"; return 1
     fi
@@ -252,7 +256,9 @@ install_grubtheme_vinceliuice() {
     return 0
 }
 check_grubtheme_vinceliuice() {
-    [[ -d "$(_grub_themes_dir)/tela" ]] || [[ "$(_grub_active_theme)" == *"/tela/"* ]]
+    # Installed == files on disk under the themes dir, independent of whether
+    # tela is the currently active GRUB_THEME (so it never disappears on switch).
+    [[ -d "$(_grub_themes_dir)/tela" ]]
 }
 uninstall_grubtheme_vinceliuice()  { _grub_uninstall_theme "vinceliuice GRUB Themes" "tela"; }
 update_grubtheme_vinceliuice()     { install_grubtheme_vinceliuice; }
