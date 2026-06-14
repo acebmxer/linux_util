@@ -33,20 +33,14 @@ install_limine() {
             ;;
     esac
 
-    # Install build dependencies needed to compile the deployment tool
+    # The limine host utility (used for BIOS installs) is a single C file shipped
+    # in the binary tarball with a Makefile; it only needs a C compiler and make.
+    # We use the prebuilt BIOS/EFI stages, so nasm/mtools/xorriso aren't required.
     case "$DISTRO_FAMILY" in
-        debian)
-            sudo apt install -y gcc make nasm mtools xorriso wget 2>/dev/null || true
-            ;;
-        fedora|rhel)
-            sudo "$PKG_MGR" install -y gcc make nasm mtools xorriso wget 2>/dev/null || true
-            ;;
-        arch)
-            sudo pacman -S --noconfirm gcc make nasm mtools xorriso 2>/dev/null || true
-            ;;
-        suse)
-            sudo zypper install -y gcc make nasm mtools xorriso 2>/dev/null || true
-            ;;
+        debian)      sudo apt install -y gcc make wget 2>/dev/null || true ;;
+        fedora|rhel) sudo "$PKG_MGR" install -y gcc make wget 2>/dev/null || true ;;
+        arch)        sudo pacman -S --noconfirm gcc make 2>/dev/null || true ;;
+        suse)        sudo zypper install -y gcc make wget 2>/dev/null || true ;;
     esac
 
     tmpdir=$(mktemp -d /tmp/limine-XXXXXX)
@@ -64,26 +58,24 @@ install_limine() {
     sudo mkdir -p "$_LIMINE_INSTALL_DIR"
     sudo cp -r "$tmpdir"/. "$_LIMINE_INSTALL_DIR/"
 
-    # Build the limine deployment tool from source if the binary is not present
-    if [[ ! -f "$_LIMINE_INSTALL_DIR/limine" ]]; then
-        info "Building the Limine deployment utility..."
-        local src_url="https://github.com/limine-bootloader/limine/releases/download/${version}/limine-${ver_num}.tar.xz"
-        wget -qO "$tmpdir/limine-src.tar.xz" "$src_url" && \
-        mkdir -p "$tmpdir/src" && \
-        tar -xf "$tmpdir/limine-src.tar.xz" -C "$tmpdir/src" --strip-components=1 && \
-        (cd "$tmpdir/src" && make) && \
-        sudo cp "$tmpdir/src/limine" "$_LIMINE_INSTALL_DIR/limine"
+    # Build the limine host utility in place. The binary tarball ships limine.c
+    # plus a Makefile whose default target compiles it with cc — no ./configure
+    # and no extra toolchain. This utility is only needed for BIOS deployment;
+    # UEFI boots directly from the prebuilt BOOTX64.EFI.
+    if [[ ! -x "$_LIMINE_INSTALL_DIR/limine" && -f "$_LIMINE_INSTALL_DIR/limine.c" ]]; then
+        info "Building the Limine host utility..."
+        sudo make -C "$_LIMINE_INSTALL_DIR" >/dev/null 2>&1 || true
     fi
 
-    # Symlink into PATH if the binary exists
-    if [[ -f "$_LIMINE_INSTALL_DIR/limine" ]]; then
+    if [[ -x "$_LIMINE_INSTALL_DIR/limine" ]]; then
         sudo ln -sf "$_LIMINE_INSTALL_DIR/limine" /usr/local/bin/limine
+        info "Limine ${ver_num} installed to $_LIMINE_INSTALL_DIR (BIOS + UEFI ready)."
+    elif [[ -f "$_LIMINE_INSTALL_DIR/BOOTX64.EFI" ]]; then
         info "Limine ${ver_num} installed to $_LIMINE_INSTALL_DIR."
-        info "Use 'sudo limine bios-install /dev/sdX' to deploy to a BIOS disk."
-        info "Copy EFI binaries from $_LIMINE_INSTALL_DIR to your ESP for UEFI boot."
+        warn "Host utility not built — UEFI boot works, but BIOS installs need gcc/make. Re-run after installing them."
     else
-        info "Limine binary files installed to $_LIMINE_INSTALL_DIR."
-        info "The deployment utility could not be built — install gcc/make and re-run."
+        error "Limine installation incomplete: no usable binaries in $_LIMINE_INSTALL_DIR."
+        return 1
     fi
 }
 

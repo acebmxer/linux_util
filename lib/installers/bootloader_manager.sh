@@ -82,6 +82,24 @@ _rel_to_mount() {
     fi
 }
 
+# _vol_path echoes a path as a loader sees it from the volume's top level.
+# Limine resolves uuid(...) to the filesystem's top-level subvolume (subvolid 5
+# on btrfs), not the subvolume currently mounted. Ubuntu/Kubuntu mount root from
+# the "@" subvolume, so the kernel that lives at /boot/vmlinuz is really at
+# /@/boot/vmlinuz from the volume root. We reconstruct that by joining FSROOT
+# (the subvolume path, "/@" etc.; "/" for a plain fs/partition) with the path
+# relative to the mountpoint. On ext4 this is identical to _rel_to_mount.
+_vol_path() {
+    local _p="$1" _fsroot _rel
+    _fsroot=$(findmnt -no FSROOT --target "$_p" 2>/dev/null)
+    _rel=$(_rel_to_mount "$_p")
+    if [[ -z "$_fsroot" || "$_fsroot" == "/" ]]; then
+        echo "$_rel"
+    else
+        echo "${_fsroot%/}${_rel}"
+    fi
+}
+
 # _discover_kernels emits "vmlinuz_path|initrd_path|label" lines for each kernel
 # image found in /boot, matching the distro's initramfs naming.
 _discover_kernels() {
@@ -142,7 +160,7 @@ _generate_limine_config() {
     local _vmlinuz _initrd _label _kuuid _kpath _iuuid _ipath
     while IFS='|' read -r _vmlinuz _initrd _label; do
         [[ -f "$_vmlinuz" ]] || continue
-        _kuuid=$(_fs_uuid_for "$_vmlinuz"); _kpath=$(_rel_to_mount "$_vmlinuz")
+        _kuuid=$(_fs_uuid_for "$_vmlinuz"); _kpath=$(_vol_path "$_vmlinuz")
         {
             echo "/${_label}"
             echo "    protocol: linux"
@@ -153,7 +171,7 @@ _generate_limine_config() {
             fi
             echo "    cmdline: ${_cmdline}"
             if [[ -n "$_initrd" ]]; then
-                _iuuid=$(_fs_uuid_for "$_initrd"); _ipath=$(_rel_to_mount "$_initrd")
+                _iuuid=$(_fs_uuid_for "$_initrd"); _ipath=$(_vol_path "$_initrd")
                 if [[ -n "$_iuuid" ]]; then
                     echo "    module_path: uuid(${_iuuid}):${_ipath}"
                 else
@@ -277,11 +295,41 @@ _deploy_limine() {
         if [[ ! -b "$_disk" ]]; then
             error "${_disk} is not a valid block device."; return 1
         fi
-        if [[ ! -x "$_limine_bin" ]]; then
-            error "Limine binary not found. Install Limine from the Bootloaders menu first."
+        if [[ ! -x "$_limine_bin" && ! -x "${_LIMINE_INSTALL_DIR}/limine" ]]; then
+            error "Limine host utility not built (needs gcc/make). Reinstall Limine from the Bootloaders menu first."
             return 1
         fi
-        sudo "$_limine_bin" bios-install "$_disk"
+        [[ ! -x "$_limine_bin" ]] && _limine_bin="${_LIMINE_INSTALL_DIR}/limine"
+
+        # BIOS Limine reads limine-bios.sys and limine.conf from a filesystem at
+        # boot. _generate_limine_config writes /boot/limine.conf, so stage the
+        # BIOS blob in /boot too (one of Limine's search directories).
+        local _stage="${_LIMINE_INSTALL_DIR}/limine-bios.sys"
+        if [[ ! -f "$_stage" ]]; then
+            error "limine-bios.sys missing from ${_LIMINE_INSTALL_DIR}; reinstall Limine."
+            return 1
+        fi
+        if ! sudo cp "$_stage" /boot/limine-bios.sys; then
+            error "Failed to copy limine-bios.sys to /boot."; return 1
+        fi
+
+        # On a GPT disk, bios-install needs the 1-based number of a BIOS-boot
+        # partition (type ef02). Detect it; warn if the disk is GPT without one.
+        local _pttype _biospart="" _pn _pt
+        _pttype=$(sudo blkid -o value -s PTTYPE "$_disk" 2>/dev/null)
+        if [[ "$_pttype" == "gpt" ]]; then
+            while read -r _pn _pt; do
+                [[ "${_pt,,}" == "21686148-6449-6e6f-744e-656564454649" ]] && { _biospart="$_pn"; break; }
+            done < <(lsblk -rno PARTN,PARTTYPE "$_disk" 2>/dev/null)
+            if [[ -z "$_biospart" ]]; then
+                warn "${_disk} is GPT but has no BIOS-boot partition (type ef02)."
+                warn "Create a ~1MiB ef02 partition first, or Limine BIOS install will fail."
+            fi
+        fi
+
+        if ! sudo "$_limine_bin" bios-install "$_disk" ${_biospart:+"$_biospart"}; then
+            error "limine bios-install failed on ${_disk}."; return 1
+        fi
         info "Limine deployed to ${_disk}."
         _generate_limine_config
     else
