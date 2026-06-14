@@ -8,7 +8,10 @@
 _LIMINE_INSTALL_DIR="/opt/limine"
 
 check_limine() {
-    [[ -f "$_LIMINE_INSTALL_DIR/limine" ]] || command -v limine &>/dev/null
+    [[ -f "$_LIMINE_INSTALL_DIR/limine" ]]      ||
+    command -v limine &>/dev/null                ||
+    [[ -f "$_LIMINE_INSTALL_DIR/BOOTX64.EFI" ]] ||
+    [[ -f "$_LIMINE_INSTALL_DIR/limine-uefi-cd.bin" ]]
 }
 
 install_limine() {
@@ -49,7 +52,7 @@ install_limine() {
     tmpdir=$(mktemp -d /tmp/limine-XXXXXX)
     CLEANUP_FILES+=("$tmpdir")
 
-    local tarball_url="https://github.com/limine-bootloader/limine/releases/download/${version}/limine-${ver_num}-binary.tar.xz"
+    local tarball_url="https://github.com/limine-bootloader/limine/releases/download/${version}/limine-binary.tar.xz"
     info "Downloading Limine ${ver_num}..."
     if ! wget -qO "$tmpdir/limine.tar.xz" "$tarball_url"; then
         error "Failed to download Limine from $tarball_url"

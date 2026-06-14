@@ -104,6 +104,11 @@ register_utility "Ansible"             install_ansible          check_ansible   
 register_utility "AnyDesk"             install_anydesk          check_anydesk          uninstall_anydesk          update_anydesk             get_version_anydesk
 register_utility "Audacity"            install_audacity         check_audacity         uninstall_audacity         update_audacity            get_version_audacity
 register_utility "Bitwarden Client"       install_bitwarden           check_bitwarden           uninstall_bitwarden           update_bitwarden              get_version_bitwarden
+register_utility "GRUB"                install_grub             check_grub             uninstall_grub             update_grub                get_version_grub
+register_utility "Limine"              install_limine           check_limine           uninstall_limine           update_limine              get_version_limine
+register_utility "systemd-boot"        install_systemd_boot     check_systemd_boot     uninstall_systemd_boot     update_systemd_boot        get_version_systemd_boot
+register_utility "Switch Bootloader"   setup_switch_bootloader  check_switch_bootloader    noop_switch_bootloader    update_switch_bootloader    get_version_switch_bootloader
+register_utility "Configure Bootloader" setup_configure_bootloader check_configure_bootloader noop_configure_bootloader update_configure_bootloader get_version_configure_bootloader
 register_utility "Bitwarden Extension"    install_bitwarden_extension check_bitwarden_extension uninstall_bitwarden_extension update_bitwarden_extension    get_version_bitwarden_extension
 register_utility "Bottles"                install_bottles             check_bottles             uninstall_bottles             update_bottles                get_version_bottles
 register_utility "Brave Browser"       install_brave            check_brave            uninstall_brave            update_brave               get_version_brave
@@ -391,10 +396,15 @@ NO_RETRY["linux-tkg"]=1
 
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Backup" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Login Screens" "Package Managers" "Productivity" "Remote Admin Tools" "System Tools" "Window Managers")
+CATEGORIES=("System Tasks" "Backup" "Bootloaders" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Login Screens" "Package Managers" "Productivity" "Remote Admin Tools" "System Tools" "Window Managers")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Angry IP Scanner"]="Internet"
+UTILITY_CATEGORY["GRUB"]="Bootloaders"
+UTILITY_CATEGORY["Limine"]="Bootloaders"
+UTILITY_CATEGORY["systemd-boot"]="Bootloaders"
+UTILITY_CATEGORY["Switch Bootloader"]="Bootloaders"
+UTILITY_CATEGORY["Configure Bootloader"]="Bootloaders"
 UTILITY_CATEGORY["AMD CPU Microcode & Firmware"]="Drivers"
 UTILITY_CATEGORY["AMD Drivers"]="Drivers"
 UTILITY_CATEGORY["Intel CPU Microcode & Thermal"]="Drivers"
@@ -706,6 +716,13 @@ UTILITY_DESCRIPTION["Mount NFS Share"]="Discovers NFS exports from a remote serv
 UTILITY_DESCRIPTION["Mount SMB Share"]="Connects to an SMB/CIFS server, prompts for credentials, lists available shares, and mounts the chosen share persistently via /etc/fstab. Credentials are stored in a private file under HOME. Installs cifs-utils if needed and backs up fstab before any changes."
 UTILITY_DESCRIPTION["Manage Share"]="Update or unmount an existing linux_util-managed mount. Update: change server, share path, credentials, or mount location for NFS, SMB, or local disk mounts. Unmount: remove the share, delete the mount point directory, clear the fstab entry, and remove the KDE Dolphin Places entry. Backs up fstab before any changes."
 UTILITY_DESCRIPTION["NVIDIA Drivers"]="Installs proprietary NVIDIA GPU drivers for optimal 3D graphics and compute performance."
+
+# Bootloaders
+UTILITY_DESCRIPTION["GRUB"]="GRand Unified Bootloader — the most widely used bootloader on Linux, supporting BIOS and UEFI, multi-OS boot menus, encrypted volumes, and virtually every filesystem."
+UTILITY_DESCRIPTION["Limine"]="Modern, portable bootloader supporting BIOS and UEFI (x86_64 and aarch64). Known for its fast startup, clean configuration, and native Limine Boot Protocol used by hobby OS development."
+UTILITY_DESCRIPTION["systemd-boot"]="Lightweight EFI-only bootloader (formerly gummiboot) that is part of systemd. Zero dependencies, simple drop-in entry files, and automatic discovery of installed kernels on systemd-based distributions."
+UTILITY_DESCRIPTION["Switch Bootloader"]="Interactively switch between GRUB, Limine, and systemd-boot. Detects your active bootloader, installs the chosen replacement, deploys it to disk or the EFI partition, and optionally removes the old one. Always snapshot before switching."
+UTILITY_DESCRIPTION["Configure Bootloader"]="Configure your active bootloader. GRUB: set timeout, kernel parameters, regenerate config, or edit /etc/default/grub. systemd-boot: edit loader.conf, set default entry, manage boot entries. Limine: edit limine.conf, redeploy to disk."
 
 # Desktop Environments
 UTILITY_DESCRIPTION["Budgie Desktop"]="Modern, polished desktop from the Solus project built on the GNOME stack, featuring a clean layout and the unique Raven notification and settings sidebar."
