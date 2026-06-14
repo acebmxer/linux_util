@@ -91,6 +91,12 @@ register_system_task "Fix Package Repos"      setup_fix_repos           check_al
 register_system_task "Reset Repos to Default" setup_reset_repos         check_always_false noop_function setup_reset_repos
 NO_RETRY["Reset Repos to Default"]=1
 
+# GRUB theme installs fail fast when GRUB is absent or the download fails — no value in retrying
+NO_RETRY["Distro GRUB Themes"]=1
+NO_RETRY["vinceliuice GRUB Themes"]=1
+NO_RETRY["Catppuccin GRUB Theme"]=1
+NO_RETRY["HyperFluent GRUB Theme"]=1
+
 # These fail immediately when Flatpak is absent — retrying adds no value
 NO_RETRY["ProtonUp-Qt"]=1
 NO_RETRY["Bottles"]=1
@@ -109,6 +115,10 @@ register_utility "Limine"              install_limine           check_limine    
 register_utility "systemd-boot"        install_systemd_boot     check_systemd_boot     uninstall_systemd_boot     update_systemd_boot        get_version_systemd_boot
 register_utility "Switch Bootloader"   setup_switch_bootloader  check_always_false         noop_switch_bootloader    update_switch_bootloader    get_version_switch_bootloader
 register_utility "Configure Bootloader" setup_configure_bootloader check_configure_bootloader noop_configure_bootloader update_configure_bootloader get_version_configure_bootloader
+register_utility "Distro GRUB Themes"  install_grubtheme_distro      check_grubtheme_distro      uninstall_grubtheme_distro      update_grubtheme_distro      get_version_grubtheme_distro
+register_utility "vinceliuice GRUB Themes" install_grubtheme_vinceliuice check_grubtheme_vinceliuice uninstall_grubtheme_vinceliuice update_grubtheme_vinceliuice get_version_grubtheme_vinceliuice
+register_utility "Catppuccin GRUB Theme" install_grubtheme_catppuccin check_grubtheme_catppuccin  uninstall_grubtheme_catppuccin  update_grubtheme_catppuccin  get_version_grubtheme_catppuccin
+register_utility "HyperFluent GRUB Theme" install_grubtheme_hyperfluent check_grubtheme_hyperfluent uninstall_grubtheme_hyperfluent update_grubtheme_hyperfluent get_version_grubtheme_hyperfluent
 register_utility "Bitwarden Extension"    install_bitwarden_extension check_bitwarden_extension uninstall_bitwarden_extension update_bitwarden_extension    get_version_bitwarden_extension
 register_utility "Bottles"                install_bottles             check_bottles             uninstall_bottles             update_bottles                get_version_bottles
 register_utility "Brave Browser"       install_brave            check_brave            uninstall_brave            update_brave               get_version_brave
@@ -405,6 +415,10 @@ UTILITY_CATEGORY["Limine"]="Bootloaders"
 UTILITY_CATEGORY["systemd-boot"]="Bootloaders"
 UTILITY_CATEGORY["Switch Bootloader"]="Bootloaders"
 UTILITY_CATEGORY["Configure Bootloader"]="Bootloaders"
+UTILITY_CATEGORY["Distro GRUB Themes"]="Bootloaders"
+UTILITY_CATEGORY["vinceliuice GRUB Themes"]="Bootloaders"
+UTILITY_CATEGORY["Catppuccin GRUB Theme"]="Bootloaders"
+UTILITY_CATEGORY["HyperFluent GRUB Theme"]="Bootloaders"
 UTILITY_CATEGORY["AMD CPU Microcode & Firmware"]="Drivers"
 UTILITY_CATEGORY["AMD Drivers"]="Drivers"
 UTILITY_CATEGORY["Intel CPU Microcode & Thermal"]="Drivers"
@@ -669,6 +683,10 @@ UTILITY_SUBCATEGORY["GDM"]="Display Managers"
 UTILITY_SUBCATEGORY["LightDM"]="Display Managers"
 UTILITY_SUBCATEGORY["ly"]="Display Managers"
 UTILITY_SUBCATEGORY["LXDM"]="Display Managers"
+UTILITY_SUBCATEGORY["Distro GRUB Themes"]="GRUB Themes"
+UTILITY_SUBCATEGORY["vinceliuice GRUB Themes"]="GRUB Themes"
+UTILITY_SUBCATEGORY["Catppuccin GRUB Theme"]="GRUB Themes"
+UTILITY_SUBCATEGORY["HyperFluent GRUB Theme"]="GRUB Themes"
 UTILITY_SUBCATEGORY["SDDM Breeze Theme"]="SDDM Themes"
 UTILITY_SUBCATEGORY["SDDM Sugar Candy"]="SDDM Themes"
 UTILITY_SUBCATEGORY["SDDM Astronaut"]="SDDM Themes"
@@ -703,6 +721,7 @@ SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
 SUBCATEGORY_ORDER["Remote Admin Tools"]="Remote Access"
+SUBCATEGORY_ORDER["Bootloaders"]="GRUB Themes"
 SUBCATEGORY_ORDER["Login Screens"]="Display Managers|SDDM Themes|LightDM Greeters"
 SUBCATEGORY_ORDER["System Tools"]="Kernel Managers"
 
@@ -723,6 +742,11 @@ UTILITY_DESCRIPTION["Limine"]="Modern, portable bootloader supporting BIOS and U
 UTILITY_DESCRIPTION["systemd-boot"]="Lightweight EFI-only bootloader (formerly gummiboot) that is part of systemd. Zero dependencies, simple drop-in entry files, and automatic discovery of installed kernels on systemd-based distributions."
 UTILITY_DESCRIPTION["Switch Bootloader"]="Interactively switch between GRUB, Limine, and systemd-boot. Detects your active bootloader, installs the chosen replacement, deploys it to disk or the EFI partition, and optionally removes the old one. Always snapshot before switching."
 UTILITY_DESCRIPTION["Configure Bootloader"]="Configure your active bootloader. GRUB: set timeout, kernel parameters, regenerate config, or edit /etc/default/grub. systemd-boot: edit loader.conf, set default entry, manage boot entries. Limine: edit limine.conf, redeploy to disk. All: rebuild missing initramfs images for kernels the bootloader silently dropped."
+# GRUB Themes — installed into GRUB's themes dir, set via GRUB_THEME= in /etc/default/grub, then grub.cfg is regenerated. Require GRUB to be the active bootloader and an internet connection.
+UTILITY_DESCRIPTION["Distro GRUB Themes"]="Per-distro logo boot themes from AdisonCavani/distro-grub-themes. Picks the theme matching your distribution (falling back to the first available), installs it into GRUB's themes directory, and activates it. Requires GRUB and an internet connection."
+UTILITY_DESCRIPTION["vinceliuice GRUB Themes"]="Polished GRUB themes from vinceliuice/grub2-themes. Runs the upstream installer to set up the 'tela' variant by default (vimix, stylish, whitesur, and slaze are also available); the installer copies the theme, edits /etc/default/grub, and regenerates the config. Requires GRUB and an internet connection."
+UTILITY_DESCRIPTION["Catppuccin GRUB Theme"]="The soothing pastel Catppuccin theme for GRUB (catppuccin/grub). Installs the 'mocha' flavor by default (latte, frappe, and macchiato are in the repo) into GRUB's themes directory and activates it. Requires GRUB and an internet connection."
+UTILITY_DESCRIPTION["HyperFluent GRUB Theme"]="A sleek, modern animated GRUB theme from Coopydood/HyperFluent-GRUB-Theme. Installs the variant matching your distribution (falling back to a generic one) into GRUB's themes directory and activates it. Requires GRUB and an internet connection."
 
 # Desktop Environments
 UTILITY_DESCRIPTION["Budgie Desktop"]="Modern, polished desktop from the Solus project built on the GNOME stack, featuring a clean layout and the unique Raven notification and settings sidebar."

@@ -143,6 +143,20 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 
 ### Utilities by Category
 
+#### Bootloaders
+
+| Utility | Description |
+|---------|-------------|
+| **GRUB** | GRand Unified Bootloader — BIOS/UEFI, multi-OS menus, encrypted volumes, virtually every filesystem |
+| **Limine** | Modern, portable bootloader for BIOS and UEFI (x86_64/aarch64) with fast startup and clean config *(non-Debian)* |
+| **systemd-boot** | Lightweight EFI-only bootloader that ships with systemd — simple drop-in entries, automatic kernel discovery *(non-Debian)* |
+| **Switch Bootloader** | Interactively switch between GRUB, Limine, and systemd-boot, deploying the chosen one to disk/EFI |
+| **Configure Bootloader** | Tune the active bootloader (timeout, kernel parameters, default entry) and rebuild missing initramfs images |
+| **Distro GRUB Themes** | Per-distro logo boot themes from AdisonCavani/distro-grub-themes, auto-matched to your distribution *(GRUB Themes)* |
+| **vinceliuice GRUB Themes** | Polished GRUB themes from vinceliuice/grub2-themes (tela/vimix/stylish/whitesur/slaze) *(GRUB Themes)* |
+| **Catppuccin GRUB Theme** | The soothing pastel Catppuccin theme for GRUB — mocha by default (catppuccin/grub) *(GRUB Themes)* |
+| **HyperFluent GRUB Theme** | Sleek, modern animated GRUB theme matched to your distribution (Coopydood/HyperFluent-GRUB-Theme) *(GRUB Themes)* |
+
 #### Drivers
 
 | Utility | Description |
