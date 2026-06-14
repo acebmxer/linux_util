@@ -107,7 +107,7 @@ register_utility "Bitwarden Client"       install_bitwarden           check_bitw
 register_utility "GRUB"                install_grub             check_grub             uninstall_grub             update_grub                get_version_grub
 register_utility "Limine"              install_limine           check_limine           uninstall_limine           update_limine              get_version_limine
 register_utility "systemd-boot"        install_systemd_boot     check_systemd_boot     uninstall_systemd_boot     update_systemd_boot        get_version_systemd_boot
-register_utility "Switch Bootloader"   setup_switch_bootloader  check_switch_bootloader    noop_switch_bootloader    update_switch_bootloader    get_version_switch_bootloader
+register_utility "Switch Bootloader"   setup_switch_bootloader  check_always_false         noop_switch_bootloader    update_switch_bootloader    get_version_switch_bootloader
 register_utility "Configure Bootloader" setup_configure_bootloader check_configure_bootloader noop_configure_bootloader update_configure_bootloader get_version_configure_bootloader
 register_utility "Bitwarden Extension"    install_bitwarden_extension check_bitwarden_extension uninstall_bitwarden_extension update_bitwarden_extension    get_version_bitwarden_extension
 register_utility "Bottles"                install_bottles             check_bottles             uninstall_bottles             update_bottles                get_version_bottles

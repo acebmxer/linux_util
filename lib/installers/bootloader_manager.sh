@@ -347,8 +347,9 @@ _deploy_systemd_boot() {
 }
 
 # ── Switch Bootloader ─────────────────────────────────────────────────────────
-
-check_switch_bootloader() { return 0; }
+# Registered with check_always_false: it's a run-action, never "installed", so it
+# is never offered for uninstall/update. Its current state ("GRUB active", etc.) is
+# surfaced via get_version_switch_bootloader instead.
 
 setup_switch_bootloader() {
     echo ""
