@@ -79,6 +79,17 @@ _mld_dump_pass() {
     esac
 }
 
+# True (0) if the filesystem stores ownership on disk (ext*, xfs, btrfs, f2fs…),
+# meaning a post-mount chown is required to give the user write access.
+# NTFS/vfat/exFAT instead synthesize ownership from uid=/gid= mount options, so
+# they need no chown — see _mld_fstab_opts.
+_mld_is_native_fs() {
+    case "$1" in
+        ntfs|ntfs-3g|ntfs3|vfat|fat|fat16|fat32|msdos|exfat) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
 # Resolve the effective filesystem type to use in fstab.
 # For NTFS: prefers kernel ntfs3 driver (5.15+), falls back to ntfs-3g.
 _mld_resolve_fstype() {
@@ -284,11 +295,7 @@ setup_mount_local_drive() {
 
         # ── Dry-run path ──────────────────────────────────────────────────────
         if [[ "${DRY_RUN:-false}" == "true" ]]; then
-            if [[ "$mount_point" != "$HOME"* ]]; then
-                info "[Dry run] Would create directory (as root, then chown to ${USER}): ${mount_point}"
-            else
-                info "[Dry run] Would create directory: ${mount_point}"
-            fi
+            info "[Dry run] Would create directory: ${mount_point}"
             info "[Dry run] Would back up /etc/fstab"
             info "[Dry run] Would append to /etc/fstab:"
             printf '  # linux_util:mount /dev/%s → %s\n' "$sel_name" "$mount_point"
@@ -296,6 +303,9 @@ setup_mount_local_drive() {
                 "$sel_uuid" "$mount_point" "$fstab_fstype" \
                 "$(_mld_fstab_opts "$fstab_fstype")" "$(_mld_dump_pass "$fstab_fstype")"
             info "[Dry run] Would run: sudo mount ${mount_point}"
+            if _mld_is_native_fs "$fstab_fstype"; then
+                info "[Dry run] Would chown ${mount_point} to ${USER}:${USER} after mounting"
+            fi
             continue
         fi
 
@@ -332,11 +342,10 @@ setup_mount_local_drive() {
                 mkdir -p "$mount_point" || { error "Failed to create directory: ${mount_point}. Skipping."; continue; }
             else
                 run_as_root mkdir -p "$mount_point" || { error "Failed to create directory: ${mount_point}. Skipping."; continue; }
-                if [[ "$mount_point" != "$HOME"* ]]; then
-                    run_as_root chown "${USER}:${USER}" "$mount_point" || \
-                        warn "Could not set ownership of ${mount_point} to ${USER} — you may need to access it as root."
-                fi
             fi
+            # NOTE: ownership of native filesystems is set AFTER mounting (Step 12);
+            # chowning the bare mount point here would be shadowed by the drive's
+            # own on-disk root directory once it is mounted.
             info "Created mount point: ${mount_point}"
         else
             info "Mount point already exists: ${mount_point}"
@@ -370,6 +379,15 @@ setup_mount_local_drive() {
             warn "If the device type is unsupported, install the required driver and retry."
             continue
         }
+
+        # ── Step 13: Grant the user write access (native filesystems only) ────
+        # For ext*/xfs/btrfs/etc. the mounted root directory keeps its on-disk
+        # ownership (often root:root), so chown it now that the drive is mounted.
+        # NTFS/vfat/exFAT already grant the user via uid=/gid= mount options.
+        if _mld_is_native_fs "$fstab_fstype"; then
+            run_as_root chown "${USER}:${USER}" "$mount_point" || \
+                warn "Could not set ownership of ${mount_point} to ${USER} — you may need to access it as root."
+        fi
 
         echo ""
         info "Drive mounted successfully."
