@@ -197,8 +197,10 @@ install_grubtheme_distro() {
         error "Distro GRUB Themes: failed to extract '$(basename "$tar")'."
         rm -rf "$tmp"; return 1
     fi
-    local src; src="$(find "$ex" -mindepth 1 -maxdepth 1 -type d | head -1)"
-    [[ -z "$src" ]] && src="$ex"   # some archives are flat (theme.txt at top level)
+    # Locate the dir holding theme.txt: archives may be flat (theme.txt at the
+    # top level alongside an icons/ subdir) or nest the theme one level down.
+    local tt; tt="$(find "$ex" -name theme.txt 2>/dev/null | sort | head -1)"
+    local src="${tt%/theme.txt}"
     _grub_install_local_theme "Distro GRUB Themes" "$src" "distro-grub-theme"
     local rc=$?
     rm -rf "$tmp"
