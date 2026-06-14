@@ -146,10 +146,12 @@ _rebuild_initramfs() {
 }
 
 # _repair_missing_initramfs finds installed kernels in /boot that have no matching
-# initramfs and rebuilds it, then regenerates the active bootloader's config so
-# the recovered kernels reappear in the menu. This fixes kernels installed without
-# an initramfs (e.g. some mainline .deb packages), which a bootloader otherwise
-# silently drops — exactly the case where a freshly installed kernel never shows.
+# initramfs and rebuilds it, then regenerates the active bootloader's config so the
+# recovered kernels reappear in the menu. A kernel's initramfs is normally built by
+# the initramfs-tools (or dracut) dpkg trigger, but some installers — notably the
+# 'mainline' tool on Ubuntu — install the kernel packages without firing that
+# trigger, leaving a dangling /boot/initrd.img symlink and no real image. The
+# bootloader then silently drops the kernel. This is the recovery path for that.
 _repair_missing_initramfs() {
     local _vmlinuz _initrd _label
     local -a _to_fix=()
