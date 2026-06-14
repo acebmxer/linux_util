@@ -49,6 +49,204 @@ _regenerate_grub_config() {
     fi
 }
 
+# ── config-generation helpers (shared) ───────────────────────────────────────
+#
+# When switching bootloaders we must give the newly-activated one a working
+# menu, otherwise it boots into an empty config. Bootloader config formats are
+# not interchangeable, so instead of copying the old config we synthesise a
+# native one from the system's actual state: installed kernels in /boot plus the
+# currently-booted kernel command line (/proc/cmdline), which already contains a
+# known-good root= and the rest of the boot args.
+
+# _kernel_cmdline echoes the active kernel cmdline with the bootloader-injected
+# BOOT_IMAGE= and initrd= tokens removed (those are loader-specific).
+_kernel_cmdline() {
+    tr ' ' '\n' < /proc/cmdline \
+        | grep -vE '^(BOOT_IMAGE|initrd)=' \
+        | tr '\n' ' ' \
+        | sed 's/ *$//'
+}
+
+# _fs_uuid_for echoes the filesystem UUID of the partition backing a path.
+_fs_uuid_for() { findmnt -no UUID --target "$1" 2>/dev/null; }
+
+# _rel_to_mount echoes a path relative to the mountpoint of the fs holding it,
+# e.g. /boot/vmlinuz-linux on a separate /boot -> /vmlinuz-linux.
+_rel_to_mount() {
+    local _p="$1" _mp
+    _mp=$(findmnt -no TARGET --target "$_p" 2>/dev/null)
+    if [[ -z "$_mp" || "$_mp" == "/" ]]; then
+        echo "$_p"
+    else
+        echo "/${_p#"$_mp"/}"
+    fi
+}
+
+# _discover_kernels emits "vmlinuz_path|initrd_path|label" lines for each kernel
+# image found in /boot, matching the distro's initramfs naming.
+_discover_kernels() {
+    local _k _base _suffix _initrd _cand _label
+    for _k in /boot/vmlinuz-* /boot/vmlinuz; do
+        [[ -f "$_k" ]] || continue
+        _base=$(basename "$_k")
+        _suffix="${_base#vmlinuz-}"
+        [[ "$_suffix" == "vmlinuz" ]] && _suffix=""
+        _initrd=""
+        for _cand in \
+            "/boot/initramfs-${_suffix}.img" \
+            "/boot/initrd.img-${_suffix}" \
+            "/boot/initramfs-${_suffix}" \
+            "/boot/initrd-${_suffix}.img"; do
+            [[ -f "$_cand" ]] && { _initrd="$_cand"; break; }
+        done
+        _label="${_suffix:-Linux}"
+        printf '%s|%s|%s\n' "$_k" "$_initrd" "$_label"
+    done
+}
+
+# _generate_limine_config gives a freshly-deployed Limine a working menu.
+_generate_limine_config() {
+    # Prefer a distro-native generator when one is installed.
+    if command -v limine-update &>/dev/null; then
+        info "Generating Limine config via limine-update..."
+        sudo limine-update && return 0
+        warn "limine-update failed; falling back to a generated config."
+    elif command -v limine-mkconfig &>/dev/null; then
+        info "Generating Limine config via limine-mkconfig..."
+        sudo limine-mkconfig -o /boot/limine.conf && return 0
+        warn "limine-mkconfig failed; falling back to a generated config."
+    fi
+
+    local _conf_path
+    if [[ -d /sys/firmware/efi ]]; then
+        local _esp="" _dir
+        for _dir in /boot/efi /efi /boot; do
+            mountpoint -q "$_dir" 2>/dev/null && { _esp="$_dir"; break; }
+        done
+        [[ -z "$_esp" ]] && { warn "Could not detect ESP; skipping Limine config generation."; return 1; }
+        _conf_path="${_esp}/limine.conf"
+    else
+        _conf_path="/boot/limine.conf"
+    fi
+
+    if [[ -f "$_conf_path" ]]; then
+        info "Existing Limine config at ${_conf_path}; leaving it untouched."
+        return 0
+    fi
+
+    local _cmdline _tmp _count=0
+    _cmdline=$(_kernel_cmdline)
+    _tmp=$(mktemp)
+    printf 'timeout: 5\n\n' > "$_tmp"
+
+    local _vmlinuz _initrd _label _kuuid _kpath _iuuid _ipath
+    while IFS='|' read -r _vmlinuz _initrd _label; do
+        [[ -f "$_vmlinuz" ]] || continue
+        _kuuid=$(_fs_uuid_for "$_vmlinuz"); _kpath=$(_rel_to_mount "$_vmlinuz")
+        {
+            echo "/${_label}"
+            echo "    protocol: linux"
+            if [[ -n "$_kuuid" ]]; then
+                echo "    kernel_path: uuid(${_kuuid}):${_kpath}"
+            else
+                echo "    kernel_path: boot():${_kpath}"
+            fi
+            echo "    cmdline: ${_cmdline}"
+            if [[ -n "$_initrd" ]]; then
+                _iuuid=$(_fs_uuid_for "$_initrd"); _ipath=$(_rel_to_mount "$_initrd")
+                if [[ -n "$_iuuid" ]]; then
+                    echo "    module_path: uuid(${_iuuid}):${_ipath}"
+                else
+                    echo "    module_path: boot():${_ipath}"
+                fi
+            fi
+            echo ""
+        } >> "$_tmp"
+        ((_count++))
+    done < <(_discover_kernels)
+
+    if (( _count == 0 )); then
+        warn "No kernels found in /boot; could not generate a Limine config."
+        rm -f "$_tmp"; return 1
+    fi
+
+    sudo cp "$_tmp" "$_conf_path"; rm -f "$_tmp"
+    info "Generated Limine config at ${_conf_path} (${_count} entries)."
+    warn "Review it and confirm it boots before removing your old bootloader."
+}
+
+# _ensure_loader_conf writes a minimal systemd-boot loader.conf if none exists.
+_ensure_loader_conf() {
+    local _conf="$1"
+    [[ -f "$_conf" ]] && return 0
+    sudo mkdir -p "$(dirname "$_conf")"
+    printf 'timeout 5\nconsole-mode keep\n' | sudo tee "$_conf" > /dev/null
+    info "Created ${_conf}."
+}
+
+# _generate_systemd_boot_config gives a freshly-installed systemd-boot a menu.
+_generate_systemd_boot_config() {
+    local _esp="" _dir
+    for _dir in /boot/efi /efi /boot; do
+        mountpoint -q "$_dir" 2>/dev/null && { _esp="$_dir"; break; }
+    done
+    [[ -z "$_esp" ]] && { warn "Could not detect ESP; skipping systemd-boot config generation."; return 1; }
+
+    # Prefer kernel-install: it understands XBOOTLDR, the distro's initramfs
+    # generator, and the correct ESP layout.
+    if command -v kernel-install &>/dev/null; then
+        info "Generating systemd-boot entries via kernel-install..."
+        local _ok=false _ver _img
+        for _img in /lib/modules/*/vmlinuz /usr/lib/modules/*/vmlinuz; do
+            [[ -f "$_img" ]] || continue
+            _ver=$(basename "$(dirname "$_img")")
+            sudo kernel-install add "$_ver" "$_img" &>/dev/null && _ok=true
+        done
+        if [[ "$_ok" == true ]]; then
+            _ensure_loader_conf "${_esp}/loader/loader.conf"
+            info "systemd-boot entries generated via kernel-install."
+            return 0
+        fi
+        warn "kernel-install produced no entries; falling back to manual generation."
+    fi
+
+    # Fallback: write loader entries by hand. systemd-boot can only read kernels
+    # from the ESP (or an XBOOTLDR partition), so skip kernels living elsewhere.
+    local _entries_dir="${_esp}/loader/entries" _esp_src _cmdline _count=0
+    sudo mkdir -p "$_entries_dir"
+    _esp_src=$(findmnt -no SOURCE "$_esp" 2>/dev/null)
+    _cmdline=$(_kernel_cmdline)
+
+    local _vmlinuz _initrd _label _ksrc _id _krel _irel
+    while IFS='|' read -r _vmlinuz _initrd _label; do
+        [[ -f "$_vmlinuz" ]] || continue
+        _ksrc=$(findmnt -no SOURCE --target "$_vmlinuz" 2>/dev/null)
+        if [[ "$_ksrc" != "$_esp_src" ]]; then
+            warn "Kernel ${_vmlinuz} is not on the ESP; systemd-boot needs XBOOTLDR for it. Skipping."
+            continue
+        fi
+        _id="linux-${_label}"; _id="${_id//[^A-Za-z0-9_.-]/_}"
+        _krel=$(_rel_to_mount "$_vmlinuz")
+        {
+            echo "title ${_label}"
+            echo "linux ${_krel}"
+            [[ -n "$_initrd" ]] && { _irel=$(_rel_to_mount "$_initrd"); echo "initrd ${_irel}"; }
+            echo "options ${_cmdline}"
+        } | sudo tee "${_entries_dir}/${_id}.conf" > /dev/null
+        ((_count++))
+    done < <(_discover_kernels)
+
+    if (( _count == 0 )); then
+        warn "No bootable kernels found on the ESP; no systemd-boot entries were generated."
+        warn "Put kernels on ${_esp} (or set up XBOOTLDR / use kernel-install) and retry."
+        return 1
+    fi
+
+    _ensure_loader_conf "${_esp}/loader/loader.conf"
+    info "Generated ${_count} systemd-boot entries in ${_entries_dir}."
+    warn "Review them and confirm they boot before removing your old bootloader."
+}
+
 _deploy_grub() {
     local _tool
     command -v grub-install &>/dev/null && _tool="grub-install" || _tool="grub2-install"
@@ -85,6 +283,7 @@ _deploy_limine() {
         fi
         sudo "$_limine_bin" bios-install "$_disk"
         info "Limine deployed to ${_disk}."
+        _generate_limine_config
     else
         local _esp=""
         for _dir in /boot/efi /efi /boot; do
@@ -94,17 +293,47 @@ _deploy_limine() {
             warn "Could not detect ESP. Copy Limine EFI files from ${_LIMINE_INSTALL_DIR}/ to your ESP manually."
             return 1
         fi
-        sudo mkdir -p "${_esp}/EFI/LIMINE"
-        sudo cp "${_LIMINE_INSTALL_DIR}/BOOTX64.EFI"        "${_esp}/EFI/LIMINE/" 2>/dev/null || true
-        sudo cp "${_LIMINE_INSTALL_DIR}/limine-uefi-cd.bin" "${_esp}/EFI/LIMINE/" 2>/dev/null || true
-        if command -v efibootmgr &>/dev/null; then
-            local _esp_disk _esp_part
-            _esp_disk=$(findmnt -n -o SOURCE "$_esp" | sed 's/[0-9]*$//')
-            _esp_part=$(findmnt -n -o SOURCE "$_esp" | grep -oP '[0-9]+$')
-            sudo efibootmgr --create --disk "$_esp_disk" --part "$_esp_part" \
-                --label "Limine" --loader "\\EFI\\LIMINE\\BOOTX64.EFI" 2>/dev/null || true
+        local _src_efi="${_LIMINE_INSTALL_DIR}/BOOTX64.EFI"
+        if [[ ! -f "$_src_efi" ]]; then
+            error "Limine EFI binary not found at ${_src_efi}. Install Limine from the Bootloaders menu first."
+            return 1
         fi
-        info "Limine EFI files installed to ${_esp}/EFI/LIMINE/."
+
+        sudo mkdir -p "${_esp}/EFI/LIMINE" || { error "Could not create ${_esp}/EFI/LIMINE."; return 1; }
+        if ! sudo cp "$_src_efi" "${_esp}/EFI/LIMINE/"; then
+            error "Failed to copy Limine EFI binary to the ESP."; return 1
+        fi
+        sudo cp "${_LIMINE_INSTALL_DIR}/limine-uefi-cd.bin" "${_esp}/EFI/LIMINE/" 2>/dev/null || true
+
+        if ! command -v efibootmgr &>/dev/null; then
+            warn "efibootmgr not found — Limine files copied but no EFI boot entry was created."
+            return 1
+        fi
+
+        # Derive the ESP's parent disk and partition number robustly. The old
+        # sed/grep approach broke on NVMe (/dev/nvme0n1p1 -> /dev/nvme0n1p),
+        # which made efibootmgr fail and silently skip creating the entry.
+        local _esp_src _esp_disk _esp_part
+        _esp_src=$(findmnt -n -o SOURCE "$_esp")
+        _esp_disk="/dev/$(lsblk -no PKNAME "$_esp_src" 2>/dev/null | tr -d '[:space:]')"
+        _esp_part=$(lsblk -no PARTN "$_esp_src" 2>/dev/null | tr -d '[:space:]')
+        if [[ "$_esp_disk" == "/dev/" || -z "$_esp_part" ]]; then
+            error "Could not determine ESP disk/partition for ${_esp_src}."; return 1
+        fi
+
+        # Remove stale Limine entries so repeated switches don't stack duplicates.
+        local _old
+        for _old in $(efibootmgr | awk '$2 == "Limine" {gsub(/[^0-9]/,"",$1); print $1}'); do
+            sudo efibootmgr --delete-bootnum --bootnum "$_old" &>/dev/null || true
+        done
+
+        if ! sudo efibootmgr --create --disk "$_esp_disk" --part "$_esp_part" \
+                --label "Limine" --loader "\\EFI\\LIMINE\\BOOTX64.EFI"; then
+            error "Failed to register Limine in the EFI boot menu (efibootmgr)."
+            return 1
+        fi
+        info "Limine EFI files installed to ${_esp}/EFI/LIMINE/ and registered in the EFI boot menu."
+        _generate_limine_config
     fi
 }
 
@@ -114,6 +343,7 @@ _deploy_systemd_boot() {
     fi
     sudo bootctl install 2>/dev/null || sudo bootctl update 2>/dev/null || true
     info "systemd-boot installed as the EFI default."
+    _generate_systemd_boot_config
 }
 
 # ── Switch Bootloader ─────────────────────────────────────────────────────────
@@ -374,7 +604,7 @@ _configure_grub_menu() {
 
 _configure_limine_menu() {
     local _limine_conf=""
-    for _f in "/boot/limine.conf" "/boot/efi/limine.conf" "${_LIMINE_INSTALL_DIR}/limine.conf"; do
+    for _f in "/boot/limine.conf" "/boot/efi/limine.conf" "/efi/limine.conf" "${_LIMINE_INSTALL_DIR}/limine.conf"; do
         [[ -f "$_f" ]] && { _limine_conf="$_f"; break; }
     done
 
