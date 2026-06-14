@@ -152,6 +152,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **systemd-boot** | Lightweight EFI-only bootloader that ships with systemd — simple drop-in entries, automatic kernel discovery *(non-Debian)* |
 | **Switch Bootloader** | Interactively switch between GRUB, Limine, and systemd-boot, deploying the chosen one to disk/EFI |
 | **Configure Bootloader** | Tune the active bootloader (timeout, kernel parameters, default entry) and rebuild missing initramfs images |
+| **GRUB Theme Selector** | Switch the active GRUB theme between any already-installed themes (or the stock no-theme menu) without reinstalling *(GRUB Themes)* |
 | **Distro GRUB Themes** | Per-distro logo boot themes from AdisonCavani/distro-grub-themes, auto-matched to your distribution *(GRUB Themes)* |
 | **vinceliuice GRUB Themes** | Polished GRUB themes from vinceliuice/grub2-themes (tela/vimix/stylish/whitesur/slaze) *(GRUB Themes)* |
 | **Catppuccin GRUB Theme** | The soothing pastel Catppuccin theme for GRUB — mocha by default (catppuccin/grub) *(GRUB Themes)* |

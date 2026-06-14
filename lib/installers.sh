@@ -92,6 +92,7 @@ register_system_task "Reset Repos to Default" setup_reset_repos         check_al
 NO_RETRY["Reset Repos to Default"]=1
 
 # GRUB theme installs fail fast when GRUB is absent or the download fails — no value in retrying
+NO_RETRY["GRUB Theme Selector"]=1
 NO_RETRY["Distro GRUB Themes"]=1
 NO_RETRY["vinceliuice GRUB Themes"]=1
 NO_RETRY["Catppuccin GRUB Theme"]=1
@@ -115,6 +116,7 @@ register_utility "Limine"              install_limine           check_limine    
 register_utility "systemd-boot"        install_systemd_boot     check_systemd_boot     uninstall_systemd_boot     update_systemd_boot        get_version_systemd_boot
 register_utility "Switch Bootloader"   setup_switch_bootloader  check_always_false         noop_switch_bootloader    update_switch_bootloader    get_version_switch_bootloader
 register_utility "Configure Bootloader" setup_configure_bootloader check_configure_bootloader noop_configure_bootloader update_configure_bootloader get_version_configure_bootloader
+register_utility "GRUB Theme Selector" install_grubtheme_selector    check_always_false          noop_function                   update_grubtheme_selector    get_version_grubtheme_selector
 register_utility "Distro GRUB Themes"  install_grubtheme_distro      check_grubtheme_distro      uninstall_grubtheme_distro      update_grubtheme_distro      get_version_grubtheme_distro
 register_utility "vinceliuice GRUB Themes" install_grubtheme_vinceliuice check_grubtheme_vinceliuice uninstall_grubtheme_vinceliuice update_grubtheme_vinceliuice get_version_grubtheme_vinceliuice
 register_utility "Catppuccin GRUB Theme" install_grubtheme_catppuccin check_grubtheme_catppuccin  uninstall_grubtheme_catppuccin  update_grubtheme_catppuccin  get_version_grubtheme_catppuccin
@@ -415,6 +417,7 @@ UTILITY_CATEGORY["Limine"]="Bootloaders"
 UTILITY_CATEGORY["systemd-boot"]="Bootloaders"
 UTILITY_CATEGORY["Switch Bootloader"]="Bootloaders"
 UTILITY_CATEGORY["Configure Bootloader"]="Bootloaders"
+UTILITY_CATEGORY["GRUB Theme Selector"]="Bootloaders"
 UTILITY_CATEGORY["Distro GRUB Themes"]="Bootloaders"
 UTILITY_CATEGORY["vinceliuice GRUB Themes"]="Bootloaders"
 UTILITY_CATEGORY["Catppuccin GRUB Theme"]="Bootloaders"
@@ -683,6 +686,7 @@ UTILITY_SUBCATEGORY["GDM"]="Display Managers"
 UTILITY_SUBCATEGORY["LightDM"]="Display Managers"
 UTILITY_SUBCATEGORY["ly"]="Display Managers"
 UTILITY_SUBCATEGORY["LXDM"]="Display Managers"
+UTILITY_SUBCATEGORY["GRUB Theme Selector"]="GRUB Themes"
 UTILITY_SUBCATEGORY["Distro GRUB Themes"]="GRUB Themes"
 UTILITY_SUBCATEGORY["vinceliuice GRUB Themes"]="GRUB Themes"
 UTILITY_SUBCATEGORY["Catppuccin GRUB Theme"]="GRUB Themes"
@@ -743,6 +747,7 @@ UTILITY_DESCRIPTION["systemd-boot"]="Lightweight EFI-only bootloader (formerly g
 UTILITY_DESCRIPTION["Switch Bootloader"]="Interactively switch between GRUB, Limine, and systemd-boot. Detects your active bootloader, installs the chosen replacement, deploys it to disk or the EFI partition, and optionally removes the old one. Always snapshot before switching."
 UTILITY_DESCRIPTION["Configure Bootloader"]="Configure your active bootloader. GRUB: set timeout, kernel parameters, regenerate config, or edit /etc/default/grub. systemd-boot: edit loader.conf, set default entry, manage boot entries. Limine: edit limine.conf, redeploy to disk. All: rebuild missing initramfs images for kernels the bootloader silently dropped."
 # GRUB Themes — installed into GRUB's themes dir, set via GRUB_THEME= in /etc/default/grub, then grub.cfg is regenerated. Require GRUB to be the active bootloader and an internet connection.
+UTILITY_DESCRIPTION["GRUB Theme Selector"]="Switch the active GRUB theme without reinstalling. Lists the themes already installed in GRUB's themes directory (plus the stock no-theme menu), marks the one that is currently active, and points GRUB_THEME= at your choice before regenerating grub.cfg. Requires GRUB."
 UTILITY_DESCRIPTION["Distro GRUB Themes"]="Per-distro logo boot themes from AdisonCavani/distro-grub-themes. Picks the theme matching your distribution (falling back to the first available), installs it into GRUB's themes directory, and activates it. Requires GRUB and an internet connection."
 UTILITY_DESCRIPTION["vinceliuice GRUB Themes"]="Polished GRUB themes from vinceliuice/grub2-themes. Runs the upstream installer to set up the 'tela' variant by default (vimix, stylish, whitesur, and slaze are also available); the installer copies the theme, edits /etc/default/grub, and regenerates the config. Requires GRUB and an internet connection."
 UTILITY_DESCRIPTION["Catppuccin GRUB Theme"]="The soothing pastel Catppuccin theme for GRUB (catppuccin/grub). Installs the 'mocha' flavor by default (latte, frappe, and macchiato are in the repo) into GRUB's themes directory and activates it. Requires GRUB and an internet connection."

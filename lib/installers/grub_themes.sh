@@ -132,6 +132,18 @@ _grub_theme_status() {
     [[ "$(_grub_active_theme)" == *"/${1}/"* ]] && echo "active" || true
 }
 
+# List installed theme directories: every subdir of the themes dir that holds a
+# theme.txt. Echoes one absolute directory path (no trailing slash) per line.
+_grub_list_installed_themes() {
+    local themes_dir; themes_dir="$(_grub_themes_dir)"
+    [[ -d "$themes_dir" ]] || return 0
+    local d
+    for d in "$themes_dir"/*/; do
+        [[ -f "${d}theme.txt" ]] || continue
+        printf '%s\n' "${d%/}"
+    done
+}
+
 # Download a GitHub repo tarball, trying each candidate branch, and extract it.
 # On success sets _GRUB_SRC to the extracted top-level directory.
 #   $1 = label   $2 = owner/repo   $3 = tmp dir   $4.. = branches to try
@@ -311,3 +323,99 @@ check_grubtheme_hyperfluent()      { [[ -d "$(_grub_themes_dir)/hyperfluent" ]];
 uninstall_grubtheme_hyperfluent()  { _grub_uninstall_theme "HyperFluent GRUB Theme" "hyperfluent"; }
 update_grubtheme_hyperfluent()     { install_grubtheme_hyperfluent; }
 get_version_grubtheme_hyperfluent(){ _grub_theme_status "hyperfluent"; }
+
+# ----------------------------------------------------------------------------
+# GRUB Theme Selector
+# GRUB only ever renders the single theme that GRUB_THEME= points at, with no
+# native runtime picker. This action lists the themes already installed under
+# the GRUB themes dir (plus the stock no-theme menu), marks the active one, and
+# switches GRUB_THEME= to the chosen entry — no re-download needed. Switching
+# is just _grub_set_theme/_grub_clear_theme, which also regenerate grub.cfg.
+# ----------------------------------------------------------------------------
+install_grubtheme_selector() {
+    _grub_themes_require_grub || return 1
+
+    echo ""
+    echo "${BOLD}${CYAN}════════════════════════════════════════════════════════════════${RESET}"
+    echo "${BOLD}${CYAN}  GRUB Theme Selector                                           ${RESET}"
+    echo "${BOLD}${CYAN}════════════════════════════════════════════════════════════════${RESET}"
+    echo ""
+
+    local active; active="$(_grub_active_theme)"
+    local -a dirs=()
+    local d
+    while IFS= read -r d; do
+        [[ -n "$d" ]] && dirs+=("$d")
+    done < <(_grub_list_installed_themes)
+
+    if [[ -n "$active" ]]; then
+        echo "  Current theme: ${BOLD}$(basename "$(dirname "$active")")${RESET}"
+    else
+        echo "  Current theme: ${BOLD}default GRUB menu (no theme)${RESET}"
+    fi
+    echo ""
+
+    if (( ${#dirs[@]} == 0 )); then
+        warn "No GRUB themes are installed under $(_grub_themes_dir)."
+        info "Install one from the GRUB Themes menu first."
+        # Still let the user revert to the stock menu if a stale GRUB_THEME is set.
+        [[ -z "$active" ]] && return 0
+    fi
+
+    echo "  Available themes:"
+    echo ""
+    # Option 1 is always the stock no-theme menu; installed themes follow.
+    local def_tag=""
+    [[ -z "$active" ]] && def_tag=" ${GREEN}(active)${RESET}"
+    echo "    1) Default GRUB menu (no theme)${def_tag}"
+    local i
+    for ((i = 0; i < ${#dirs[@]}; i++)); do
+        local tag=""
+        [[ "$active" == "${dirs[$i]}/theme.txt" ]] && tag=" ${GREEN}(active)${RESET}"
+        echo "    $((i + 2))) $(basename "${dirs[$i]}")${tag}"
+    done
+    echo ""
+    echo "    0) Cancel"
+    echo ""
+
+    local total=$(( ${#dirs[@]} + 1 ))
+    local choice
+    while true; do
+        read -rp "  Select theme to activate [0-${total}]: " choice < /dev/tty
+        [[ "$choice" == "0" ]] && { echo "${YELLOW}  Cancelled.${RESET}"; return 2; }
+        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= total )); then break; fi
+        echo "${RED}  Invalid selection.${RESET}"
+    done
+
+    echo ""
+    if (( choice == 1 )); then
+        if [[ -z "$active" ]]; then
+            info "The default GRUB menu is already active. No changes made."
+            return 0
+        fi
+        _grub_clear_theme
+        info "Reverted to the default GRUB menu. Reboot to see it."
+        return 0
+    fi
+
+    local chosen="${dirs[$((choice - 2))]}"
+    if [[ "$active" == "${chosen}/theme.txt" ]]; then
+        info "$(basename "$chosen") is already the active theme. No changes made."
+        return 0
+    fi
+    _grub_set_theme "${chosen}/theme.txt"
+    info "$(basename "$chosen") set as the GRUB theme. Reboot to see it."
+    return 0
+}
+
+# Run-action: never "installed", so it always shows as a runnable entry; the
+# status column reflects the active theme via get_version below.
+update_grubtheme_selector()      { install_grubtheme_selector; }
+get_version_grubtheme_selector() {
+    local active; active="$(_grub_active_theme)"
+    if [[ -n "$active" ]]; then
+        basename "$(dirname "$active")"
+    else
+        echo "default menu"
+    fi
+}
