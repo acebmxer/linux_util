@@ -722,7 +722,7 @@ UTILITY_DESCRIPTION["GRUB"]="GRand Unified Bootloader — the most widely used b
 UTILITY_DESCRIPTION["Limine"]="Modern, portable bootloader supporting BIOS and UEFI (x86_64 and aarch64). Known for its fast startup, clean configuration, and native Limine Boot Protocol used by hobby OS development."
 UTILITY_DESCRIPTION["systemd-boot"]="Lightweight EFI-only bootloader (formerly gummiboot) that is part of systemd. Zero dependencies, simple drop-in entry files, and automatic discovery of installed kernels on systemd-based distributions."
 UTILITY_DESCRIPTION["Switch Bootloader"]="Interactively switch between GRUB, Limine, and systemd-boot. Detects your active bootloader, installs the chosen replacement, deploys it to disk or the EFI partition, and optionally removes the old one. Always snapshot before switching."
-UTILITY_DESCRIPTION["Configure Bootloader"]="Configure your active bootloader. GRUB: set timeout, kernel parameters, regenerate config, or edit /etc/default/grub. systemd-boot: edit loader.conf, set default entry, manage boot entries. Limine: edit limine.conf, redeploy to disk."
+UTILITY_DESCRIPTION["Configure Bootloader"]="Configure your active bootloader. GRUB: set timeout, kernel parameters, regenerate config, or edit /etc/default/grub. systemd-boot: edit loader.conf, set default entry, manage boot entries. Limine: edit limine.conf, redeploy to disk. All: rebuild missing initramfs images for kernels the bootloader silently dropped."
 
 # Desktop Environments
 UTILITY_DESCRIPTION["Budgie Desktop"]="Modern, polished desktop from the Solus project built on the GNOME stack, featuring a clean layout and the unique Raven notification and settings sidebar."

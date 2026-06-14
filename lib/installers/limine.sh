@@ -16,6 +16,18 @@ check_limine() {
 
 install_limine() {
     info "Installing Limine bootloader..."
+
+    # Not supported on Debian/Ubuntu: those distros maintain GRUB entries
+    # automatically on kernel updates (apt hooks), but have no equivalent hook to
+    # keep a Limine config in sync, so its menu would silently go stale after the
+    # next kernel install. Stick with GRUB there.
+    if [[ "$DISTRO_FAMILY" == "debian" ]]; then
+        warn "Limine is not supported on Debian/Ubuntu by this tool."
+        warn "Debian/Ubuntu don't regenerate a Limine config on kernel updates, so its"
+        warn "menu would go stale. Use GRUB on Debian/Ubuntu."
+        return 1
+    fi
+
     ensure_tools
 
     local version arch tmpdir
@@ -88,6 +100,10 @@ uninstall_limine() {
 
 update_limine() {
     info "Updating Limine..."
+    if [[ "$DISTRO_FAMILY" == "debian" ]]; then
+        warn "Limine is not supported on Debian/Ubuntu by this tool."
+        return 1
+    fi
     install_limine
 }
 

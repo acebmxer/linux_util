@@ -122,6 +122,90 @@ _discover_kernels() {
     done
 }
 
+# _rebuild_initramfs builds an initramfs/initramdisk for one kernel version using
+# the distro's native generator. The version string is the module directory name
+# (the suffix after vmlinuz-, e.g. 7.1.0-070100rc7-generic).
+_rebuild_initramfs() {
+    local _ver="$1"
+    case "$DISTRO_FAMILY" in
+        debian)
+            sudo update-initramfs -c -k "$_ver" ;;
+        fedora|rhel|suse)
+            sudo dracut --force "/boot/initramfs-${_ver}.img" "$_ver" ;;
+        arch)
+            if command -v mkinitcpio &>/dev/null; then
+                sudo mkinitcpio -g "/boot/initramfs-${_ver}.img" -k "$_ver"
+            elif command -v dracut &>/dev/null; then
+                sudo dracut --force "/boot/initramfs-${_ver}.img" "$_ver"
+            else
+                warn "No initramfs generator (mkinitcpio or dracut) found."; return 1
+            fi ;;
+        *)
+            warn "Unknown distro family; cannot rebuild initramfs automatically."; return 1 ;;
+    esac
+}
+
+# _repair_missing_initramfs finds installed kernels in /boot that have no matching
+# initramfs and rebuilds it, then regenerates the active bootloader's config so
+# the recovered kernels reappear in the menu. This fixes kernels installed without
+# an initramfs (e.g. some mainline .deb packages), which a bootloader otherwise
+# silently drops — exactly the case where a freshly installed kernel never shows.
+_repair_missing_initramfs() {
+    local _vmlinuz _initrd _label
+    local -a _to_fix=()
+    while IFS='|' read -r _vmlinuz _initrd _label; do
+        [[ -f "$_vmlinuz" ]] || continue
+        # Skip the bare /boot/vmlinuz symlink (no version → can't name an initramfs).
+        [[ "$_label" == "Linux" ]] && continue
+        [[ -z "$_initrd" ]] && _to_fix+=("$_label")
+    done < <(_discover_kernels)
+
+    if (( ${#_to_fix[@]} == 0 )); then
+        info "All installed kernels already have a matching initramfs."
+        return 0
+    fi
+
+    warn "Found ${#_to_fix[@]} kernel(s) in /boot with no initramfs:"
+    local _ver
+    for _ver in "${_to_fix[@]}"; do echo "    - ${_ver}"; done
+    echo ""
+    warn "Without an initramfs the bootloader silently drops these kernels from its menu."
+    echo ""
+
+    local _go
+    while true; do
+        read -n 1 -rp "  Rebuild initramfs for the above kernel(s)? (Y/n) " _go < /dev/tty; echo ""
+        [[ $'\e' == "$_go" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+        _go="${_go:-Y}"
+        case "$_go" in
+            y|Y) break ;;
+            n|N) info "No changes made."; return 0 ;;
+            *) echo "  Please press Y or N." ;;
+        esac
+    done
+
+    local _fixed=0
+    for _ver in "${_to_fix[@]}"; do
+        info "Rebuilding initramfs for ${_ver}..."
+        if _rebuild_initramfs "$_ver"; then
+            ((_fixed++))
+        else
+            warn "Failed to build initramfs for ${_ver}."
+        fi
+    done
+    info "Rebuilt ${_fixed}/${#_to_fix[@]} initramfs image(s)."
+
+    if (( _fixed > 0 )); then
+        info "Regenerating the active bootloader's config..."
+        case "$(_detect_current_bootloader)" in
+            grub)         _regenerate_grub_config ;;
+            limine)       _generate_limine_config ;;
+            systemd-boot) _generate_systemd_boot_config ;;
+            *)            warn "Could not detect the active bootloader; regenerate its config manually." ;;
+        esac
+    fi
+}
+
 # _generate_limine_config gives a freshly-deployed Limine a working menu.
 _generate_limine_config() {
     # Prefer a distro-native generator when one is installed.
@@ -411,8 +495,15 @@ setup_switch_bootloader() {
     echo "  Current bootloader: ${BOLD}$(_bl_display_name "$_current")${RESET}"
     echo ""
 
-    local -a _names=("GRUB" "Limine" "systemd-boot")
-    local -a _keys=("grub" "limine" "systemd-boot")
+    # Limine and systemd-boot are not offered on Debian/Ubuntu: neither gets its
+    # menu regenerated on kernel updates there, so entries would silently go
+    # stale. GRUB is the only integrated choice on the Debian family.
+    local -a _names=("GRUB")
+    local -a _keys=("grub")
+    if [[ "$DISTRO_FAMILY" != "debian" ]]; then
+        _names+=("Limine" "systemd-boot")
+        _keys+=("limine" "systemd-boot")
+    fi
 
     echo "  Available bootloaders:"
     echo ""
@@ -575,6 +666,7 @@ _configure_grub_menu() {
         echo "    3) Edit kernel parameters"
         echo "    4) Edit ${_grub_defaults}"
         echo "    5) Reinstall / redeploy GRUB to disk"
+        echo "    6) Rebuild missing initramfs images"
         echo ""
         echo "    0) Done"
         echo ""
@@ -639,6 +731,9 @@ _configure_grub_menu() {
             5)
                 _deploy_grub
                 ;;
+            6)
+                _repair_missing_initramfs
+                ;;
             0)
                 return 0 ;;
             *)
@@ -664,6 +759,7 @@ _configure_limine_menu() {
         echo "    1) Edit limine.conf (${_conf_label})"
         echo "    2) Redeploy to disk (BIOS: limine bios-install)"
         echo "    3) Show installed Limine files"
+        echo "    4) Rebuild missing initramfs images"
         echo ""
         echo "    0) Done"
         echo ""
@@ -690,6 +786,9 @@ _configure_limine_menu() {
             3)
                 echo "  Files in ${_LIMINE_INSTALL_DIR}:"
                 ls -lh "$_LIMINE_INSTALL_DIR" 2>/dev/null || warn "Directory not found: ${_LIMINE_INSTALL_DIR}"
+                ;;
+            4)
+                _repair_missing_initramfs
                 ;;
             0)
                 return 0 ;;
@@ -720,6 +819,7 @@ _configure_systemd_boot_menu() {
         echo "    4) Set boot timeout"
         echo "    5) List boot entries"
         echo "    6) Update systemd-boot (bootctl update)"
+        echo "    7) Rebuild missing initramfs images"
         echo ""
         echo "    0) Done"
         echo ""
@@ -797,6 +897,9 @@ _configure_systemd_boot_menu() {
                 ;;
             6)
                 sudo bootctl update && info "systemd-boot updated." || warn "bootctl update failed."
+                ;;
+            7)
+                _repair_missing_initramfs
                 ;;
             0)
                 return 0 ;;

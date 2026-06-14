@@ -10,6 +10,16 @@ check_systemd_boot() {
 install_systemd_boot() {
     info "Installing systemd-boot..."
 
+    # Not supported on Debian/Ubuntu: they don't run kernel-install hooks to
+    # generate loader entries on kernel updates, so the boot menu would go stale
+    # after the next kernel install. GRUB is the integrated choice there.
+    if [[ "$DISTRO_FAMILY" == "debian" ]]; then
+        warn "systemd-boot is not supported on Debian/Ubuntu by this tool."
+        warn "Debian/Ubuntu don't run kernel-install hooks to maintain its entries on"
+        warn "kernel updates, so the boot menu would go stale. Use GRUB on Debian/Ubuntu."
+        return 1
+    fi
+
     if ! command -v bootctl &>/dev/null; then
         # bootctl ships with systemd; install systemd if missing
         case "$DISTRO_FAMILY" in
@@ -42,6 +52,10 @@ uninstall_systemd_boot() {
 
 update_systemd_boot() {
     info "Updating systemd-boot..."
+    if [[ "$DISTRO_FAMILY" == "debian" ]]; then
+        warn "systemd-boot is not supported on Debian/Ubuntu by this tool."
+        return 1
+    fi
     if command -v bootctl &>/dev/null; then
         sudo bootctl update
         info "systemd-boot updated."
