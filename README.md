@@ -317,6 +317,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | Utility | Description |
 |---------|-------------|
 | **AnyDesk** | Remote desktop application *(Remote Access)* |
+| **Cockpit** | Web-based server management console at `https://<host>:9090`; enables `cockpit.socket` and opens the firewall port *(Remote Access)* |
 | **Devolutions RDM** | Remote Desktop Manager — Cloudsmith repo / AUR / flatpak / snap *(Remote Access)* |
 | **Enable RDP** | Enables Remote Desktop Protocol access via XRDP server *(Remote Access)* |
 | **OpenSSH Server** | Secure Shell server for remote access *(Remote Access)* |

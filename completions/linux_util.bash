@@ -14,6 +14,7 @@ CachyOS Kernel Manager
 Chromium
 Cinnamon Desktop
 Claude Code
+Cockpit
 Command-Not-Found Prompt
 COSMIC Desktop
 Create Snapshot

@@ -131,6 +131,7 @@ register_utility "Intel CPU Microcode & Thermal" install_intel_chipset_drivers c
 register_utility "Chromium"            install_chromium         check_chromium         uninstall_chromium         update_chromium            get_version_chromium
 register_utility "ClamAV"              install_clamav           check_clamav           uninstall_clamav           update_clamav              get_version_clamav
 register_utility "Claude Code"         install_claude_code      check_claude_code      uninstall_claude_code      update_claude_code         get_version_claude_code
+register_utility "Cockpit"             install_cockpit          check_cockpit          uninstall_cockpit          update_cockpit             get_version_cockpit
 register_utility "Cursor IDE"          install_cursor           check_cursor           uninstall_cursor           update_cursor              get_version_cursor
 register_utility "DBeaver"             install_dbeaver          check_dbeaver          uninstall_dbeaver          update_dbeaver             get_version_dbeaver
 
@@ -484,6 +485,7 @@ UTILITY_CATEGORY["Brave Origin"]="Internet"
 UTILITY_CATEGORY["Btop"]="System Tools"
 UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
+UTILITY_CATEGORY["Cockpit"]="Remote Admin Tools"
 UTILITY_CATEGORY["Cursor IDE"]="Development"
 UTILITY_CATEGORY["DBeaver"]="Development"
 UTILITY_CATEGORY["Devolutions RDM"]="Remote Admin Tools"
@@ -616,6 +618,7 @@ UTILITY_SUBCATEGORY["Termius SSH Client"]="Remote Access"
 UTILITY_SUBCATEGORY["OpenSSH Server"]="Remote Access"
 UTILITY_SUBCATEGORY["Devolutions RDM"]="Remote Access"
 UTILITY_SUBCATEGORY["Enable RDP"]="Remote Access"
+UTILITY_SUBCATEGORY["Cockpit"]="Remote Access"
 UTILITY_SUBCATEGORY["PIA VPN"]="VPN"
 UTILITY_SUBCATEGORY["ProtonVPN"]="VPN"
 UTILITY_SUBCATEGORY["Tailscale"]="VPN"

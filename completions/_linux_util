@@ -16,6 +16,7 @@ _linux_util_utilities=(
     'Chromium'
     'Cinnamon Desktop'
     'Claude Code'
+    'Cockpit'
     'Command-Not-Found Prompt'
     'COSMIC Desktop'
     'Create Snapshot'
