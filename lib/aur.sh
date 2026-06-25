@@ -21,7 +21,8 @@ _aur_helper_run() {
 }
 
 aur_install() {
-    _aur_helper_run -S --noconfirm "$@" || { echo "Error: No AUR helper found. Please install yay or paru first."; return 1; }
+    has_aur_helper || { echo "Error: No AUR helper found. Please install yay or paru first."; return 1; }
+    _aur_helper_run -S --noconfirm "$@" || { echo "Error: Failed to install from AUR: $*"; return 1; }
 }
 
 aur_upgrade() {

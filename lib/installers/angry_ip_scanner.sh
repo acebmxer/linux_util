@@ -46,7 +46,7 @@ install_angry_ip_scanner() {
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
-            aur_ensure angryipscanner
+            aur_ensure ipscan
             ;;
         suse)
             local url tmpfile
@@ -82,7 +82,7 @@ update_angry_ip_scanner() {
     info "Updating Angry IP Scanner..."
     case "$DISTRO_FAMILY" in
         debian|fedora|rhel|suse) install_angry_ip_scanner ;;
-        arch) aur_ensure angryipscanner ;;
+        arch) aur_ensure ipscan ;;
     esac
 }
 
