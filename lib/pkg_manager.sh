@@ -1327,14 +1327,39 @@ pkg_distro_upgrade() {
             fi
 
             info "Downloading upgrade packages for Fedora ${target_version}..."
-            if sudo dnf system-upgrade download --releasever="$target_version" -y; then
-                info "Upgrade packages downloaded for Fedora ${target_version}."
-                warn "A reboot is required to apply the upgrade. The system will prompt for reboot after cleanup."
-                return 0
-            else
+            if ! sudo dnf system-upgrade download --releasever="$target_version" -y; then
                 error "Failed to download upgrade packages for Fedora ${target_version}."
                 return 1
             fi
+            info "Upgrade packages downloaded for Fedora ${target_version}."
+
+            # The download step alone does NOT apply the upgrade. Fedora performs the
+            # release upgrade in an offline transaction that only runs via the special
+            # 'dnf system-upgrade reboot' command — a normal reboot leaves the system on
+            # the current release. Trigger that reboot now to actually apply the upgrade.
+            warn "The upgrade will be applied in an offline transaction during reboot."
+            warn "The system will reboot into a special upgrade environment and may take"
+            warn "several minutes. Do NOT power off the machine during this process."
+            echo ""
+            local fedora_confirm=""
+            while true; do
+                read -rp "Reboot now to apply the upgrade to Fedora ${target_version}? (y/N): " fedora_confirm < /dev/tty
+                case "${fedora_confirm,,}" in
+                    y|yes)
+                        info "Rebooting into the Fedora upgrade environment..."
+                        sudo dnf system-upgrade reboot
+                        # If reboot was scheduled successfully, this point may not be reached.
+                        return 0
+                        ;;
+                    n|no|'')
+                        info "Reboot deferred. The upgrade packages are downloaded but NOT yet applied."
+                        warn "To complete the upgrade later, run: sudo dnf system-upgrade reboot"
+                        warn "A normal reboot will NOT apply the upgrade."
+                        return 0
+                        ;;
+                    *) echo "  Please enter Y or N." ;;
+                esac
+            done
             ;;
         opensuse-leap)
             info "Upgrading openSUSE Leap to ${target_version}..."
