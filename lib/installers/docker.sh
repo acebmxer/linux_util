@@ -42,9 +42,30 @@ setup_install_docker() {
             [[ "$DISTRO_ID" == "fedora" ]] && docker_repo="https://download.docker.com/linux/fedora/docker-ce.repo" || docker_repo="https://download.docker.com/linux/centos/docker-ce.repo"
 
             run_as_root curl -fsSLo /etc/yum.repos.d/docker-ce.repo "${docker_repo}"
-            run_as_root "$PKG_MGR" install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-            run_as_root systemctl start docker
-            run_as_root systemctl enable docker
+
+            # Docker's repo file uses $releasever in its baseurl. If $releasever
+            # resolves to something Docker doesn't publish (e.g. "rawhide", which can
+            # be left set by mainline-kernel Coprs), repo metadata 404s and the install
+            # silently produces "No match for argument: docker-ce". Pin $releasever to
+            # the numeric Fedora release for the Docker repo only, so the install works
+            # regardless of a system-wide rawhide override.
+            if [[ "$DISTRO_ID" == "fedora" ]]; then
+                local _fed_ver
+                _fed_ver=$(rpm -E %fedora 2>/dev/null)
+                if [[ "$_fed_ver" == "rawhide" || -z "$_fed_ver" ]]; then
+                    _fed_ver="${DISTRO_VERSION_ID:-$(. /etc/os-release && echo "$VERSION_ID")}"
+                fi
+                if [[ -n "$_fed_ver" ]]; then
+                    run_as_root sed -i "s|\$releasever|${_fed_ver}|g" /etc/yum.repos.d/docker-ce.repo
+                fi
+            fi
+
+            if ! run_as_root "$PKG_MGR" install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                error "Failed to install Docker packages. Check the repository errors above."
+                return 1
+            fi
+            run_as_root systemctl start docker || warn "Failed to start docker.service."
+            run_as_root systemctl enable docker || warn "Failed to enable docker.service."
             ;;
 
         zypper)
@@ -67,6 +88,12 @@ setup_install_docker() {
 
     run_as_root_sh "groupadd docker 2>/dev/null || true"
     run_as_root usermod -aG docker "${USER}" || warn "Failed to add ${USER} to docker group — you may need to run docker with sudo."
+
+    # Verify the install actually produced a working docker binary before claiming success.
+    if ! command -v docker &>/dev/null; then
+        error "Docker installation did not produce a 'docker' binary."
+        return 1
+    fi
 
     info "Docker installed successfully. You may need to log out and back in for group membership to take effect."
 
