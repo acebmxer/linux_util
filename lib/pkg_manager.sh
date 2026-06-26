@@ -947,10 +947,35 @@ pkg_check_upgrade_available() {
             return 1
             ;;
         fedora)
-            # Try next release version — use repoquery to check if the next version's repos exist
-            # without downloading any packages
+            # Offer the next release ONLY if it is an actually-released stable version.
+            #
+            # Fedora stands up the base repos for the next release while it is still
+            # "Branched" (pre-release / under development), so merely checking that the
+            # repo exists is NOT enough — it returns true for an unreleased version and
+            # would push users onto a development release whose ecosystem (Docker, etc.)
+            # has no support yet. Authoritative state comes from Fedora's Bodhi API,
+            # where a released version is marked "current".
             local next_ver=$(( DISTRO_VERSION_ID + 1 ))
-            if sudo dnf --releasever="$next_ver" --repo=fedora repoquery --latest-limit=1 fedora-release &>/dev/null; then
+
+            local bodhi_state
+            bodhi_state=$(curl -sf --max-time 10 \
+                "https://bodhi.fedoraproject.org/releases/F${next_ver}" 2>/dev/null \
+                | grep -oE '"state"[[:space:]]*:[[:space:]]*"[^"]+"' \
+                | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+
+            if [[ "$bodhi_state" == "current" ]]; then
+                echo "$next_ver"
+                return 0
+            elif [[ -n "$bodhi_state" ]]; then
+                # Reached Bodhi and it says the next version is pending/frozen/etc.
+                # (not yet released) — do not offer it.
+                return 1
+            fi
+
+            # Bodhi unreachable: fall back to the repo-existence check, but require the
+            # standard release URL to resolve (a released version is always mirrored).
+            if curl -sf --max-time 10 --head \
+                "https://dl.fedoraproject.org/pub/fedora/linux/releases/${next_ver}/Everything/x86_64/os/repodata/repomd.xml" &>/dev/null; then
                 echo "$next_ver"
                 return 0
             fi
