@@ -7,10 +7,45 @@
 check_lact() { _check_standard lact lact ""; }
 
 _lact_latest_deb_url() {
-    curl -fsSL "https://api.github.com/repos/ilya-zlobintsev/LACT/releases/latest" \
+    local all_debs
+    all_debs=$(curl -fsSL "https://api.github.com/repos/ilya-zlobintsev/LACT/releases/latest" \
         | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+\.deb' \
-        | grep -v 'dbg\|dev\|doc' \
-        | head -1
+        | grep -v 'dbg\|dev\|doc\|headless')
+
+    # Build distro-specific suffix: ubuntu-2604, debian-13, etc.
+    # LACT names Ubuntu builds by major+minor only (e.g. ubuntu-2604), so strip
+    # any appended point release (DISTRO_VERSION_ID may be "26.04.0") before
+    # compacting — otherwise "26.04.0" → "26040" and the exact match is missed.
+    local distro_suffix=""
+    case "$DISTRO_ID" in
+        ubuntu|kubuntu|linuxmint|pop|neon)
+            local ver_major_minor ver_compact
+            ver_major_minor=$(echo "$DISTRO_VERSION_ID" | grep -oP '^[0-9]+\.[0-9]+')
+            ver_compact=$(echo "$ver_major_minor" | tr -d '.')
+            distro_suffix="ubuntu-${ver_compact}"
+            ;;
+        debian)
+            distro_suffix="debian-${DISTRO_VERSION_ID%%.*}"
+            ;;
+    esac
+
+    # Exact match first
+    if [[ -n "$distro_suffix" ]]; then
+        local matched
+        matched=$(echo "$all_debs" | grep "${distro_suffix}" | head -1)
+        [[ -n "$matched" ]] && { echo "$matched"; return 0; }
+    fi
+
+    # For Ubuntu-family systems with no exact match, pick the newest available
+    # ubuntu-* build (closest compatible ABI), then fall back to debian-*
+    if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID_LIKE" == *"ubuntu"* ]]; then
+        local ubuntu_deb
+        ubuntu_deb=$(echo "$all_debs" | grep "ubuntu-" | sort -V | tail -1)
+        [[ -n "$ubuntu_deb" ]] && { echo "$ubuntu_deb"; return 0; }
+    fi
+
+    # Generic fallback
+    echo "$all_debs" | head -1
 }
 
 install_lact() {
