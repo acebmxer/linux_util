@@ -51,16 +51,26 @@ install_joplin() {
             fi
             ;;
         fedora|rhel)
-            if ! pkg_check_installed fuse; then
-                info "Installing fuse (required for AppImage support)..."
-                pkg_install fuse
-            fi
+            # `fuse` only ships the fusermount utilities and does NOT depend on
+            # `fuse-libs`, which provides libfuse.so.2 — the AppImage runtime
+            # needs both, so check and install each individually.
+            local fuse_pkg
+            for fuse_pkg in fuse fuse-libs; do
+                if ! pkg_check_installed "$fuse_pkg"; then
+                    info "Installing ${fuse_pkg} (required for AppImage support)..."
+                    pkg_install "$fuse_pkg"
+                fi
+            done
             ;;
         suse)
-            if ! pkg_check_installed fuse; then
-                info "Installing fuse (required for AppImage support)..."
-                pkg_install fuse
-            fi
+            # Same split as Fedora: `fuse` has the utilities, `libfuse2` the library.
+            local fuse_pkg
+            for fuse_pkg in fuse libfuse2; do
+                if ! pkg_check_installed "$fuse_pkg"; then
+                    info "Installing ${fuse_pkg} (required for AppImage support)..."
+                    pkg_install "$fuse_pkg"
+                fi
+            done
             ;;
     esac
 

@@ -59,7 +59,7 @@ install_bitwarden() {
         *)
             if has_snap; then
                 sudo snap install bitwarden
-            elif has_flatpak; then
+            elif ensure_flatpak; then
                 flatpak install -y flathub com.bitwarden.desktop
             else
                 echo "Error: snap or flatpak is required to install Bitwarden."

@@ -30,12 +30,7 @@ install_termius() {
         *)
             if has_snap; then
                 sudo snap install termius-app
-            elif has_flatpak; then
-                # Ensure flathub remote is properly configured
-                if ! flatpak remotes | grep -q flathub; then
-                    echo "Adding flathub remote..."
-                    sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-                fi
+            elif ensure_flatpak; then
                 sudo flatpak install -y flathub com.termius.Termius
             else
                 echo "Error: snap or flatpak is required to install Termius on ${DISTRO_NAME}."

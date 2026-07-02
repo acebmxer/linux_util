@@ -1647,6 +1647,23 @@ has_flatpak() {
     command -v flatpak &>/dev/null
 }
 
+# Ensure flatpak is usable: install it from the native repos if missing and
+# make sure the flathub remote is configured. Returns 1 if flatpak cannot be
+# provided (installers should fall back to their own error handling).
+ensure_flatpak() {
+    if ! has_flatpak; then
+        info "Flatpak not found. Installing flatpak..."
+        pkg_install flatpak || return 1
+        has_flatpak || return 1
+    fi
+    if ! flatpak remotes 2>/dev/null | grep -q flathub; then
+        info "Adding flathub remote..."
+        sudo flatpak remote-add --if-not-exists flathub \
+            https://flathub.org/repo/flathub.flatpakrepo || return 1
+    fi
+    return 0
+}
+
 # Returns 0 if a Flatpak app matching the given ID (or grep pattern) is installed.
 flatpak_is_installed() {
     has_flatpak && flatpak list 2>/dev/null | grep -qi "$1"
