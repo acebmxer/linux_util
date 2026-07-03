@@ -197,6 +197,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Restore Snapshot (Snapper)** | Restores from a Snapper snapshot |
 | **Delete Snapshot (Snapper)** | Lists and deletes existing Snapper snapshots |
 | **Déjà Dup** | Simple GNOME backup tool with cloud and local storage support |
+| **Kup** | KDE backup tool — incremental (bup) or synchronized (rsync) backups via System Settings |
 | **Vorta** | Borg Backup GUI — deduplicating, encrypted backups |
 | **Duplicati** | Browser-based backup tool with cloud provider support |
 

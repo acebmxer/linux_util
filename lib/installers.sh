@@ -172,6 +172,10 @@ register_utility "Kdenlive"            install_kdenlive         check_kdenlive  
 register_utility "KMail"                      install_kmail                        check_kmail                        uninstall_kmail                        update_kmail                         get_version_kmail
 register_utility "Krita"               install_krita            check_krita            uninstall_krita            update_krita               get_version_krita
 register_utility "kubectl"             install_kubectl          check_kubectl          uninstall_kubectl          update_kubectl             get_version_kubectl
+# Kup: KDE backup tool — not packaged for RHEL family (Fedora uses a Copr)
+if [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "Kup"             install_kup              check_kup              uninstall_kup              update_kup                 get_version_kup
+fi
 register_utility "LACT"                install_lact             check_lact             uninstall_lact             update_lact                get_version_lact
 register_utility "LibreOffice"         install_libreoffice      check_libreoffice      uninstall_libreoffice      update_libreoffice         get_version_libreoffice
 register_utility "LibreWolf"           install_librewolf        check_librewolf        uninstall_librewolf        update_librewolf           get_version_librewolf
@@ -548,6 +552,7 @@ UTILITY_CATEGORY["Create Snapshot (Snapper)"]="Backup"
 UTILITY_CATEGORY["Restore Snapshot (Snapper)"]="Backup"
 UTILITY_CATEGORY["Delete Snapshot (Snapper)"]="Backup"
 UTILITY_CATEGORY["Déjà Dup"]="Backup"
+UTILITY_CATEGORY["Kup"]="Backup"
 UTILITY_CATEGORY["Vorta"]="Backup"
 UTILITY_CATEGORY["Duplicati"]="Backup"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
@@ -667,6 +672,7 @@ UTILITY_SUBCATEGORY["Create Snapshot (Snapper)"]="Snapper"
 UTILITY_SUBCATEGORY["Restore Snapshot (Snapper)"]="Snapper"
 UTILITY_SUBCATEGORY["Delete Snapshot (Snapper)"]="Snapper"
 UTILITY_SUBCATEGORY["Déjà Dup"]="File Backup"
+UTILITY_SUBCATEGORY["Kup"]="File Backup"
 UTILITY_SUBCATEGORY["Vorta"]="File Backup"
 UTILITY_SUBCATEGORY["Duplicati"]="File Backup"
 UTILITY_SUBCATEGORY["AMD CPU Microcode & Firmware"]="CPU Microcode"
@@ -902,6 +908,7 @@ UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
 UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS. Install this first to enable Create, Restore, and Delete Snapshot."
 UTILITY_DESCRIPTION["Déjà Dup"]="(GNOME) Simple, beginner-friendly backup tool for backing up files and folders to local drives, network shares, or cloud storage. Uses duplicity under the hood for encrypted, incremental backups."
+UTILITY_DESCRIPTION["Kup"]="(KDE) Backup tool that integrates with Plasma System Settings. Supports incremental versioned backups (via bup) and synchronized folder copies (via rsync) to local drives or external media. On Fedora, installed from the zawertun/kde-kup Copr as it is not in the official repos. Not available for RHEL-based systems."
 UTILITY_DESCRIPTION["Vorta"]="GUI frontend for BorgBackup — a fast, deduplicating backup tool with encryption and compression. Installs both Borg (CLI) and Vorta (GUI). On RHEL-based systems, only BorgBackup is installed via EPEL as Vorta is not packaged there."
 UTILITY_DESCRIPTION["Duplicati"]="Cloud backup tool with a web-based GUI supporting S3, Google Drive, OneDrive, SFTP, and many more backends. Features encryption, deduplication, and scheduling. Installed via Flatpak — run 'Flatpak Setup' first if not already configured."
 UTILITY_DESCRIPTION["Snapper"]="Btrfs and LVM snapshot manager. Supports automatic pre/post snapshots on Arch, openSUSE, Debian/Ubuntu, and Fedora. Conflicts with Timeshift — the installer will prompt to remove it first."
