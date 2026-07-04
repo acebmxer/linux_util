@@ -40,6 +40,12 @@ setup_system_updates() {
     pkg_refresh_interactive
     _pkg_cleanup_stale_releases direct
     pkg_full_upgrade_interactive || return $?
+    # Flatpak apps/runtimes are a separate package system the native manager
+    # never touches, so update them here too (Arch defers this to *-update above).
+    if check_flatpak_setup; then
+        info "Updating Flatpak applications and runtimes..."
+        flatpak update -y
+    fi
     pkg_cleanup_thorough_interactive
     info "System updates completed."
     local _snap_after

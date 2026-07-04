@@ -316,7 +316,7 @@ pkg_clean() {
     case "$PKG_MGR" in
         apt)     "$_run" "Cleaning package cache" sudo apt clean
                  "$_run" "Running apt autoclean"  sudo apt autoclean ;;
-        dnf|yum) "$_run" "Cleaning package cache" sudo "$PKG_MGR" clean all ;;
+        dnf|yum) "$_run" "Cleaning package cache" sudo "$PKG_MGR" clean packages ;;
         pacman)  "$_run" "Cleaning package cache" \
                      bash -c "sudo find /var/cache/pacman/pkg -maxdepth 1 -name 'download-*' -delete 2>/dev/null; sudo pacman -Sc $_nc" ;;
         zypper)  "$_run" "Cleaning package cache" sudo zypper clean -a ;;
@@ -1832,10 +1832,16 @@ download_file() {
 # Returns a hash of the current installed-package state.
 # Used to detect whether updates actually changed anything.
 pkg_snapshot() {
+    local _native _flatpak=""
     case "$PKG_MGR" in
-        apt)     dpkg -l 2>/dev/null | md5sum | awk '{print $1}' ;;
-        dnf|yum) rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' 2>/dev/null | sort | md5sum | awk '{print $1}' ;;
-        pacman)  pacman -Q 2>/dev/null | md5sum | awk '{print $1}' ;;
-        zypper)  rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' 2>/dev/null | sort | md5sum | awk '{print $1}' ;;
+        apt)     _native=$(dpkg -l 2>/dev/null | md5sum | awk '{print $1}') ;;
+        dnf|yum) _native=$(rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' 2>/dev/null | sort | md5sum | awk '{print $1}') ;;
+        pacman)  _native=$(pacman -Q 2>/dev/null | md5sum | awk '{print $1}') ;;
+        zypper)  _native=$(rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' 2>/dev/null | sort | md5sum | awk '{print $1}') ;;
     esac
+    # Include Flatpak commit state so Flatpak-only updates count as a change.
+    if command -v flatpak &>/dev/null; then
+        _flatpak=$(flatpak list --columns=application,active 2>/dev/null | sort | md5sum | awk '{print $1}')
+    fi
+    echo "${_native}:${_flatpak}"
 }
