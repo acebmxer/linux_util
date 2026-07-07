@@ -130,6 +130,9 @@ setup_full_update() {
     info "Performing package updates..."
     _pkg_cleanup_stale_releases direct
     pkg_full_upgrade_interactive || return $?
+    # Device firmware (fwupd/LVFS) is a separate subsystem from the package
+    # manager — apply any pending firmware updates interactively here too.
+    _system_updates_apply_firmware
     pkg_cleanup_thorough_interactive
     info "System update completed."
     local _snap_after

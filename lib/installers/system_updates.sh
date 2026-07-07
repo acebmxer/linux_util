@@ -17,6 +17,33 @@ _system_updates_arch_update_cmd() {
     fi
 }
 
+# Refresh device firmware metadata and apply available updates via fwupd (LVFS).
+# This is a separate subsystem from the native package manager and Flatpak, so
+# neither of those update flows ever touches device firmware (BIOS/UEFI, SSDs,
+# docks, UEFI dbx revocations, etc.). Kept fully interactive: fwupdmgr prompts
+# per-device and asks to reboot when a capsule update needs it — we pass those
+# prompts straight through to the user rather than forcing -y.
+_system_updates_apply_firmware() {
+    command -v fwupdmgr &>/dev/null || return 0
+
+    info "Checking device firmware (fwupd/LVFS)..."
+    # Refresh metadata; --force lets it refresh even if recently done. Non-fatal
+    # on failure (e.g. offline server) — fall through to whatever is cached.
+    sudo fwupdmgr refresh --force < /dev/tty || \
+        warn "Firmware metadata refresh failed; continuing with cached data."
+
+    # If nothing is pending, get-upgrades exits non-zero — skip quietly.
+    if ! sudo fwupdmgr get-upgrades &>/dev/null; then
+        info "No device firmware updates available."
+        return 0
+    fi
+
+    info "Firmware updates are available. fwupd will prompt for each device."
+    # No -y: user answers the per-device and reboot prompts interactively.
+    sudo fwupdmgr update < /dev/tty || \
+        warn "Firmware update did not complete for all devices (see output above)."
+}
+
 # --- System Updates ---
 setup_system_updates() {
     if _system_updates_has_arch_update; then
@@ -46,6 +73,9 @@ setup_system_updates() {
         info "Updating Flatpak applications and runtimes..."
         flatpak update -y
     fi
+    # Device firmware is yet another separate subsystem the package manager and
+    # Flatpak never touch (this is what fwupdmgr's MOTD notice refers to).
+    _system_updates_apply_firmware
     pkg_cleanup_thorough_interactive
     info "System updates completed."
     local _snap_after
@@ -98,12 +128,32 @@ get_version_system_updates() {
             ;;
     esac
 
-    # Return empty if no updates (menu shows no status tag)
-    [[ "$total" -le 0 ]] && return 0
+    # Count pending device firmware updates (fwupd/LVFS). Uses cached metadata
+    # only — no sudo, no network — so it's safe/fast for the menu. Each device
+    # that has a pending upgrade prints exactly one "New version:" line in the
+    # get-upgrades tree output; devices with no update (which also use • bullets)
+    # never print that line, so counting it is an accurate per-device tally.
+    # Non-fatal and skipped entirely if fwupdmgr isn't installed.
+    local firmware=0
+    if command -v fwupdmgr &>/dev/null; then
+        local _fw
+        _fw=$(fwupdmgr get-upgrades 2>/dev/null) || true
+        [[ -n "$_fw" ]] && firmware=$(echo "$_fw" | grep -cE '^[[:space:]]*New version:' || true)
+    fi
+
+    # Return empty if nothing pending at all (menu shows no status tag)
+    [[ "$total" -le 0 && "$firmware" -le 0 ]] && return 0
 
     # Build display string
-    local _out="${total} updates"
-    [[ "$security" -gt 0 ]] && _out+=", ${security} security"
-    [[ "$kernel"   -gt 0 ]] && _out+=", ${kernel} kernel"
+    local _out=""
+    if [[ "$total" -gt 0 ]]; then
+        _out="${total} updates"
+        [[ "$security" -gt 0 ]] && _out+=", ${security} security"
+        [[ "$kernel"   -gt 0 ]] && _out+=", ${kernel} kernel"
+    fi
+    if [[ "$firmware" -gt 0 ]]; then
+        [[ -n "$_out" ]] && _out+=", "
+        _out+="${firmware} firmware"
+    fi
     echo "$_out"
 }
