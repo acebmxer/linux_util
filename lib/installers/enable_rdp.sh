@@ -22,8 +22,14 @@ install_krdp() {
             run_as_root apt-get update
             run_as_root apt-get install -y krdp
             ;;
+        fedora|rhel)
+            run_as_root "$PKG_MGR" install -y krdp
+            ;;
         arch)
             run_as_root pacman -S --noconfirm krdp
+            ;;
+        suse)
+            run_as_root zypper install -y krdp
             ;;
         *)
             error "krdp is not available for ${DISTRO_ID}. Try xrdp instead."
@@ -35,15 +41,44 @@ install_krdp() {
     return 0
 }
 
+# krdp runs as a per-user systemd unit (app-org.kde.krdpserver.service), not a
+# system one, so it must be stopped as the desktop user rather than via sudo.
+stop_krdp_service() {
+    local _user="${SUDO_USER:-${USER}}"
+    [[ -z "$_user" || "$_user" == "root" ]] && return 0
+
+    local _uid
+    _uid=$(id -u "$_user" 2>/dev/null) || return 0
+
+    run_as_user() {
+        if [[ "$(id -un)" == "$_user" ]]; then
+            "$@"
+        else
+            sudo -u "$_user" XDG_RUNTIME_DIR="/run/user/${_uid}" "$@"
+        fi
+    }
+
+    run_as_user systemctl --user stop app-org.kde.krdpserver.service 2>/dev/null || true
+    run_as_user systemctl --user disable app-org.kde.krdpserver.service 2>/dev/null || true
+    unset -f run_as_user
+}
+
 uninstall_krdp() {
     info "Uninstalling krdp..."
+    stop_krdp_service
 
     case "$DISTRO_FAMILY" in
         debian)
             run_as_root apt purge --autoremove -y krdp
             ;;
+        fedora|rhel)
+            run_as_root "$PKG_MGR" remove -y krdp
+            ;;
         arch)
             run_as_root pacman -Rs --noconfirm krdp 2>/dev/null || true
+            ;;
+        suse)
+            run_as_root zypper remove -y krdp
             ;;
         *)
             error "krdp uninstall not supported for ${DISTRO_ID}"
@@ -61,8 +96,14 @@ update_krdp() {
             run_as_root apt-get update
             run_as_root apt-get install -y --only-upgrade krdp
             ;;
+        fedora|rhel)
+            run_as_root "$PKG_MGR" upgrade -y krdp
+            ;;
         arch)
             run_as_root pacman -S --noconfirm krdp
+            ;;
+        suse)
+            run_as_root zypper update -y krdp
             ;;
         *)
             warn "krdp update not supported for ${DISTRO_ID}"
@@ -74,6 +115,11 @@ update_krdp() {
 get_version_krdp() {
     local ver=""
     ver=$(dpkg-query -W -f='${Version}' krdp 2>/dev/null | grep -oP '[0-9]+\.[0-9]+[0-9.]*' | head -1)
+    if [[ -n "$ver" ]]; then
+        echo "$ver"
+        return
+    fi
+    ver=$(rpm -q --qf '%{VERSION}' krdp 2>/dev/null)
     if [[ -n "$ver" ]]; then
         echo "$ver"
         return
@@ -110,16 +156,19 @@ install_enable_rdp() {
 }
 
 uninstall_enable_rdp() {
-    local removed=false
+    local found=false rc=0
     if check_xrdp; then
-        uninstall_xrdp && removed=true
+        found=true
+        uninstall_xrdp || rc=1
     fi
     if check_krdp; then
-        uninstall_krdp && removed=true
+        found=true
+        uninstall_krdp || rc=1
     fi
-    if [[ "$removed" == "false" ]]; then
+    if [[ "$found" == "false" ]]; then
         info "No RDP server found to uninstall."
     fi
+    return $rc
 }
 
 update_enable_rdp() {
