@@ -53,6 +53,18 @@ EOF
             ;;
         fedora)
             run_as_root "$PKG_MGR" install -y xrdp
+
+            # Fedora KDE ships Wayland-only: /usr/share/xsessions is empty and
+            # startplasma-x11 is absent, so xrdp's Xsession chain finds nothing
+            # to exec and the session dies immediately after login.
+            if [[ ! -x /usr/bin/startplasma-x11 ]] && command -v plasmashell >/dev/null 2>&1; then
+                info "KDE detected without an X11 session — installing Plasma X11 packages..."
+                run_as_root "$PKG_MGR" install -y plasma-workspace-x11 kwin-x11
+            fi
+
+            run_as_root firewall-cmd --add-port=3389/tcp --permanent 2>/dev/null || true
+            run_as_root firewall-cmd --reload 2>/dev/null || true
+
             run_as_root systemctl enable xrdp
             run_as_root systemctl start xrdp
             ;;
