@@ -282,6 +282,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Thorium Browser** | Speed-optimized Chromium browser |
 | **Thunderbird** | Mozilla's email client with calendar and PGP |
 | **Tor Browser** | Anonymous browsing via the Tor network |
+| **UniFi Endpoint** | Ubiquiti's UniFi Identity VPN client for UniFi-managed networks — `.deb` / `.rpm` |
 | **Vivaldi Browser** | Highly customizable Chromium browser |
 | **WireGuard Client** | Lightweight VPN client using WireGuard protocol |
 | **WireGuard Server** | Sets up a WireGuard VPN server |
@@ -301,6 +302,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Joplin Client** | Note-taking app with Markdown and sync (AppImage) |
 | **Kdenlive** | Open-source video editor by KDE |
 | **Krita** | Professional digital painting application |
+| **Libation** | Audible audiobook manager — `.deb` / `.rpm` / AUR |
 | **LibreOffice** | Open-source office suite — direct download / native packages / flatpak |
 | **Logseq** | Privacy-first knowledge management and outliner |
 | **Mark Text** | Simple and elegant Markdown editor |

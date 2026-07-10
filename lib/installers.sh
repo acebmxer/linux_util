@@ -177,6 +177,7 @@ if [[ "$DISTRO_FAMILY" != "rhel" ]]; then
     register_utility "Kup"             install_kup              check_kup              uninstall_kup              update_kup                 get_version_kup
 fi
 register_utility "LACT"                install_lact             check_lact             uninstall_lact             update_lact                get_version_lact
+register_utility "Libation"            install_libation         check_libation         uninstall_libation         update_libation            get_version_libation
 register_utility "LibreOffice"         install_libreoffice      check_libreoffice      uninstall_libreoffice      update_libreoffice         get_version_libreoffice
 register_utility "LibreWolf"           install_librewolf        check_librewolf        uninstall_librewolf        update_librewolf           get_version_librewolf
 register_utility "Logseq"              install_logseq           check_logseq           uninstall_logseq           update_logseq              get_version_logseq
@@ -255,6 +256,10 @@ if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAM
     register_utility "duperemove"                install_duperemove       check_duperemove       uninstall_duperemove       update_duperemove          get_version_duperemove
 fi
 register_utility "Tor Browser"         install_tor_browser      check_tor_browser      uninstall_tor_browser      update_tor_browser         get_version_tor_browser
+# UniFi Endpoint: Ubiquiti only ships .deb/.rpm packages (no AUR package)
+if [[ "$DISTRO_FAMILY" != "arch" ]]; then
+    register_utility "UniFi Endpoint"            install_unifi_endpoint   check_unifi_endpoint   uninstall_unifi_endpoint   update_unifi_endpoint      get_version_unifi_endpoint
+fi
 register_utility "Ventoy"              install_ventoy           check_ventoy           uninstall_ventoy           update_ventoy              get_version_ventoy
 register_utility "Virt-Manager"        install_virt_manager     check_virt_manager     uninstall_virt_manager     update_virt_manager        get_version_virt_manager
 register_utility "Visual Studio Code"  install_vscode           check_vscode           uninstall_vscode           update_vscode              get_version_vscode
@@ -576,6 +581,7 @@ UTILITY_CATEGORY["k9s"]="Development"
 UTILITY_CATEGORY["Kdenlive"]="Productivity"
 UTILITY_CATEGORY["Krita"]="Productivity"
 UTILITY_CATEGORY["kubectl"]="Development"
+UTILITY_CATEGORY["Libation"]="Productivity"
 UTILITY_CATEGORY["LibreWolf"]="Internet"
 UTILITY_CATEGORY["Logseq"]="Productivity"
 UTILITY_CATEGORY["Mark Text"]="Productivity"
@@ -591,6 +597,7 @@ UTILITY_CATEGORY["Rustup"]="Development"
 UTILITY_CATEGORY["Slack"]="Internet"
 UTILITY_CATEGORY["Terraform"]="Development"
 UTILITY_CATEGORY["Tor Browser"]="Internet"
+UTILITY_CATEGORY["UniFi Endpoint"]="Internet"
 UTILITY_CATEGORY["Ventoy"]="Disk Utilities"
 UTILITY_CATEGORY["GParted"]="Disk Utilities"
 UTILITY_CATEGORY["Virt-Manager"]="Development"
@@ -627,6 +634,7 @@ UTILITY_SUBCATEGORY["Cockpit"]="Remote Access"
 UTILITY_SUBCATEGORY["PIA VPN"]="VPN"
 UTILITY_SUBCATEGORY["ProtonVPN"]="VPN"
 UTILITY_SUBCATEGORY["Tailscale"]="VPN"
+UTILITY_SUBCATEGORY["UniFi Endpoint"]="VPN"
 UTILITY_SUBCATEGORY["WireGuard Client"]="VPN"
 UTILITY_SUBCATEGORY["WireGuard Server"]="VPN"
 UTILITY_SUBCATEGORY["LibreOffice"]="Office Suites"
@@ -867,6 +875,7 @@ UTILITY_DESCRIPTION["LibreWolf"]="Privacy-hardened Firefox fork with tracking pr
 UTILITY_DESCRIPTION["RustDesk"]="Open-source remote desktop application — self-hostable alternative to AnyDesk and TeamViewer."
 UTILITY_DESCRIPTION["Slack"]="Team messaging and collaboration platform with channels, threads, integrations, and file sharing."
 UTILITY_DESCRIPTION["Tor Browser"]="Privacy browser bundled with the Tor network for anonymous, censorship-resistant browsing."
+UTILITY_DESCRIPTION["UniFi Endpoint"]="Ubiquiti's UniFi Identity VPN client for secure access to UniFi-managed networks — VPN connectivity, WiFi authentication, and credential management."
 UTILITY_DESCRIPTION["WireGuard Server"]="Sets up a WireGuard VPN server for secure remote access to your network."
 UTILITY_DESCRIPTION["Zoom"]="Video conferencing platform for meetings, webinars, and team collaboration."
 
@@ -879,6 +888,7 @@ UTILITY_DESCRIPTION["HandBrake"]="Open-source video transcoder for converting vi
 UTILITY_DESCRIPTION["Inkscape"]="Professional vector graphics editor for creating illustrations, logos, and scalable artwork using SVG."
 UTILITY_DESCRIPTION["Kdenlive"]="KDE's powerful non-linear video editor with multi-track editing, effects, and broad format support."
 UTILITY_DESCRIPTION["Krita"]="Professional digital painting application designed for illustrators, concept artists, and texture artists."
+UTILITY_DESCRIPTION["Libation"]="Open-source Audible audiobook manager for downloading, decrypting, and organizing your audiobook library."
 UTILITY_DESCRIPTION["Logseq"]="Open-source knowledge management and note-taking app based on linked, Markdown-formatted outliner blocks."
 UTILITY_DESCRIPTION["Mark Text"]="Simple, elegant Markdown editor focused on writing speed with live preview and multiple themes."
 UTILITY_DESCRIPTION["VLC"]="Versatile open-source media player supporting virtually every audio and video format without additional codecs."
