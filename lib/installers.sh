@@ -189,6 +189,7 @@ register_utility "Nextcloud Desktop"   install_nextcloud_desktop check_nextcloud
 register_utility "NVM"                 install_nvm              check_nvm              uninstall_nvm              update_nvm                 get_version_nvm
 register_utility "Node.js"             install_nodejs           check_nodejs           uninstall_nodejs           update_nodejs              get_version_nodejs
 register_utility "OBS Studio"          install_obs_studio       check_obs_studio       uninstall_obs_studio       update_obs_studio          get_version_obs_studio
+register_utility "OCCT"                install_occt             check_occt             uninstall_occt             update_occt                get_version_occt
 register_utility "Obsidian"            install_obsidian         check_obsidian         uninstall_obsidian         update_obsidian            get_version_obsidian
 register_utility "OnlyOffice"          install_onlyoffice       check_onlyoffice       uninstall_onlyoffice       update_onlyoffice          get_version_onlyoffice
 register_utility "OpenSSH Server"      install_openssh_server   check_openssh_server   uninstall_openssh_server   update_openssh_server      get_version_openssh_server
@@ -522,6 +523,7 @@ UTILITY_CATEGORY["MangoHud"]="Gaming"
 UTILITY_CATEGORY["Nextcloud Desktop"]="Productivity"
 UTILITY_CATEGORY["NVM"]="Development"
 UTILITY_CATEGORY["OBS Studio"]="Productivity"
+UTILITY_CATEGORY["OCCT"]="System Tools"
 UTILITY_CATEGORY["Obsidian"]="Productivity"
 UTILITY_CATEGORY["OnlyOffice"]="Productivity"
 UTILITY_CATEGORY["OpenSSH Server"]="Remote Admin Tools"
@@ -898,6 +900,7 @@ UTILITY_DESCRIPTION["Joplin Web Clipper"]="Deploys Joplin Web Clipper browser ex
 UTILITY_DESCRIPTION["LibreOffice"]="Full-featured open-source office suite compatible with Microsoft Office formats."
 UTILITY_DESCRIPTION["Nextcloud Desktop"]="Desktop sync client for Nextcloud, providing self-hosted cloud file storage and sharing."
 UTILITY_DESCRIPTION["OBS Studio"]="Open-source software for video recording and live streaming with scene composition."
+UTILITY_DESCRIPTION["OCCT"]="Stability and stress-testing suite for CPU, RAM, GPU, and PSU, with live hardware monitoring — widely used to validate overclocks and diagnose unstable hardware. Installs the free Personal edition as a self-contained x86_64 binary from ocbase.com (no upstream repo or checksum). Installed per-user under ~/.local/share/occt, since OCCT stores its imported license alongside its own executable and must be able to write there. Launch from the application menu or run 'occt'."
 UTILITY_DESCRIPTION["Obsidian"]="Markdown-based knowledge base and note-taking app with linking, graphs, and plugins."
 UTILITY_DESCRIPTION["OnlyOffice"]="Office suite with strong Microsoft Office format compatibility and real-time collaboration."
 UTILITY_DESCRIPTION["Standard Notes"]="End-to-end encrypted note-taking app with cross-platform sync and extensible editors."
