@@ -28,7 +28,7 @@ The script supports non-interactive use for scripting and automation:
 | Flag | Description |
 |------|-------------|
 | `--help`, `-h` | Show usage information |
-| `--version` | Show script version (git commit) |
+| `--version` | Show script version (release tag, or commit if between releases) |
 | `--list` | List all utilities with current install status |
 | `--dry-run` | Preview actions without making any changes |
 | `--verbose` | Enable verbose output (extra status messages) |

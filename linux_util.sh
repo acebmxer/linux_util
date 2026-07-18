@@ -741,7 +741,7 @@ EOF
                 exit 0
                 ;;
             --version)
-                echo "linux_util $(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+                echo "linux_util $(git -C "$SCRIPT_DIR" describe --tags --always 2>/dev/null || echo 'unknown')"
                 exit 0
                 ;;
             --list)

@@ -10,6 +10,15 @@ section when a batch is cut.
 
 ## [Unreleased]
 
+### Changed
+- `--version` now reports the release tag via `git describe` (e.g. `v1.0.0`, or
+  `v1.0.0-5-g<hash>` between releases) instead of a bare commit hash.
+
+## [1.0.0] - 2026-07-18
+
+First tagged release. See the dated sections below for the full history leading up
+to this release.
+
 ### Added
 - **Boxflat** installer under the **Gaming** category — settings manager for Moza
   Racing sim-racing hardware (wheelbase, wheel, pedals, shifter). Installed via
