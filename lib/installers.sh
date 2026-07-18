@@ -62,7 +62,11 @@ register_system_task "GTK Window Fix" install_window_buttons check_always_false 
 
 # Debian/Ubuntu-only system tasks
 if [[ "$DISTRO_FAMILY" == "debian" ]]; then
-    register_system_task "Configure Unattended Upgrades" install_unattended_upgrades check_unattended_upgrades uninstall_unattended_upgrades update_unattended_upgrades get_version_unattended_upgrades
+    register_system_task "Unattended Upgrades" install_unattended_upgrades check_unattended_upgrades uninstall_unattended_upgrades update_unattended_upgrades get_version_unattended_upgrades
+    # Only offer the config editor when the package (and thus its config file) is present.
+    if check_unattended_upgrades; then
+        register_system_task "Configure Unattended Upgrades" configure_unattended_upgrades check_always_false noop_function configure_unattended_upgrades
+    fi
     register_system_task "Install fail2ban"              install_fail2ban            check_fail2ban            uninstall_fail2ban            update_fail2ban            get_version_fail2ban
 fi
 
@@ -732,6 +736,8 @@ UTILITY_DISPLAY_NAME["Zen Browser"]="Zen Browser (Beta)"
 # System Tasks: subcategory folders appear at the top, plain tasks keep their order.
 UTILITY_SUBCATEGORY["Full System Upgrade/Update"]="System Updaters"
 UTILITY_SUBCATEGORY["System Updates"]="System Updaters"
+UTILITY_SUBCATEGORY["Unattended Upgrades"]="System Updaters"
+UTILITY_SUBCATEGORY["Configure Unattended Upgrades"]="System Updaters"
 UTILITY_SUBCATEGORY["Mount Local Drive"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Mount NFS Share"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Mount SMB Share"]="Mount / Unmount Shares"
@@ -753,6 +759,8 @@ SUBCATEGORY_ORDER["System Tools"]="Kernel Managers"
 # System Tasks
 UTILITY_DESCRIPTION["Full System Upgrade/Update"]="Performs a comprehensive system upgrade including all configured package managers and removes unused packages."
 UTILITY_DESCRIPTION["System Updates"]="Installs and configures automatic system update scheduling via systemd timers or cron."
+UTILITY_DESCRIPTION["Unattended Upgrades"]="Enables the Debian/Ubuntu unattended-upgrades package so security (and optionally other) updates install automatically in the background. Runs the package's own debconf setup so you can choose what gets updated. The package must already be present (it ships by default on most Ubuntu installs)."
+UTILITY_DESCRIPTION["Configure Unattended Upgrades"]="Opens /etc/apt/apt.conf.d/50unattended-upgrades in your editor (\$EDITOR, or nano) so you can choose which update origins auto-install, blacklist packages, and set auto-reboot and notification behavior. Only appears when the unattended-upgrades package is installed."
 UTILITY_DESCRIPTION["Mount Local Drive"]="Interactively selects an unmounted block device and adds it to /etc/fstab, mounting it permanently under ~/media/<name>. Supports ext4, xfs, btrfs, NTFS, exFAT, and vFAT. Backs up fstab before any changes."
 UTILITY_DESCRIPTION["Mount NFS Share"]="Discovers NFS exports from a remote server via showmount and mounts the chosen share persistently via /etc/fstab. Installs NFS client tools if needed and backs up fstab before any changes."
 UTILITY_DESCRIPTION["Mount SMB Share"]="Connects to an SMB/CIFS server, prompts for credentials, lists available shares, and mounts the chosen share persistently via /etc/fstab. Credentials are stored in a private file under HOME. Installs cifs-utils if needed and backs up fstab before any changes."
