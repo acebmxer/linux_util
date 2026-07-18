@@ -7,6 +7,7 @@ AMD Drivers
 Bitwarden Client
 Bitwarden Extension
 Bottles
+Boxflat
 Brave Browser
 Btop
 Budgie Desktop

@@ -105,6 +105,7 @@ NO_RETRY["HyperFluent GRUB Theme"]=1
 # These fail immediately when Flatpak is absent — retrying adds no value
 NO_RETRY["ProtonUp-Qt"]=1
 NO_RETRY["Bottles"]=1
+NO_RETRY["Boxflat"]=1
 NO_RETRY["BoxBuddy"]=1
 NO_RETRY["DistroShelf"]=1
 
@@ -127,6 +128,7 @@ register_utility "Catppuccin GRUB Theme" install_grubtheme_catppuccin check_grub
 register_utility "HyperFluent GRUB Theme" install_grubtheme_hyperfluent check_grubtheme_hyperfluent uninstall_grubtheme_hyperfluent update_grubtheme_hyperfluent get_version_grubtheme_hyperfluent
 register_utility "Bitwarden Extension"    install_bitwarden_extension check_bitwarden_extension uninstall_bitwarden_extension update_bitwarden_extension    get_version_bitwarden_extension
 register_utility "Bottles"                install_bottles             check_bottles             uninstall_bottles             update_bottles                get_version_bottles
+register_utility "Boxflat"                install_boxflat             check_boxflat             uninstall_boxflat             update_boxflat                get_version_boxflat
 register_utility "Brave Browser"       install_brave            check_brave            uninstall_brave            update_brave               get_version_brave
 register_utility "Brave Debloat"       install_brave_debloat    check_brave_debloat    uninstall_brave_debloat    update_brave_debloat       get_version_brave_debloat
 register_utility "Brave Origin"        install_brave_origin     check_brave_origin     uninstall_brave_origin     update_brave_origin        get_version_brave_origin
@@ -493,6 +495,7 @@ UTILITY_CATEGORY["linux-tkg"]="System Tools"
 UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
 UTILITY_CATEGORY["Bitwarden Extension"]="Internet"
 UTILITY_CATEGORY["Bottles"]="Gaming"
+UTILITY_CATEGORY["Boxflat"]="Gaming"
 UTILITY_CATEGORY["Brave Browser"]="Internet"
 UTILITY_CATEGORY["Brave Debloat"]="Internet"
 UTILITY_CATEGORY["Brave Origin"]="Internet"
@@ -660,6 +663,7 @@ UTILITY_SUBCATEGORY["Steam App"]="Game Launchers"
 UTILITY_SUBCATEGORY["Lutris"]="Game Launchers"
 UTILITY_SUBCATEGORY["Heroic Games Launcher"]="Game Launchers"
 UTILITY_SUBCATEGORY["Bottles"]="Game Launchers"
+UTILITY_SUBCATEGORY["Boxflat"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["Feral Gamemode"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["MangoHud"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["ProtonUp-Qt"]="Gaming Utilities"
@@ -727,6 +731,7 @@ UTILITY_SUBCATEGORY["linux-tkg"]="Kernel Managers"
 
 # Display name overrides — shown in the menu instead of the utility key
 UTILITY_DISPLAY_NAME["Bottles"]="Bottles (Requires Flatpak)"
+UTILITY_DISPLAY_NAME["Boxflat"]="Boxflat (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["BoxBuddy"]="BoxBuddy (Requires Flatpak)"
@@ -842,6 +847,7 @@ UTILITY_DESCRIPTION["Visual Studio Code"]="Microsoft's extensible code editor wi
 
 # Gaming
 UTILITY_DESCRIPTION["Bottles"]="Wine prefix manager for running Windows software on Linux with per-app isolation. Requires Flatpak — enable the 'Flatpak Setup' system task first on non-Arch systems."
+UTILITY_DESCRIPTION["Boxflat"]="Settings manager for Moza Racing sim-racing hardware (wheelbase, wheel, pedals, shifter) on Linux. Installed via Flatpak from Flathub by default; on Arch it falls back to the boxflat-git AUR package when Flatpak is unavailable."
 UTILITY_DESCRIPTION["Feral Gamemode"]="Optimizes Linux system performance while gaming by adjusting CPU governor, I/O priority, and more. For Steam games add the launch option: gamemoderun %command%"
 UTILITY_DESCRIPTION["Heroic Games Launcher"]="Open-source launcher for Epic Games Store, GOG, and Amazon Prime Gaming libraries."
 UTILITY_DESCRIPTION["Lutris"]="Open gaming platform for managing and running games from multiple sources including Steam, GOG, and more."

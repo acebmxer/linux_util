@@ -15,8 +15,16 @@ self_update_script() {
     local current_branch
     current_branch=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null)
     if [[ -z "$current_branch" || "$current_branch" == "HEAD" ]]; then
-        current_branch="main"
-        warn "Could not detect current branch; defaulting to '$current_branch'."
+        # Detached HEAD — the user has intentionally checked out a tagged release
+        # (e.g. `git checkout v1.0.0`) or a specific commit. Treat that as a pin
+        # and skip the auto-pull; dragging them onto a branch tip would silently
+        # undo the pin. Run from a branch (`git checkout main`) to resume updates.
+        local pinned_ref
+        pinned_ref=$(git -C "$SCRIPT_DIR" describe --tags --exact-match HEAD 2>/dev/null \
+            || git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        info "Pinned to ${pinned_ref} (detached HEAD); skipping self-update."
+        info "To resume rolling updates: git -C \"${SCRIPT_DIR}\" checkout main"
+        return 0
     fi
     info "Current branch: $current_branch"
     git -C "$SCRIPT_DIR" fetch origin "$current_branch" 2>/dev/null || {

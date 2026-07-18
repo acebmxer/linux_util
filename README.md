@@ -246,6 +246,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | Utility | Description |
 |---------|-------------|
 | **Bottles** | Wine prefix manager for running Windows software |
+| **Boxflat** | Settings manager for Moza Racing sim-racing hardware (Flatpak) |
 | **Feral Gamemode** | Optimizes system performance while gaming |
 | **Heroic Games Launcher** | Open-source launcher for Epic, GOG, and Amazon Prime Gaming |
 | **Lutris** | Open gaming platform for multiple game sources |
