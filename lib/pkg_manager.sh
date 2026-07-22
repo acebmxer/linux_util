@@ -1629,10 +1629,19 @@ pkg_distro_upgrade() {
 }
 
 pkg_get_version() {
-    local pkg="$1"
+    local pkg="$1" v
     case "$PKG_MGR" in
         apt)     dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || echo "unknown" ;;
-        dnf|yum|zypper) rpm -q --queryformat '%{VERSION}-%{RELEASE}' "$pkg" 2>/dev/null || echo "unknown" ;;
+        # rpm prints "package <name> is not installed" on STDOUT (not stderr)
+        # for a missing package, so `|| echo unknown` alone would emit both that
+        # sentence and "unknown". Capture first and only print on success.
+        dnf|yum|zypper)
+            if v=$(rpm -q --queryformat '%{VERSION}-%{RELEASE}' "$pkg" 2>/dev/null); then
+                printf '%s\n' "$v"
+            else
+                echo "unknown"
+            fi
+            ;;
         pacman)  pacman -Q "$pkg" 2>/dev/null | awk '{print $2}' || echo "unknown" ;;
     esac
 }
