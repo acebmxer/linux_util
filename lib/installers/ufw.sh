@@ -13,10 +13,6 @@ install_ufw() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt install -y ufw
-            # Install GUI frontend if a desktop environment is present
-            if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
-                sudo apt install -y gufw 2>/dev/null || true
-            fi
             ;;
         fedora)
             sudo "$PKG_MGR" install -y ufw
@@ -27,9 +23,6 @@ install_ufw() {
             ;;
         arch)
             sudo pacman -S --noconfirm ufw
-            if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
-                sudo pacman -S --noconfirm gufw 2>/dev/null || true
-            fi
             ;;
         suse)
             sudo zypper install -y ufw 2>/dev/null || {
@@ -41,6 +34,12 @@ install_ufw() {
             }
             ;;
     esac
+
+    # Only one firewall manager should own netfilter at a time
+    if systemctl is-active --quiet firewalld 2>/dev/null; then
+        warn "firewalld is active — disabling it so UFW can manage the firewall."
+        sudo systemctl disable --now firewalld 2>/dev/null || true
+    fi
 
     # Apply sensible default rules and enable
     sudo ufw default deny incoming

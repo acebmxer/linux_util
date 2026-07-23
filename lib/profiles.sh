@@ -29,7 +29,7 @@
 # ── AVAILABLE UTILITY NAMES (pass to helpers exactly as shown) ───────────
 # System Tasks:  "Full System Upgrade/Update"  "System Updates"
 #                "NVIDIA Drivers"  "XEN Guest Utilities"
-#                "AMD Drivers"  "Flatpak Setup"  "UFW Firewall"
+#                "AMD Drivers"  "Flatpak Setup"
 #                "Num Lock at Boot"  "Local Time Zone / Locale"
 #                "Create Snapshot"  "Restore Snapshot"
 #                "Command-Not-Found Prompt" (Ubuntu/Kubuntu/Neon)
@@ -259,13 +259,13 @@ register_profile "Default Physical PC" \
 # AVAILABLE HELPERS:
 #   _profile_select_for_install "Name"  — mark for install (skipped if installed)
 #   _profile_select_for_update  "Name"  — mark for update  (skipped if not installed)
-#   _profile_select_task        "Name"  — mark a system task (e.g. "UFW Firewall")
+#   _profile_select_task        "Name"  — mark a system task (e.g. "Flatpak Setup")
 #
 # UTILITY NAMES must match the exact strings used in installers.sh.
 # See the reference list at the top of this file for all valid names.
 # ----------------------------------------------------------------------------
 _profile_custom_1() {
-    _profile_select_task        "UFW Firewall"
+    _profile_select_for_install "UFW Firewall"
     _profile_select_for_install "OpenSSH Server"
     _profile_select_for_install "Docker"
     _profile_select_for_install "Visual Studio Code"

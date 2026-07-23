@@ -55,7 +55,6 @@ register_utility "Enable RDP"             install_enable_rdp      check_enable_r
 register_utility "OpenRSAT"               install_openrsat        check_openrsat        uninstall_openrsat        update_openrsat           get_version_openrsat
 register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
 register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_setup   uninstall_flatpak_setup   update_flatpak_setup      get_version_flatpak_setup
-register_system_task "UFW Firewall"       install_ufw             check_ufw             uninstall_ufw             update_ufw                get_version_ufw
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 register_system_task "GTK Window Fix" install_window_buttons check_always_false noop_function install_window_buttons get_version_window_buttons
@@ -160,6 +159,11 @@ register_utility "Feral Gamemode"      install_gamemode         check_gamemode  
 register_utility "FileZilla"           install_filezilla        check_filezilla        uninstall_filezilla        update_filezilla           get_version_filezilla
 register_utility "Filelight"           install_filelight        check_filelight        uninstall_filelight        update_filelight           get_version_filelight
 register_utility "Firefox"             install_firefox          check_firefox          uninstall_firefox          update_firefox             get_version_firefox
+# Firewalls subcategory: host firewall managers followed by their GUI front-ends
+register_utility "UFW Firewall"        install_ufw              check_ufw              uninstall_ufw              update_ufw                 get_version_ufw
+register_utility "Gufw (Firewall GUI)" install_gufw             check_gufw             uninstall_gufw             update_gufw                get_version_gufw
+register_utility "firewalld"           install_firewalld        check_firewalld        uninstall_firewalld        update_firewalld           get_version_firewalld
+register_utility "firewall-config (GUI)" install_firewall_config check_firewall_config uninstall_firewall_config update_firewall_config    get_version_firewall_config
 register_utility "Flameshot"           install_flameshot        check_flameshot        uninstall_flameshot        update_flameshot           get_version_flameshot
 register_utility "GIMP"                install_gimp             check_gimp             uninstall_gimp             update_gimp                get_version_gimp
 register_utility "GitHub CLI"          install_github_cli       check_github_cli       uninstall_github_cli       update_github_cli          get_version_github_cli
@@ -425,7 +429,7 @@ NO_RETRY["linux-tkg"]=1
 
 # --- Category definitions ---
 # The order here determines the tab order in the left panel.
-CATEGORIES=("System Tasks" "Backup" "Bootloaders" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Gaming" "Internet" "Login Screens" "Package Managers" "Productivity" "Remote Admin Tools" "System Tools" "Window Managers")
+CATEGORIES=("System Tasks" "Backup" "Bootloaders" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Firewalls" "Gaming" "Internet" "Login Screens" "Package Managers" "Productivity" "Remote Admin Tools" "System Tools" "Window Managers")
 
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Angry IP Scanner"]="Internet"
@@ -583,6 +587,10 @@ UTILITY_CATEGORY["ClamAV"]="System Tools"
 UTILITY_CATEGORY["Element (Matrix)"]="Internet"
 UTILITY_CATEGORY["Flameshot"]="Productivity"
 UTILITY_CATEGORY["Go SDK"]="Development"
+UTILITY_CATEGORY["UFW Firewall"]="Firewalls"
+UTILITY_CATEGORY["Gufw (Firewall GUI)"]="Firewalls"
+UTILITY_CATEGORY["firewalld"]="Firewalls"
+UTILITY_CATEGORY["firewall-config (GUI)"]="Firewalls"
 UTILITY_CATEGORY["HandBrake"]="Productivity"
 UTILITY_CATEGORY["Inkscape"]="Productivity"
 UTILITY_CATEGORY["Input Leap"]="System Tools"
@@ -804,7 +812,10 @@ UTILITY_DESCRIPTION["Intel CPU Microcode & Thermal"]="Installs Intel CPU microco
 UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance."
 UTILITY_DESCRIPTION["LACT"]="Linux AMDGPU Top — graphical tool for overclocking, undervolting, and monitoring AMD GPUs. Provides fan control, power limit adjustments, and real-time sensor readings. A reboot is required after installation before changes can be applied."
 UTILITY_DESCRIPTION["Flatpak Setup"]="Configures the Flatpak package manager and adds the Flathub repository for sandboxed applications."
-UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firewall with sensible default rules."
+UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firewall with sensible default rules (deny incoming, allow outgoing, allow SSH). Disables firewalld first if it is active — only one firewall manager should run at a time."
+UTILITY_DESCRIPTION["Gufw (Firewall GUI)"]="Graphical frontend for UFW to view status, toggle the firewall, and manage rules and app profiles. Installs UFW first if it is not already present."
+UTILITY_DESCRIPTION["firewalld"]="Dynamic zone-based firewall daemon, the default on Fedora, RHEL, and openSUSE. Managed with firewall-cmd or the firewall-config GUI. Disables UFW first if it is active — only one firewall manager should run at a time."
+UTILITY_DESCRIPTION["firewall-config (GUI)"]="Graphical configuration tool for firewalld to manage zones, services, ports, and rich rules. Installs firewalld first if it is not already present."
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
