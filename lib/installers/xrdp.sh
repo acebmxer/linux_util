@@ -52,7 +52,11 @@ EOF
             run_as_root systemctl restart xrdp
             ;;
         fedora)
-            run_as_root "$PKG_MGR" install -y xrdp
+            # Unlike Debian, Fedora's xrdp package does not pull in xorgxrdp —
+            # the Xorg backend sesman launches for each session. Without it
+            # logins fail with "X server could not be started". xrdp-selinux
+            # is only a weak dep, so install it explicitly too.
+            run_as_root "$PKG_MGR" install -y xrdp xorgxrdp xrdp-selinux
 
             # Fedora KDE ships Wayland-only: /usr/share/xsessions is empty and
             # startplasma-x11 is absent, so xrdp's Xsession chain finds nothing
@@ -71,7 +75,8 @@ EOF
         rhel)
             # xrdp is in EPEL, not the base RHEL/Alma/Rocky repos
             run_as_root "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            run_as_root "$PKG_MGR" install -y xrdp
+            # EPEL packages xorgxrdp separately as well — see fedora branch
+            run_as_root "$PKG_MGR" install -y xrdp xorgxrdp
             run_as_root systemctl enable xrdp
             run_as_root systemctl start xrdp
             ;;
