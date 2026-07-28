@@ -11,6 +11,15 @@ section when a batch is cut.
 ## [Unreleased]
 
 ### Changed
+- **Termius** on Fedora, RHEL and openSUSE now installs natively into
+  `/opt/Termius` by unpacking the upstream `.deb`, instead of using Flathub.
+  The Flatpak's `/usr` belongs to the `org.freedesktop.Platform` runtime rather
+  than the host, and its manifest grants no filesystem access at all, so the
+  built-in local terminal could never reach the user's shell and permanently
+  pinned `/bin/sh` as its "Local Terminal Path". The native install sees the
+  real `/usr` and picks up `$SHELL` the same way the Debian package does.
+  Existing Flatpak and snap copies are detected and reported with removal
+  instructions rather than being removed automatically.
 - `--version` now reports the release tag via `git describe` (e.g. `v1.0.0`, or
   `v1.0.0-5-g<hash>` between releases) instead of a bare commit hash.
 
