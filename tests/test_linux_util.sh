@@ -301,9 +301,26 @@ test_resolve_utility_name() {
     assert_false "resolve_utility_name rejects unknown names" resolve_utility_name "nonexistent"
 }
 
+# Every utility that appears in a menu category must also carry a description,
+# otherwise the TUI renders a blank description pane (menu.sh falls back to "").
+# Parsed statically from installers.sh so the live registry state — which the
+# tests above deliberately clobber — cannot affect the result.
+test_every_utility_has_description() {
+    local _inst="${SCRIPT_DIR}/lib/installers.sh"
+    assert_file_exists "$_inst" "installers.sh exists"
+
+    local _missing
+    _missing=$(comm -23 \
+        <(grep -oP 'UTILITY_CATEGORY\["\K[^"]+' "$_inst" | sort -u) \
+        <(grep -oP 'UTILITY_DESCRIPTION\["\K[^"]+' "$_inst" | sort -u))
+
+    assert_eq "" "$_missing" "Every categorized utility has a UTILITY_DESCRIPTION"
+}
+
 test_register_utility
 test_register_utility_no_version
 test_resolve_utility_name
+test_every_utility_has_description
 
 # ============================================================================
 # Test: Dependency Resolution

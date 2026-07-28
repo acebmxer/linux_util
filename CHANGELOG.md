@@ -10,18 +10,43 @@ section when a batch is cut.
 
 ## [Unreleased]
 
-### Changed
-- **Termius** on Fedora, RHEL and openSUSE now installs natively into
-  `/opt/Termius` by unpacking the upstream `.deb`, instead of using Flathub.
-  The Flatpak's `/usr` belongs to the `org.freedesktop.Platform` runtime rather
-  than the host, and its manifest grants no filesystem access at all, so the
-  built-in local terminal could never reach the user's shell and permanently
-  pinned `/bin/sh` as its "Local Terminal Path". The native install sees the
-  real `/usr` and picks up `$SHELL` the same way the Debian package does.
-  Existing Flatpak and snap copies are detected and reported with removal
+- **Fixed** — **Cockpit** now has a description in the TUI. It was registered
+  with a category and subcategory but no `UTILITY_DESCRIPTION`, so highlighting
+  it rendered an empty description pane — `menu.sh` falls back to `""` for a
+  missing key rather than erroring, so the gap was silent. Cockpit was the only
+  one of the 190 registered utilities affected. Added a test that diffs the
+  `UTILITY_CATEGORY` key set against the `UTILITY_DESCRIPTION` key set, so a
+  utility registered without a description now fails the suite instead of
+  shipping a blank pane.
+- **Changed** — **Termius** on Fedora, RHEL and openSUSE now installs natively
+  into `/opt/Termius` by unpacking the upstream `.deb`, instead of using
+  Flathub. The Flatpak's `/usr` belongs to the `org.freedesktop.Platform`
+  runtime rather than the host, and its manifest grants no filesystem access at
+  all, so the built-in local terminal could never reach the user's shell and
+  permanently pinned `/bin/sh` as its "Local Terminal Path". The native install
+  sees the real `/usr` and picks up `$SHELL` the same way the Debian package
+  does. Existing Flatpak and snap copies are detected and reported with removal
   instructions rather than being removed automatically.
-- `--version` now reports the release tag via `git describe` (e.g. `v1.0.0`, or
-  `v1.0.0-5-g<hash>` between releases) instead of a bare commit hash.
+- **Fixed** — **xrdp** on Fedora and RHEL now installs `xorgxrdp` (and
+  `xrdp-selinux`) alongside `xrdp`. Unlike Debian, the Fedora/EPEL `xrdp`
+  package does not pull in the Xorg backend that sesman launches per session,
+  and `xrdp-selinux` is only a weak dependency — without them every login failed
+  with "X server could not be started".
+- **Added** — **Firewalls** category with four installable utilities: **UFW**,
+  **Gufw** (UFW's GTK frontend), **firewalld**, and **firewall-config**
+  (firewalld's GUI). UFW moved out of System Tasks into this category, and Gufw
+  is now its own registry entry rather than being auto-installed as a side
+  effect of the UFW task. Installing UFW disables an active firewalld and vice
+  versa, so only one firewall manager is ever running.
+- **Fixed** — **Stacer** on the rpm family now installs as a self-contained
+  AppImage. The upstream `.rpm` is unsigned and rpm >= 6 rejects it outright,
+  and Flathub has never carried a Stacer package, so both prior approaches were
+  dead ends. This also fixes the openSUSE fallback path. Additionally,
+  `pkg_get_version` no longer leaks rpm's "package X is not installed" message
+  into the returned version string on rpm/dnf/zypper systems.
+- **Changed** — `--version` now reports the release tag via `git describe`
+  (e.g. `v1.0.0`, or `v1.0.0-5-g<hash>` between releases) instead of a bare
+  commit hash.
 
 ## [1.0.0] - 2026-07-18
 
