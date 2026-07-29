@@ -323,7 +323,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **AnyDesk** | Remote desktop application *(Remote Access)* |
 | **Cockpit** | Web-based server management console at `https://<host>:9090`; enables `cockpit.socket` and opens the firewall port *(Remote Access)* |
 | **Devolutions RDM** | Remote Desktop Manager — Cloudsmith repo / AUR / flatpak / snap *(Remote Access)* |
-| **Enable RDP** | Enables Remote Desktop Protocol access via XRDP server *(Remote Access)* |
+| **Enable RDP** | Enables Remote Desktop Protocol access via XRDP server; also installs a polkit rule so seatless RDP sessions can manage NetworkManager without a password prompt *(Remote Access)* |
 | **OpenSSH Server** | Secure Shell server for remote access *(Remote Access)* |
 | **Remmina** | Remote desktop client (RDP, VNC, SSH, SPICE) *(Remote Access)* |
 | **RustDesk** | Open-source remote desktop and remote assistance tool *(Remote Access)* |
@@ -645,6 +645,10 @@ Use `$DISTRO_FAMILY` (`debian`, `fedora`, `rhel`, `arch`, `suse`) for distro-spe
 **AUR packages on Arch** — install `yay` or `paru` first. The script can fall back to building from AUR directly, but an AUR helper is recommended.
 
 **No colours / piped output** — use `--no-color`, set the `NO_COLOR` environment variable, or pipe output to a file; ANSI colours are automatically disabled in non-interactive terminals.
+
+**Password prompts inside an xrdp session** — an RDP login has no local seat, so polkit skips the `allow_active`/`allow_inactive` tiers of an action's defaults and falls through to `allow_any`, turning silent actions into password prompts. The most visible case is the KDE network applet asking for a password at every login. **Enable RDP** installs `/etc/polkit-1/rules.d/50-xrdp-networkmanager.rules` to fix it, scoped to `subject.active` and to `netdev` (Debian) or `wheel` (Fedora/RHEL/Arch/openSUSE). On the `wheel` families the rule only applies to users already in `wheel` — the installer will not add anyone, because `wheel` also grants sudo.
+
+**KDE Wallet asks for a password at every RDP login** — there is no display manager in an xrdp session to unlock the wallet. On Fedora/RHEL/Arch/openSUSE, **Enable RDP** offers to add `pam_kwallet5` to `/etc/pam.d/xrdp-sesman` (backing the file up first); Debian handles this itself via `libpam-kwallet5`. If it still prompts after that, the wallet password does not match the login password — change it in KWalletManager, or set the wallet to have no password. To undo the PAM change, restore the `xrdp-sesman.bak.<timestamp>` file the installer left beside it.
 
 ## License
 

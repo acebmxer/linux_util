@@ -27,6 +27,33 @@ section when a batch is cut.
   sees the real `/usr` and picks up `$SHELL` the same way the Debian package
   does. Existing Flatpak and snap copies are detected and reported with removal
   instructions rather than being removed automatically.
+- **Added** — **xrdp** on Fedora, RHEL, Arch and openSUSE now offers to add
+  `pam_kwallet5` to `/etc/pam.d/xrdp-sesman` when KDE is present, so KDE Wallet
+  unlocks at login instead of prompting every session. An RDP login has no
+  display manager behind it, so nothing hands the password to `kwalletd`; on
+  Debian this is already handled, because `libpam-kwallet5` ships a
+  `pam-auth-update` profile that lands in `common-auth`/`common-session`, which
+  `xrdp-sesman` includes. Because a bad PAM edit can lock users out of RDP, the
+  change is prompted rather than automatic, backs the file up first, uses
+  `optional` so a failing module never blocks authentication, and is skipped if
+  the stack already references `pam_kwallet`. It only takes effect if the wallet
+  password matches the login password — which the installer reports but cannot
+  fix.
+- **Fixed** — **xrdp** now installs its NetworkManager polkit rule on every
+  distro family, not only Kubuntu 26.04+. The cause is not Kubuntu-specific:
+  logind gives an RDP session no local seat, so polkit skips the `allow_active`
+  and `allow_inactive` tiers of an action's defaults and falls through to
+  `allow_any` — `auth_admin` — making the plasma-nm applet prompt for a password
+  at every login. Fedora's stock NetworkManager rule does not cover this either,
+  because it gates its `wheel` exemption on `subject.local`, which is false over
+  RDP. The rule now picks the right group per family (`netdev` on Debian, which
+  has no `wheel`; `wheel` elsewhere, which has no `netdev`) and additionally
+  requires `subject.active`, closing a hole in the previous Debian-only version
+  that authorised *any* process owned by a `netdev` member — SSH sessions, cron
+  jobs and background daemons included — rather than just the desktop session.
+  Users are auto-joined to `netdev` as before, but never to `wheel`, since that
+  grants sudo; a non-member is warned instead. Uninstall removes the rule on all
+  families rather than only Kubuntu.
 - **Fixed** — **xrdp** on Fedora and RHEL now installs `xorgxrdp` (and
   `xrdp-selinux`) alongside `xrdp`. Unlike Debian, the Fedora/EPEL `xrdp`
   package does not pull in the Xorg backend that sesman launches per session,
