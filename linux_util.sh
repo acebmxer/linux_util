@@ -717,7 +717,7 @@ Usage: $(basename "$0") [OPTIONS]
 
 Options:
   --help, -h            Show this help message and exit
-  --version             Show script version (git commit)
+  --version             Show script version (release tag)
   --list                List all available utilities with install status
   --dry-run             Preview actions without making any changes
   --verbose             Enable verbose output (extra status messages)

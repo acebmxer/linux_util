@@ -2,15 +2,21 @@
 
 All notable changes to this project are documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-This project does not tag semantic-version releases — `linux_util.sh --version`
-reports the current git commit — so changes are grouped by month, newest first.
-Add new entries under **[Unreleased]** as work lands; move them into a dated
-section when a batch is cut.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+`linux_util.sh --version` reports the release tag via `git describe`. Sections
+below 1.0.0 predate tagging and are grouped by month, newest first. Add new
+entries under **[Unreleased]** as work lands; move them into a versioned section
+when a release is cut.
 
 ## [Unreleased]
 
-- **Added** — Seven clients under **Internet → Email Clients**, which previously
+## [1.1.0] - 2026-08-01
+
+### Added
+
+- Seven clients under **Internet → Email Clients**, which previously
   offered only KMail and Thunderbird and so had no native option for a GNOME or
   XFCE desktop, no terminal client, and no way to use Proton Mail at all.
   - **Evolution** — GNOME's mail/calendar/contacts suite. Pulls in
@@ -44,7 +50,28 @@ section when a batch is cut.
     never in EPEL, so those two families get an explicit error pointing at KMail
     or Claws Mail instead of a silent failure. Note that upstream is quiet — 0.7
     dates from 2016.
-- **Changed** — Twelve utilities now prefer **Flathub over the AUR on Arch**
+- **Firewalls** category with four installable utilities: **UFW**,
+  **Gufw** (UFW's GTK frontend), **firewalld**, and **firewall-config**
+  (firewalld's GUI). UFW moved out of System Tasks into this category, and Gufw
+  is now its own registry entry rather than being auto-installed as a side
+  effect of the UFW task. Installing UFW disables an active firewalld and vice
+  versa, so only one firewall manager is ever running.
+- **xrdp** on Fedora, RHEL, Arch and openSUSE now offers to add
+  `pam_kwallet5` to `/etc/pam.d/xrdp-sesman` when KDE is present, so KDE Wallet
+  unlocks at login instead of prompting every session. An RDP login has no
+  display manager behind it, so nothing hands the password to `kwalletd`; on
+  Debian this is already handled, because `libpam-kwallet5` ships a
+  `pam-auth-update` profile that lands in `common-auth`/`common-session`, which
+  `xrdp-sesman` includes. Because a bad PAM edit can lock users out of RDP, the
+  change is prompted rather than automatic, backs the file up first, uses
+  `optional` so a failing module never blocks authentication, and is skipped if
+  the stack already references `pam_kwallet`. It only takes effect if the wallet
+  password matches the login password — which the installer reports but cannot
+  fix.
+
+### Changed
+
+- Twelve utilities now prefer **Flathub over the AUR on Arch**
   when Flatpak is already installed: **Betterbird**, **Heroic Games Launcher**,
   **LibreWolf**, **Logseq**, **Mark Text**, **OnlyOffice**, **ProtonUp-Qt**,
   **RustDesk**, **Slack**, **Standard Notes**, **WPS Office** and **Zoom**. Each
@@ -62,7 +89,22 @@ section when a batch is cut.
   reached for the AUR package while a Flatpak copy was installed, and **Heroic**
   now reads its version from Flatpak when installed that way instead of
   reporting blank.
-- **Fixed** — Ten utilities installed from the **AUR a package that is in Arch's
+- **Termius** on Fedora, RHEL and openSUSE now installs natively
+  into `/opt/Termius` by unpacking the upstream `.deb`, instead of using
+  Flathub. The Flatpak's `/usr` belongs to the `org.freedesktop.Platform`
+  runtime rather than the host, and its manifest grants no filesystem access at
+  all, so the built-in local terminal could never reach the user's shell and
+  permanently pinned `/bin/sh` as its "Local Terminal Path". The native install
+  sees the real `/usr` and picks up `$SHELL` the same way the Debian package
+  does. Existing Flatpak and snap copies are detected and reported with removal
+  instructions rather than being removed automatically.
+- `--version` now reports the release tag via `git describe`
+  (e.g. `v1.1.0`, or `v1.1.0-5-g<hash>` between releases) instead of a bare
+  commit hash.
+
+### Fixed
+
+- Ten utilities installed from the **AUR a package that is in Arch's
   official `extra` repo**: **Btrfs Assistant**, **Element**, **Input Leap**,
   **LACT**, **Obsidian**, **OpenTofu**, **Signal**, **Terraform**, **Tor
   Browser** and **Vivaldi**. On a system with `yay` or `paru` this was invisible,
@@ -75,36 +117,15 @@ section when a batch is cut.
   now prefers `extra/bitwarden` over the AUR's `bitwarden-bin`. Both new routing
   helpers are covered by tests, since neither can be exercised on a non-Arch
   system otherwise.
-- **Fixed** — **Cockpit** now has a description in the TUI. It was registered
+- **Cockpit** now has a description in the TUI. It was registered
   with a category and subcategory but no `UTILITY_DESCRIPTION`, so highlighting
   it rendered an empty description pane — `menu.sh` falls back to `""` for a
   missing key rather than erroring, so the gap was silent. Cockpit was the only
-  one of the 190 registered utilities affected. Added a test that diffs the
+  one of the project's registered utilities affected. Added a test that diffs the
   `UTILITY_CATEGORY` key set against the `UTILITY_DESCRIPTION` key set, so a
   utility registered without a description now fails the suite instead of
   shipping a blank pane.
-- **Changed** — **Termius** on Fedora, RHEL and openSUSE now installs natively
-  into `/opt/Termius` by unpacking the upstream `.deb`, instead of using
-  Flathub. The Flatpak's `/usr` belongs to the `org.freedesktop.Platform`
-  runtime rather than the host, and its manifest grants no filesystem access at
-  all, so the built-in local terminal could never reach the user's shell and
-  permanently pinned `/bin/sh` as its "Local Terminal Path". The native install
-  sees the real `/usr` and picks up `$SHELL` the same way the Debian package
-  does. Existing Flatpak and snap copies are detected and reported with removal
-  instructions rather than being removed automatically.
-- **Added** — **xrdp** on Fedora, RHEL, Arch and openSUSE now offers to add
-  `pam_kwallet5` to `/etc/pam.d/xrdp-sesman` when KDE is present, so KDE Wallet
-  unlocks at login instead of prompting every session. An RDP login has no
-  display manager behind it, so nothing hands the password to `kwalletd`; on
-  Debian this is already handled, because `libpam-kwallet5` ships a
-  `pam-auth-update` profile that lands in `common-auth`/`common-session`, which
-  `xrdp-sesman` includes. Because a bad PAM edit can lock users out of RDP, the
-  change is prompted rather than automatic, backs the file up first, uses
-  `optional` so a failing module never blocks authentication, and is skipped if
-  the stack already references `pam_kwallet`. It only takes effect if the wallet
-  password matches the login password — which the installer reports but cannot
-  fix.
-- **Fixed** — **xrdp** now installs its NetworkManager polkit rule on every
+- **xrdp** now installs its NetworkManager polkit rule on every
   distro family, not only Kubuntu 26.04+. The cause is not Kubuntu-specific:
   logind gives an RDP session no local seat, so polkit skips the `allow_active`
   and `allow_inactive` tiers of an action's defaults and falls through to
@@ -119,26 +140,17 @@ section when a batch is cut.
   Users are auto-joined to `netdev` as before, but never to `wheel`, since that
   grants sudo; a non-member is warned instead. Uninstall removes the rule on all
   families rather than only Kubuntu.
-- **Fixed** — **xrdp** on Fedora and RHEL now installs `xorgxrdp` (and
+- **xrdp** on Fedora and RHEL now installs `xorgxrdp` (and
   `xrdp-selinux`) alongside `xrdp`. Unlike Debian, the Fedora/EPEL `xrdp`
   package does not pull in the Xorg backend that sesman launches per session,
   and `xrdp-selinux` is only a weak dependency — without them every login failed
   with "X server could not be started".
-- **Added** — **Firewalls** category with four installable utilities: **UFW**,
-  **Gufw** (UFW's GTK frontend), **firewalld**, and **firewall-config**
-  (firewalld's GUI). UFW moved out of System Tasks into this category, and Gufw
-  is now its own registry entry rather than being auto-installed as a side
-  effect of the UFW task. Installing UFW disables an active firewalld and vice
-  versa, so only one firewall manager is ever running.
-- **Fixed** — **Stacer** on the rpm family now installs as a self-contained
+- **Stacer** on the rpm family now installs as a self-contained
   AppImage. The upstream `.rpm` is unsigned and rpm >= 6 rejects it outright,
   and Flathub has never carried a Stacer package, so both prior approaches were
   dead ends. This also fixes the openSUSE fallback path. Additionally,
   `pkg_get_version` no longer leaks rpm's "package X is not installed" message
   into the returned version string on rpm/dnf/zypper systems.
-- **Changed** — `--version` now reports the release tag via `git describe`
-  (e.g. `v1.0.0`, or `v1.0.0-5-g<hash>` between releases) instead of a bare
-  commit hash.
 
 ## [1.0.0] - 2026-07-18
 
