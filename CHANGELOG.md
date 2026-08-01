@@ -10,6 +10,39 @@ section when a batch is cut.
 
 ## [Unreleased]
 
+- **Added** — Seven clients under **Internet → Email Clients**, which previously
+  offered only KMail and Thunderbird and so had no native option for a GNOME or
+  XFCE desktop, no terminal client, and no way to use Proton Mail at all.
+  - **Evolution** — GNOME's mail/calendar/contacts suite. Pulls in
+    `evolution-ews` alongside the base package, because Exchange support is
+    split into that separate package on every distro and Evolution silently
+    omits the EWS account type without it; the extra install is non-fatal, so
+    the client still lands on repos that do not carry it. Uninstall removes
+    `evolution-ews` in a separate, tolerated command — bundling both names into
+    one `apt purge`/`pacman -Rs` aborts the whole removal when EWS was never
+    installed.
+  - **Geary** — lightweight GNOME client. **Claws Mail** — lightweight GTK
+    client suited to XFCE. **NeoMutt** — terminal client, the maintained fork of
+    Mutt. All three are absent from the RHEL base channels, so each enables EPEL
+    first. NeoMutt's uninstall deliberately leaves `~/.config/neomutt` and any
+    local Maildirs alone: its config is hand-written, and a Maildir may hold the
+    only copy of the user's mail.
+  - **Proton Mail Bridge** — local IMAP/SMTP gateway that lets any of the above
+    talk to Proton Mail. Installed from Flathub on every distro: Proton
+    publishes only version-pinned `.deb`/`.rpm` URLs behind no "latest"
+    endpoint and no apt/dnf repo, so there is nothing a native install could
+    track. Requires a paid Proton plan and a running secret service, both of
+    which the installer states up front rather than failing at first launch.
+  - **Betterbird** — Thunderbird fork with fixes upstream has not merged. No
+    distro packages it, so Arch uses the AUR build and everything else uses
+    Flathub. Its uninstall leaves `~/.thunderbird` in place, because Betterbird
+    shares that profile directory with a possibly still-installed Thunderbird.
+  - **Trojitá** — Qt-native IMAP client, a lighter option than KMail on KDE.
+    Registered as `Trojita` so the name stays typeable on the CLI. Offered on
+    Fedora, Arch (AUR) and openSUSE only; Debian dropped the package and it was
+    never in EPEL, so those two families get an explicit error pointing at KMail
+    or Claws Mail instead of a silent failure. Note that upstream is quiet — 0.7
+    dates from 2016.
 - **Fixed** — **Cockpit** now has a description in the TUI. It was registered
   with a category and subcategory but no `UTILITY_DESCRIPTION`, so highlighting
   it rendered an empty description pane — `menu.sh` falls back to `""` for a

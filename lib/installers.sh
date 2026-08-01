@@ -125,6 +125,7 @@ register_utility "Distro GRUB Themes"  install_grubtheme_distro      check_grubt
 register_utility "vinceliuice GRUB Themes" install_grubtheme_vinceliuice check_grubtheme_vinceliuice uninstall_grubtheme_vinceliuice update_grubtheme_vinceliuice get_version_grubtheme_vinceliuice
 register_utility "Catppuccin GRUB Theme" install_grubtheme_catppuccin check_grubtheme_catppuccin  uninstall_grubtheme_catppuccin  update_grubtheme_catppuccin  get_version_grubtheme_catppuccin
 register_utility "HyperFluent GRUB Theme" install_grubtheme_hyperfluent check_grubtheme_hyperfluent uninstall_grubtheme_hyperfluent update_grubtheme_hyperfluent get_version_grubtheme_hyperfluent
+register_utility "Betterbird"             install_betterbird          check_betterbird          uninstall_betterbird          update_betterbird             get_version_betterbird
 register_utility "Bitwarden Extension"    install_bitwarden_extension check_bitwarden_extension uninstall_bitwarden_extension update_bitwarden_extension    get_version_bitwarden_extension
 register_utility "Bottles"                install_bottles             check_bottles             uninstall_bottles             update_bottles                get_version_bottles
 register_utility "Boxflat"                install_boxflat             check_boxflat             uninstall_boxflat             update_boxflat                get_version_boxflat
@@ -135,6 +136,7 @@ register_utility "Btop"                install_btop             check_btop      
 register_utility "Intel CPU Microcode & Thermal" install_intel_chipset_drivers check_intel_chipset_drivers uninstall_intel_chipset_drivers update_intel_chipset_drivers get_version_intel_chipset_drivers
 register_utility "Chromium"            install_chromium         check_chromium         uninstall_chromium         update_chromium            get_version_chromium
 register_utility "ClamAV"              install_clamav           check_clamav           uninstall_clamav           update_clamav              get_version_clamav
+register_utility "Claws Mail"          install_claws_mail       check_claws_mail       uninstall_claws_mail       update_claws_mail          get_version_claws_mail
 register_utility "Claude Code"         install_claude_code      check_claude_code      uninstall_claude_code      update_claude_code         get_version_claude_code
 register_utility "Cockpit"             install_cockpit          check_cockpit          uninstall_cockpit          update_cockpit             get_version_cockpit
 register_utility "Cursor IDE"          install_cursor           check_cursor           uninstall_cursor           update_cursor              get_version_cursor
@@ -149,6 +151,7 @@ NO_RETRY["Duplicati"]=1
 register_utility "Devolutions RDM"     install_devolutions_rdm  check_devolutions_rdm  uninstall_devolutions_rdm  update_devolutions_rdm     get_version_devolutions_rdm
 register_utility "Discord"             install_discord          check_discord          uninstall_discord          update_discord             get_version_discord
 register_utility "Element (Matrix)"    install_element          check_element          uninstall_element          update_element             get_version_element
+register_utility "Evolution"           install_evolution        check_evolution        uninstall_evolution        update_evolution           get_version_evolution
 register_utility "Docker"              setup_install_docker     check_docker           uninstall_docker           update_docker              get_version_docker
 # DistroBox subcategory: the container tool plus optional graphical front-ends
 register_utility "Distrobox"           install_distrobox        check_distrobox        uninstall_distrobox        update_distrobox           get_version_distrobox
@@ -165,6 +168,7 @@ register_utility "Gufw (Firewall GUI)" install_gufw             check_gufw      
 register_utility "firewalld"           install_firewalld        check_firewalld        uninstall_firewalld        update_firewalld           get_version_firewalld
 register_utility "firewall-config (GUI)" install_firewall_config check_firewall_config uninstall_firewall_config update_firewall_config    get_version_firewall_config
 register_utility "Flameshot"           install_flameshot        check_flameshot        uninstall_flameshot        update_flameshot           get_version_flameshot
+register_utility "Geary"               install_geary            check_geary            uninstall_geary            update_geary               get_version_geary
 register_utility "GIMP"                install_gimp             check_gimp             uninstall_gimp             update_gimp                get_version_gimp
 register_utility "GitHub CLI"          install_github_cli       check_github_cli       uninstall_github_cli       update_github_cli          get_version_github_cli
 register_utility "Go SDK"              install_golang           check_golang           uninstall_golang           update_golang              get_version_golang
@@ -194,6 +198,7 @@ register_utility "Logseq"              install_logseq           check_logseq    
 register_utility "Lutris"              install_lutris           check_lutris           uninstall_lutris           update_lutris              get_version_lutris
 register_utility "MangoHud"            install_mangohud         check_mangohud         uninstall_mangohud         update_mangohud            get_version_mangohud
 register_utility "Mark Text"           install_marktext         check_marktext         uninstall_marktext         update_marktext            get_version_marktext
+register_utility "NeoMutt"             install_neomutt          check_neomutt          uninstall_neomutt          update_neomutt             get_version_neomutt
 register_utility "Neovim"              install_neovim           check_neovim           uninstall_neovim           update_neovim              get_version_neovim
 register_utility "Nextcloud Desktop"   install_nextcloud_desktop check_nextcloud_desktop uninstall_nextcloud_desktop update_nextcloud_desktop get_version_nextcloud_desktop
 register_utility "NVM"                 install_nvm              check_nvm              uninstall_nvm              update_nvm                 get_version_nvm
@@ -208,6 +213,7 @@ register_utility "PIA VPN"             install_pia_vpn          check_pia_vpn   
 register_utility "Podman"              install_podman           check_podman           uninstall_podman           update_podman              get_version_podman
 register_utility "Postman"             install_postman          check_postman          uninstall_postman          update_postman             get_version_postman
 register_utility "PowerShell"          install_powershell       check_powershell       uninstall_powershell       update_powershell          get_version_powershell
+register_utility "Proton Mail Bridge"  install_protonmail_bridge check_protonmail_bridge uninstall_protonmail_bridge update_protonmail_bridge get_version_protonmail_bridge
 register_utility "ProtonUp-Qt"         install_protonup_qt      check_protonup_qt      uninstall_protonup_qt      update_protonup_qt         get_version_protonup_qt
 register_utility "ProtonVPN"           install_protonvpn        check_protonvpn        uninstall_protonvpn        update_protonvpn           get_version_protonvpn
 register_utility "pyenv"               install_pyenv            check_pyenv            uninstall_pyenv            update_pyenv               get_version_pyenv
@@ -229,6 +235,7 @@ register_utility "Terraform"           install_terraform        check_terraform 
 register_utility "Thorium Browser"     install_thorium          check_thorium          uninstall_thorium          update_thorium             get_version_thorium
 register_utility "Thunderbird"         install_thunderbird      check_thunderbird      uninstall_thunderbird      update_thunderbird         get_version_thunderbird
 register_utility "Timeshift"           install_timeshift        check_timeshift        uninstall_timeshift        update_timeshift           get_version_timeshift
+register_utility "Trojita"             install_trojita          check_trojita          uninstall_trojita          update_trojita             get_version_trojita
 register_utility "Create Snapshot"     setup_create_snapshot    check_always_false     noop_function              setup_create_snapshot
 NO_RETRY["Create Snapshot"]=1
 register_utility "Restore Snapshot"    setup_restore_snapshot   check_always_false     noop_function              setup_restore_snapshot
@@ -496,6 +503,7 @@ UTILITY_CATEGORY["Mainline"]="System Tools"
 UTILITY_CATEGORY["CachyOS Kernel Manager"]="System Tools"
 UTILITY_CATEGORY["Fedora Mainline Kernel"]="System Tools"
 UTILITY_CATEGORY["linux-tkg"]="System Tools"
+UTILITY_CATEGORY["Betterbird"]="Internet"
 UTILITY_CATEGORY["Bitwarden Client"]="Productivity"
 UTILITY_CATEGORY["Bitwarden Extension"]="Internet"
 UTILITY_CATEGORY["Bottles"]="Gaming"
@@ -506,6 +514,7 @@ UTILITY_CATEGORY["Brave Origin"]="Internet"
 UTILITY_CATEGORY["Btop"]="System Tools"
 UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
+UTILITY_CATEGORY["Claws Mail"]="Internet"
 UTILITY_CATEGORY["Cockpit"]="Remote Admin Tools"
 UTILITY_CATEGORY["Cursor IDE"]="Development"
 UTILITY_CATEGORY["DBeaver"]="Development"
@@ -531,6 +540,7 @@ UTILITY_CATEGORY["KMail"]="Internet"
 UTILITY_CATEGORY["LibreOffice"]="Productivity"
 UTILITY_CATEGORY["Lutris"]="Gaming"
 UTILITY_CATEGORY["MangoHud"]="Gaming"
+UTILITY_CATEGORY["NeoMutt"]="Internet"
 UTILITY_CATEGORY["Nextcloud Desktop"]="Productivity"
 UTILITY_CATEGORY["NVM"]="Development"
 UTILITY_CATEGORY["OBS Studio"]="Productivity"
@@ -541,6 +551,7 @@ UTILITY_CATEGORY["OpenSSH Server"]="Remote Admin Tools"
 UTILITY_CATEGORY["PIA VPN"]="Internet"
 UTILITY_CATEGORY["Postman"]="Development"
 UTILITY_CATEGORY["PowerShell"]="Development"
+UTILITY_CATEGORY["Proton Mail Bridge"]="Internet"
 UTILITY_CATEGORY["ProtonUp-Qt"]="Gaming"
 UTILITY_CATEGORY["ProtonVPN"]="Internet"
 UTILITY_CATEGORY["QBittorrent"]="Internet"
@@ -556,6 +567,7 @@ UTILITY_CATEGORY["Telegram Desktop"]="Internet"
 UTILITY_CATEGORY["Termius SSH Client"]="Remote Admin Tools"
 UTILITY_CATEGORY["Thorium Browser"]="Internet"
 UTILITY_CATEGORY["Thunderbird"]="Internet"
+UTILITY_CATEGORY["Trojita"]="Internet"
 UTILITY_CATEGORY["Timeshift"]="Backup"
 UTILITY_CATEGORY["Create Snapshot"]="Backup"
 UTILITY_CATEGORY["Restore Snapshot"]="Backup"
@@ -585,6 +597,8 @@ UTILITY_CATEGORY["AnyDesk"]="Remote Admin Tools"
 UTILITY_CATEGORY["Audacity"]="Productivity"
 UTILITY_CATEGORY["ClamAV"]="System Tools"
 UTILITY_CATEGORY["Element (Matrix)"]="Internet"
+UTILITY_CATEGORY["Evolution"]="Internet"
+UTILITY_CATEGORY["Geary"]="Internet"
 UTILITY_CATEGORY["Flameshot"]="Productivity"
 UTILITY_CATEGORY["Go SDK"]="Development"
 UTILITY_CATEGORY["UFW Firewall"]="Firewalls"
@@ -639,8 +653,15 @@ UTILITY_SUBCATEGORY["SponsorBlock Extension"]="Web Browser Extensions"
 UTILITY_SUBCATEGORY["Discord"]="Messaging"
 UTILITY_SUBCATEGORY["Signal Desktop"]="Messaging"
 UTILITY_SUBCATEGORY["Telegram Desktop"]="Messaging"
+UTILITY_SUBCATEGORY["Betterbird"]="Email Clients"
+UTILITY_SUBCATEGORY["Claws Mail"]="Email Clients"
+UTILITY_SUBCATEGORY["Evolution"]="Email Clients"
+UTILITY_SUBCATEGORY["Geary"]="Email Clients"
 UTILITY_SUBCATEGORY["KMail"]="Email Clients"
+UTILITY_SUBCATEGORY["NeoMutt"]="Email Clients"
+UTILITY_SUBCATEGORY["Proton Mail Bridge"]="Email Clients"
 UTILITY_SUBCATEGORY["Thunderbird"]="Email Clients"
+UTILITY_SUBCATEGORY["Trojita"]="Email Clients"
 UTILITY_SUBCATEGORY["FileZilla"]="File Transfer"
 UTILITY_SUBCATEGORY["Remmina"]="Remote Access"
 UTILITY_SUBCATEGORY["Termius SSH Client"]="Remote Access"
@@ -873,14 +894,20 @@ UTILITY_DESCRIPTION["Bitwarden Extension"]="Deploys Bitwarden browser extension 
 UTILITY_DESCRIPTION["Brave Browser"]="Privacy-focused web browser with built-in ad and tracker blocking based on Chromium."
 UTILITY_DESCRIPTION["Brave Debloat"]="Disables Brave Browser annoyances via enterprise policy: Rewards, Crypto Wallet, VPN, Leo AI, News, Talk, and Tor. Also disables telemetry (P3A, stats ping, metrics reporting, Safe Browsing extended reporting, and URL-keyed data collection)."
 UTILITY_DESCRIPTION["Brave Origin"]="Streamlined build of the Brave browser that ships without Rewards, Wallet, VPN, Leo AI, News, and other add-ons. Installed as a separate 'brave-origin' package alongside (not replacing) regular Brave Browser."
+UTILITY_DESCRIPTION["Betterbird"]="Thunderbird fork carrying bug fixes and features upstream has not merged. Installed from Flathub, or the AUR on Arch, since no distro packages it. Shares the ~/.thunderbird profile directory with Thunderbird."
 UTILITY_DESCRIPTION["Chromium"]="Open-source web browser that serves as the upstream base for Google Chrome."
+UTILITY_DESCRIPTION["Claws Mail"]="Fast, lightweight GTK email client with extensive filtering and a plugin system. A good fit for XFCE and other resource-conscious desktops."
+UTILITY_DESCRIPTION["Evolution"]="GNOME's personal information manager combining email, calendar, contacts, and tasks. Installs evolution-ews alongside it for Microsoft Exchange account support where the package is available."
 UTILITY_DESCRIPTION["Devolutions RDM"]="Remote Desktop Manager for centrally managing remote connections, passwords, and credentials."
 UTILITY_DESCRIPTION["Discord"]="Voice, video, and text communication platform popular with gaming and developer communities."
 UTILITY_DESCRIPTION["FileZilla"]="Cross-platform FTP, FTPS, and SFTP client for fast and reliable file transfers."
 UTILITY_DESCRIPTION["Firefox"]="Open-source web browser by Mozilla with strong privacy features and extension support."
+UTILITY_DESCRIPTION["Geary"]="Lightweight GNOME email client with conversation threading and a minimal interface."
 UTILITY_DESCRIPTION["Google Chrome"]="Google's web browser with extensive extension ecosystem, sync, and developer tools."
 UTILITY_DESCRIPTION["KMail"]="KDE's feature-rich email client with PGP encryption, multiple account support, and filters."
+UTILITY_DESCRIPTION["NeoMutt"]="Terminal email client, a maintained fork of Mutt with sidebar, notmuch, and NNTP support. Ships no default account config — you write ~/.config/neomutt/neomuttrc yourself."
 UTILITY_DESCRIPTION["OpenSSH Server"]="Secure Shell server enabling encrypted remote terminal access to this machine."
+UTILITY_DESCRIPTION["Proton Mail Bridge"]="Local IMAP/SMTP gateway that decrypts Proton Mail so any desktop client can use it. Requires a paid Proton plan and a running keyring. Installed from Flathub, as Proton publishes no tracking repo."
 UTILITY_DESCRIPTION["PIA VPN"]="Private Internet Access VPN client for encrypted and anonymous internet browsing."
 UTILITY_DESCRIPTION["ProtonVPN"]="Free and open-source VPN service by Proton for secure and private browsing."
 UTILITY_DESCRIPTION["QBittorrent"]="Open-source BitTorrent client with a clean interface and no ads."
@@ -893,6 +920,7 @@ UTILITY_DESCRIPTION["Telegram Desktop"]="Cloud-based messaging app with fast del
 UTILITY_DESCRIPTION["Termius SSH Client"]="Modern SSH client with sync across devices, SFTP, and snippet management."
 UTILITY_DESCRIPTION["Thorium Browser"]="Chromium-based browser optimized for speed and performance with compiler optimizations."
 UTILITY_DESCRIPTION["Thunderbird"]="Open-source email client by Mozilla with calendar integration and PGP support."
+UTILITY_DESCRIPTION["Trojita"]="Trojitá — fast, Qt-native IMAP client and a lighter alternative to KMail on KDE. Fedora, Arch (AUR) and openSUSE only: Debian dropped the package and it was never in EPEL. Upstream is quiet; 0.7 dates from 2016."
 UTILITY_DESCRIPTION["Vivaldi Browser"]="Highly customizable Chromium-based browser with advanced tab management and built-in tools."
 UTILITY_DESCRIPTION["Zen Browser"]="Privacy-focused Firefox-based browser with vertical tabs, split view, and workspaces. Still in beta. Installs the official tarball to ~/.local/share/zen-browser, falling back to Flatpak if the tarball cannot be installed."
 UTILITY_DESCRIPTION["WireGuard Client"]="Modern, fast, and lightweight VPN client using the WireGuard protocol."

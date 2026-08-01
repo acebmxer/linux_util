@@ -4,6 +4,7 @@
 _linux_util_utilities() {
     cat <<'EOF'
 AMD Drivers
+Betterbird
 Bitwarden Client
 Bitwarden Extension
 Bottles
@@ -15,6 +16,7 @@ CachyOS Kernel Manager
 Chromium
 Cinnamon Desktop
 Claude Code
+Claws Mail
 Cockpit
 Command-Not-Found Prompt
 COSMIC Desktop
@@ -26,6 +28,7 @@ Devolutions RDM
 Discord
 Docker
 Enable RDP
+Evolution
 Fastfetch
 Fedora Mainline Kernel
 Feral Gamemode
@@ -33,6 +36,7 @@ FileZilla
 Firefox
 Flatpak Setup
 Full System Upgrade/Update
+Geary
 GIMP
 GitHub CLI
 GNOME Desktop
@@ -51,6 +55,7 @@ LXQt Desktop
 Mainline
 MangoHud
 MATE Desktop
+NeoMutt
 Nextcloud Desktop
 NVIDIA Drivers
 NVM
@@ -61,6 +66,7 @@ OpenSSH Server
 Pantheon Desktop
 PIA VPN
 Postman
+Proton Mail Bridge
 ProtonUp-Qt
 ProtonVPN
 QBittorrent
@@ -79,6 +85,7 @@ Termius SSH Client
 Thorium Browser
 Thunderbird
 Timeshift
+Trojita
 Num Lock at Boot
 UFW Firewall
 Visual Studio Code

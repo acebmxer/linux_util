@@ -259,19 +259,25 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 
 | Utility | Description |
 |---------|-------------|
+| **Betterbird** | Thunderbird fork with extra fixes and features — Flatpak / AUR |
 | **Bitwarden Extension** | Bitwarden browser extension installer |
 | **Brave Browser** | Privacy-focused Chromium browser with built-in ad blocking |
 | **Brave Origin** | Streamlined Brave build without Rewards, Wallet, VPN, and Leo AI |
 | **Chromium** | Open-source browser, upstream base for Chrome |
+| **Claws Mail** | Fast, lightweight GTK email client with a plugin system |
 | **Discord** | Voice, video, and text communication platform |
 | **Element (Matrix)** | Matrix protocol client for decentralised messaging |
+| **Evolution** | GNOME mail, calendar, and contacts suite with Exchange (EWS) support |
 | **FileZilla** | FTP, FTPS, and SFTP client |
 | **Firefox** | Mozilla's open-source browser |
+| **Geary** | Lightweight GNOME email client with conversation threading |
 | **Google Chrome** | Google's browser with sync and developer tools |
 | **Joplin Web Clipper** | Browser extension for saving web content to Joplin |
 | **KMail** | KDE's email client with PGP encryption |
 | **LibreWolf** | Privacy-hardened Firefox fork |
+| **NeoMutt** | Terminal email client, a maintained fork of Mutt |
 | **PIA VPN** | Private Internet Access VPN client |
+| **Proton Mail Bridge** | Local IMAP/SMTP gateway for Proton Mail — needs a paid plan |
 | **ProtonVPN** | Free and open-source VPN by Proton |
 | **QBittorrent** | Open-source BitTorrent client |
 | **Signal Desktop** | End-to-end encrypted messaging |
@@ -283,6 +289,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Thorium Browser** | Speed-optimized Chromium browser |
 | **Thunderbird** | Mozilla's email client with calendar and PGP |
 | **Tor Browser** | Anonymous browsing via the Tor network |
+| **Trojita** | Fast Qt-native IMAP client — Fedora, Arch (AUR), and openSUSE only |
 | **UniFi Endpoint** | Ubiquiti's UniFi Identity VPN client for UniFi-managed networks — `.deb` / `.rpm` |
 | **Vivaldi Browser** | Highly customizable Chromium browser |
 | **WireGuard Client** | Lightweight VPN client using WireGuard protocol |
