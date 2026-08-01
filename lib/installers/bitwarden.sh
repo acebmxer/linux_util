@@ -54,7 +54,8 @@ install_bitwarden() {
             rm -f "$tmp_rpm"
             ;;
         arch)
-            aur_ensure bitwarden-bin
+            # extra/bitwarden is the official build; bitwarden-bin is the AUR fallback
+            sudo pacman -S --noconfirm --needed bitwarden 2>/dev/null || aur_ensure bitwarden-bin
             ;;
         *)
             if has_snap; then

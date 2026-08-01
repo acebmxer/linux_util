@@ -28,7 +28,7 @@ install_element() {
             fi
             ;;
         arch)
-            sudo pacman -S --noconfirm element-desktop 2>/dev/null || aur_ensure element-desktop
+            repo_or_aur element-desktop
             ;;
         suse)
             if has_flatpak; then
@@ -71,7 +71,7 @@ update_element() {
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade element-desktop ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y element-desktop 2>/dev/null || true ;;
-            arch)        sudo pacman -S --noconfirm element-desktop 2>/dev/null || aur_ensure element-desktop ;;
+            arch)        repo_or_aur element-desktop ;;
             suse)        sudo zypper update -y element-desktop 2>/dev/null || true ;;
         esac
     fi

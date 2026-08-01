@@ -71,7 +71,7 @@ install_wps_office() {
             _wps_install_from_site "rpm"
             ;;
         arch)
-            aur_ensure wps-office
+            flatpak_or_aur com.wps.Office wps-office
             ;;
         suse)
             if has_flatpak; then
@@ -103,7 +103,11 @@ uninstall_wps_office() {
             sudo "$PKG_MGR" remove -y wps-office
             ;;
         arch)
-            aur_remove wps-office 2>/dev/null || pkg_remove wps-office 2>/dev/null || true
+            if flatpak_is_installed "com.wps.Office"; then
+                flatpak uninstall -y com.wps.Office
+            else
+                aur_remove wps-office 2>/dev/null || pkg_remove wps-office 2>/dev/null || true
+            fi
             ;;
         suse)
             if flatpak_is_installed "com.wps.Office"; then
@@ -134,7 +138,11 @@ update_wps_office() {
             _wps_install_from_site "rpm"
             ;;
         arch)
-            aur_ensure wps-office
+            if flatpak_is_installed "com.wps.Office"; then
+                flatpak update -y com.wps.Office
+            else
+                aur_ensure wps-office
+            fi
             ;;
         *)
             if flatpak_is_installed "com.wps.Office"; then

@@ -31,7 +31,7 @@ install_tor_browser() {
             }
             ;;
         arch)
-            aur_ensure torbrowser-launcher
+            repo_or_aur torbrowser-launcher
             ;;
         suse)
             if has_flatpak; then
@@ -72,7 +72,7 @@ update_tor_browser() {
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade torbrowser-launcher ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y torbrowser-launcher ;;
-            arch)        aur_ensure torbrowser-launcher ;;
+            arch)        repo_or_aur torbrowser-launcher ;;
             suse)        sudo zypper update -y torbrowser-launcher 2>/dev/null || true ;;
         esac
     fi

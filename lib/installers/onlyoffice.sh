@@ -30,7 +30,7 @@ install_onlyoffice() {
             fi
             ;;
         arch)
-            aur_ensure onlyoffice-bin
+            flatpak_or_aur org.onlyoffice.desktopeditors onlyoffice-bin
             ;;
         suse)
             if has_flatpak; then
@@ -68,7 +68,11 @@ uninstall_onlyoffice() {
             fi
             ;;
         arch)
-            aur_remove onlyoffice-bin 2>/dev/null || pkg_remove onlyoffice-desktopeditors 2>/dev/null || true
+            if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
+                flatpak uninstall -y org.onlyoffice.desktopeditors
+            else
+                aur_remove onlyoffice-bin 2>/dev/null || pkg_remove onlyoffice-desktopeditors 2>/dev/null || true
+            fi
             ;;
         suse)
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
@@ -96,7 +100,11 @@ update_onlyoffice() {
             sudo apt install -y --only-upgrade onlyoffice-desktopeditors
             ;;
         arch)
-            aur_ensure onlyoffice-bin
+            if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
+                flatpak update -y org.onlyoffice.desktopeditors
+            else
+                aur_ensure onlyoffice-bin
+            fi
             ;;
         *)
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then

@@ -34,7 +34,7 @@ EOF
             sudo "$PKG_MGR" install -y vivaldi-stable
             ;;
         arch)
-            aur_ensure vivaldi
+            repo_or_aur vivaldi
             ;;
         suse)
             sudo rpm --import https://repo.vivaldi.com/archive/linux_signing_key.pub
@@ -77,7 +77,7 @@ update_vivaldi() {
             sudo apt install -y --only-upgrade vivaldi-stable
             ;;
         arch)
-            aur_ensure vivaldi
+            repo_or_aur vivaldi
             ;;
         *)
             pkg_upgrade vivaldi-stable

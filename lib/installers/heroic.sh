@@ -48,7 +48,7 @@ install_heroic() {
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
-            aur_ensure heroic-games-launcher-bin
+            flatpak_or_aur com.heroicgameslauncher.hgl heroic-games-launcher-bin
             ;;
         suse)
             if has_flatpak; then
@@ -102,5 +102,5 @@ update_heroic() {
 
 get_version_heroic() {
     # Do NOT call heroic --version — Electron apps launch a full GUI window.
-    _ver_from_pkg heroic || echo ""
+    _ver_from_pkg heroic || _ver_from_flatpak com.heroicgameslauncher.hgl || echo ""
 }

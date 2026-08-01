@@ -38,6 +38,38 @@ aur_ensure() {
     fi
 }
 
+# Install a package that lives in the official Arch repos, falling back to the
+# AUR only if it is missing there (e.g. on a derivative with a smaller repo set).
+#
+# Use this instead of aur_ensure for anything in core/extra. yay and paru happily
+# resolve repo packages, which hides the problem, but on a system with no AUR
+# helper aur_ensure drops to aur_build, and aur_build clones
+# aur.archlinux.org/<pkg>.git — which does not exist for a repo-only package, so
+# the install fails outright.
+repo_or_aur() {
+    sudo pacman -S --noconfirm --needed "$@" 2>/dev/null && return 0
+    aur_ensure "$@"
+}
+
+# Install a package that has no official Arch repo build, preferring Flathub over
+# the AUR so the system does not have to build and trust an unreviewed PKGBUILD.
+#
+# Only takes the Flatpak route when flatpak is already installed — a system with
+# no flatpak has not opted into it, and pulling in the whole runtime stack to
+# avoid one AUR package would be a worse trade. ensure_flatpak still runs in that
+# case, but only to add the flathub remote (has_flatpak short-circuits the
+# install branch inside it).
+#
+# Usage: flatpak_or_aur <flathub-app-id> <aur-package>
+flatpak_or_aur() {
+    local flatpak_id="$1" aur_pkg="$2"
+    if has_flatpak && ensure_flatpak; then
+        flatpak install -y flathub "$flatpak_id" && return 0
+        warn "Flatpak install of ${flatpak_id} failed; falling back to the AUR."
+    fi
+    aur_ensure "$aur_pkg"
+}
+
 aur_remove() {
     _aur_helper_run -Rs --noconfirm "$@" || sudo pacman -Rs --noconfirm "$@"
 }

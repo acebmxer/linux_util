@@ -86,7 +86,7 @@ install_lact() {
             sudo "$PKG_MGR" install -y lact || { error "Failed to install LACT."; return 1; }
             ;;
         arch)
-            aur_ensure lact
+            repo_or_aur lact
             ;;
         suse)
             # LACT is available via the hardware OBS repository
@@ -154,7 +154,7 @@ update_lact() {
             sudo "$PKG_MGR" upgrade -y lact 2>/dev/null || install_lact
             ;;
         arch)
-            aur_ensure lact
+            repo_or_aur lact
             ;;
         suse)
             sudo zypper update -y lact 2>/dev/null || install_lact

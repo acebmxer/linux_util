@@ -3,9 +3,9 @@
 
 # --- Betterbird ---
 # Thunderbird fork carrying fixes and features upstream has not merged.
-# No distro ships it: Arch gets the AUR binary package, everything else gets
-# the official Flathub build. Upstream publishes only tarballs otherwise, and a
-# tarball drop would not self-update.
+# No distro ships it, so this is the official Flathub build everywhere, with the
+# AUR binary package as the Arch fallback when Flatpak is not set up. Upstream
+# publishes only tarballs otherwise, and a tarball drop would not self-update.
 
 _BETTERBIRD_FLATPAK="eu.betterbird.Betterbird"
 _BETTERBIRD_AUR="betterbird-bin"
@@ -19,7 +19,7 @@ install_betterbird() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         arch)
-            aur_ensure "$_BETTERBIRD_AUR" || return 1
+            flatpak_or_aur "$_BETTERBIRD_FLATPAK" "$_BETTERBIRD_AUR" || return 1
             ;;
         *)
             if ! ensure_flatpak; then

@@ -49,7 +49,7 @@ install_standard_notes() {
             fi
             ;;
         arch)
-            aur_ensure standard-notes-bin
+            flatpak_or_aur org.standardnotes.standardnotes standard-notes-bin
             ;;
         suse)
             if has_flatpak; then

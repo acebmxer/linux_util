@@ -31,7 +31,7 @@ install_terraform() {
             sudo "$PKG_MGR" install -y terraform
             ;;
         arch)
-            aur_ensure terraform
+            repo_or_aur terraform
             ;;
         suse)
             sudo zypper addrepo https://rpm.releases.hashicorp.com/SLES/hashicorp.repo hashicorp 2>/dev/null || true
@@ -70,7 +70,7 @@ update_terraform() {
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade terraform ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y terraform ;;
-        arch)        aur_ensure terraform ;;
+        arch)        repo_or_aur terraform ;;
         suse)        sudo zypper update -y terraform ;;
     esac
 }

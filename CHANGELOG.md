@@ -34,15 +34,47 @@ section when a batch is cut.
     track. Requires a paid Proton plan and a running secret service, both of
     which the installer states up front rather than failing at first launch.
   - **Betterbird** — Thunderbird fork with fixes upstream has not merged. No
-    distro packages it, so Arch uses the AUR build and everything else uses
-    Flathub. Its uninstall leaves `~/.thunderbird` in place, because Betterbird
-    shares that profile directory with a possibly still-installed Thunderbird.
+    distro packages it, so it installs from Flathub everywhere, falling back to
+    the AUR build on an Arch system without Flatpak. Its uninstall leaves
+    `~/.thunderbird` in place, because Betterbird shares that profile directory
+    with a possibly still-installed Thunderbird.
   - **Trojitá** — Qt-native IMAP client, a lighter option than KMail on KDE.
     Registered as `Trojita` so the name stays typeable on the CLI. Offered on
     Fedora, Arch (AUR) and openSUSE only; Debian dropped the package and it was
     never in EPEL, so those two families get an explicit error pointing at KMail
     or Claws Mail instead of a silent failure. Note that upstream is quiet — 0.7
     dates from 2016.
+- **Changed** — Twelve utilities now prefer **Flathub over the AUR on Arch**
+  when Flatpak is already installed: **Betterbird**, **Heroic Games Launcher**,
+  **LibreWolf**, **Logseq**, **Mark Text**, **OnlyOffice**, **ProtonUp-Qt**,
+  **RustDesk**, **Slack**, **Standard Notes**, **WPS Office** and **Zoom**. Each
+  already shipped a Flathub build for the other distro families, so Arch was the
+  only family being asked to build and trust an unreviewed PKGBUILD for software
+  that had a vendor-published Flatpak. The new `flatpak_or_aur` helper only takes
+  the Flatpak route when `flatpak` is already on the system — a machine without
+  it has not opted in, and pulling in the whole runtime stack to avoid one AUR
+  package would be the worse trade — so it falls back to the AUR otherwise.
+  **Termius** and **ProtonVPN** were deliberately left on the AUR: the Termius
+  Flatpak cannot reach the host shell (the same reason the RPM families moved off
+  it, below), and a sandboxed VPN client cannot drive NetworkManager.
+  **OnlyOffice** and **WPS Office** also gained the Flatpak checks their
+  `arch)` uninstall and update branches were missing, which would otherwise have
+  reached for the AUR package while a Flatpak copy was installed, and **Heroic**
+  now reads its version from Flatpak when installed that way instead of
+  reporting blank.
+- **Fixed** — Ten utilities installed from the **AUR a package that is in Arch's
+  official `extra` repo**: **Btrfs Assistant**, **Element**, **Input Leap**,
+  **LACT**, **Obsidian**, **OpenTofu**, **Signal**, **Terraform**, **Tor
+  Browser** and **Vivaldi**. On a system with `yay` or `paru` this was invisible,
+  because the helpers resolve repo packages too — but with no helper installed,
+  `aur_ensure` falls through to `aur_build`, which clones
+  `aur.archlinux.org/<pkg>.git`, and no such AUR repo exists for a package that
+  only ships in `extra`. Every one of those installs failed outright on a fresh
+  Arch system with no AUR helper. They now go through a `repo_or_aur` helper that
+  tries `pacman -S` first and only falls back to the AUR. **Bitwarden** likewise
+  now prefers `extra/bitwarden` over the AUR's `bitwarden-bin`. Both new routing
+  helpers are covered by tests, since neither can be exercised on a non-Arch
+  system otherwise.
 - **Fixed** — **Cockpit** now has a description in the TUI. It was registered
   with a category and subcategory but no `UTILITY_DESCRIPTION`, so highlighting
   it rendered an empty description pane — `menu.sh` falls back to `""` for a

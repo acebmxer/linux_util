@@ -27,7 +27,7 @@ install_signal() {
             fi
             ;;
         arch)
-            aur_ensure signal-desktop
+            repo_or_aur signal-desktop
             ;;
     esac
     info "Signal Desktop installed."
@@ -61,7 +61,7 @@ update_signal() {
         case "$DISTRO_FAMILY" in
             debian)   sudo apt-get install -y --only-upgrade signal-desktop ;;
             arch)
-                aur_ensure signal-desktop
+                repo_or_aur signal-desktop
                 ;;
         esac
     fi

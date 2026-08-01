@@ -637,6 +637,8 @@ System tasks use `register_system_task` instead of `register_utility` and appear
 | `pkg_clean` | Clean package cache |
 | `has_snap` / `has_flatpak` / `has_aur_helper` | Availability checks |
 | `aur_install <pkg>` | Install from AUR |
+| `repo_or_aur <pkg>` | Install from the official Arch repos, falling back to the AUR |
+| `flatpak_or_aur <flathub-id> <pkg>` | Install from Flathub when Flatpak is set up, else the AUR |
 | `ensure_tools` | Ensure curl/wget/gpg are present |
 | `check_internet` | Connectivity check (warns, does not abort) |
 | `download_file <url> <dest> [retries]` | Retry-aware downloader |
@@ -649,7 +651,7 @@ Use `$DISTRO_FAMILY` (`debian`, `fedora`, `rhel`, `arch`, `suse`) for distro-spe
 
 **Package installation fails** — verify internet access and that repositories are reachable. Steam on Fedora requires RPM Fusion; the script offers to enable it automatically.
 
-**AUR packages on Arch** — install `yay` or `paru` first. The script can fall back to building from AUR directly, but an AUR helper is recommended.
+**AUR packages on Arch** — install `yay` or `paru` first. The script can fall back to building from AUR directly, but an AUR helper is recommended. The AUR is only used where it is the sole option: anything carried in `core`/`extra` is installed with `pacman`, and where a utility has a vendor-published Flathub build it is preferred over the AUR if Flatpak is already installed.
 
 **No colours / piped output** — use `--no-color`, set the `NO_COLOR` environment variable, or pipe output to a file; ANSI colours are automatically disabled in non-interactive terminals.
 

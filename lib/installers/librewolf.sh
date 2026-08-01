@@ -41,7 +41,7 @@ EOF
             fi
             ;;
         arch)
-            aur_ensure librewolf-bin
+            flatpak_or_aur io.gitlab.librewolf-community.librewolf librewolf-bin
             ;;
         suse)
             if has_flatpak; then

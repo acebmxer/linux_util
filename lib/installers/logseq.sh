@@ -14,7 +14,7 @@ install_logseq() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         arch)
-            aur_ensure logseq-desktop-bin
+            flatpak_or_aur com.logseq.Logseq logseq-desktop-bin
             ;;
         *)
             # Flatpak is the recommended distribution method for most distros

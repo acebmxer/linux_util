@@ -1763,6 +1763,90 @@ test_install_window_buttons_no_session_skips
 test_get_version_window_buttons_reports_de
 
 # ============================================================================
+# Test: AUR Routing Helpers (repo_or_aur / flatpak_or_aur)
+# ============================================================================
+echo ""
+echo "=== AUR Routing Tests ==="
+
+source "${SCRIPT_DIR}/lib/aur.sh"
+
+# repo_or_aur exists because aur_ensure falls through to aur_build on a system
+# with no yay/paru, and aur_build clones aur.archlinux.org/<pkg>.git — which does
+# not exist for a package that only ships in core/extra. The repo must win.
+test_repo_or_aur_prefers_pacman() {
+    local out
+    out=$(
+        sudo() { [[ "$1" == "pacman" ]] && echo "PACMAN_CALLED"; return 0; }
+        aur_ensure() { echo "AUR_CALLED"; }
+        repo_or_aur obsidian 2>&1
+    )
+    assert_contains "$out" "PACMAN_CALLED" "repo_or_aur tries pacman first"
+    assert_false "repo_or_aur does not touch the AUR when the repo has the package" \
+        grep -q "AUR_CALLED" <<< "$out"
+}
+
+test_repo_or_aur_falls_back_to_aur() {
+    local out
+    out=$(
+        sudo() { return 1; }             # simulate: not in any configured repo
+        aur_ensure() { echo "AUR_CALLED"; }
+        repo_or_aur some-derivative-pkg 2>&1
+    )
+    assert_contains "$out" "AUR_CALLED" \
+        "repo_or_aur falls back to the AUR when the package is not in a repo"
+}
+
+# flatpak_or_aur must not install flatpak itself — a system without it has not
+# opted in, and dragging in the runtime stack to dodge one AUR package is worse.
+test_flatpak_or_aur_uses_aur_without_flatpak() {
+    local out
+    out=$(
+        has_flatpak() { return 1; }
+        ensure_flatpak() { echo "ENSURE_FLATPAK_CALLED"; return 0; }
+        aur_ensure() { echo "AUR_CALLED"; }
+        flatpak_or_aur com.slack.Slack slack-desktop 2>&1
+    )
+    assert_contains "$out" "AUR_CALLED" "flatpak_or_aur uses the AUR when flatpak is absent"
+    assert_false "flatpak_or_aur never installs flatpak just to avoid the AUR" \
+        grep -q "ENSURE_FLATPAK_CALLED" <<< "$out"
+}
+
+test_flatpak_or_aur_prefers_flathub() {
+    local out
+    out=$(
+        has_flatpak() { return 0; }
+        ensure_flatpak() { return 0; }
+        flatpak() { echo "FLATPAK_CALLED $*"; return 0; }
+        aur_ensure() { echo "AUR_CALLED"; }
+        flatpak_or_aur com.slack.Slack slack-desktop 2>&1
+    )
+    assert_contains "$out" "FLATPAK_CALLED install -y flathub com.slack.Slack" \
+        "flatpak_or_aur installs the Flathub app when flatpak is set up"
+    assert_false "flatpak_or_aur does not also hit the AUR on a successful Flatpak install" \
+        grep -q "AUR_CALLED" <<< "$out"
+}
+
+# A Flathub app can be pulled or renamed; that must degrade to the AUR, not fail.
+test_flatpak_or_aur_falls_back_on_flatpak_failure() {
+    local out
+    out=$(
+        has_flatpak() { return 0; }
+        ensure_flatpak() { return 0; }
+        flatpak() { return 1; }
+        aur_ensure() { echo "AUR_CALLED"; }
+        flatpak_or_aur com.slack.Slack slack-desktop 2>&1
+    )
+    assert_contains "$out" "AUR_CALLED" \
+        "flatpak_or_aur falls back to the AUR when the Flatpak install fails"
+}
+
+test_repo_or_aur_prefers_pacman
+test_repo_or_aur_falls_back_to_aur
+test_flatpak_or_aur_uses_aur_without_flatpak
+test_flatpak_or_aur_prefers_flathub
+test_flatpak_or_aur_falls_back_on_flatpak_failure
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""

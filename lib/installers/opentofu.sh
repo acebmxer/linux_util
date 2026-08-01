@@ -32,7 +32,7 @@ install_opentofu() {
             sudo bash "$tmpfile" -- --install-method rpm
             ;;
         arch)
-            aur_ensure opentofu
+            repo_or_aur opentofu
             ;;
         suse)
             local tmpfile
@@ -85,7 +85,7 @@ update_opentofu() {
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade opentofu ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y opentofu ;;
-            arch)        aur_ensure opentofu ;;
+            arch)        repo_or_aur opentofu ;;
             suse)        sudo zypper update -y opentofu 2>/dev/null || install_opentofu ;;
         esac
     fi

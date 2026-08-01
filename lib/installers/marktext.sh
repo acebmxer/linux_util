@@ -37,7 +37,7 @@ install_marktext() {
             fi
             ;;
         arch)
-            aur_ensure marktext
+            flatpak_or_aur com.github.marktext.marktext marktext
             ;;
         suse)
             if has_flatpak; then

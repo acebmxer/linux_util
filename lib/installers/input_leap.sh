@@ -27,7 +27,7 @@ install_input_leap() {
             }
             ;;
         arch)
-            aur_ensure input-leap
+            repo_or_aur input-leap
             ;;
         suse)
             sudo zypper install -y input-leap 2>/dev/null || {
@@ -92,7 +92,7 @@ update_input_leap() {
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade input-leap 2>/dev/null || _install_input_leap_github_deb ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y input-leap 2>/dev/null || _install_input_leap_github_rpm ;;
-        arch)        aur_ensure input-leap ;;
+        arch)        repo_or_aur input-leap ;;
         suse)        sudo zypper update -y input-leap 2>/dev/null || true ;;
     esac
 }

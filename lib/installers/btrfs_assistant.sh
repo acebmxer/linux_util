@@ -11,8 +11,8 @@ install_btrfs_assistant() {
     echo "Installing Btrfs Assistant..."
     case "$DISTRO_FAMILY" in
         arch)
-            # btrfs-assistant is in CachyOS repos; AUR on vanilla Arch
-            aur_ensure btrfs-assistant || return 1
+            # btrfs-assistant is in extra (and CachyOS repos); AUR only as a fallback
+            repo_or_aur btrfs-assistant || return 1
             ;;
         debian)
             sudo apt install -y btrfs-assistant || return 1

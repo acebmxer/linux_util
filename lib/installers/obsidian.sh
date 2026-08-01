@@ -53,7 +53,7 @@ install_obsidian() {
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
-            aur_ensure obsidian
+            repo_or_aur obsidian
             ;;
         suse)
             if has_flatpak; then
@@ -90,7 +90,7 @@ update_obsidian() {
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_obsidian ;;
             arch)
-                aur_ensure obsidian
+                repo_or_aur obsidian
                 ;;
         esac
     fi

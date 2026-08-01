@@ -10,7 +10,7 @@ install_protonup_qt() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         arch)
-            aur_ensure protonup-qt
+            flatpak_or_aur net.davidotek.pupgui2 protonup-qt
             ;;
         *)
             # Flatpak is the primary distribution method on all other distros

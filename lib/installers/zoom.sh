@@ -31,7 +31,7 @@ install_zoom() {
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
-            aur_ensure zoom
+            flatpak_or_aur us.zoom.Zoom zoom
             ;;
         suse)
             if has_flatpak; then

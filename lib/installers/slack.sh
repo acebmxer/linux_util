@@ -36,7 +36,7 @@ install_slack() {
             fi
             ;;
         arch)
-            aur_ensure slack-desktop
+            flatpak_or_aur com.slack.Slack slack-desktop
             ;;
         suse)
             if has_flatpak; then

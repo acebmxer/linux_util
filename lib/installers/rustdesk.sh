@@ -52,7 +52,7 @@ install_rustdesk() {
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
-            aur_ensure rustdesk-bin
+            flatpak_or_aur com.rustdesk.RustDesk rustdesk-bin
             ;;
         suse)
             if has_flatpak; then
