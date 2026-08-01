@@ -12,6 +12,49 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **WinApps** under **Productivity** — runs Windows applications as individual
+  windows on the Linux desktop, backed by a Windows VM and FreeRDP RemoteApp.
+  Upstream ships only an interactive `dialog`-driven wizard that aborts unless a
+  Windows VM is already reachable and `~/.config/winapps/winapps.conf` already
+  exists, so this task front-loads everything that wizard assumes: it installs
+  the dependency set (FreeRDP 3, `dialog`, netcat, `libnotify`, `iproute2`,
+  git), clones the source to `~/.local/bin/winapps-src` — the exact path
+  upstream's own installer uses, so `winapps-setup` updates that checkout
+  instead of cloning a second one — links `winapps-setup` onto `PATH`, and
+  writes a mode-600 `winapps.conf` template. The `winapps` symlink is
+  deliberately *not* created: upstream's setup reads that file as a pre-existing
+  installation and refuses to run.
+
+  It then offers to create the Windows VM itself from upstream's `compose.yaml`
+  (Windows 11 Pro, 4 GB RAM, 4 cores, 64 GB disk, ~8 GB download), with an
+  option to edit that file first for a different edition or sizing. The prompt
+  is skipped entirely when there is no `/dev/tty`, so an unattended
+  `--install WinApps` never starts a multi-GB download on its own; set
+  `WINAPPS_DEPLOY_VM=yes`/`no` to decide in advance. `/dev/kvm` is checked
+  before anything is pulled, since without it QEMU drops to software emulation
+  and Windows is unusable. The compose front-end is resolved across `docker
+  compose`, `docker-compose`, `podman compose`, and `podman-compose`, and when
+  Podman is used `WAFLAVOR` in `winapps.conf` is rewritten to match — otherwise
+  WinApps would look for the VM with the wrong tool. Declining is safe: the
+  closing instructions print the exact command to run later. The user finishes
+  with `winapps-setup --user` once Windows has booted.
+
+  FreeRDP 2 is not usable here, and `freerdp3-x11` only exists on Debian 13+ /
+  Ubuntu 24.04+, so on older Debian-family releases the task installs FreeRDP 3
+  from Flathub and grants it `--filesystem=home` instead of silently leaving a
+  v2 binary that WinApps would reject. On RHEL, EPEL is enabled first — both
+  `freerdp` and `nmap-ncat` live there. Uninstall delegates to upstream's
+  `--uninstall` when a full install is present, then removes the source tree and
+  any launchers left pointing at the deleted binary, but keeps `winapps.conf`,
+  which holds the user's Windows credentials. It also never removes the Windows
+  container or its volume — that disk holds a full Windows installation and
+  whatever the user saved inside it — and instead reports that it is still there
+  along with the command to delete it deliberately. Since upstream publishes no
+  tags or releases, the reported version is the checkout's commit date and short
+  hash.
+
 ## [1.1.0] - 2026-08-01
 
 ### Added

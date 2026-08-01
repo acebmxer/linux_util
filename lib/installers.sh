@@ -284,6 +284,7 @@ register_utility "Visual Studio Code"  install_vscode           check_vscode    
 register_utility "Vorta"               install_vorta            check_vorta            uninstall_vorta            update_vorta               get_version_vorta
 register_utility "Vivaldi Browser"     install_vivaldi          check_vivaldi          uninstall_vivaldi          update_vivaldi             get_version_vivaldi
 register_utility "VLC"                 install_vlc              check_vlc              uninstall_vlc              update_vlc                 get_version_vlc
+register_utility "WinApps"             install_winapps          check_winapps          uninstall_winapps          update_winapps             get_version_winapps
 register_utility "Wine"               install_wine             check_wine             uninstall_wine             update_wine                get_version_wine
 register_utility "WireGuard Client"    install_wireguard_client check_wireguard_client uninstall_wireguard_client update_wireguard_client    get_version_wireguard_client
 register_utility "WireGuard Server"    install_wireguard_server check_wireguard_server uninstall_wireguard_server update_wireguard_server    get_version_wireguard_server
@@ -587,6 +588,7 @@ UTILITY_CATEGORY["Vorta"]="Backup"
 UTILITY_CATEGORY["Duplicati"]="Backup"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
 UTILITY_CATEGORY["Vivaldi Browser"]="Internet"
+UTILITY_CATEGORY["WinApps"]="Productivity"
 UTILITY_CATEGORY["Wine"]="Gaming"
 UTILITY_CATEGORY["WireGuard Client"]="Internet"
 UTILITY_CATEGORY["WireGuard Server"]="Internet"
@@ -959,6 +961,7 @@ UTILITY_DESCRIPTION["Obsidian"]="Markdown-based knowledge base and note-taking a
 UTILITY_DESCRIPTION["OnlyOffice"]="Office suite with strong Microsoft Office format compatibility and real-time collaboration."
 UTILITY_DESCRIPTION["Standard Notes"]="End-to-end encrypted note-taking app with cross-platform sync and extensible editors."
 UTILITY_DESCRIPTION["WPS Office"]="Microsoft Office-compatible office suite with a familiar interface and polished formatting."
+UTILITY_DESCRIPTION["WinApps"]="Runs Windows applications (Office, Adobe, and anything else installed in Windows) as individual windows on the Linux desktop, via a Windows VM and FreeRDP RemoteApp. Installs the prerequisites — FreeRDP 3, dialog, netcat, libnotify — clones the source to ~/.local/bin/winapps-src, links 'winapps-setup', and writes a 0600 config template to ~/.config/winapps/winapps.conf. Then offers to create the Windows VM for you from upstream's compose file via Docker or Podman (Windows 11 Pro, 4 GB RAM, 4 cores, 64 GB disk, ~8 GB download; you can edit the compose file first, and declining is safe). Requires KVM. Finish by running 'winapps-setup --user' once Windows has booted. Windows itself is licensed separately — it installs and runs unactivated, activation needs your own Retail/Volume key, and RemoteApp needs Pro or better, not Home. Uninstall never deletes the VM or its disk. Upstream publishes no releases, so the version shown is the commit date and hash."
 
 # System Tools
 UTILITY_DESCRIPTION["Mainline"]="Ubuntu mainline-kernel installer (the cappelikan/bkw777 fork of ukuu) — a GTK GUI (mainline-gtk) plus 'mainline' CLI that downloads, installs, lists, and removes mainline kernels from kernel.ubuntu.com. Debian/Ubuntu family only: installed from ppa:cappelikan/ppa where add-apt-repository is available, otherwise from the latest upstream .deb. Warns and stops on Arch/Fedora/openSUSE."

@@ -90,6 +90,7 @@ Num Lock at Boot
 UFW Firewall
 Visual Studio Code
 Vivaldi Browser
+WinApps
 Wine
 WireGuard Client
 WireGuard Server
