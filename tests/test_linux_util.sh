@@ -1847,6 +1847,98 @@ test_flatpak_or_aur_prefers_flathub
 test_flatpak_or_aur_falls_back_on_flatpak_failure
 
 # ============================================================================
+# Test: WinApps compose port handling
+# ============================================================================
+echo ""
+echo "=== WinApps Port Tests ==="
+
+# Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/winapps.sh"
+
+# A stand-in for upstream's compose file: the two published mappings plus the
+# commented-out pair that exposes RDP to the local network, which must never be
+# rewritten.
+_winapps_test_compose() {
+    local _file="$1"
+    cat > "$_file" <<'COMPOSE_EOF'
+    ports:
+      # Map '8006' on Linux host to '8006' on Windows VM.
+      - "127.0.0.1:8006:8006"
+      # Map '3389' on Linux host to '3389' on Windows VM.
+      - "127.0.0.1:3389:3389/tcp"
+      - "127.0.0.1:3389:3389/udp"
+      # Uncomment the next two lines to expose RDP to the local network.
+      # - 3389:3389/tcp
+      # - 3389:3389/udp
+COMPOSE_EOF
+}
+
+test_winapps_published_port_reads_mappings() {
+    local _f="${LOG_DIR}/compose_read.yaml"
+    _winapps_test_compose "$_f"
+    assert_eq "3389" "$(_winapps_published_port "$_f" 3389)" "_winapps_published_port reads the RDP mapping"
+    assert_eq "8006" "$(_winapps_published_port "$_f" 8006)" "_winapps_published_port reads the web mapping"
+}
+
+test_winapps_remap_moves_host_side_only() {
+    local _f="${LOG_DIR}/compose_remap.yaml"
+    _winapps_test_compose "$_f"
+    _winapps_remap_port "$_f" 3389 3389 3390
+    assert_contains "$(<"$_f")" '"127.0.0.1:3390:3389/tcp"' "remap moves the host side of the tcp mapping"
+    assert_contains "$(<"$_f")" '"127.0.0.1:3390:3389/udp"' "remap moves the host side of the udp mapping"
+    assert_contains "$(<"$_f")" '# - 3389:3389/tcp' "remap leaves commented-out mappings alone"
+    assert_eq "3390" "$(_winapps_published_port "$_f" 3389)" "the remapped host port reads back"
+}
+
+# A second remap has to start from what the file publishes now, not from the
+# upstream default, or re-running the installer rewrites the wrong port.
+test_winapps_remap_is_repeatable() {
+    local _f="${LOG_DIR}/compose_again.yaml"
+    _winapps_test_compose "$_f"
+    _winapps_remap_port "$_f" 3389 3389 3390
+    _winapps_remap_port "$_f" "$(_winapps_published_port "$_f" 3389)" 3389 3391
+    assert_contains "$(<"$_f")" '"127.0.0.1:3391:3389/tcp"' "a second remap moves the already-moved port"
+    assert_eq "3391" "$(_winapps_published_port "$_f" 3389)" "the twice-remapped host port reads back"
+}
+
+# A free port leaves the compose file untouched and reports the published port.
+test_winapps_settle_port_noop_when_free() {
+    local _f="${LOG_DIR}/compose_free.yaml" _before="" _port=""
+    _winapps_test_compose "$_f"
+    _before=$(<"$_f")
+    _port=$(
+        _winapps_port_busy() { return 1; }
+        _WINAPPS_RDP_PORT=3389
+        _winapps_settle_port _WINAPPS_RDP_PORT "RDP" "$_f" 3389 >/dev/null
+        echo "$_WINAPPS_RDP_PORT"
+    )
+    assert_eq "3389" "$_port" "_winapps_settle_port keeps a free port"
+    assert_eq "$_before" "$(<"$_f")" "_winapps_settle_port does not touch the file when the port is free"
+}
+
+# A busy port with no tty republishes on the next free one rather than failing.
+test_winapps_settle_port_moves_when_busy() {
+    local _f="${LOG_DIR}/compose_busy.yaml" _port=""
+    _winapps_test_compose "$_f"
+    _port=$(
+        _winapps_port_busy() { [[ "$1" == 3389 ]]; }
+        _winapps_port_holder() { echo "xrdp"; }
+        _winapps_have_tty() { return 1; }
+        _WINAPPS_RDP_PORT=3389
+        _winapps_settle_port _WINAPPS_RDP_PORT "RDP" "$_f" 3389 >/dev/null
+        echo "$_WINAPPS_RDP_PORT"
+    )
+    assert_eq "3390" "$_port" "_winapps_settle_port republishes a busy port"
+    assert_contains "$(<"$_f")" '"127.0.0.1:3390:3389/tcp"' "_winapps_settle_port rewrites the compose mapping"
+}
+
+test_winapps_published_port_reads_mappings
+test_winapps_remap_moves_host_side_only
+test_winapps_remap_is_repeatable
+test_winapps_settle_port_noop_when_free
+test_winapps_settle_port_moves_when_busy
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""

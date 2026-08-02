@@ -41,6 +41,25 @@ when a release is cut.
   closing instructions print the exact command to run later. The user finishes
   with `winapps-setup --user` once Windows has booted.
 
+  Host port conflicts are settled before the container starts, not after the
+  multi-GB image has already been pulled. Port 3389 is usually taken by an RDP
+  server on the same machine — `xrdp` and `krdp` are both installable from this
+  tool — which fails the port bind outright, and left alone would aim
+  `RDP_PORT` at the Linux desktop's own RDP server rather than at Windows. Both
+  3389 and 8006 are checked, the conflicting service is named where it can be
+  identified, and the mapping is republished on the next free port with
+  `winapps.conf` updated to match. Only the host half of the mapping moves, so
+  Windows still listens on 3389 inside the container, and the commented-out
+  mappings that expose RDP to the local network are left untouched. The port
+  currently published is read back out of `compose.yaml`, so re-running the task
+  honours an earlier remap instead of rewriting the wrong line. Given a tty the
+  user can decline and free the port instead — the message quotes the
+  `systemctl disable --now` command for the service holding it — while
+  unattended runs take the option that works. A failed `compose up` now says to
+  clear the half-created container before retrying, and local edits to
+  `compose.yaml`, which carries the VM's Windows password, are named when they
+  block the `git pull` that updates the checkout.
+
   FreeRDP 2 is not usable here, and `freerdp3-x11` only exists on Debian 13+ /
   Ubuntu 24.04+, so on older Debian-family releases the task installs FreeRDP 3
   from Flathub and grants it `--filesystem=home` instead of silently leaving a

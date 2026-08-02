@@ -24,6 +24,11 @@ _WINAPPS_VM_STARTED=0
 # _winapps_resolve_compose.
 _WINAPPS_COMPOSE=()
 _WINAPPS_BACKEND=""
+# Host ports the container publishes: RDP for WinApps itself, and the noVNC
+# page used to watch Windows install. Either is moved to a free port if the
+# host already has something on it.
+_WINAPPS_RDP_PORT=3389
+_WINAPPS_WEB_PORT=8006
 
 # Install FreeRDP 3 from Flathub. Used on releases whose repositories still
 # only carry FreeRDP 2, which WinApps refuses to run against.
@@ -56,6 +61,132 @@ _winapps_resolve_compose() {
     return 0
 }
 
+# Can we actually ask the user something? /dev/tty exists and looks readable
+# even in a session with no controlling terminal, where opening it fails — so
+# open it rather than testing the device node.
+_winapps_have_tty() {
+    { : < /dev/tty; } 2>/dev/null
+}
+
+# Is anything already listening on this host TCP port? 'ss' ships in the
+# iproute package this installer requires, so it is present by the time the VM
+# is deployed. A wildcard listener ('*:3389') matches too — that is exactly the
+# case that breaks a 127.0.0.1 port publish.
+_winapps_port_busy() {
+    local _port="$1"
+    [[ -n "$(ss -Hltn "sport = :$_port" 2>/dev/null)" ]]
+}
+
+# Name the service holding a port, or print nothing when it cannot be
+# identified. 'ss -p' hides other users' processes from an unprivileged caller,
+# so check the RDP servers this tool itself installs rather than guessing.
+_winapps_port_holder() {
+    local _port="$1" _unit
+    [[ "$_port" == 3389 ]] || return 0
+    for _unit in xrdp gnome-remote-desktop; do
+        systemctl is-active --quiet "$_unit" 2>/dev/null && { echo "$_unit"; return 0; }
+    done
+    systemctl --user is-active --quiet app-org.kde.krdpserver.service 2>/dev/null && \
+        echo "app-org.kde.krdpserver.service"
+    return 0
+}
+
+# First free port at or above the given one. Bounded so a busy system reports a
+# failure instead of scanning forever.
+_winapps_free_port() {
+    local _port="$1" _limit=$(( $1 + 20 ))
+    while (( _port < _limit )); do
+        _winapps_port_busy "$_port" || { echo "$_port"; return 0; }
+        _port=$(( _port + 1 ))
+    done
+    return 1
+}
+
+# The host port a mapping currently publishes on, read out of the compose file.
+# A re-run then honours an earlier remap instead of assuming the upstream
+# default is still there. Commented-out example mappings are ignored.
+_winapps_published_port() {
+    local _file="$1" _container="$2"
+    # '%' delimits the substitution: the pattern's own '|' alternation cannot
+    # double as the delimiter.
+    sed -nE "/^[[:space:]]*#/!s%^[[:space:]]*-[[:space:]]*\"?([0-9.]+:)?([0-9]+):${_container}(/(tcp|udp))?\"?[[:space:]]*\$%\2%p" \
+        "$_file" 2>/dev/null | head -1
+}
+
+# Move the host side of a published port in upstream's compose file. Only the
+# host half moves — Windows keeps listening on its own 3389/8006 inside the
+# container. Commented-out example mappings are left alone.
+_winapps_remap_port() {
+    local _file="$1" _old="$2" _container="$3" _new="$4"
+    sed -i -e "/^[[:space:]]*#/! s|:${_old}:${_container}|:${_new}:${_container}|g" \
+           -e "/^[[:space:]]*#/! s|^\([[:space:]]*-[[:space:]]*\"\?\)${_old}:${_container}|\1${_new}:${_container}|" \
+           "$_file" || return 1
+    grep -q "${_new}:${_container}" "$_file"
+}
+
+# Settle one publishing conflict before the container is started: leave the port
+# alone when it is free, otherwise republish on the next free one. Updates the
+# named variable so later messages quote the port actually in use.
+_winapps_settle_port() {
+    local _var="$1" _label="$2" _file="$3" _container="$4"
+    local _port="" _holder="" _new="" _ans=""
+
+    # Prefer what the file publishes today; fall back to the container's own
+    # port, which is what upstream maps one-to-one.
+    _port=$(_winapps_published_port "$_file" "$_container")
+    [[ "$_port" =~ ^[0-9]+$ ]] || _port="$_container"
+    printf -v "$_var" '%s' "$_port"
+
+    _winapps_port_busy "$_port" || return 0
+    _holder=$(_winapps_port_holder "$_port")
+
+    if [[ -n "$_holder" ]]; then
+        warn "Host port $_port ($_label) is already taken by the '$_holder' service."
+    else
+        warn "Host port $_port ($_label) is already in use — 'sudo ss -ltnp \"sport = :$_port\"' names the process."
+    fi
+
+    if ! _new=$(_winapps_free_port $(( _port + 1 ))); then
+        error "No free port near $_port to publish $_label on. Free port $_port, then re-run this task."
+        return 1
+    fi
+
+    # With a tty the user can weigh moving the port against stopping whatever
+    # holds it. Unattended runs take the option that works.
+    if _winapps_have_tty; then
+        read -rp "Publish $_label on host port $_new instead? [Y/n]: " _ans < /dev/tty
+        if [[ "${_ans,,}" == n* ]]; then
+            error "Leaving host port $_port alone, so the Windows VM cannot start."
+            [[ -n "$_holder" ]] && \
+                error "Stop the conflicting service with 'sudo systemctl disable --now $_holder', then re-run this task."
+            return 1
+        fi
+    fi
+
+    if ! _winapps_remap_port "$_file" "$_port" "$_container" "$_new"; then
+        error "Could not rewrite the $_port mapping in $_file — edit its 'ports:' section by hand."
+        return 1
+    fi
+    printf -v "$_var" '%s' "$_new"
+    info "Publishing $_label on host port $_new (Windows still uses $_container inside the VM)."
+    return 0
+}
+
+# Update the checkout. compose.yaml is meant to be edited in place — it holds
+# the VM's Windows credentials, and a port remap writes there too — so once
+# upstream touches the same file a plain pull refuses to move. Name the files
+# in the way rather than reporting a bare failure.
+_winapps_pull() {
+    local _dirty=""
+    _dirty=$(git -C "$_WINAPPS_SRC" status --porcelain --untracked-files=no 2>/dev/null | sed 's/^...//' | tr '\n' ' ')
+    git -C "$_WINAPPS_SRC" pull --no-rebase --recurse-submodules && return 0
+    [[ -n "$_dirty" ]] && {
+        warn "Your local edits are in the way: ${_dirty% }"
+        warn "Set them aside with 'git -C $_WINAPPS_SRC stash', pull again, then merge your settings back in."
+    }
+    return 1
+}
+
 # Bring up the Windows container described by upstream's compose file.
 _winapps_deploy_vm() {
     local _compose_file="$_WINAPPS_SRC/compose.yaml"
@@ -81,10 +212,29 @@ _winapps_deploy_vm() {
         warn "lines in compose.yaml before it can reach /dev/kvm."
     fi
 
+    # Ports are bound when the container starts, so a conflict only surfaces
+    # after the multi-GB image has already been pulled. Worse, port 3389 is
+    # usually held by an RDP server on this very host (xrdp and krdp are both
+    # installable from this tool) — leaving it in place would point WinApps at
+    # the Linux desktop instead of Windows. Settle both ports up front.
+    _winapps_settle_port _WINAPPS_RDP_PORT "RDP" "$_compose_file" 3389 || return 1
+    _winapps_settle_port _WINAPPS_WEB_PORT "the web viewer" "$_compose_file" 8006 || return 1
+
+    # WinApps dials RDP_IP:RDP_PORT, so the config has to follow the host port
+    # the container actually publishes.
+    if [[ "$_WINAPPS_RDP_PORT" != 3389 && -f "$_WINAPPS_CONF" ]]; then
+        if sed -i -E "s/^RDP_PORT=.*/RDP_PORT=\"$_WINAPPS_RDP_PORT\"/" "$_WINAPPS_CONF"; then
+            info "Set RDP_PORT=\"$_WINAPPS_RDP_PORT\" in $_WINAPPS_CONF to match."
+        else
+            warn "Could not update RDP_PORT in $_WINAPPS_CONF — set it to $_WINAPPS_RDP_PORT by hand."
+        fi
+    fi
+
     info "Starting the Windows VM with '${_WINAPPS_COMPOSE[*]}'..."
     info "This pulls several GB and installs Windows unattended — expect a long first run."
     if ! "${_WINAPPS_COMPOSE[@]}" --file "$_compose_file" up -d; then
         error "Failed to start the Windows container."
+        error "Clear the half-created container first: '${_WINAPPS_COMPOSE[*]} --file $_compose_file down'."
         return 1
     fi
 
@@ -96,7 +246,7 @@ _winapps_deploy_vm() {
     fi
 
     _WINAPPS_VM_STARTED=1
-    info "Windows is installing in the background. Watch it at http://127.0.0.1:8006."
+    info "Windows is installing in the background. Watch it at http://127.0.0.1:${_WINAPPS_WEB_PORT}."
     info "Stop it with '${_WINAPPS_COMPOSE[*]} --file $_compose_file stop'."
 }
 
@@ -111,7 +261,7 @@ _winapps_offer_vm() {
     esac
 
     # Nothing to prompt on — never kick off a multi-GB download unasked.
-    [[ -e /dev/tty && -r /dev/tty ]] || return 0
+    _winapps_have_tty || return 0
 
     echo ""
     info "WinApps needs a Windows VM. One can be created now from $_WINAPPS_SRC/compose.yaml"
@@ -191,8 +341,8 @@ install_winapps() {
     # updates this checkout rather than making a second one.
     if [[ -d "$_WINAPPS_SRC/.git" ]]; then
         info "Updating the existing WinApps source at $_WINAPPS_SRC..."
-        git -C "$_WINAPPS_SRC" pull --no-rebase --recurse-submodules 2>/dev/null || \
-            warn "Could not update the existing WinApps checkout — 'winapps-setup' will retry on its next run."
+        _winapps_pull || \
+            warn "Could not update the existing WinApps checkout — continuing with the copy already on disk."
     else
         mkdir -p "$_WINAPPS_BIN"
         git clone --recurse-submodules --remote-submodules \
@@ -283,10 +433,10 @@ WINAPPS_CONF_EOF
 
     info "WinApps prerequisites installed. Remaining steps:"
     if (( _WINAPPS_VM_STARTED )); then
-        info "  1. Wait for Windows to finish installing — watch it at http://127.0.0.1:8006."
+        info "  1. Wait for Windows to finish installing — watch it at http://127.0.0.1:${_WINAPPS_WEB_PORT}."
     else
         info "  1. Create the Windows VM — '${_WINAPPS_COMPOSE[*]:-docker compose} --file $_WINAPPS_SRC/compose.yaml up -d'."
-        info "     Watch the install at http://127.0.0.1:8006 and wait for it to reach the desktop."
+        info "     Watch the install at http://127.0.0.1:${_WINAPPS_WEB_PORT} and wait for it to reach the desktop."
     fi
     info "  2. Make sure the Windows username and password in $_WINAPPS_CONF match the VM."
     info "  3. Run 'winapps-setup --user' to detect Windows applications and create desktop launchers."
@@ -349,7 +499,7 @@ update_winapps() {
         warn "No WinApps source checkout at $_WINAPPS_SRC — nothing to update."
         return 0
     fi
-    git -C "$_WINAPPS_SRC" pull --no-rebase --recurse-submodules || {
+    _winapps_pull || {
         error "Failed to update the WinApps source."
         return 1
     }
