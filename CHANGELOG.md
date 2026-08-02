@@ -41,6 +41,38 @@ when a release is cut.
   closing instructions print the exact command to run later. The user finishes
   with `winapps-setup --user` once Windows has booted.
 
+  The Windows credentials are carried from `compose.yaml` into `winapps.conf`
+  once the compose file has had its final edit. The config template is
+  necessarily written before the user is offered the editor, so a VM created
+  with a changed `USERNAME`/`PASSWORD` used to leave the config holding
+  dockur's defaults, and WinApps then failed with `ERRCONNECT_LOGON_FAILURE` —
+  an error that reads like a broken connection rather than a credential
+  mismatch. Only placeholder values are replaced; anything the user set
+  deliberately is left alone, and a disagreement between the two files is
+  reported instead of silently resolved. The password is written single-quoted,
+  since WinApps sources that file as shell and a `$` or backtick in a password
+  would otherwise be expanded into a login failure that looks identical.
+
+  `winapps-setup` is now a generated wrapper rather than a symlink to
+  upstream's `setup.sh`. Upstream locates itself with `dirname` applied before
+  `readlink`, so through a symlink it resolves to `~/.local/bin`, decides it is
+  a stray copy outside its expected source directory, and offers to create a
+  duplicate installation — which it does on every run once an installation
+  exists. The wrapper changes into the source tree first, so upstream sees the
+  location it expects.
+
+  The configuration template now documents the multi-monitor trap. FreeRDP
+  publishes a RemoteApp session on the monitor at offset `+0+0` only: windows
+  open there and stop responding to input the moment they are dragged to
+  another screen, because the X11 client leaves the RemoteApp "monitored
+  desktop" handling unimplemented — neither `/multimon` nor `/size` works
+  around it, and `/size` is ignored outright in RemoteApp mode. The template
+  gives the arrangement that does work, `+span /monitors:<id>,<id>`, points at
+  `xfreerdp /list:monitor` for the ids, and warns to exclude anything that is
+  not a real screen, since a TV or AV receiver on HDMI is enumerated as a
+  monitor and including one leaves part of the session rendering where nothing
+  is visible.
+
   Host port conflicts are settled before the container starts, not after the
   multi-GB image has already been pulled. Port 3389 is usually taken by an RDP
   server on the same machine — `xrdp` and `krdp` are both installable from this

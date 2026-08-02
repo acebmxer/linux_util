@@ -1939,6 +1939,84 @@ test_winapps_settle_port_noop_when_free
 test_winapps_settle_port_moves_when_busy
 
 # ============================================================================
+# Test: WinApps credential sync (compose.yaml -> winapps.conf)
+# ============================================================================
+echo ""
+echo "=== WinApps Credential Sync Tests ==="
+
+# The compose file ships its credentials quoted with a trailing comment; the
+# config ships dockur's defaults as placeholders.
+_winapps_test_compose_creds() {
+    cat >"$1" <<COMPOSE_EOF
+    environment:
+      USERNAME: "$2" # Edit here to set a custom Windows username.
+      PASSWORD: "$3" # Edit here to set a password for the Windows user.
+COMPOSE_EOF
+}
+
+_winapps_test_conf() {
+    cat >"$1" <<CONF_EOF
+RDP_USER="${2:-MyWindowsUser}"
+RDP_PASS="${3:-MyWindowsPassword}"
+RDP_IP="127.0.0.1"
+CONF_EOF
+}
+
+test_winapps_compose_value_reads_quoted_setting() {
+    local _f="${LOG_DIR}/compose_creds.yaml"
+    _winapps_test_compose_creds "$_f" "admin" 'p@ss word'
+    assert_eq "admin" "$(_winapps_compose_value "$_f" USERNAME)" "_winapps_compose_value reads USERNAME"
+    assert_eq "p@ss word" "$(_winapps_compose_value "$_f" PASSWORD)" "_winapps_compose_value keeps spaces and drops the comment"
+}
+
+# A password holding '$' must reach the config single-quoted, or WinApps
+# expands it when sourcing and authentication fails.
+test_winapps_shell_quote_protects_expansion() {
+    assert_eq "'Mustang68\$'" "$(_winapps_shell_quote 'Mustang68$')" "_winapps_shell_quote single-quotes a '\$' password"
+    assert_eq "'it'\\''s'" "$(_winapps_shell_quote "it's")" "_winapps_shell_quote escapes an embedded single quote"
+}
+
+test_winapps_sync_replaces_placeholders() {
+    local _conf="${LOG_DIR}/sync_conf" _src="${LOG_DIR}/sync_src"
+    mkdir -p "$_src"
+    _winapps_test_compose_creds "$_src/compose.yaml" "admin" 'Mustang68$'
+    _winapps_test_conf "$_conf"
+    (
+        _WINAPPS_CONF="$_conf"
+        _WINAPPS_SRC="$_src"
+        _winapps_sync_credentials >/dev/null
+    )
+    assert_contains "$(<"$_conf")" "RDP_USER='admin'" "credential sync writes the compose username"
+    # '[$]' rather than '$' — assert_contains matches with grep -E, where a bare
+    # '$' would anchor to end of line.
+    assert_contains "$(<"$_conf")" "RDP_PASS='Mustang68[$]'" "credential sync single-quotes the compose password"
+    # The sourced value must survive shell expansion intact.
+    local _read=""
+    _read=$( set -a; . "$_conf"; set +a; printf '%s' "$RDP_PASS" )
+    assert_eq 'Mustang68$' "$_read" "the written password survives being sourced"
+}
+
+# Credentials the user set deliberately are never clobbered.
+test_winapps_sync_keeps_user_values() {
+    local _conf="${LOG_DIR}/keep_conf" _src="${LOG_DIR}/keep_src"
+    mkdir -p "$_src"
+    _winapps_test_compose_creds "$_src/compose.yaml" "admin" "fromcompose"
+    _winapps_test_conf "$_conf" "realuser" "realpass"
+    (
+        _WINAPPS_CONF="$_conf"
+        _WINAPPS_SRC="$_src"
+        _winapps_sync_credentials >/dev/null 2>&1
+    )
+    assert_contains "$(<"$_conf")" 'RDP_USER="realuser"' "credential sync leaves a customised username alone"
+    assert_contains "$(<"$_conf")" 'RDP_PASS="realpass"' "credential sync leaves a customised password alone"
+}
+
+test_winapps_compose_value_reads_quoted_setting
+test_winapps_shell_quote_protects_expansion
+test_winapps_sync_replaces_placeholders
+test_winapps_sync_keeps_user_values
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""
