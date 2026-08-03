@@ -4,7 +4,7 @@
 # --- Snapper ---
 
 check_snapper() {
-    command -v snapper &>/dev/null
+    _have_cmd snapper
 }
 
 install_snapper() {

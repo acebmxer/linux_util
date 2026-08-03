@@ -4,7 +4,7 @@
 # --- Go SDK ---
 
 check_golang() {
-    command -v go &>/dev/null || [[ -f /usr/local/go/bin/go ]]
+    _have_cmd go || [[ -f /usr/local/go/bin/go ]]
 }
 
 install_golang() {
@@ -88,8 +88,8 @@ update_golang() {
 }
 
 get_version_golang() {
-    if command -v go &>/dev/null; then
-        go version 2>/dev/null | grep -oP 'go\K[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
+    if _have_cmd go; then
+        _run_native go version 2>/dev/null | grep -oP 'go\K[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
     elif [[ -f /usr/local/go/bin/go ]]; then
         /usr/local/go/bin/go version 2>/dev/null | grep -oP 'go\K[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
     else

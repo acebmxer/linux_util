@@ -5,7 +5,7 @@
 
 check_thunar() {
     # Fedora ships the package as "Thunar" (capital T); other distros use "thunar".
-    command -v thunar &>/dev/null && return 0
+    _have_cmd thunar && return 0
     pkg_check_installed thunar && return 0
     pkg_check_installed Thunar && return 0
     return 1

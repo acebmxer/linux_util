@@ -9,7 +9,7 @@ _LIMINE_INSTALL_DIR="/opt/limine"
 
 check_limine() {
     [[ -f "$_LIMINE_INSTALL_DIR/limine" ]]      ||
-    command -v limine &>/dev/null                ||
+    _have_cmd limine                            ||
     [[ -f "$_LIMINE_INSTALL_DIR/BOOTX64.EFI" ]] ||
     [[ -f "$_LIMINE_INSTALL_DIR/limine-uefi-cd.bin" ]]
 }
@@ -108,7 +108,7 @@ update_limine() {
 }
 
 get_version_limine() {
-    limine --version 2>/dev/null | grep -oP '[\d.]+' | head -1 \
+    _run_native limine --version 2>/dev/null | grep -oP '[\d.]+' | head -1 \
         || ls "$_LIMINE_INSTALL_DIR" 2>/dev/null \
              | grep -oP 'limine-[\d.]+' | grep -oP '[\d.]+' | head -1 \
         || echo ""

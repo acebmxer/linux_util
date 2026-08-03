@@ -5,7 +5,7 @@ _OMZ_DIR="$HOME/.oh-my-zsh"
 _P10K_THEME_DIR="${ZSH_CUSTOM:-$_OMZ_DIR/custom}/themes/powerlevel10k"
 
 check_zsh_setup() {
-    command -v zsh &>/dev/null && [[ -d "$_OMZ_DIR" ]]
+    _have_cmd zsh && [[ -d "$_OMZ_DIR" ]]
 }
 
 _zsh_setup_apply_omz_theme() {
@@ -322,7 +322,7 @@ update_zsh_setup() {
 
 get_version_zsh_setup() {
     local zsh_ver
-    zsh_ver=$(zsh --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    zsh_ver=$(_run_native zsh --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
     if [[ -n "$zsh_ver" ]]; then
         echo "zsh ${zsh_ver}"
     else

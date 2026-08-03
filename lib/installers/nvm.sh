@@ -74,6 +74,8 @@ get_version_nvm() {
     if [[ -f "$_NVM_DIR/nvm.sh" ]]; then
         # shellcheck disable=SC1090
         source "$_NVM_DIR/nvm.sh" 2>/dev/null
+        # nvm is a shell function from the sourced script, not a program on
+        # PATH, so it is called directly.
         nvm --version 2>/dev/null || echo ""
     else
         echo ""

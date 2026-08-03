@@ -45,8 +45,8 @@ _TERMIUS_VERSION_FILE="$_TERMIUS_PREFIX/.linux_util-version"
 
 check_termius() {
     [[ -x "$_TERMIUS_APP" ]] && return 0
-    command -v termius &>/dev/null || \
-        command -v termius-app &>/dev/null || \
+    _have_cmd termius || \
+        _have_cmd termius-app || \
         pkg_check_installed termius || \
         pkg_check_installed termius-deb || \
         pkg_check_installed termius-app || \

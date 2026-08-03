@@ -4,7 +4,7 @@
 # --- Devolutions RDM ---
 
 check_devolutions_rdm() {
-    command -v remotedesktopmanager &>/dev/null || pkg_check_installed RemoteDesktopManager || pkg_check_installed remotedesktopmanager || pkg_check_installed remote-desktop-manager
+    _have_cmd remotedesktopmanager || pkg_check_installed RemoteDesktopManager || pkg_check_installed remotedesktopmanager || pkg_check_installed remote-desktop-manager
 }
 install_devolutions_rdm() {
     echo "Installing Devolutions RDM..."

@@ -12,7 +12,7 @@
 
 # --- Snap ---
 
-check_snap() { command -v snap &>/dev/null; }
+check_snap() { _have_cmd snap; }
 
 # Enable the snapd socket and create the /snap symlink classic snaps expect.
 _snap_post_install() {
@@ -85,5 +85,5 @@ update_snap() {
 }
 
 get_version_snap() {
-    snap version 2>/dev/null | awk '/^snapd/{print $2; exit}' || echo ""
+    _run_native snap version 2>/dev/null | awk '/^snapd/{print $2; exit}' || echo ""
 }

@@ -78,7 +78,7 @@ update_brave_origin() {
 }
 get_version_brave_origin() {
     local out
-    out=$(brave-origin --version 2>/dev/null) && \
+    out=$(_run_native brave-origin --version 2>/dev/null) && \
         grep -oP 'Brave (Origin|Browser) \K[0-9]+\.[0-9]+\.[0-9]+' <<< "$out" && return
     echo ""
 }

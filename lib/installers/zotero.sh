@@ -6,7 +6,7 @@
 _ZOTERO_INSTALL_DIR="/opt/zotero"
 
 check_zotero() {
-    command -v zotero &>/dev/null || [[ -f "$_ZOTERO_INSTALL_DIR/zotero" ]]
+    _have_cmd zotero || [[ -f "$_ZOTERO_INSTALL_DIR/zotero" ]]
 }
 
 install_zotero() {

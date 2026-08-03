@@ -9,7 +9,7 @@ install_fail2ban() {
 }
 
 check_fail2ban() {
-    command -v fail2ban-client &>/dev/null
+    _have_cmd fail2ban-client
 }
 
 uninstall_fail2ban() {
@@ -24,5 +24,5 @@ update_fail2ban() {
 }
 
 get_version_fail2ban() {
-    fail2ban-client --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo ""
+    _run_native fail2ban-client --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo ""
 }

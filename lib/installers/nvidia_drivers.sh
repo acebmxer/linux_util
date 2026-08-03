@@ -100,7 +100,7 @@ _debian_enable_nonfree() {
 
 # --- NVIDIA Drivers & Toolkit ---
 check_nvidia_drivers() {
-    command -v nvidia-smi &>/dev/null || lsmod | grep -q "^nvidia"
+    _have_cmd nvidia-smi || lsmod | grep -q "^nvidia"
 }
 get_version_nvidia_drivers() {
     local ver

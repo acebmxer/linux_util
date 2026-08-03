@@ -4,7 +4,7 @@
 
 # --- COSMIC Desktop ---
 check_cosmic() {
-    command -v cosmic-session &>/dev/null || \
+    _have_cmd cosmic-session || \
         pkg_check_installed cosmic-session || \
         pkg_check_installed cosmic
 }

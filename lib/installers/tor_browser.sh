@@ -4,7 +4,7 @@
 # --- Tor Browser ---
 
 check_tor_browser() {
-    command -v torbrowser-launcher &>/dev/null || \
+    _have_cmd torbrowser-launcher || \
         flatpak_is_installed "com.github.micahflee.torbrowser-launcher"
 }
 

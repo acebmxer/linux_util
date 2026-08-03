@@ -4,7 +4,7 @@
 # --- Flatpak Setup ---
 
 check_flatpak_setup() {
-    command -v flatpak &>/dev/null && \
+    _have_cmd flatpak && \
         flatpak remotes 2>/dev/null | grep -q "flathub"
 }
 

@@ -6,7 +6,7 @@
 _PYENV_DIR="${PYENV_ROOT:-$HOME/.pyenv}"
 
 check_pyenv() {
-    command -v pyenv &>/dev/null || [[ -f "$_PYENV_DIR/bin/pyenv" ]]
+    _have_cmd pyenv || [[ -f "$_PYENV_DIR/bin/pyenv" ]]
 }
 
 install_pyenv() {
@@ -87,8 +87,8 @@ update_pyenv() {
 }
 
 get_version_pyenv() {
-    if command -v pyenv &>/dev/null; then
-        pyenv --version 2>/dev/null | grep -oP 'pyenv \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
+    if _have_cmd pyenv; then
+        _run_native pyenv --version 2>/dev/null | grep -oP 'pyenv \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
     elif [[ -f "$_PYENV_DIR/bin/pyenv" ]]; then
         "$_PYENV_DIR/bin/pyenv" --version 2>/dev/null | grep -oP 'pyenv \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
     else

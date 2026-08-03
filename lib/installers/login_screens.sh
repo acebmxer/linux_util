@@ -115,7 +115,7 @@ _gdm_name() { [[ "$PKG_MGR" == "apt" ]] && echo "gdm3" || echo "gdm"; }
 # Display manager: SDDM
 # ----------------------------------------------------------------------------
 install_dm_sddm()   { _install_dm "SDDM" "sddm" sddm; }
-check_dm_sddm()     { command -v sddm &>/dev/null || pkg_check_installed sddm; }
+check_dm_sddm()     { _have_cmd sddm || pkg_check_installed sddm; }
 uninstall_dm_sddm() { _uninstall_dm "SDDM" "sddm" sddm; }
 update_dm_sddm()    { pkg_upgrade sddm; }
 get_version_dm_sddm() { _dm_version sddm sddm; }
@@ -141,7 +141,7 @@ install_dm_lightdm() {
     esac
     _install_dm "LightDM" "lightdm" lightdm "$greeter"
 }
-check_dm_lightdm()     { command -v lightdm &>/dev/null || pkg_check_installed lightdm; }
+check_dm_lightdm()     { _have_cmd lightdm || pkg_check_installed lightdm; }
 uninstall_dm_lightdm() { _uninstall_dm "LightDM" "lightdm" lightdm; }
 update_dm_lightdm()    { pkg_upgrade lightdm; }
 get_version_dm_lightdm() { _dm_version lightdm lightdm; }
@@ -151,7 +151,7 @@ get_version_dm_lightdm() { _dm_version lightdm lightdm; }
 # elsewhere the package may be absent — the install fails cleanly if so.
 # ----------------------------------------------------------------------------
 install_dm_ly()   { _install_dm "ly" "ly" ly; }
-check_dm_ly()     { command -v ly &>/dev/null || pkg_check_installed ly; }
+check_dm_ly()     { _have_cmd ly || pkg_check_installed ly; }
 uninstall_dm_ly() { _uninstall_dm "ly" "ly" ly; }
 update_dm_ly()    { pkg_upgrade ly; }
 get_version_dm_ly() { _dm_version ly ly; }
@@ -160,7 +160,7 @@ get_version_dm_ly() { _dm_version ly ly; }
 # Display manager: LXDM (lightweight GTK login)
 # ----------------------------------------------------------------------------
 install_dm_lxdm()   { _install_dm "LXDM" "lxdm" lxdm; }
-check_dm_lxdm()     { command -v lxdm &>/dev/null || pkg_check_installed lxdm; }
+check_dm_lxdm()     { _have_cmd lxdm || pkg_check_installed lxdm; }
 uninstall_dm_lxdm() { _uninstall_dm "LXDM" "lxdm" lxdm; }
 update_dm_lxdm()    { pkg_upgrade lxdm; }
 get_version_dm_lxdm() { _dm_version lxdm lxdm; }
@@ -404,7 +404,7 @@ install_lightdmtheme_slick() {
     info "Customise it via /etc/lightdm/slick-greeter.conf (background, theme, icons)."
     return 0
 }
-check_lightdmtheme_slick()     { command -v slick-greeter &>/dev/null || pkg_check_installed slick-greeter; }
+check_lightdmtheme_slick()     { _have_cmd slick-greeter || pkg_check_installed slick-greeter; }
 uninstall_lightdmtheme_slick() {
     run_as_root rm -f /etc/lightdm/lightdm.conf.d/90-linux_util-slick.conf 2>/dev/null || true
     pkg_remove slick-greeter || warn "Package removal reported an error."

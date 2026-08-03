@@ -59,7 +59,7 @@ _ensure_nodejs() {
 }
 
 check_claude_code() {
-    command -v claude &>/dev/null
+    _have_cmd claude
 }
 
 install_claude_code() {
@@ -84,5 +84,5 @@ update_claude_code() {
 }
 
 get_version_claude_code() {
-    claude --version 2>/dev/null | awk '{print $1}'
+    _run_native claude --version 2>/dev/null | awk '{print $1}'
 }

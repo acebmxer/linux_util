@@ -4,7 +4,7 @@
 # --- Btrfs Assistant ---
 
 check_btrfs_assistant() {
-    command -v btrfs-assistant &>/dev/null || command -v btrfs-assistant-bin &>/dev/null
+    _have_cmd btrfs-assistant || _have_cmd btrfs-assistant-bin
 }
 
 install_btrfs_assistant() {

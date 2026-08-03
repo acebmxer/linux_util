@@ -3,7 +3,7 @@
 
 # --- KDE Desktop ---
 check_kde() {
-    command -v plasmashell &>/dev/null || \
+    _have_cmd plasmashell || \
         pkg_check_installed plasma-desktop || \
         pkg_check_installed kde-plasma-desktop || \
         pkg_check_installed kde-full || \
@@ -15,10 +15,10 @@ get_version_kde() {
     # it can crash the running plasmashell instance via D-Bus singleton conflicts (Plasma 6).
     local version=""
     # Try kf6-config (Plasma 6) or kf5-config (Plasma 5)
-    if command -v kf6-config &>/dev/null; then
-        version=$(kf6-config --version 2>/dev/null | grep -oP 'KDE Frameworks: \K[0-9.]+' | head -1)
-    elif command -v kf5-config &>/dev/null; then
-        version=$(kf5-config --version 2>/dev/null | grep -oP 'KDE Frameworks: \K[0-9.]+' | head -1)
+    if _have_cmd kf6-config; then
+        version=$(_run_native kf6-config --version 2>/dev/null | grep -oP 'KDE Frameworks: \K[0-9.]+' | head -1)
+    elif _have_cmd kf5-config; then
+        version=$(_run_native kf5-config --version 2>/dev/null | grep -oP 'KDE Frameworks: \K[0-9.]+' | head -1)
     fi
     if [[ -n "$version" ]]; then
         echo "$version"

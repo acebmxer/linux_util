@@ -7,7 +7,7 @@ readonly _WG_CLIENT_DIR="/etc/wireguard"
 readonly _WG_CLIENT_IFACE="wg-client"
 
 check_wireguard_client() {
-    command -v wg &>/dev/null && {
+    _have_cmd wg && {
         [[ -f "${_WG_CLIENT_DIR}/${_WG_CLIENT_IFACE}.conf" ]] || \
         nmcli -t connection show "${_WG_CLIENT_IFACE}" &>/dev/null
     }
@@ -269,5 +269,5 @@ update_wireguard_client() {
 }
 
 get_version_wireguard_client() {
-    wg --version 2>/dev/null | grep -oP 'wireguard-tools v\K[\d.]+' || echo ""
+    _run_native wg --version 2>/dev/null | grep -oP 'wireguard-tools v\K[\d.]+' || echo ""
 }

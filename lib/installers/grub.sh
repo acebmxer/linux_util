@@ -4,7 +4,7 @@
 # --- GRUB ---
 
 check_grub() {
-    command -v grub-install &>/dev/null || command -v grub2-install &>/dev/null
+    _have_cmd grub-install || _have_cmd grub2-install
 }
 
 install_grub() {
@@ -65,8 +65,8 @@ update_grub() {
 }
 
 get_version_grub() {
-    grub-install --version 2>/dev/null | grep -oP '[\d.]+' | head -1 \
-        || grub2-install --version 2>/dev/null | grep -oP '[\d.]+' | head -1 \
+    _run_native grub-install --version 2>/dev/null | grep -oP '[\d.]+' | head -1 \
+        || _run_native grub2-install --version 2>/dev/null | grep -oP '[\d.]+' | head -1 \
         || _ver_from_pkg grub2 \
         || _ver_from_pkg grub \
         || echo ""

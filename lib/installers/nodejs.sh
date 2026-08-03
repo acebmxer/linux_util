@@ -43,7 +43,7 @@ install_nodejs() {
 }
 
 check_nodejs() {
-    command -v node >/dev/null 2>&1
+    _have_cmd node
 }
 
 uninstall_nodejs() {
@@ -103,5 +103,5 @@ update_nodejs() {
 }
 
 get_version_nodejs() {
-    node --version 2>/dev/null | sed 's/^v//'
+    _run_native node --version 2>/dev/null | sed 's/^v//'
 }

@@ -8,7 +8,7 @@
 KUP_FEDORA_COPR="zawertun/kde-kup"
 
 check_kup() {
-    command -v kup-daemon &>/dev/null
+    _have_cmd kup-daemon
 }
 
 install_kup() {

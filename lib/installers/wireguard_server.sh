@@ -7,7 +7,7 @@ readonly _WG_SERVER_DIR="/etc/wireguard"
 readonly _WG_SERVER_IFACE="wg0"
 
 check_wireguard_server() {
-    command -v wg &>/dev/null && [[ -f "${_WG_SERVER_DIR}/${_WG_SERVER_IFACE}.conf" ]]
+    _have_cmd wg && [[ -f "${_WG_SERVER_DIR}/${_WG_SERVER_IFACE}.conf" ]]
 }
 
 install_wireguard_server() {
@@ -256,5 +256,5 @@ update_wireguard_server() {
 }
 
 get_version_wireguard_server() {
-    wg --version 2>/dev/null | grep -oP 'wireguard-tools v\K[\d.]+' || echo ""
+    _run_native wg --version 2>/dev/null | grep -oP 'wireguard-tools v\K[\d.]+' || echo ""
 }

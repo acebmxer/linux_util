@@ -3,15 +3,15 @@
 
 # --- Cinnamon Desktop ---
 check_cinnamon() {
-    command -v cinnamon &>/dev/null || \
+    _have_cmd cinnamon || \
         pkg_check_installed cinnamon || \
         pkg_check_installed cinnamon-desktop-environment
 }
 
 get_version_cinnamon() {
     local version=""
-    if command -v cinnamon &>/dev/null; then
-        version=$(cinnamon --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
+    if _have_cmd cinnamon; then
+        version=$(_run_native cinnamon --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
     fi
     if [[ -n "$version" ]]; then
         echo "$version"

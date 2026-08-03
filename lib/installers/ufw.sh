@@ -4,7 +4,7 @@
 # --- UFW ---
 
 check_ufw() {
-    command -v ufw &>/dev/null && sudo ufw status &>/dev/null
+    _have_cmd ufw && sudo ufw status &>/dev/null
 }
 
 install_ufw() {
@@ -82,5 +82,5 @@ update_ufw() {
 }
 
 get_version_ufw() {
-    ufw version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9.]+' | head -1 || echo ""
+    _run_native ufw version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9.]+' | head -1 || echo ""
 }

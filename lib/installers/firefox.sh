@@ -4,7 +4,7 @@
 # --- Mozilla Firefox ---
 
 check_firefox() {
-    command -v firefox &>/dev/null || \
+    _have_cmd firefox || \
     pkg_check_installed firefox || \
     snap list firefox &>/dev/null 2>&1
 }
@@ -89,7 +89,7 @@ update_firefox() {
 get_version_firefox() {
     # Try binary first (covers both deb and snap installs)
     local _ver
-    _ver=$(firefox --version 2>/dev/null | grep -oP 'Mozilla Firefox \K[0-9]+\.[0-9]+(\.[0-9]+)?')
+    _ver=$(_run_native firefox --version 2>/dev/null | grep -oP 'Mozilla Firefox \K[0-9]+\.[0-9]+(\.[0-9]+)?')
     if [[ -z "$_ver" ]]; then
         # Fallback: parse snap list output
         _ver=$(snap list firefox 2>/dev/null | awk 'NR==2{print $2}')

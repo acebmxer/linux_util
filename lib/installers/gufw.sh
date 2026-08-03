@@ -11,7 +11,7 @@ install_gufw() {
     if ! check_ufw; then
         install_ufw || return 1
     fi
-    if ! command -v ufw &>/dev/null; then
+    if ! _have_cmd ufw; then
         warn "UFW is not available on this system. Gufw requires UFW."
         return 1
     fi

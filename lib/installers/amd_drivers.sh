@@ -7,7 +7,7 @@ check_amd_drivers() {
     # Check if amdgpu is the active GPU driver and Mesa is installed
     lspci 2>/dev/null | grep -qi "AMD\|Radeon\|ATI" || return 1
     lsmod 2>/dev/null | grep -q "^amdgpu" || return 1
-    command -v glxinfo &>/dev/null && glxinfo 2>/dev/null | grep -qi "AMD\|Radeon\|RADV" && return 0
+    _have_cmd glxinfo && glxinfo 2>/dev/null | grep -qi "AMD\|Radeon\|RADV" && return 0
     # At minimum, check Mesa is present
     pkg_check_installed mesa-utils 2>/dev/null || \
     pkg_check_installed libgl1-mesa-dri 2>/dev/null || \

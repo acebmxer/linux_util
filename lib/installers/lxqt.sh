@@ -3,14 +3,14 @@
 
 # --- LXQt Desktop ---
 check_lxqt() {
-    command -v lxqt-session &>/dev/null || \
+    _have_cmd lxqt-session || \
         pkg_check_installed lxqt-session
 }
 
 get_version_lxqt() {
     local version=""
-    if command -v lxqt-session &>/dev/null; then
-        version=$(lxqt-session --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
+    if _have_cmd lxqt-session; then
+        version=$(_run_native lxqt-session --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
     fi
     if [[ -n "$version" ]]; then
         echo "$version"

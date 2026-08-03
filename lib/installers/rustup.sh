@@ -7,7 +7,7 @@ _RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}"
 _CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
 
 check_rustup() {
-    command -v rustup &>/dev/null || [[ -f "$_CARGO_HOME/bin/rustup" ]]
+    _have_cmd rustup || [[ -f "$_CARGO_HOME/bin/rustup" ]]
 }
 
 install_rustup() {
@@ -58,8 +58,8 @@ update_rustup() {
 
 get_version_rustup() {
     local _rustup_bin="$_CARGO_HOME/bin/rustup"
-    if command -v rustup &>/dev/null; then
-        rustup --version 2>/dev/null | grep -oP 'rustup \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
+    if _have_cmd rustup; then
+        _run_native rustup --version 2>/dev/null | grep -oP 'rustup \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
     elif [[ -f "$_rustup_bin" ]]; then
         "$_rustup_bin" --version 2>/dev/null | grep -oP 'rustup \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
     else

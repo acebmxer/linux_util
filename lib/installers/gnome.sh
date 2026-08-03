@@ -3,7 +3,7 @@
 
 # --- GNOME Desktop ---
 check_gnome() {
-    command -v gnome-shell &>/dev/null || \
+    _have_cmd gnome-shell || \
         pkg_check_installed gnome-shell || \
         pkg_check_installed gnome || \
         pkg_check_installed gnome-desktop
@@ -11,8 +11,8 @@ check_gnome() {
 
 get_version_gnome() {
     local version=""
-    if command -v gnome-shell &>/dev/null; then
-        version=$(gnome-shell --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
+    if _have_cmd gnome-shell; then
+        version=$(_run_native gnome-shell --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
     fi
     if [[ -n "$version" ]]; then
         echo "$version"

@@ -6,7 +6,7 @@
 _JB_TOOLBOX_BIN="$HOME/.local/share/JetBrains/Toolbox/bin/jetbrains-toolbox"
 
 check_jetbrains_toolbox() {
-    command -v jetbrains-toolbox &>/dev/null || [[ -f "$_JB_TOOLBOX_BIN" ]]
+    _have_cmd jetbrains-toolbox || [[ -f "$_JB_TOOLBOX_BIN" ]]
 }
 
 install_jetbrains_toolbox() {

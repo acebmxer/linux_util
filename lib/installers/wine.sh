@@ -3,7 +3,7 @@
 
 # --- Wine ---
 
-check_wine() { command -v wine &>/dev/null; }
+check_wine() { _have_cmd wine; }
 
 install_wine() {
     info "Installing Wine..."
@@ -138,5 +138,5 @@ update_wine() {
 }
 
 get_version_wine() {
-    wine --version 2>/dev/null | sed 's/^wine-//' || echo ""
+    _run_native wine --version 2>/dev/null | sed 's/^wine-//' || echo ""
 }

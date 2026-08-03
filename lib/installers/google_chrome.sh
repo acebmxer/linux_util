@@ -4,7 +4,7 @@
 # --- Google Chrome ---
 
 check_google_chrome() {
-    command -v google-chrome-stable &>/dev/null || command -v google-chrome &>/dev/null || \
+    _have_cmd google-chrome-stable || _have_cmd google-chrome || \
         pkg_check_installed google-chrome-stable
 }
 
@@ -86,8 +86,8 @@ update_google_chrome() {
 get_version_google_chrome() {
     local cmd
     for cmd in google-chrome-stable google-chrome; do
-        command -v "$cmd" &>/dev/null || continue
-        "$cmd" --version 2>/dev/null | grep -oP 'Google Chrome \K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' && return
+        _have_cmd "$cmd" || continue
+        _run_native "$cmd" --version 2>/dev/null | grep -oP 'Google Chrome \K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' && return
     done
     echo ""
 }

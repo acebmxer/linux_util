@@ -5,7 +5,7 @@
 # Official repos: https://repo.vivaldi.com/archive/
 
 check_vivaldi() {
-    command -v vivaldi-stable &>/dev/null || command -v vivaldi &>/dev/null || \
+    _have_cmd vivaldi-stable || _have_cmd vivaldi || \
         pkg_check_installed vivaldi-stable
 }
 
@@ -88,8 +88,8 @@ update_vivaldi() {
 get_version_vivaldi() {
     local cmd
     for cmd in vivaldi-stable vivaldi; do
-        command -v "$cmd" &>/dev/null || continue
-        "$cmd" --version 2>/dev/null | grep -oP 'Vivaldi\s+\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' && return
+        _have_cmd "$cmd" || continue
+        _run_native "$cmd" --version 2>/dev/null | grep -oP 'Vivaldi\s+\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' && return
     done
     echo ""
 }

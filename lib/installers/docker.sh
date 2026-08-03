@@ -76,7 +76,7 @@ setup_install_docker() {
 }
 
 check_docker() {
-    command -v docker &>/dev/null && docker --version &>/dev/null
+    _run_native docker --version &>/dev/null
 }
 
 uninstall_docker() {
@@ -122,5 +122,5 @@ update_docker() {
     esac
 }
 get_version_docker() {
-    docker --version 2>/dev/null | grep -oP 'Docker version \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
+    _run_native docker --version 2>/dev/null | grep -oP 'Docker version \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
 }

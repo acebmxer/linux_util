@@ -2,7 +2,7 @@
 # Déjà Dup installer functions (not supported on RHEL family)
 
 check_deja_dup() {
-    command -v deja-dup &>/dev/null
+    _have_cmd deja-dup
 }
 
 install_deja_dup() {

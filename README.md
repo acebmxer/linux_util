@@ -320,6 +320,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **OnlyOffice** | Office suite with MS Office format compatibility |
 | **Standard Notes** | End-to-end encrypted notes with cross-platform sync |
 | **VLC** | Versatile media player supporting virtually all formats |
+| **WinApps** | Run Windows apps as native-feeling windows via a Windows VM + FreeRDP RemoteApp — installs prerequisites, writes a config template, and optionally creates the Windows VM via Docker/Podman (needs KVM; Windows licensed separately) |
 | **WPS Office** | MS Office-compatible office suite |
 | **Zotero** | Reference manager and research tool |
 

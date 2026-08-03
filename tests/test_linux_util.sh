@@ -1847,6 +1847,246 @@ test_flatpak_or_aur_prefers_flathub
 test_flatpak_or_aur_falls_back_on_flatpak_failure
 
 # ============================================================================
+# Test: WinApps compose port handling
+# ============================================================================
+echo ""
+echo "=== WinApps Port Tests ==="
+
+# Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/winapps.sh"
+
+# A stand-in for upstream's compose file: the two published mappings plus the
+# commented-out pair that exposes RDP to the local network, which must never be
+# rewritten.
+_winapps_test_compose() {
+    local _file="$1"
+    cat > "$_file" <<'COMPOSE_EOF'
+    ports:
+      # Map '8006' on Linux host to '8006' on Windows VM.
+      - "127.0.0.1:8006:8006"
+      # Map '3389' on Linux host to '3389' on Windows VM.
+      - "127.0.0.1:3389:3389/tcp"
+      - "127.0.0.1:3389:3389/udp"
+      # Uncomment the next two lines to expose RDP to the local network.
+      # - 3389:3389/tcp
+      # - 3389:3389/udp
+COMPOSE_EOF
+}
+
+test_winapps_published_port_reads_mappings() {
+    local _f="${LOG_DIR}/compose_read.yaml"
+    _winapps_test_compose "$_f"
+    assert_eq "3389" "$(_winapps_published_port "$_f" 3389)" "_winapps_published_port reads the RDP mapping"
+    assert_eq "8006" "$(_winapps_published_port "$_f" 8006)" "_winapps_published_port reads the web mapping"
+}
+
+test_winapps_remap_moves_host_side_only() {
+    local _f="${LOG_DIR}/compose_remap.yaml"
+    _winapps_test_compose "$_f"
+    _winapps_remap_port "$_f" 3389 3389 3390
+    assert_contains "$(<"$_f")" '"127.0.0.1:3390:3389/tcp"' "remap moves the host side of the tcp mapping"
+    assert_contains "$(<"$_f")" '"127.0.0.1:3390:3389/udp"' "remap moves the host side of the udp mapping"
+    assert_contains "$(<"$_f")" '# - 3389:3389/tcp' "remap leaves commented-out mappings alone"
+    assert_eq "3390" "$(_winapps_published_port "$_f" 3389)" "the remapped host port reads back"
+}
+
+# A second remap has to start from what the file publishes now, not from the
+# upstream default, or re-running the installer rewrites the wrong port.
+test_winapps_remap_is_repeatable() {
+    local _f="${LOG_DIR}/compose_again.yaml"
+    _winapps_test_compose "$_f"
+    _winapps_remap_port "$_f" 3389 3389 3390
+    _winapps_remap_port "$_f" "$(_winapps_published_port "$_f" 3389)" 3389 3391
+    assert_contains "$(<"$_f")" '"127.0.0.1:3391:3389/tcp"' "a second remap moves the already-moved port"
+    assert_eq "3391" "$(_winapps_published_port "$_f" 3389)" "the twice-remapped host port reads back"
+}
+
+# A free port leaves the compose file untouched and reports the published port.
+test_winapps_settle_port_noop_when_free() {
+    local _f="${LOG_DIR}/compose_free.yaml" _before="" _port=""
+    _winapps_test_compose "$_f"
+    _before=$(<"$_f")
+    _port=$(
+        _winapps_port_busy() { return 1; }
+        _WINAPPS_RDP_PORT=3389
+        _winapps_settle_port _WINAPPS_RDP_PORT "RDP" "$_f" 3389 >/dev/null
+        echo "$_WINAPPS_RDP_PORT"
+    )
+    assert_eq "3389" "$_port" "_winapps_settle_port keeps a free port"
+    assert_eq "$_before" "$(<"$_f")" "_winapps_settle_port does not touch the file when the port is free"
+}
+
+# A busy port with no tty republishes on the next free one rather than failing.
+test_winapps_settle_port_moves_when_busy() {
+    local _f="${LOG_DIR}/compose_busy.yaml" _port=""
+    _winapps_test_compose "$_f"
+    _port=$(
+        _winapps_port_busy() { [[ "$1" == 3389 ]]; }
+        _winapps_port_holder() { echo "xrdp"; }
+        _winapps_have_tty() { return 1; }
+        _WINAPPS_RDP_PORT=3389
+        _winapps_settle_port _WINAPPS_RDP_PORT "RDP" "$_f" 3389 >/dev/null
+        echo "$_WINAPPS_RDP_PORT"
+    )
+    assert_eq "3390" "$_port" "_winapps_settle_port republishes a busy port"
+    assert_contains "$(<"$_f")" '"127.0.0.1:3390:3389/tcp"' "_winapps_settle_port rewrites the compose mapping"
+}
+
+test_winapps_published_port_reads_mappings
+test_winapps_remap_moves_host_side_only
+test_winapps_remap_is_repeatable
+test_winapps_settle_port_noop_when_free
+test_winapps_settle_port_moves_when_busy
+
+# ============================================================================
+# Test: WinApps credential sync (compose.yaml -> winapps.conf)
+# ============================================================================
+echo ""
+echo "=== WinApps Credential Sync Tests ==="
+
+# The compose file ships its credentials quoted with a trailing comment; the
+# config ships dockur's defaults as placeholders.
+_winapps_test_compose_creds() {
+    cat >"$1" <<COMPOSE_EOF
+    environment:
+      USERNAME: "$2" # Edit here to set a custom Windows username.
+      PASSWORD: "$3" # Edit here to set a password for the Windows user.
+COMPOSE_EOF
+}
+
+_winapps_test_conf() {
+    cat >"$1" <<CONF_EOF
+RDP_USER="${2:-MyWindowsUser}"
+RDP_PASS="${3:-MyWindowsPassword}"
+RDP_IP="127.0.0.1"
+CONF_EOF
+}
+
+test_winapps_compose_value_reads_quoted_setting() {
+    local _f="${LOG_DIR}/compose_creds.yaml"
+    _winapps_test_compose_creds "$_f" "admin" 'p@ss word'
+    assert_eq "admin" "$(_winapps_compose_value "$_f" USERNAME)" "_winapps_compose_value reads USERNAME"
+    assert_eq "p@ss word" "$(_winapps_compose_value "$_f" PASSWORD)" "_winapps_compose_value keeps spaces and drops the comment"
+}
+
+# A password holding '$' must reach the config single-quoted, or WinApps
+# expands it when sourcing and authentication fails.
+test_winapps_shell_quote_protects_expansion() {
+    assert_eq "'Mustang68\$'" "$(_winapps_shell_quote 'Mustang68$')" "_winapps_shell_quote single-quotes a '\$' password"
+    assert_eq "'it'\\''s'" "$(_winapps_shell_quote "it's")" "_winapps_shell_quote escapes an embedded single quote"
+}
+
+test_winapps_sync_replaces_placeholders() {
+    local _conf="${LOG_DIR}/sync_conf" _src="${LOG_DIR}/sync_src"
+    mkdir -p "$_src"
+    _winapps_test_compose_creds "$_src/compose.yaml" "admin" 'Mustang68$'
+    _winapps_test_conf "$_conf"
+    (
+        _WINAPPS_CONF="$_conf"
+        _WINAPPS_SRC="$_src"
+        _winapps_sync_credentials >/dev/null
+    )
+    assert_contains "$(<"$_conf")" "RDP_USER='admin'" "credential sync writes the compose username"
+    # '[$]' rather than '$' — assert_contains matches with grep -E, where a bare
+    # '$' would anchor to end of line.
+    assert_contains "$(<"$_conf")" "RDP_PASS='Mustang68[$]'" "credential sync single-quotes the compose password"
+    # The sourced value must survive shell expansion intact.
+    local _read=""
+    _read=$( set -a; . "$_conf"; set +a; printf '%s' "$RDP_PASS" )
+    assert_eq 'Mustang68$' "$_read" "the written password survives being sourced"
+}
+
+# Credentials the user set deliberately are never clobbered.
+test_winapps_sync_keeps_user_values() {
+    local _conf="${LOG_DIR}/keep_conf" _src="${LOG_DIR}/keep_src"
+    mkdir -p "$_src"
+    _winapps_test_compose_creds "$_src/compose.yaml" "admin" "fromcompose"
+    _winapps_test_conf "$_conf" "realuser" "realpass"
+    (
+        _WINAPPS_CONF="$_conf"
+        _WINAPPS_SRC="$_src"
+        _winapps_sync_credentials >/dev/null 2>&1
+    )
+    assert_contains "$(<"$_conf")" 'RDP_USER="realuser"' "credential sync leaves a customised username alone"
+    assert_contains "$(<"$_conf")" 'RDP_PASS="realpass"' "credential sync leaves a customised password alone"
+}
+
+test_winapps_compose_value_reads_quoted_setting
+test_winapps_shell_quote_protects_expansion
+test_winapps_sync_replaces_placeholders
+test_winapps_sync_keeps_user_values
+
+# ============================================================================
+# Test: WinApps launcher filtering during detection
+# ============================================================================
+echo ""
+echo "=== WinApps Launcher Filtering Tests ==="
+
+# WinApps installs a launcher into ~/.local/bin for every application in the
+# Windows VM — pwsh, cmd, explorer and friends — which shadows the Linux
+# program of the same name. Running one opens an RDP session to the VM, so
+# detection must neither count them as installed nor execute them.
+_WA_DIR=$(mktemp -d /tmp/linux_util_test_winapps_XXXXXX)
+mkdir -p "$_WA_DIR/stub" "$_WA_DIR/real"
+printf '#!/usr/bin/env bash\n%s/winapps pwsh "$@"\n'    "$_WA_DIR/stub" > "$_WA_DIR/stub/pwsh"
+printf '#!/usr/bin/env bash\n%s/winapps notepad "$@"\n' "$_WA_DIR/stub" > "$_WA_DIR/stub/notepad"
+printf '#!/usr/bin/env bash\necho "tool version 9.8.7"\n'               > "$_WA_DIR/real/pwsh"
+# Any launcher that runs leaves this marker, so a test can prove none did.
+printf '#!/usr/bin/env bash\ntouch "%s/LAUNCHED"\n' "$_WA_DIR"          > "$_WA_DIR/stub/winapps"
+chmod +x "$_WA_DIR"/stub/* "$_WA_DIR"/real/*
+
+# Evaluate an expression with the package-manager helpers loaded and the
+# fixture ahead of PATH, exactly as a real WinApps install sits ahead of
+# /usr/bin. The subshell inherits $_WA_DIR, so expressions can reference it.
+_wa_probe() {
+    (
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh"
+        PATH="${_WA_DIR}/stub:${_WA_DIR}/real:$PATH"
+        eval "$1"
+    ) 2>/dev/null
+}
+
+test_winapps_launcher_is_recognised() {
+    assert_eq "launcher" "$(_wa_probe '_is_winapps_stub "$_WA_DIR/stub/pwsh" && echo launcher || echo program')" \
+        "_is_winapps_stub recognises a WinApps launcher"
+    assert_eq "program" "$(_wa_probe '_is_winapps_stub "$_WA_DIR/real/pwsh" && echo launcher || echo program')" \
+        "_is_winapps_stub leaves an ordinary script alone"
+    assert_eq "program" "$(_wa_probe '_is_winapps_stub /bin/sh && echo launcher || echo program')" \
+        "_is_winapps_stub leaves a compiled binary alone"
+}
+
+test_winapps_launcher_does_not_hide_real_program() {
+    assert_eq "$_WA_DIR/real/pwsh" "$(_wa_probe '_native_command pwsh')" \
+        "_native_command skips the launcher and finds the real program behind it"
+    assert_eq "yes" "$(_wa_probe '_have_cmd pwsh && echo yes || echo no')" \
+        "_have_cmd is true when a real program exists behind a launcher"
+}
+
+test_winapps_launcher_alone_is_not_installed() {
+    assert_eq "no" "$(_wa_probe '_have_cmd notepad && echo yes || echo no')" \
+        "_have_cmd is false when only a WinApps launcher matches"
+    assert_eq "no" "$(_wa_probe '_check_standard notepad "" "" && echo yes || echo no')" \
+        "_check_standard does not report a Windows-only app as installed"
+}
+
+test_winapps_launcher_is_never_executed() {
+    assert_eq "9.8.7" "$(_wa_probe '_ver_from_cmd pwsh')" \
+        "_ver_from_cmd reads the version from the real program, not the launcher"
+    assert_eq "" "$(_wa_probe '_ver_from_cmd notepad')" \
+        "_ver_from_cmd reports no version for a launcher-only command"
+    assert_eq "tool version 9.8.7" "$(_wa_probe '_run_native pwsh --version')" \
+        "_run_native runs the real program"
+    # The marker only appears if a launcher was executed — none should have been.
+    assert_false "no WinApps launcher was executed during detection" \
+        test -f "$_WA_DIR/LAUNCHED"
+}
+
+test_winapps_launcher_is_recognised
+test_winapps_launcher_does_not_hide_real_program
+test_winapps_launcher_alone_is_not_installed
+test_winapps_launcher_is_never_executed
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""
@@ -1866,5 +2106,6 @@ fi
 # Cleanup
 rm -rf "$LOG_DIR"
 rm -rf "$_FAKE_BIN"
+rm -rf "$_WA_DIR"
 
 exit ${_TESTS_FAILED}

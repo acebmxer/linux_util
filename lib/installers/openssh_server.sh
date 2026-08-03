@@ -76,5 +76,5 @@ update_openssh_server() {
     esac
 }
 get_version_openssh_server() {
-    ssh -V 2>&1 | grep -oP 'OpenSSH_\K[^\s,]+' || echo ""
+    _run_native ssh -V 2>&1 | grep -oP 'OpenSSH_\K[^\s,]+' || echo ""
 }

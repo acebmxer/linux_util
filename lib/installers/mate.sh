@@ -3,7 +3,7 @@
 
 # --- MATE Desktop ---
 check_mate() {
-    command -v mate-session &>/dev/null || \
+    _have_cmd mate-session || \
         pkg_check_installed mate-desktop || \
         pkg_check_installed mate-desktop-environment || \
         pkg_check_installed mate
@@ -11,8 +11,8 @@ check_mate() {
 
 get_version_mate() {
     local version=""
-    if command -v mate-panel &>/dev/null; then
-        version=$(mate-panel --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
+    if _have_cmd mate-panel; then
+        version=$(_run_native mate-panel --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
     fi
     if [[ -n "$version" ]]; then
         echo "$version"

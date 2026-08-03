@@ -12,6 +12,117 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **WinApps** under **Productivity** — runs Windows applications as individual
+  windows on the Linux desktop, backed by a Windows VM and FreeRDP RemoteApp.
+  Upstream ships only an interactive `dialog`-driven wizard that aborts unless a
+  Windows VM is already reachable and `~/.config/winapps/winapps.conf` already
+  exists, so this task front-loads everything that wizard assumes: it installs
+  the dependency set (FreeRDP 3, `dialog`, netcat, `libnotify`, `iproute2`,
+  git), clones the source to `~/.local/bin/winapps-src` — the exact path
+  upstream's own installer uses, so `winapps-setup` updates that checkout
+  instead of cloning a second one — links `winapps-setup` onto `PATH`, and
+  writes a mode-600 `winapps.conf` template. The `winapps` symlink is
+  deliberately *not* created: upstream's setup reads that file as a pre-existing
+  installation and refuses to run.
+
+  It then offers to create the Windows VM itself from upstream's `compose.yaml`
+  (Windows 11 Pro, 4 GB RAM, 4 cores, 64 GB disk, ~8 GB download), with an
+  option to edit that file first for a different edition or sizing. The prompt
+  is skipped entirely when there is no `/dev/tty`, so an unattended
+  `--install WinApps` never starts a multi-GB download on its own; set
+  `WINAPPS_DEPLOY_VM=yes`/`no` to decide in advance. `/dev/kvm` is checked
+  before anything is pulled, since without it QEMU drops to software emulation
+  and Windows is unusable. The compose front-end is resolved across `docker
+  compose`, `docker-compose`, `podman compose`, and `podman-compose`, and when
+  Podman is used `WAFLAVOR` in `winapps.conf` is rewritten to match — otherwise
+  WinApps would look for the VM with the wrong tool. Declining is safe: the
+  closing instructions print the exact command to run later. The user finishes
+  with `winapps-setup --user` once Windows has booted.
+
+  The Windows credentials are carried from `compose.yaml` into `winapps.conf`
+  once the compose file has had its final edit. The config template is
+  necessarily written before the user is offered the editor, so a VM created
+  with a changed `USERNAME`/`PASSWORD` used to leave the config holding
+  dockur's defaults, and WinApps then failed with `ERRCONNECT_LOGON_FAILURE` —
+  an error that reads like a broken connection rather than a credential
+  mismatch. Only placeholder values are replaced; anything the user set
+  deliberately is left alone, and a disagreement between the two files is
+  reported instead of silently resolved. The password is written single-quoted,
+  since WinApps sources that file as shell and a `$` or backtick in a password
+  would otherwise be expanded into a login failure that looks identical.
+
+  `winapps-setup` is now a generated wrapper rather than a symlink to
+  upstream's `setup.sh`. Upstream locates itself with `dirname` applied before
+  `readlink`, so through a symlink it resolves to `~/.local/bin`, decides it is
+  a stray copy outside its expected source directory, and offers to create a
+  duplicate installation — which it does on every run once an installation
+  exists. The wrapper changes into the source tree first, so upstream sees the
+  location it expects.
+
+  The configuration template now documents the multi-monitor trap. FreeRDP
+  publishes a RemoteApp session on the monitor at offset `+0+0` only: windows
+  open there and stop responding to input the moment they are dragged to
+  another screen, because the X11 client leaves the RemoteApp "monitored
+  desktop" handling unimplemented — neither `/multimon` nor `/size` works
+  around it, and `/size` is ignored outright in RemoteApp mode. The template
+  gives the arrangement that does work, `+span /monitors:<id>,<id>`, points at
+  `xfreerdp /list:monitor` for the ids, and warns to exclude anything that is
+  not a real screen, since a TV or AV receiver on HDMI is enumerated as a
+  monitor and including one leaves part of the session rendering where nothing
+  is visible.
+
+  Host port conflicts are settled before the container starts, not after the
+  multi-GB image has already been pulled. Port 3389 is usually taken by an RDP
+  server on the same machine — `xrdp` and `krdp` are both installable from this
+  tool — which fails the port bind outright, and left alone would aim
+  `RDP_PORT` at the Linux desktop's own RDP server rather than at Windows. Both
+  3389 and 8006 are checked, the conflicting service is named where it can be
+  identified, and the mapping is republished on the next free port with
+  `winapps.conf` updated to match. Only the host half of the mapping moves, so
+  Windows still listens on 3389 inside the container, and the commented-out
+  mappings that expose RDP to the local network are left untouched. The port
+  currently published is read back out of `compose.yaml`, so re-running the task
+  honours an earlier remap instead of rewriting the wrong line. Given a tty the
+  user can decline and free the port instead — the message quotes the
+  `systemctl disable --now` command for the service holding it — while
+  unattended runs take the option that works. A failed `compose up` now says to
+  clear the half-created container before retrying, and local edits to
+  `compose.yaml`, which carries the VM's Windows password, are named when they
+  block the `git pull` that updates the checkout.
+
+  FreeRDP 2 is not usable here, and `freerdp3-x11` only exists on Debian 13+ /
+  Ubuntu 24.04+, so on older Debian-family releases the task installs FreeRDP 3
+  from Flathub and grants it `--filesystem=home` instead of silently leaving a
+  v2 binary that WinApps would reject. On RHEL, EPEL is enabled first — both
+  `freerdp` and `nmap-ncat` live there. Uninstall delegates to upstream's
+  `--uninstall` when a full install is present, then removes the source tree and
+  any launchers left pointing at the deleted binary, but keeps `winapps.conf`,
+  which holds the user's Windows credentials. It also never removes the Windows
+  container or its volume — that disk holds a full Windows installation and
+  whatever the user saved inside it — and instead reports that it is still there
+  along with the command to delete it deliberately. Since upstream publishes no
+  tags or releases, the reported version is the checkout's commit date and short
+  hash.
+
+  Utility detection now ignores WinApps' own launchers. `winapps-setup` writes a
+  two-line launcher into `~/.local/bin` for every application it finds in the
+  Windows VM — `pwsh`, `cmd`, `explorer`, `msedge` and dozens more — and that
+  directory sits ahead of `/usr/bin` on most PATHs, so `command -v pwsh` began
+  matching a Windows shortcut. Startup detection reported PowerShell as
+  installed on Linux and then ran `pwsh --version` to read its version, which
+  opened a full RDP session to the VM: 20–30 seconds added to every launch, with
+  a Windows PowerShell window flashing on screen. Checks now resolve a command
+  to the first executable on `PATH` that is not a WinApps launcher, recognised
+  by the fixed shape upstream generates rather than by location, since these sit
+  in the same directory as the user's own scripts. Version probes run that
+  resolved path instead of the bare name, so reading a version can never start a
+  VM. A real Linux program hidden behind a launcher of the same name is still
+  found and still reported, and the same protection covers every utility whose
+  name a Windows application might share — Firefox, Thunderbird, VS Code, Steam
+  and the rest.
+
 ## [1.1.0] - 2026-08-01
 
 ### Added

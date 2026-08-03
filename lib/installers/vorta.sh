@@ -2,7 +2,7 @@
 # Vorta + BorgBackup installer functions
 
 check_vorta() {
-    command -v vorta &>/dev/null
+    _have_cmd vorta
 }
 
 install_vorta() {

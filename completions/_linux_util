@@ -92,6 +92,7 @@ _linux_util_utilities=(
     'UFW Firewall'
     'Visual Studio Code'
     'Vivaldi Browser'
+    'WinApps'
     'Wine'
     'WireGuard Client'
     'WireGuard Server'
