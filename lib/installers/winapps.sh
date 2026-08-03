@@ -37,7 +37,8 @@ _winapps_freerdp_flatpak() {
     flatpak install -y flathub com.freerdp.FreeRDP || return 1
     # WinApps hands FreeRDP host paths for the shared home drive, so the
     # sandbox needs to see $HOME.
-    sudo flatpak override --filesystem=home com.freerdp.FreeRDP
+    flatpak override --user --filesystem=home com.freerdp.FreeRDP 2>/dev/null || \
+        sudo flatpak override --filesystem=home com.freerdp.FreeRDP 2>/dev/null || return 1
 }
 
 # Find a usable compose front-end. Docker ships v2 as a plugin ('docker
