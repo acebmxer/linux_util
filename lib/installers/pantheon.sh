@@ -8,7 +8,7 @@
 
 # --- Pantheon Desktop ---
 check_pantheon() {
-    command -v gala &>/dev/null || \
+    _have_cmd gala || \
         pkg_check_installed gala || \
         pkg_check_installed pantheon
 }

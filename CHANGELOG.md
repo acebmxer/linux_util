@@ -106,6 +106,23 @@ when a release is cut.
   tags or releases, the reported version is the checkout's commit date and short
   hash.
 
+  Utility detection now ignores WinApps' own launchers. `winapps-setup` writes a
+  two-line launcher into `~/.local/bin` for every application it finds in the
+  Windows VM — `pwsh`, `cmd`, `explorer`, `msedge` and dozens more — and that
+  directory sits ahead of `/usr/bin` on most PATHs, so `command -v pwsh` began
+  matching a Windows shortcut. Startup detection reported PowerShell as
+  installed on Linux and then ran `pwsh --version` to read its version, which
+  opened a full RDP session to the VM: 20–30 seconds added to every launch, with
+  a Windows PowerShell window flashing on screen. Checks now resolve a command
+  to the first executable on `PATH` that is not a WinApps launcher, recognised
+  by the fixed shape upstream generates rather than by location, since these sit
+  in the same directory as the user's own scripts. Version probes run that
+  resolved path instead of the bare name, so reading a version can never start a
+  VM. A real Linux program hidden behind a launcher of the same name is still
+  found and still reported, and the same protection covers every utility whose
+  name a Windows application might share — Firefox, Thunderbird, VS Code, Steam
+  and the rest.
+
 ## [1.1.0] - 2026-08-01
 
 ### Added

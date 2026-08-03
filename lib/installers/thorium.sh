@@ -105,5 +105,5 @@ update_thorium() {
 }
 
 get_version_thorium() {
-    thorium-browser --version 2>/dev/null | grep -oP 'Thorium\s+\K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
+    _run_native thorium-browser --version 2>/dev/null | grep -oP 'Thorium\s+\K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
 }

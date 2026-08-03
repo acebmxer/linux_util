@@ -4,7 +4,7 @@
 # --- PIA VPN ---
 
 check_pia_vpn() {
-    command -v piactl &>/dev/null || \
+    _have_cmd piactl || \
         [[ -x /opt/piavpn/bin/piactl ]] || \
         pkg_check_installed privateinternetaccess
 }
@@ -112,5 +112,5 @@ update_pia_vpn() {
 }
 
 get_version_pia_vpn() {
-    piactl --version 2>/dev/null || echo ""
+    _run_native piactl --version 2>/dev/null || echo ""
 }

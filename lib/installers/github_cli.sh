@@ -4,7 +4,7 @@
 # --- GitHub CLI ---
 
 check_github_cli() {
-    command -v gh &>/dev/null
+    _have_cmd gh
 }
 
 install_github_cli() {
@@ -76,5 +76,5 @@ update_github_cli() {
 }
 
 get_version_github_cli() {
-    gh --version 2>/dev/null | grep -oP 'gh version \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
+    _run_native gh --version 2>/dev/null | grep -oP 'gh version \K[0-9]+\.[0-9]+\.[0-9]+' || echo ""
 }

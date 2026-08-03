@@ -10,8 +10,8 @@
 
 # --- Deepin Desktop ---
 check_deepin() {
-    command -v startdde &>/dev/null || \
-        command -v dde-session &>/dev/null || \
+    _have_cmd startdde || \
+        _have_cmd dde-session || \
         pkg_check_installed deepin-session || \
         pkg_check_installed deepin-desktop-base
 }

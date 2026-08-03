@@ -37,7 +37,7 @@ _OCCT_DESKTOP="$HOME/.local/share/applications/occt.desktop"
 
 check_occt() {
     [[ -x "$_OCCT_BIN" ]] && return 0
-    command -v occt &>/dev/null && return 0
+    _have_cmd occt && return 0
     return 1
 }
 

@@ -39,7 +39,7 @@ _homebrew_configure_shells() {
     done
 
     # fish uses its own syntax
-    if command -v fish &>/dev/null; then
+    if _have_cmd fish; then
         local frc="$HOME/.config/fish/config.fish"
         mkdir -p "$(dirname "$frc")"
         if ! grep -qF "$_BREW_MARKER" "$frc" 2>/dev/null; then

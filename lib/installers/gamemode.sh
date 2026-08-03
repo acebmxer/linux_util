@@ -8,7 +8,7 @@ GAMEMODE_VERSION="1.8.2"
 # --- Feral Gamemode ---
 
 check_gamemode() {
-    command -v gamemoded &>/dev/null
+    _have_cmd gamemoded
 }
 
 install_gamemode() {
@@ -225,6 +225,6 @@ update_gamemode() {
 
 get_version_gamemode() {
     local ver
-    ver=$(gamemoded --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+[^\s]*' | head -1)
+    ver=$(_run_native gamemoded --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+[^\s]*' | head -1)
     echo "${ver:-}"
 }

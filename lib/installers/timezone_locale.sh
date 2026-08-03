@@ -5,14 +5,14 @@
 get_version_timezone_locale() {
     local tz="" lang=""
 
-    if command -v timedatectl &>/dev/null; then
+    if _have_cmd timedatectl; then
         tz=$(timedatectl show --property=Timezone --value 2>/dev/null || true)
     elif [[ -f /etc/timezone ]]; then
         tz=$(< /etc/timezone)
     fi
 
     lang=$(locale 2>/dev/null | awk -F= '/^LANG=/{print $2; exit}')
-    if [[ -z "$lang" ]] && command -v localectl &>/dev/null; then
+    if [[ -z "$lang" ]] && _have_cmd localectl; then
         lang=$(localectl status 2>/dev/null | awk -F= '/^[[:space:]]*LANG=/{print $2; exit}')
     fi
 

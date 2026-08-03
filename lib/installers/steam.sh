@@ -4,7 +4,7 @@
 # --- Steam App ---
 
 check_steam() {
-    command -v steam &>/dev/null || \
+    _have_cmd steam || \
         pkg_check_installed steam-installer || \
         pkg_check_installed steam-launcher || \
         (flatpak_is_installed "com.valvesoftware.Steam")

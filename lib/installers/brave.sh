@@ -76,7 +76,7 @@ get_version_brave() {
     local cmd
     for cmd in brave-browser brave; do
         local out
-        out=$("$cmd" --version 2>/dev/null) && \
+        out=$(_run_native "$cmd" --version 2>/dev/null) && \
             grep -oP 'Brave Browser \K[0-9]+\.[0-9]+\.[0-9]+' <<< "$out" && return
     done
     echo ""

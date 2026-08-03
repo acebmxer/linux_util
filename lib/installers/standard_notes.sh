@@ -7,7 +7,7 @@ _SN_APPIMAGE="$HOME/.local/share/standard-notes/standard-notes.AppImage"
 _SN_DESKTOP="$HOME/.local/share/applications/standard-notes.desktop"
 
 check_standard_notes() {
-    command -v standard-notes &>/dev/null || \
+    _have_cmd standard-notes || \
         [[ -f "$_SN_APPIMAGE" ]] || \
         pkg_check_installed standard-notes || \
         (flatpak_is_installed "org.standardnotes.standardnotes")

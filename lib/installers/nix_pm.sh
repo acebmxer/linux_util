@@ -14,7 +14,7 @@
 
 _NIX_INSTALLER_BIN="/nix/nix-installer"
 
-check_nix() { command -v nix &>/dev/null || [[ -x "$_NIX_INSTALLER_BIN" ]]; }
+check_nix() { _have_cmd nix || [[ -x "$_NIX_INSTALLER_BIN" ]]; }
 
 install_nix() {
     info "Installing Nix (via the Determinate Systems installer)..."

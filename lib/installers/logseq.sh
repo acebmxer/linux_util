@@ -4,7 +4,7 @@
 # --- Logseq ---
 
 check_logseq() {
-    command -v logseq &>/dev/null || \
+    _have_cmd logseq || \
         flatpak_is_installed "com.logseq.Logseq" || \
         [[ -f /opt/logseq/logseq ]]
 }

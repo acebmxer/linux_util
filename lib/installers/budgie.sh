@@ -3,7 +3,7 @@
 
 # --- Budgie Desktop ---
 check_budgie() {
-    command -v budgie-session &>/dev/null || \
+    _have_cmd budgie-session || \
         pkg_check_installed budgie-desktop
 }
 

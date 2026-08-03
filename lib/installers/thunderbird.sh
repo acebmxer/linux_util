@@ -76,5 +76,5 @@ update_thunderbird() {
 }
 
 get_version_thunderbird() {
-    thunderbird --version 2>/dev/null | grep -oP 'Mozilla Thunderbird \K[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
+    _run_native thunderbird --version 2>/dev/null | grep -oP 'Mozilla Thunderbird \K[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
 }

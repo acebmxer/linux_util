@@ -135,7 +135,7 @@ get_version_system_updates() {
     # never print that line, so counting it is an accurate per-device tally.
     # Non-fatal and skipped entirely if fwupdmgr isn't installed.
     local firmware=0
-    if command -v fwupdmgr &>/dev/null; then
+    if _have_cmd fwupdmgr; then
         local _fw
         _fw=$(fwupdmgr get-upgrades 2>/dev/null) || true
         [[ -n "$_fw" ]] && firmware=$(echo "$_fw" | grep -cE '^[[:space:]]*New version:' || true)

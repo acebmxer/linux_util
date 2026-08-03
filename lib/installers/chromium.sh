@@ -4,7 +4,7 @@
 # --- Chromium Browser ---
 
 check_chromium() {
-    command -v chromium &>/dev/null || command -v chromium-browser &>/dev/null || \
+    _have_cmd chromium || _have_cmd chromium-browser || \
         pkg_check_installed chromium || pkg_check_installed chromium-browser
 }
 
@@ -68,8 +68,8 @@ update_chromium() {
 get_version_chromium() {
     local cmd
     for cmd in chromium chromium-browser; do
-        command -v "$cmd" &>/dev/null || continue
-        "$cmd" --version 2>/dev/null | grep -oP '(Chromium|chromium)\s+\K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' && return
+        _have_cmd "$cmd" || continue
+        _run_native "$cmd" --version 2>/dev/null | grep -oP '(Chromium|chromium)\s+\K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' && return
     done
     echo ""
 }

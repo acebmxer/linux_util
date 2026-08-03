@@ -4,7 +4,7 @@
 # --- Bitwarden Client ---
 
 check_bitwarden() {
-    command -v bitwarden &>/dev/null || \
+    _have_cmd bitwarden || \
         (has_snap && snap list bitwarden &>/dev/null) || \
         (flatpak_is_installed bitwarden) || \
         pkg_check_installed bitwarden-bin || \

@@ -4,7 +4,7 @@
 # --- systemd-boot ---
 
 check_systemd_boot() {
-    command -v bootctl &>/dev/null && bootctl is-installed &>/dev/null 2>&1
+    _have_cmd bootctl && bootctl is-installed &>/dev/null 2>&1
 }
 
 install_systemd_boot() {
@@ -66,5 +66,5 @@ update_systemd_boot() {
 }
 
 get_version_systemd_boot() {
-    bootctl --version 2>/dev/null | grep -oP '[\d]+' | head -1 || echo ""
+    _run_native bootctl --version 2>/dev/null | grep -oP '[\d]+' | head -1 || echo ""
 }

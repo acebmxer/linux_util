@@ -4,8 +4,8 @@
 # --- LibreOffice ---
 
 check_libreoffice() {
-    command -v libreoffice &>/dev/null || \
-        command -v soffice &>/dev/null || \
+    _have_cmd libreoffice || \
+        _have_cmd soffice || \
         compgen -G "/opt/libreoffice*/program/soffice" &>/dev/null || \
         pkg_check_installed libreoffice || \
         pkg_check_installed libreoffice-common || \
@@ -147,7 +147,8 @@ update_libreoffice() {
 }
 get_version_libreoffice() {
     local lo_bin
-    lo_bin=$(command -v libreoffice 2>/dev/null || command -v soffice 2>/dev/null || \
+    lo_bin=$(_native_command libreoffice 2>/dev/null || _native_command soffice 2>/dev/null || \
         compgen -G "/opt/libreoffice*/program/soffice" 2>/dev/null | sort -V | tail -1)
+    # $lo_bin is already a resolved path — _native_command filtered the PATH hits.
     [[ -n "$lo_bin" ]] && "$lo_bin" --version 2>/dev/null | grep -oP 'LibreOffice \K[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' || echo ""
 }

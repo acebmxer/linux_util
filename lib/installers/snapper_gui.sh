@@ -4,7 +4,7 @@
 # --- Snapper GUI ---
 
 check_snapper_gui() {
-    command -v snapper-gui &>/dev/null
+    _have_cmd snapper-gui
 }
 
 install_snapper_gui() {

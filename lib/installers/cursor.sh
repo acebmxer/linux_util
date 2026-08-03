@@ -7,7 +7,7 @@ _CURSOR_APPIMAGE="$HOME/.local/share/cursor/cursor.AppImage"
 _CURSOR_DESKTOP="$HOME/.local/share/applications/cursor.desktop"
 
 check_cursor() {
-    command -v cursor &>/dev/null || [[ -f "$_CURSOR_APPIMAGE" ]]
+    _have_cmd cursor || [[ -f "$_CURSOR_APPIMAGE" ]]
 }
 
 install_cursor() {

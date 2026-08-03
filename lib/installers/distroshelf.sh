@@ -12,7 +12,7 @@ install_distroshelf() {
         return 1
     fi
     flatpak install -y flathub com.ranfdev.DistroShelf || return 1
-    command -v distrobox &>/dev/null || \
+    _have_cmd distrobox || \
         warn "DistroShelf is a front-end for Distrobox — install Distrobox too (same subcategory)."
     info "DistroShelf installed."
 }

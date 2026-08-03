@@ -4,7 +4,7 @@
 # --- Timeshift ---
 
 check_timeshift() {
-    command -v timeshift &>/dev/null
+    _have_cmd timeshift
 }
 
 install_timeshift() {

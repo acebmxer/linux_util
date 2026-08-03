@@ -8,7 +8,7 @@ check_firewalld() { _check_standard firewall-cmd firewalld ""; }
 install_firewalld() {
     info "Installing firewalld..."
     # Only one firewall manager should own netfilter at a time
-    if command -v ufw &>/dev/null && sudo ufw status 2>/dev/null | grep -q "Status: active"; then
+    if _have_cmd ufw && sudo ufw status 2>/dev/null | grep -q "Status: active"; then
         warn "UFW is active — disabling it so firewalld can manage the firewall."
         sudo ufw --force disable 2>/dev/null || true
         sudo systemctl disable ufw 2>/dev/null || true

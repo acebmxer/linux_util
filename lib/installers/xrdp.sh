@@ -312,5 +312,5 @@ update_xrdp() {
 }
 
 get_version_xrdp() {
-    xrdp --version 2>&1 | grep -oP '[0-9]+\.[0-9]+[0-9.]*' | head -1 || echo ""
+    _run_native xrdp --version 2>&1 | grep -oP '[0-9]+\.[0-9]+[0-9.]*' | head -1 || echo ""
 }

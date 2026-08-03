@@ -40,7 +40,7 @@ install_distrobox() {
     fi
 
     # Distrobox needs a container backend; the native package usually pulls one in.
-    if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
+    if ! _have_cmd podman && ! _have_cmd docker; then
         warn "Distrobox needs Podman or Docker — install one (see the Development tab) before creating boxes."
     fi
     info "Distrobox installed. Create your first box with:"

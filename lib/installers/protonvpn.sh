@@ -4,8 +4,8 @@
 # --- ProtonVPN ---
 
 check_protonvpn() {
-    command -v protonvpn-cli &>/dev/null || \
-        command -v protonvpn &>/dev/null || \
+    _have_cmd protonvpn-cli || \
+        _have_cmd protonvpn || \
         pkg_check_installed proton-vpn-gnome-desktop || \
         (flatpak_is_installed "com.protonvpn.www")
 }
@@ -112,8 +112,8 @@ update_protonvpn() {
 }
 
 get_version_protonvpn() {
-    protonvpn-cli --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
-    protonvpn --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
+    _run_native protonvpn-cli --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
+    _run_native protonvpn --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
     (has_flatpak && flatpak list 2>/dev/null | grep -i "com.protonvpn.www" | awk -F'\t' '{print $3}') || \
     echo ""
 }

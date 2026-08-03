@@ -2017,6 +2017,76 @@ test_winapps_sync_replaces_placeholders
 test_winapps_sync_keeps_user_values
 
 # ============================================================================
+# Test: WinApps launcher filtering during detection
+# ============================================================================
+echo ""
+echo "=== WinApps Launcher Filtering Tests ==="
+
+# WinApps installs a launcher into ~/.local/bin for every application in the
+# Windows VM — pwsh, cmd, explorer and friends — which shadows the Linux
+# program of the same name. Running one opens an RDP session to the VM, so
+# detection must neither count them as installed nor execute them.
+_WA_DIR=$(mktemp -d /tmp/linux_util_test_winapps_XXXXXX)
+mkdir -p "$_WA_DIR/stub" "$_WA_DIR/real"
+printf '#!/usr/bin/env bash\n%s/winapps pwsh "$@"\n'    "$_WA_DIR/stub" > "$_WA_DIR/stub/pwsh"
+printf '#!/usr/bin/env bash\n%s/winapps notepad "$@"\n' "$_WA_DIR/stub" > "$_WA_DIR/stub/notepad"
+printf '#!/usr/bin/env bash\necho "tool version 9.8.7"\n'               > "$_WA_DIR/real/pwsh"
+# Any launcher that runs leaves this marker, so a test can prove none did.
+printf '#!/usr/bin/env bash\ntouch "%s/LAUNCHED"\n' "$_WA_DIR"          > "$_WA_DIR/stub/winapps"
+chmod +x "$_WA_DIR"/stub/* "$_WA_DIR"/real/*
+
+# Evaluate an expression with the package-manager helpers loaded and the
+# fixture ahead of PATH, exactly as a real WinApps install sits ahead of
+# /usr/bin. The subshell inherits $_WA_DIR, so expressions can reference it.
+_wa_probe() {
+    (
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh"
+        PATH="${_WA_DIR}/stub:${_WA_DIR}/real:$PATH"
+        eval "$1"
+    ) 2>/dev/null
+}
+
+test_winapps_launcher_is_recognised() {
+    assert_eq "launcher" "$(_wa_probe '_is_winapps_stub "$_WA_DIR/stub/pwsh" && echo launcher || echo program')" \
+        "_is_winapps_stub recognises a WinApps launcher"
+    assert_eq "program" "$(_wa_probe '_is_winapps_stub "$_WA_DIR/real/pwsh" && echo launcher || echo program')" \
+        "_is_winapps_stub leaves an ordinary script alone"
+    assert_eq "program" "$(_wa_probe '_is_winapps_stub /bin/sh && echo launcher || echo program')" \
+        "_is_winapps_stub leaves a compiled binary alone"
+}
+
+test_winapps_launcher_does_not_hide_real_program() {
+    assert_eq "$_WA_DIR/real/pwsh" "$(_wa_probe '_native_command pwsh')" \
+        "_native_command skips the launcher and finds the real program behind it"
+    assert_eq "yes" "$(_wa_probe '_have_cmd pwsh && echo yes || echo no')" \
+        "_have_cmd is true when a real program exists behind a launcher"
+}
+
+test_winapps_launcher_alone_is_not_installed() {
+    assert_eq "no" "$(_wa_probe '_have_cmd notepad && echo yes || echo no')" \
+        "_have_cmd is false when only a WinApps launcher matches"
+    assert_eq "no" "$(_wa_probe '_check_standard notepad "" "" && echo yes || echo no')" \
+        "_check_standard does not report a Windows-only app as installed"
+}
+
+test_winapps_launcher_is_never_executed() {
+    assert_eq "9.8.7" "$(_wa_probe '_ver_from_cmd pwsh')" \
+        "_ver_from_cmd reads the version from the real program, not the launcher"
+    assert_eq "" "$(_wa_probe '_ver_from_cmd notepad')" \
+        "_ver_from_cmd reports no version for a launcher-only command"
+    assert_eq "tool version 9.8.7" "$(_wa_probe '_run_native pwsh --version')" \
+        "_run_native runs the real program"
+    # The marker only appears if a launcher was executed — none should have been.
+    assert_false "no WinApps launcher was executed during detection" \
+        test -f "$_WA_DIR/LAUNCHED"
+}
+
+test_winapps_launcher_is_recognised
+test_winapps_launcher_does_not_hide_real_program
+test_winapps_launcher_alone_is_not_installed
+test_winapps_launcher_is_never_executed
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""
@@ -2036,5 +2106,6 @@ fi
 # Cleanup
 rm -rf "$LOG_DIR"
 rm -rf "$_FAKE_BIN"
+rm -rf "$_WA_DIR"
 
 exit ${_TESTS_FAILED}

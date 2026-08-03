@@ -78,5 +78,5 @@ update_vscode() {
     esac
 }
 get_version_vscode() {
-    code --version 2>/dev/null | head -1 || echo ""
+    _run_native code --version 2>/dev/null | head -1 || echo ""
 }

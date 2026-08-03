@@ -6,7 +6,7 @@
 _VENTOY_INSTALL_DIR="/opt/ventoy"
 
 check_ventoy() {
-    [[ -f "$_VENTOY_INSTALL_DIR/Ventoy2Disk.sh" ]] || command -v ventoy &>/dev/null
+    [[ -f "$_VENTOY_INSTALL_DIR/Ventoy2Disk.sh" ]] || _have_cmd ventoy
 }
 
 install_ventoy() {

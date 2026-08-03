@@ -8,7 +8,7 @@ _POSTMAN_BIN="$HOME/.local/bin/postman"
 _POSTMAN_DESKTOP="$HOME/.local/share/applications/postman.desktop"
 
 check_postman() {
-    command -v postman &>/dev/null || [[ -f "$_POSTMAN_DIR/Postman" ]]
+    _have_cmd postman || [[ -f "$_POSTMAN_DIR/Postman" ]]
 }
 
 install_postman() {

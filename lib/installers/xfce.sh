@@ -3,15 +3,15 @@
 
 # --- Xfce Desktop ---
 check_xfce() {
-    command -v xfce4-session &>/dev/null || \
+    _have_cmd xfce4-session || \
         pkg_check_installed xfce4 || \
         pkg_check_installed xfce4-session
 }
 
 get_version_xfce() {
     local version=""
-    if command -v xfce4-session &>/dev/null; then
-        version=$(xfce4-session --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
+    if _have_cmd xfce4-session; then
+        version=$(_run_native xfce4-session --version 2>/dev/null | grep -oP '[0-9]+\.[0-9.]+' | head -1)
     fi
     if [[ -n "$version" ]]; then
         echo "$version"

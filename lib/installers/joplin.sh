@@ -23,7 +23,7 @@ detect_and_export_desktop_env() {
 }
 
 check_joplin() {
-    [[ -f ~/.joplin/Joplin.AppImage ]] || command -v joplin &>/dev/null
+    [[ -f ~/.joplin/Joplin.AppImage ]] || _have_cmd joplin
 }
 install_joplin() {
     info "Installing Joplin Client..."
