@@ -74,7 +74,7 @@ _winapps_have_tty() {
 # case that breaks a 127.0.0.1 port publish.
 _winapps_port_busy() {
     local _port="$1"
-    [[ -n "$(ss -Hltn "sport = :$_port" 2>/dev/null)" ]]
+    [[ -n "$(ss -Hltun "sport = :$_port" 2>/dev/null)" ]]
 }
 
 # Name the service holding a port, or print nothing when it cannot be
