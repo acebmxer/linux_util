@@ -14,6 +14,59 @@ when a release is cut.
 
 ### Added
 
+- **Euro-Office** under **Productivity** — the desktop office suite from the
+  European community fork of ONLYOFFICE (documents, spreadsheets,
+  presentations, PDF and forms; AGPL v3). Unlike every other entry in this
+  category it is **built from source**, because upstream publishes no desktop
+  binaries at all: the `DesktopEditors` repository carries tags but no
+  releases, nothing is on Flathub, Snap or AppImage, there is no apt or rpm
+  repository, and the ghcr.io images for the desktop build are private. Only
+  their Document Server — the server component — ships packages. The single
+  supported route to the client is upstream's own containerised build, so this
+  task drives it: it clones the superrepo, checks out the newest release tag,
+  syncs the submodules the build needs, and runs `build/linux/build.sh`
+  (`docker buildx bake`), then installs the `.deb` or `.rpm` that comes out.
+
+  Because that compile runs for hours and wants tens of GB, nothing starts
+  without a decision. The task confirms before the clone — not just before the
+  compile, since the checkout with its submodules is itself several GB — and
+  refuses to run unattended unless `EUROOFFICE_BUILD=yes` is set, rather than
+  silently occupying a machine that has no terminal to ask at. Docker, the
+  Buildx plugin and a reachable daemon are checked up front, as is the CPU
+  architecture: upstream's packaging maps only x86_64 and aarch64, and
+  anything else would produce a package named for an architecture that
+  installs nowhere. Free space is reported for the source tree, Docker's data
+  root and `/tmp` before the prompt, and `/tmp` gets its own warning when it is
+  a tmpfs — upstream's bake file exports several GB of build cache to a fixed
+  path there, which on Fedora and friends is charged to RAM.
+
+  A dedicated `linux-util-euro-office` buildx builder is created for the build.
+  The default `docker` driver cannot export a build to a local directory or
+  reuse the local cache the bake file declares, and using our own named builder
+  means removing it on uninstall cannot take anyone else's build cache with it.
+  The build runs with `BUILDX_BAKE_ENTITLEMENTS_FS=0`, since the bake writes
+  outside its context and buildx would otherwise stop to ask — hanging an
+  unattended run. Output is streamed rather than hidden behind a spinner: over
+  a multi-hour compile, the log is the only sign it is still alive.
+
+  The newest release tag is built by default rather than whatever `main`
+  happens to be, with pre-release tags (`-rc`, `-beta`, `-tp`) filtered out;
+  `EUROOFFICE_REF` overrides that with any tag, branch or commit. Sources stay
+  in `~/.cache/linux_util/euro-office`, so a failed build resumes instead of
+  starting over and updates rebuild incrementally. Updating first compares the
+  installed version against the newest tag and does nothing when they match —
+  an update task that silently spent hours recompiling an identical release
+  would be a poor trade. Arch takes a different route entirely: the AUR
+  package runs the same containerised build under `makepkg`, and pacman ends up
+  tracking a real package, which beats unpacking upstream's tarball over
+  `/usr` and `/opt` untracked. Uninstall removes the package, the source and
+  build cache, the builder volume and the app's settings, and names the
+  leftover Docker images rather than deleting images on the user's behalf.
+
+  When upstream starts publishing releases — their CI is already wired to
+  upload these packages to a GitHub Release — this collapses to an ordinary
+  download-and-install and the menu entry does not change.
+
 - **WinApps** under **Productivity** — runs Windows applications as individual
   windows on the Linux desktop, backed by a Windows VM and FreeRDP RemoteApp.
   Upstream ships only an interactive `dialog`-driven wizard that aborts unless a

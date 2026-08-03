@@ -2087,6 +2087,81 @@ test_winapps_launcher_alone_is_not_installed
 test_winapps_launcher_is_never_executed
 
 # ============================================================================
+# Test: Euro-Office source build (tag selection and artifact picking)
+# ============================================================================
+echo ""
+echo "=== Euro-Office Build Tests ==="
+
+# Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/euro_office.sh"
+
+# Upstream's real tag set: release tags interleaved with pre-releases, and not
+# in version order.
+_euroffice_test_tags() {
+    cat <<'TAGS_EOF'
+v9.3.0
+v9.4.0
+v9.3.1-rc.1
+v9.3.1
+v9.2.1
+v9.3.2-beta.1
+v8.3.3
+v9.3.1-tp.3
+TAGS_EOF
+}
+
+test_euroffice_picks_newest_release_tag() {
+    assert_eq "v9.4.0" "$(_euroffice_test_tags | _euroffice_pick_tag)" \
+        "_euroffice_pick_tag selects the newest stable tag"
+}
+
+test_euroffice_skips_prereleases() {
+    # v9.3.2-beta.1 sorts above every stable tag here; building it would ship a
+    # pre-release as if it were a release.
+    assert_eq "v9.3.1" "$(printf '%s\n' v9.3.1 v9.3.2-beta.1 v9.3.2-rc.1 | _euroffice_pick_tag)" \
+        "_euroffice_pick_tag ignores rc/beta/tp tags"
+}
+
+test_euroffice_pick_tag_handles_no_tags() {
+    assert_eq "" "$(printf '' | _euroffice_pick_tag)" \
+        "_euroffice_pick_tag prints nothing when there are no tags"
+}
+
+test_euroffice_artifact_matches_family() {
+    local _dir
+    _dir=$(mktemp -d)
+    touch "$_dir/euro-office-desktopeditors_9.4.0-dev.0_amd64.deb" \
+          "$_dir/euro-office-desktopeditors-9.4.0-dev.0.x86_64.rpm" \
+          "$_dir/euro-office-desktopeditors-9.4.0-dev.0-x86_64.tar.xz"
+
+    local _family_before="$DISTRO_FAMILY"
+    DISTRO_FAMILY="debian"
+    assert_eq "euro-office-desktopeditors_9.4.0-dev.0_amd64.deb" \
+        "$(basename "$(_euroffice_artifact "$_dir")")" \
+        "_euroffice_artifact picks the .deb on Debian"
+
+    DISTRO_FAMILY="fedora"
+    assert_eq "euro-office-desktopeditors-9.4.0-dev.0.x86_64.rpm" \
+        "$(basename "$(_euroffice_artifact "$_dir")")" \
+        "_euroffice_artifact picks the .rpm on Fedora"
+
+    # The tarball is never installable through the package manager, so an
+    # output directory holding only that must read as a failed build.
+    rm -f "$_dir"/*.deb "$_dir"/*.rpm
+    DISTRO_FAMILY="debian"
+    assert_false "_euroffice_artifact fails when no installable package was built" \
+        _euroffice_artifact "$_dir"
+
+    DISTRO_FAMILY="$_family_before"
+    rm -rf "$_dir"
+}
+
+test_euroffice_picks_newest_release_tag
+test_euroffice_skips_prereleases
+test_euroffice_pick_tag_handles_no_tags
+test_euroffice_artifact_matches_family
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""

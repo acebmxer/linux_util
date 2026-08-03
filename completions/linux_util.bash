@@ -28,6 +28,7 @@ Devolutions RDM
 Discord
 Docker
 Enable RDP
+Euro-Office
 Evolution
 Fastfetch
 Fedora Mainline Kernel

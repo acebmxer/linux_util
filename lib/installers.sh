@@ -151,6 +151,7 @@ NO_RETRY["Duplicati"]=1
 register_utility "Devolutions RDM"     install_devolutions_rdm  check_devolutions_rdm  uninstall_devolutions_rdm  update_devolutions_rdm     get_version_devolutions_rdm
 register_utility "Discord"             install_discord          check_discord          uninstall_discord          update_discord             get_version_discord
 register_utility "Element (Matrix)"    install_element          check_element          uninstall_element          update_element             get_version_element
+register_utility "Euro-Office"         install_euro_office      check_euro_office      uninstall_euro_office      update_euro_office         get_version_euro_office
 register_utility "Evolution"           install_evolution        check_evolution        uninstall_evolution        update_evolution           get_version_evolution
 register_utility "Docker"              setup_install_docker     check_docker           uninstall_docker           update_docker              get_version_docker
 # DistroBox subcategory: the container tool plus optional graphical front-ends
@@ -599,6 +600,7 @@ UTILITY_CATEGORY["AnyDesk"]="Remote Admin Tools"
 UTILITY_CATEGORY["Audacity"]="Productivity"
 UTILITY_CATEGORY["ClamAV"]="System Tools"
 UTILITY_CATEGORY["Element (Matrix)"]="Internet"
+UTILITY_CATEGORY["Euro-Office"]="Productivity"
 UTILITY_CATEGORY["Evolution"]="Internet"
 UTILITY_CATEGORY["Geary"]="Internet"
 UTILITY_CATEGORY["Flameshot"]="Productivity"
@@ -899,6 +901,7 @@ UTILITY_DESCRIPTION["Brave Origin"]="Streamlined build of the Brave browser that
 UTILITY_DESCRIPTION["Betterbird"]="Thunderbird fork carrying bug fixes and features upstream has not merged. Installed from Flathub, or the AUR on Arch, since no distro packages it. Shares the ~/.thunderbird profile directory with Thunderbird."
 UTILITY_DESCRIPTION["Chromium"]="Open-source web browser that serves as the upstream base for Google Chrome."
 UTILITY_DESCRIPTION["Claws Mail"]="Fast, lightweight GTK email client with extensive filtering and a plugin system. A good fit for XFCE and other resource-conscious desktops."
+UTILITY_DESCRIPTION["Euro-Office"]="Office suite (documents, spreadsheets, presentations, PDF and forms) — a European community fork of ONLYOFFICE, AGPL v3. BUILT FROM SOURCE: upstream publishes no desktop binaries at all — no releases, no Flathub or Snap, no apt/rpm repository — so this task runs their own containerised build ('docker buildx bake') and installs the .deb/.rpm it produces. Arch goes through the AUR package, which drives the same build and leaves pacman tracking the result. Docker with the Buildx plugin is required, the compile takes hours, and it needs tens of GB of disk; it always confirms before starting, and never builds unattended unless EUROOFFICE_BUILD=yes. Builds the newest release tag by default — set EUROOFFICE_REF to build a branch or another tag. Sources are kept in ~/.cache/linux_util/euro-office so later updates rebuild incrementally, and an update only recompiles when a newer release exists. Uninstall removes the package, that cache, and the build cache volume."
 UTILITY_DESCRIPTION["Evolution"]="GNOME's personal information manager combining email, calendar, contacts, and tasks. Installs evolution-ews alongside it for Microsoft Exchange account support where the package is available."
 UTILITY_DESCRIPTION["Devolutions RDM"]="Remote Desktop Manager for centrally managing remote connections, passwords, and credentials."
 UTILITY_DESCRIPTION["Discord"]="Voice, video, and text communication platform popular with gaming and developer communities."

@@ -303,6 +303,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 |---------|-------------|
 | **Audacity** | Open-source audio editor and recorder |
 | **Bitwarden Client** | Open-source password manager — `.deb` / `.rpm` / AUR / snap / flatpak |
+| **Euro-Office** | European community fork of ONLYOFFICE — **built from source**, since upstream ships no desktop binaries. Runs their `docker buildx bake` build and installs the resulting `.deb`/`.rpm` (AUR on Arch). Needs Docker + Buildx; the compile takes hours and tens of GB |
 | **Flameshot** | Feature-rich screenshot tool with annotation support |
 | **GIMP** | GNU Image Manipulation Program |
 | **HandBrake** | Open-source video transcoder |
