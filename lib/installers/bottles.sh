@@ -10,11 +10,7 @@ install_bottles() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         arch)
-            if has_aur_helper; then
-                aur_install bottles
-            else
-                sudo pacman -S --noconfirm bottles 2>/dev/null || aur_build bottles
-            fi
+            repo_or_aur bottles
             ;;
         *)
             # Flatpak is the officially supported distribution method
@@ -51,7 +47,7 @@ update_bottles() {
     else
         case "$DISTRO_FAMILY" in
             arch)
-                aur_ensure bottles
+                repo_or_aur bottles
                 ;;
         esac
     fi

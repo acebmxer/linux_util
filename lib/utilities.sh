@@ -21,6 +21,32 @@ declare -A UTILITY_DISPLAY_NAME # maps utility name → display label override (
 declare -a CATEGORIES=()        # ordered list of category tab names (populated by installers.sh)
 declare -A SUBCATEGORY_ORDER    # maps category name → pipe-separated ordered subcategory list
 declare -A SUBCATEGORY_INTERLEAVED  # if set for a category, subcategory folders are emitted in registration order (interleaved with plain items)
+declare -A UTILITY_AUR_ONLY_ARCH    # utility name → 1 if its only Arch install path is the AUR (no repo/Flatpak fallback)
+
+# Mark one or more utilities whose only Arch install path is the AUR (no
+# official-repo or Flatpak fallback in their installer). Used to hide them
+# from the "available to install" listing while AUR_ENABLED=false and they
+# are not already installed — see _utility_hidden_aur_only below.
+mark_aur_only_arch() {
+    local name
+    for name in "$@"; do
+        UTILITY_AUR_ONLY_ARCH["$name"]=1
+    done
+}
+
+# Should the utility at index $1 be hidden from the install listing because
+# its only Arch install path is the AUR, AUR support is currently disabled,
+# and it isn't already installed? Uninstalling an already-installed copy is
+# never affected — see aur_remove in lib/aur.sh.
+_utility_hidden_aur_only() {
+    local idx="$1"
+    [[ "${DISTRO_FAMILY:-}" == "arch" ]] || return 1
+    local name="${UTILITIES[$idx]}"
+    [[ "${UTILITY_AUR_ONLY_ARCH[$name]:-}" == "1" ]] || return 1
+    [[ "${AUR_ENABLED:-false}" == "true" ]] && return 1
+    [[ "${INSTALLED[$idx]:-0}" == "1" ]] && return 1
+    return 0
+}
 
 # Internal helper — shared registration logic for both system tasks and utilities.
 _register_entry() {

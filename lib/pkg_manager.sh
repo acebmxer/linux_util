@@ -293,14 +293,19 @@ pkg_full_upgrade() {
                      "$_run" "Running full system upgrade" sudo apt full-upgrade $_y
                  fi ;;
         dnf|yum) "$_run" "Running full system upgrade" sudo "$PKG_MGR" upgrade $_y ;;
-        pacman)  if command -v yay &>/dev/null; then
+        pacman)  if [[ "${AUR_ENABLED:-false}" == "true" ]] && command -v yay &>/dev/null; then
                      "$_run" "Running full system upgrade (yay)"  yay  -Syu $_nc
-                 elif command -v paru &>/dev/null; then
+                 elif [[ "${AUR_ENABLED:-false}" == "true" ]] && command -v paru &>/dev/null; then
                      "$_run" "Running full system upgrade (paru)" paru -Syu $_nc
                  else
-                     warn "No AUR helper (yay/paru) found. AUR packages will NOT be updated."
-                     warn "To enable AUR updates, install yay: https://github.com/Jguer/yay#installation"
-                     warn "  or paru: https://github.com/morganamilo/paru#installation"
+                     if [[ "${AUR_ENABLED:-false}" != "true" ]]; then
+                         warn "AUR support is currently disabled. AUR packages will NOT be updated."
+                         warn "Set AUR_ENABLED=true to re-enable AUR updates."
+                     else
+                         warn "No AUR helper (yay/paru) found. AUR packages will NOT be updated."
+                         warn "To enable AUR updates, install yay: https://github.com/Jguer/yay#installation"
+                         warn "  or paru: https://github.com/morganamilo/paru#installation"
+                     fi
                      "$_run" "Running full system upgrade (pacman only)" sudo pacman -Syu $_nc
                  fi ;;
         zypper)  "$_run" "Running full system upgrade" sudo zypper update $_y ;;

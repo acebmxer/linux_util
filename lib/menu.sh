@@ -209,7 +209,7 @@ _rebuild_filtered() {
         # Search mode: scan every utility regardless of category/subcategory
         for (( i=0; i<total; i++ )); do
             local name="${UTILITIES[$i]}"
-            if [[ "${name,,}" == *"$query_lower"* ]]; then
+            if [[ "${name,,}" == *"$query_lower"* ]] && ! _utility_hidden_aur_only "$i"; then
                 _SEARCH_FILTERED+=("$i")
                 _SEARCH_ITEM_TYPE+=("utility")
                 _SEARCH_ITEM_LABEL+=("$name")
@@ -263,7 +263,7 @@ _rebuild_filtered() {
                     item_cat="${UTILITY_CATEGORY[$name]:-}"
                 fi
                 local item_subcat="${UTILITY_SUBCATEGORY[$name]:-}"
-                if [[ "$item_cat" == "$category" && "$item_subcat" == "$active_subcat" ]]; then
+                if [[ "$item_cat" == "$category" && "$item_subcat" == "$active_subcat" ]] && ! _utility_hidden_aur_only "$i"; then
                     _SEARCH_FILTERED+=("$i")
                     _SEARCH_ITEM_TYPE+=("utility")
                     _SEARCH_ITEM_LABEL+=("$name")
@@ -286,7 +286,7 @@ _rebuild_filtered() {
                 else
                     item_cat="${UTILITY_CATEGORY[$name]:-}"
                 fi
-                if [[ "$item_cat" == "$category" ]]; then
+                if [[ "$item_cat" == "$category" ]] && ! _utility_hidden_aur_only "$i"; then
                     local sc="${UTILITY_SUBCATEGORY[$name]:-}"
                     if [[ -n "$sc" && -z "${_seen_subcats[$sc]:-}" ]]; then
                         _seen_subcats["$sc"]=1
@@ -333,7 +333,7 @@ _rebuild_filtered() {
                     else
                         item_cat="${UTILITY_CATEGORY[$name]:-}"
                     fi
-                    if [[ "$item_cat" == "$category" ]]; then
+                    if [[ "$item_cat" == "$category" ]] && ! _utility_hidden_aur_only "$i"; then
                         local sc="${UTILITY_SUBCATEGORY[$name]:-}"
                         if [[ -n "$sc" ]]; then
                             if [[ -z "${_seen_interleaved[$sc]:-}" ]]; then
@@ -369,7 +369,7 @@ _rebuild_filtered() {
                     else
                         item_cat="${UTILITY_CATEGORY[$name]:-}"
                     fi
-                    if [[ "$item_cat" == "$category" && -z "${UTILITY_SUBCATEGORY[$name]:-}" ]]; then
+                    if [[ "$item_cat" == "$category" && -z "${UTILITY_SUBCATEGORY[$name]:-}" ]] && ! _utility_hidden_aur_only "$i"; then
                         _SEARCH_FILTERED+=("$i")
                         _SEARCH_ITEM_TYPE+=("utility")
                         _SEARCH_ITEM_LABEL+=("$name")

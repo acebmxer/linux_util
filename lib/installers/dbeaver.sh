@@ -32,11 +32,7 @@ install_dbeaver() {
             sudo "$PKG_MGR" install -y "$tmpfile"
             ;;
         arch)
-            if has_aur_helper; then
-                aur_install dbeaver
-            else
-                sudo pacman -S --noconfirm dbeaver
-            fi
+            repo_or_aur dbeaver
             ;;
         suse)
             local tmpfile
@@ -84,11 +80,7 @@ update_dbeaver() {
             install_dbeaver
             ;;
         arch)
-            if has_aur_helper; then
-                aur_upgrade dbeaver
-            else
-                sudo pacman -S --noconfirm dbeaver
-            fi
+            repo_or_aur dbeaver
             ;;
         suse)
             install_dbeaver

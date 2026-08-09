@@ -1036,3 +1036,14 @@ UTILITY_DESCRIPTION["deb-get"]="apt-get-style management of .deb packages from t
 UTILITY_DESCRIPTION["Pacstall"]="The 'AUR for Ubuntu/Debian' — installs software from community build scripts (pacscripts) that fetch or compile upstream packages not available in apt. Debian/Ubuntu family only. Community-maintained, so review scripts before installing."
 UTILITY_DESCRIPTION["yay"]="Popular AUR helper for Arch-family distros, written in Go. Wraps pacman to search, build, and install packages from the Arch User Repository. Arch family only; installed from the repo on Manjaro/EndeavourOS or built from the AUR otherwise."
 UTILITY_DESCRIPTION["paru"]="Feature-rich AUR helper for Arch-family distros, written in Rust — an alternative to yay with the same pacman-style workflow. Arch family only; installed from the repo where available or built from the AUR."
+
+# --- AUR-only utilities (Arch) ---
+# These have no official-repo or Flatpak fallback in their installer — the
+# AUR is their only Arch install path. Hidden from the install listing while
+# AUR_ENABLED=false and not already installed (see _utility_hidden_aur_only
+# in lib/utilities.sh); uninstalling an existing install is never affected.
+mark_aur_only_arch \
+    "Angry IP Scanner" "AnyDesk" "Boxflat" "Brave Browser" "Brave Origin" \
+    "Devolutions RDM" "Euro-Office" "Google Chrome" "Libation" "PIA VPN" \
+    "PowerShell" "ProtonVPN" "Snap (snapd)" "Snapper GUI" "Stacer" \
+    "Termius SSH Client" "Trojita" "Visual Studio Code" "Zotero"

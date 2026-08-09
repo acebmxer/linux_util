@@ -322,6 +322,77 @@ test_register_utility_no_version
 test_resolve_utility_name
 test_every_utility_has_description
 
+# --- AUR-only-on-Arch install hiding (_utility_hidden_aur_only) ---
+# A utility whose only Arch install path is the AUR must disappear from the
+# "available to install" listing while AUR support is disabled and it isn't
+# already installed — but stay listed (for uninstall) once it is installed,
+# and stay listed for install once AUR_ENABLED=true.
+
+test_hidden_aur_only_when_disabled_and_not_installed() {
+    UTILITIES=("AnyDesk")
+    UTILITY_AUR_ONLY_ARCH=()
+    mark_aur_only_arch "AnyDesk"
+    DISTRO_FAMILY="arch"
+    AUR_ENABLED=false
+    INSTALLED=(0)
+
+    assert_true "AUR-only utility is hidden when not installed and AUR disabled" \
+        _utility_hidden_aur_only 0
+}
+
+test_not_hidden_aur_only_when_installed() {
+    UTILITIES=("AnyDesk")
+    UTILITY_AUR_ONLY_ARCH=()
+    mark_aur_only_arch "AnyDesk"
+    DISTRO_FAMILY="arch"
+    AUR_ENABLED=false
+    INSTALLED=(1)
+
+    assert_false "an already-installed AUR-only utility stays listed (for uninstall)" \
+        _utility_hidden_aur_only 0
+}
+
+test_not_hidden_aur_only_when_enabled() {
+    UTILITIES=("AnyDesk")
+    UTILITY_AUR_ONLY_ARCH=()
+    mark_aur_only_arch "AnyDesk"
+    DISTRO_FAMILY="arch"
+    AUR_ENABLED=true
+    INSTALLED=(0)
+
+    assert_false "AUR-only utility is listed again once AUR_ENABLED=true" \
+        _utility_hidden_aur_only 0
+}
+
+test_not_hidden_aur_only_off_arch() {
+    UTILITIES=("AnyDesk")
+    UTILITY_AUR_ONLY_ARCH=()
+    mark_aur_only_arch "AnyDesk"
+    DISTRO_FAMILY="debian"
+    AUR_ENABLED=false
+    INSTALLED=(0)
+
+    assert_false "AUR-only-on-Arch marker has no effect off Arch" \
+        _utility_hidden_aur_only 0
+}
+
+test_not_hidden_when_not_marked_aur_only() {
+    UTILITIES=("Obsidian")
+    UTILITY_AUR_ONLY_ARCH=()
+    DISTRO_FAMILY="arch"
+    AUR_ENABLED=false
+    INSTALLED=(0)
+
+    assert_false "a utility with a non-AUR fallback (unmarked) is never hidden" \
+        _utility_hidden_aur_only 0
+}
+
+test_hidden_aur_only_when_disabled_and_not_installed
+test_not_hidden_aur_only_when_installed
+test_not_hidden_aur_only_when_enabled
+test_not_hidden_aur_only_off_arch
+test_not_hidden_when_not_marked_aur_only
+
 # ============================================================================
 # Test: Dependency Resolution
 # ============================================================================
@@ -1845,6 +1916,63 @@ test_repo_or_aur_falls_back_to_aur
 test_flatpak_or_aur_uses_aur_without_flatpak
 test_flatpak_or_aur_prefers_flathub
 test_flatpak_or_aur_falls_back_on_flatpak_failure
+
+# --- AUR disabled-by-default kill switch ---
+
+test_aur_install_refuses_when_disabled() {
+    local out rc
+    out=$(
+        unset AUR_ENABLED
+        has_aur_helper() { return 0; }
+        _aur_helper_run() { echo "HELPER_CALLED"; }
+        aur_install obsidian 2>&1
+    ); rc=$?
+    assert_contains "$out" "AUR support is currently disabled" \
+        "aur_install refuses by default"
+    assert_false "aur_install never runs the AUR helper while disabled" \
+        grep -q "HELPER_CALLED" <<< "$out"
+    assert_eq "1" "$rc" "aur_install returns failure while disabled"
+}
+
+test_aur_install_works_when_enabled() {
+    local out
+    out=$(
+        AUR_ENABLED=true
+        has_aur_helper() { return 0; }
+        _aur_helper_run() { echo "HELPER_CALLED $*"; }
+        aur_install obsidian 2>&1
+    )
+    assert_contains "$out" "HELPER_CALLED" "aur_install runs the AUR helper once re-enabled"
+}
+
+test_aur_build_refuses_when_disabled() {
+    local out
+    out=$(
+        unset AUR_ENABLED
+        git() { echo "GIT_CALLED"; }
+        aur_build obsidian 2>&1
+    )
+    assert_contains "$out" "AUR support is currently disabled" \
+        "aur_build refuses by default"
+    assert_false "aur_build never clones the AUR while disabled" \
+        grep -q "GIT_CALLED" <<< "$out"
+}
+
+test_aur_remove_unaffected_by_disable() {
+    local out
+    out=$(
+        unset AUR_ENABLED
+        _aur_helper_run() { echo "HELPER_REMOVE_CALLED"; return 0; }
+        aur_remove obsidian 2>&1
+    )
+    assert_contains "$out" "HELPER_REMOVE_CALLED" \
+        "aur_remove still runs while AUR is disabled — uninstall is unaffected"
+}
+
+test_aur_install_refuses_when_disabled
+test_aur_install_works_when_enabled
+test_aur_build_refuses_when_disabled
+test_aur_remove_unaffected_by_disable
 
 # ============================================================================
 # Test: WinApps compose port handling

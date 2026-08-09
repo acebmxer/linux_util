@@ -12,6 +12,30 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Changed
+
+- **AUR support disabled by default**, pending review of AUR-related security
+  concerns (following the KDE Linux project's decision to drop AUR support).
+  `aur_install` and `aur_build` — the two functions everything else in
+  `lib/aur.sh` (and every Arch installer) routes through — now refuse to run
+  and print how to re-enable them, instead of installing/building from the
+  AUR. Set `AUR_ENABLED=true` to restore the previous behavior.
+  `pkg_full_upgrade`'s yay/paru system-upgrade path is gated the same way,
+  falling back to a pacman-only upgrade with a warning (same as when no AUR
+  helper is present). Removing an already-installed AUR package
+  (`aur_remove`) is unaffected — that's cleanup, not new AUR usage.
+
+  The menu's install listing now hides any utility whose only Arch install
+  path is the AUR (no `pacman`/Flatpak fallback — e.g. AnyDesk, Google
+  Chrome, Visual Studio Code, PowerShell, Trojitá, Zotero) while AUR support
+  is disabled, via a new `mark_aur_only_arch` registry populated in
+  `lib/installers.sh` and a `_utility_hidden_aur_only` check wired into
+  `lib/menu.sh`'s filtering. An already-installed copy stays listed so it can
+  still be uninstalled, and everything reappears once `AUR_ENABLED=true`.
+  DBeaver and Bottles, which do have a real `pacman` fallback, were switched
+  to `repo_or_aur` so that fallback is actually reached instead of being
+  skipped whenever a helper happened to be installed.
+
 ### Added
 
 - **Euro-Office** under **Productivity** — the desktop office suite from the

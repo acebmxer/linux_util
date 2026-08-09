@@ -5,6 +5,18 @@
 # Provides Arch User Repository (AUR) functions for Arch/Manjaro systems
 # ============================================================================
 
+# AUR support is disabled by default, pending review of AUR-related security
+# concerns (see the KDE Linux project's decision to drop AUR support). Set
+# AUR_ENABLED=true in the environment to re-enable installing/building
+# packages from the AUR. Removing already-installed AUR packages (aur_remove)
+# is not affected — that's cleanup, not new AUR usage.
+AUR_ENABLED="${AUR_ENABLED:-false}"
+
+_aur_disabled_msg() {
+    echo "Error: AUR support is currently disabled in this tool (pending review of AUR security concerns)."
+    echo "Set AUR_ENABLED=true to re-enable it."
+}
+
 has_aur_helper() {
     command -v yay &>/dev/null || command -v paru &>/dev/null
 }
@@ -21,6 +33,7 @@ _aur_helper_run() {
 }
 
 aur_install() {
+    [[ "$AUR_ENABLED" == "true" ]] || { _aur_disabled_msg; return 1; }
     has_aur_helper || { echo "Error: No AUR helper found. Please install yay or paru first."; return 1; }
     _aur_helper_run -S --noconfirm "$@" || { echo "Error: Failed to install from AUR: $*"; return 1; }
 }
@@ -87,6 +100,7 @@ ensure_aur_build_deps() {
 # Usage: aur_build <aur-package-name>
 aur_build() {
     local pkg_name="$1"
+    [[ "$AUR_ENABLED" == "true" ]] || { _aur_disabled_msg; return 1; }
     [[ "$pkg_name" =~ ^[a-zA-Z0-9._-]+$ ]] || { warn "Invalid package name: $pkg_name"; return 1; }
     ensure_aur_build_deps
     local build_dir
