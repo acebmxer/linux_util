@@ -200,6 +200,37 @@ when a release is cut.
   name a Windows application might share — Firefox, Thunderbird, VS Code, Steam
   and the rest.
 
+### Fixed
+
+- **Enable RDP**'s KDE Wallet integration never actually ran, so the wallet
+  still prompted at every RDP login on Fedora/RHEL — most visibly as a KDE
+  Wallet password dialog the first time **Visual Studio Code** was launched,
+  since Chromium and Electron open the wallet at startup to fetch the key they
+  encrypt saved credentials with. The `auth optional pam_kwallet5.so` line was
+  appended below the stack's existing `auth include password-auth`, but
+  `include` adopts the included stack's jumps: `password-auth` grants with
+  `auth sufficient pam_unix.so`, so a successful login returned from the whole
+  auth stack and nothing below the include was reached. The module loaded
+  during the session phase, found no password had been captured, and logged
+  `open_session called without kwallet5_key` before giving up. Fedora's own
+  `plasmalogin` and `kde` stacks use `substack` instead of `include` for
+  exactly this reason, which is why a local login unlocked the wallet where an
+  RDP login did not.
+
+  The installer now converts that `auth include` to `auth substack` when it
+  adds the module, and detects and repairs stacks that earlier versions left
+  half-configured — previously the "already wired into the xrdp PAM stack"
+  check saw the `pam_kwallet` line, declared success, and left the broken
+  ordering in place on every re-run. Both paths still prompt before touching
+  PAM, keep a timestamped backup, and leave the module `optional` so it can
+  never block authentication. The `account`, `password` and `session` includes
+  are untouched — only the auth stack has the early-return problem.
+
+  The README's troubleshooting entry claimed a persistent prompt meant the
+  wallet password did not match the login password. That was the wrong
+  diagnosis for the most likely cause; it now explains what to read out of
+  `journalctl -b | grep pam_kwallet` to tell the three failure modes apart.
+
 ## [1.1.0] - 2026-08-01
 
 ### Added

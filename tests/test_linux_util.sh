@@ -2290,6 +2290,116 @@ test_euroffice_pick_tag_handles_no_tags
 test_euroffice_artifact_matches_family
 
 # ============================================================================
+# xrdp KDE Wallet PAM Tests
+# ============================================================================
+echo ""
+echo "=== xrdp KDE Wallet PAM Tests ==="
+
+# Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/xrdp.sh"
+
+# Fedora's stock /etc/pam.d/xrdp-sesman, trimmed to the lines that matter.
+_xrdp_test_stock_stack() {
+    cat > "$1" <<'PAM_EOF'
+#%PAM-1.0
+auth       include      password-auth
+account    include      password-auth
+password   include      password-auth
+
+session    required     pam_selinux.so close
+session    include      password-auth
+session    optional     pam_lastlog.so silent
+PAM_EOF
+}
+
+test_xrdp_pam_add_converts_include_to_substack() {
+    local _f _out
+    _f=$(mktemp); _xrdp_test_stock_stack "$_f"
+    _out=$(_xrdp_pam_add_kwallet "$_f")
+
+    # password-auth grants with "auth sufficient pam_unix.so". Reached through
+    # an "include", that success returns from the whole auth stack and the
+    # pam_kwallet5 line below it never runs.
+    assert_contains "$_out" "auth       substack     password-auth" \
+        "_xrdp_pam_add_kwallet converts the auth include to a substack"
+    assert_contains "$_out" "auth       optional     pam_kwallet5.so" \
+        "_xrdp_pam_add_kwallet adds the auth line"
+    assert_contains "$_out" "session    optional     pam_kwallet5.so auto_start" \
+        "_xrdp_pam_add_kwallet adds the session line"
+
+    # Only the auth include is a jump; rewriting the others would be a
+    # behavior change nothing here needs.
+    assert_contains "$_out" "account    include      password-auth" \
+        "_xrdp_pam_add_kwallet leaves the account include alone"
+    assert_contains "$_out" "session    include      password-auth" \
+        "_xrdp_pam_add_kwallet leaves the session include alone"
+    rm -f "$_f"
+}
+
+test_xrdp_pam_add_orders_auth_line_after_the_include() {
+    local _f _auth_line _kwallet_line
+    _f=$(mktemp); _xrdp_test_stock_stack "$_f"
+    # The module reads the password PAM has already collected, so it has to run
+    # after the stack that collects it, not before.
+    _auth_line=$(_xrdp_pam_add_kwallet "$_f" | grep -n "substack     password-auth" | cut -d: -f1)
+    _kwallet_line=$(_xrdp_pam_add_kwallet "$_f" | grep -n "optional     pam_kwallet5.so$" | cut -d: -f1)
+    assert_true "_xrdp_pam_add_kwallet puts the auth line after the substack" \
+        [ "$_kwallet_line" -gt "$_auth_line" ]
+    rm -f "$_f"
+}
+
+test_xrdp_pam_fix_include_repairs_an_unreachable_module() {
+    local _f _out
+    _f=$(mktemp); _xrdp_test_stock_stack "$_f"
+    # What older versions of this installer produced: the module is named, but
+    # sits below a plain "include" and so is never reached.
+    printf 'auth       optional     pam_kwallet5.so\n' >> "$_f"
+
+    _out=$(_xrdp_pam_fix_include "$_f")
+    assert_contains "$_out" "auth       substack     password-auth" \
+        "_xrdp_pam_fix_include converts the include above the kwallet line"
+    assert_contains "$_out" "auth       optional     pam_kwallet5.so" \
+        "_xrdp_pam_fix_include keeps the existing kwallet line"
+    rm -f "$_f"
+}
+
+test_xrdp_pam_fix_include_is_a_no_op_when_already_correct() {
+    local _f
+    _f=$(mktemp)
+    printf 'auth       substack     password-auth\nauth       optional     pam_kwallet5.so\n' > "$_f"
+    # Non-zero exit is how the caller tells "already wired" from "repaired".
+    assert_false "_xrdp_pam_fix_include reports nothing to do on a substack stack" \
+        _xrdp_pam_fix_include "$_f"
+    rm -f "$_f"
+}
+
+test_xrdp_pam_fix_include_ignores_a_stack_without_kwallet() {
+    local _f
+    _f=$(mktemp); _xrdp_test_stock_stack "$_f"
+    assert_false "_xrdp_pam_fix_include reports nothing to do without a kwallet line" \
+        _xrdp_pam_fix_include "$_f"
+    rm -f "$_f"
+}
+
+test_xrdp_pam_add_needs_both_anchors() {
+    local _f
+    _f=$(mktemp)
+    printf 'auth       include      password-auth\n' > "$_f"
+    # No session line to anchor to: the caller must leave the file untouched
+    # rather than write a half-configured stack.
+    assert_false "_xrdp_pam_add_kwallet fails on a stack with no session line" \
+        _xrdp_pam_add_kwallet "$_f"
+    rm -f "$_f"
+}
+
+test_xrdp_pam_add_converts_include_to_substack
+test_xrdp_pam_add_orders_auth_line_after_the_include
+test_xrdp_pam_fix_include_repairs_an_unreachable_module
+test_xrdp_pam_fix_include_is_a_no_op_when_already_correct
+test_xrdp_pam_fix_include_ignores_a_stack_without_kwallet
+test_xrdp_pam_add_needs_both_anchors
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""

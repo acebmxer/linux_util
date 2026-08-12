@@ -96,6 +96,127 @@ _xrdp_kwallet_module_present() {
 # Editing a PAM stack can lock users out of RDP, so this is prompted rather than
 # automatic, backed up first, and uses "optional" so a failing module never
 # blocks authentication.
+
+# Set by _xrdp_pam_install for the caller's rollback message.
+_XRDP_PAM_BACKUP=""
+
+# Replace the original stack with a rewritten one, keeping a timestamped backup.
+_xrdp_pam_install() {
+    local pam_file="$1" tmp="$2" backup
+    backup="${pam_file}.bak.$(date +%Y%m%d-%H%M%S)"
+    run_as_root cp -a "$pam_file" "$backup" || return 1
+    run_as_root install -o root -g root -m 0644 "$tmp" "$pam_file" || return 1
+    _XRDP_PAM_BACKUP="$backup"
+}
+
+# awk body that rewrites the control flag of one "auth include" line to
+# "substack". "include" pulls the included stack's jumps into this one, so when
+# that stack grants with "sufficient" — Fedora's password-auth does, via
+# "auth sufficient pam_unix.so" — a successful login returns from the whole auth
+# stack and every auth line below the include is dead code. "substack" confines
+# the jump, so the stack carries on and pam_kwallet5 actually runs. Fedora's own
+# plasmalogin and kde stacks use substack for exactly this reason.
+#
+# Swapping "include " (with one trailing space) for "substack" preserves the
+# original column alignment; the second sub() is the fallback for a tab.
+_XRDP_PAM_SUBSTACK_AWK='
+    function to_substack(s) {
+        if (!sub(/include /, "substack", s)) sub(/include/, "substack", s)
+        return s
+    }
+'
+
+# Print $1 with the pam_kwallet5 lines added. The auth line must come after the
+# stack's own auth include so the password has already been collected, and that
+# include has to become a substack or the new line is never reached. The session
+# line goes last so kwalletd starts in the fully set-up session.
+# Exits non-zero if the stack has no auth or no session line to anchor to.
+_xrdp_pam_add_kwallet() {
+    awk "$_XRDP_PAM_SUBSTACK_AWK"'
+        { line[NR] = $0 }
+        /^[[:space:]]*auth[[:space:]]/    { last_auth = NR }
+        /^[[:space:]]*session[[:space:]]/ { last_session = NR }
+        END {
+            if (last_auth == 0 || last_session == 0) exit 1
+            for (i = 1; i <= NR; i++) {
+                out = line[i]
+                if (i == last_auth && out ~ /^[[:space:]]*auth[[:space:]]+include[[:space:]]/)
+                    out = to_substack(out)
+                print out
+                if (i == last_auth) {
+                    print "# linux_util: hand the RDP login password to kwalletd so KDE Wallet"
+                    print "# unlocks at session start. Requires the wallet password to match."
+                    print "auth       optional     pam_kwallet5.so"
+                }
+                if (i == last_session)
+                    print "session    optional     pam_kwallet5.so auto_start"
+            }
+        }
+    ' "$1"
+}
+
+# Print $1 with the auth include above its pam_kwallet line converted to a
+# substack. Exits non-zero when there is no such include, i.e. the stack is
+# already correct and there is nothing to repair.
+_xrdp_pam_fix_include() {
+    awk "$_XRDP_PAM_SUBSTACK_AWK"'
+        { line[NR] = $0 }
+        /^[[:space:]]*auth[[:space:]]+include[[:space:]]/ { last_inc = NR }
+        /^[[:space:]]*auth[[:space:]].*pam_kwallet/       { kwallet = NR }
+        END {
+            if (last_inc == 0 || kwallet == 0 || last_inc > kwallet) exit 1
+            for (i = 1; i <= NR; i++)
+                print (i == last_inc) ? to_substack(line[i]) : line[i]
+        }
+    ' "$1"
+}
+
+# Warnings shared by the add and repair paths.
+_xrdp_kwallet_postamble() {
+    local pam_file="$1"
+    warn "This only works if the kdewallet password matches your login password."
+    warn "If it still prompts, change the wallet password to match in KWalletManager."
+    warn "To roll back: sudo cp -a ${_XRDP_PAM_BACKUP} ${pam_file}"
+}
+
+# Repair a stack that already names pam_kwallet5 but keeps the "auth include"
+# above it, which leaves the module unreachable (see _XRDP_PAM_SUBSTACK_AWK).
+# Earlier versions of this installer added the module without converting the
+# include, so machines patched by them look configured but still prompt.
+_xrdp_repair_kwallet_pam() {
+    local pam_file="$1" tmp
+    tmp=$(mktemp) || return 0
+
+    if ! _xrdp_pam_fix_include "$pam_file" > "$tmp" 2>/dev/null \
+        || [[ ! -s "$tmp" ]] || cmp -s "$pam_file" "$tmp"; then
+        rm -f "$tmp"
+        info "KDE Wallet is already wired into the xrdp PAM stack."
+        return 0
+    fi
+
+    echo ""
+    warn "${pam_file} names pam_kwallet5, but the 'auth include' above it returns"
+    warn "from the whole auth stack on a successful login, so the module never"
+    warn "runs and the wallet stays locked. The journal shows this at every login:"
+    warn "  pam_kwallet5: open_session called without kwallet5_key"
+    if ! _confirm_step "Change that 'auth include' to 'auth substack' so pam_kwallet5 is reached?"; then
+        info "Leaving ${pam_file} unchanged."
+        rm -f "$tmp"
+        return 0
+    fi
+
+    if ! _xrdp_pam_install "$pam_file" "$tmp"; then
+        rm -f "$tmp"
+        warn "Could not update ${pam_file} — it has been left as it was."
+        return 0
+    fi
+    rm -f "$tmp"
+
+    info "xrdp PAM stack repaired. Backup: ${_XRDP_PAM_BACKUP}"
+    info "It takes effect at your next RDP login."
+    _xrdp_kwallet_postamble "$pam_file"
+}
+
 _xrdp_configure_kwallet_pam() {
     local pam_file="/etc/pam.d/xrdp-sesman"
 
@@ -107,7 +228,7 @@ _xrdp_configure_kwallet_pam() {
     command -v plasmashell >/dev/null 2>&1 || return 0
 
     if grep -q "pam_kwallet" "$pam_file"; then
-        info "KDE Wallet is already wired into the xrdp PAM stack."
+        _xrdp_repair_kwallet_pam "$pam_file"
         return 0
     fi
 
@@ -138,29 +259,9 @@ _xrdp_configure_kwallet_pam() {
         fi
     fi
 
-    # The auth line must come after the stack's own auth include so the password
-    # has already been collected; the session line goes last so kwalletd starts
-    # in the fully set-up session.
     local tmp ok=true
     tmp=$(mktemp) || return 0
-    awk '
-        { line[NR] = $0 }
-        /^[[:space:]]*auth[[:space:]]/    { last_auth = NR }
-        /^[[:space:]]*session[[:space:]]/ { last_session = NR }
-        END {
-            if (last_auth == 0 || last_session == 0) exit 1
-            for (i = 1; i <= NR; i++) {
-                print line[i]
-                if (i == last_auth) {
-                    print "# linux_util: hand the RDP login password to kwalletd so KDE Wallet"
-                    print "# unlocks at session start. Requires the wallet password to match."
-                    print "auth       optional     pam_kwallet5.so"
-                }
-                if (i == last_session)
-                    print "session    optional     pam_kwallet5.so auto_start"
-            }
-        }
-    ' "$pam_file" > "$tmp" || ok=false
+    _xrdp_pam_add_kwallet "$pam_file" > "$tmp" || ok=false
 
     if [[ "$ok" != "true" ]] || [[ ! -s "$tmp" ]] || ! grep -q "pam_kwallet5" "$tmp"; then
         rm -f "$tmp"
@@ -168,15 +269,15 @@ _xrdp_configure_kwallet_pam() {
         return 0
     fi
 
-    local backup="${pam_file}.bak.$(date +%Y%m%d-%H%M%S)"
-    run_as_root cp -a "$pam_file" "$backup"
-    run_as_root install -o root -g root -m 0644 "$tmp" "$pam_file"
+    if ! _xrdp_pam_install "$pam_file" "$tmp"; then
+        rm -f "$tmp"
+        warn "Could not update ${pam_file} — it has been left as it was."
+        return 0
+    fi
     rm -f "$tmp"
 
-    info "KDE Wallet PAM integration added. Backup: ${backup}"
-    warn "This only works if the kdewallet password matches your login password."
-    warn "If it still prompts, change the wallet password to match in KWalletManager."
-    warn "To roll back: sudo cp -a ${backup} ${pam_file}"
+    info "KDE Wallet PAM integration added. Backup: ${_XRDP_PAM_BACKUP}"
+    _xrdp_kwallet_postamble "$pam_file"
 }
 
 install_xrdp() {
