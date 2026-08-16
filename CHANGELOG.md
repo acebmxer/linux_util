@@ -202,6 +202,11 @@ when a release is cut.
 
 ### Fixed
 
+- **LACT** install/update on Fedora and RHEL enabled the wrong COPR repo
+  (`ilyalobintsev/lact`), which no longer exists, so `dnf copr enable` 404'd
+  on every attempt (retries included, since the failure wasn't transient).
+  Upstream's Copr repo is `ilyaz/LACT`; both distro branches now point at it.
+
 - **Enable RDP**'s KDE Wallet integration never actually ran, so the wallet
   still prompted at every RDP login on Fedora/RHEL — most visibly as a KDE
   Wallet password dialog the first time **Visual Studio Code** was launched,

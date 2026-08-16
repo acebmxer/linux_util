@@ -70,7 +70,7 @@ install_lact() {
             ;;
         fedora)
             # LACT is available via a COPR repository
-            sudo dnf copr enable -y ilyalobintsev/lact || {
+            sudo dnf copr enable -y ilyaz/LACT || {
                 error "Failed to enable LACT COPR repository."
                 return 1
             }
@@ -78,8 +78,8 @@ install_lact() {
             ;;
         rhel)
             # COPR is available on RHEL/CentOS via dnf
-            sudo dnf copr enable -y ilyalobintsev/lact 2>/dev/null || \
-            sudo yum copr enable -y ilyalobintsev/lact 2>/dev/null || {
+            sudo dnf copr enable -y ilyaz/LACT 2>/dev/null || \
+            sudo yum copr enable -y ilyaz/LACT 2>/dev/null || {
                 error "Failed to enable LACT COPR repository. Ensure 'dnf-plugins-core' is installed."
                 return 1
             }
