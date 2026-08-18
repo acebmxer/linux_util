@@ -349,6 +349,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Filelight** | Disk usage analyzer with interactive sunburst chart |
 | **Input Leap** | Software KVM — share keyboard and mouse across machines |
 | **OCCT** | CPU/RAM/GPU stability and stress testing — free Personal edition, x86_64 binary from ocbase.com, installed per-user under `~/.local/share/occt` |
+| **Pay Respects** | Press `F` to fix the last failed command — Rust `thefuck` replacement with inline `Ctrl+X` correction. Installed from upstream's `.deb`/`.rpm` (in no distro repo; AUR on Arch) and wired into `~/.bashrc`/`~/.zshrc`; its AI module is disabled by default |
 | **Stacer** | Graphical system optimizer and monitor |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |
 

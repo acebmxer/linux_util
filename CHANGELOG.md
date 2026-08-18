@@ -38,6 +38,70 @@ when a release is cut.
 
 ### Added
 
+- **Pay Respects** under **System Tools** — press `F` after a mistyped or failed
+  command and it prints the fix for confirmation; a Rust replacement for
+  `thefuck`, with an inline `Ctrl+X` correction mode that rewrites the command
+  line without running it.
+
+  pay-respects is in no Debian, Ubuntu, Fedora or openSUSE repository, so the
+  installer uses upstream's own dependency-free packages — the `.deb` on
+  Debian/Ubuntu and the `.rpm` on Fedora, RHEL and openSUSE (x86-64 and
+  aarch64), both verified with `verify_download` and `github_verify_checksum`,
+  installed through `pkg_install_local` so zypper gets its
+  `--allow-unsigned-rpm`. Arch has no official-repo build either and goes to the
+  AUR's `pay-respects-bin`, so the entry is registered with
+  `mark_aur_only_arch`.
+
+  The release asset is not taken from GitHub's `latest` endpoint. Upstream keeps
+  a rolling `nightly` release in the same list, published as an ordinary release
+  rather than a prerelease, so it can outrank the tagged versions at any time.
+  The installer only accepts assets under a `/download/vX.Y.Z/` path, which
+  skips the nightly build and lands on the newest numbered release; the checksum
+  lookup follows that release's own tag for the same reason.
+
+  The binary does nothing until the shell is told to bind `F` to it, so the
+  installer appends a marker-delimited block to `~/.bashrc` (and to `~/.zshrc`
+  when it exists — rerun Update after setting up zsh) in the style of the
+  Command-Not-Found Prompt task, removed cleanly on uninstall along with
+  `~/.config/pay-respects`. Because pay-respects also installs a
+  `command_not_found` hook of its own, the block is written with `--nocnf`
+  whenever that rc file already carries the Command-Not-Found Prompt handler —
+  otherwise two handlers land in one shell and whichever is sourced last
+  silently wins.
+
+  The packages bundle a `request-ai` module that, when no local rule matches,
+  sends the failed command and its error message to the author's API server
+  using a key compiled into the binary. The generated block sets
+  `_PR_AI_DISABLE=1` so that is off by default; deleting that one line turns it
+  on.
+
+- **LocalSend** under **Internet › File Transfer** — an open-source AirDrop
+  alternative that moves files and text between devices on the same network
+  with no internet connection, account, or cloud service in the middle.
+
+  Debian/Ubuntu install from upstream's official `.deb` (x86-64 and arm-64),
+  verified with `verify_download` and `github_verify_checksum`. Everything else
+  goes through Flathub (`org.localsend.localsend_app`): upstream publishes no
+  `.rpm` at all and the app is in no RPM distro's repositories, so Fedora, RHEL
+  and openSUSE install Flatpak first if it is missing rather than being told to
+  go find a package that does not exist. Arch prefers Flathub and falls back to
+  the AUR's `localsend-bin`, so it is not hidden while AUR support is disabled.
+
+  The release asset is not taken from GitHub's `latest` endpoint. LocalSend
+  ships Android-only hotfix releases — v1.18.1 carries no Linux assets
+  whatsoever — so `latest` intermittently points at a release with nothing to
+  install. The installer walks the releases list, newest first, and takes the
+  first one that actually has a Linux build; the checksum lookup follows that
+  release's own tag rather than `latest` for the same reason.
+
+  Because discovery is the whole point of the app, the installer offers to open
+  port 53317 (TCP for transfers, UDP for discovery) when ufw or firewalld is
+  active — without it LocalSend starts normally but stays invisible to every
+  other device on the network, which is a silent failure that looks like a bug.
+  Uninstall removes those rules, guarded on their actually being present, and
+  clears the app's settings directory while leaving received files in
+  `~/Downloads` alone.
+
 - **Euro-Office** under **Productivity** — the desktop office suite from the
   European community fork of ONLYOFFICE (documents, spreadsheets,
   presentations, PDF and forms; AGPL v3). Unlike every other entry in this

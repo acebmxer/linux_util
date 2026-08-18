@@ -2400,6 +2400,199 @@ test_xrdp_pam_fix_include_ignores_a_stack_without_kwallet
 test_xrdp_pam_add_needs_both_anchors
 
 # ============================================================================
+# LocalSend Tests
+# ============================================================================
+echo ""
+echo "=== LocalSend Tests ==="
+
+# Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/localsend.sh"
+
+# Upstream's real release shape: the newest release (v1.18.1) is an Android-only
+# hotfix with no Linux assets at all, so anything reading /releases/latest finds
+# nothing to install.
+_localsend_test_releases_json() {
+    cat <<'JSON_EOF'
+  "browser_download_url": "https://github.com/localsend/localsend/releases/download/v1.18.1/LocalSend-1.18.1-android-arm64v8.apk",
+  "browser_download_url": "https://github.com/localsend/localsend/releases/download/v1.18.1/LocalSend-1.18.1-android-x64.apk",
+  "browser_download_url": "https://github.com/localsend/localsend/releases/download/v1.18.0/LocalSend-1.18.0-linux-arm-64.deb",
+  "browser_download_url": "https://github.com/localsend/localsend/releases/download/v1.18.0/LocalSend-1.18.0-linux-x86-64.AppImage",
+  "browser_download_url": "https://github.com/localsend/localsend/releases/download/v1.18.0/LocalSend-1.18.0-linux-x86-64.deb",
+  "browser_download_url": "https://github.com/localsend/localsend/releases/download/v1.17.0/LocalSend-1.17.0-linux-x86-64.deb",
+JSON_EOF
+}
+
+test_localsend_asset_url_skips_android_only_release() {
+    # Stub curl for the duration of the test so no network call is made.
+    curl() { _localsend_test_releases_json; }
+
+    assert_eq \
+        "https://github.com/localsend/localsend/releases/download/v1.18.0/LocalSend-1.18.0-linux-x86-64.deb" \
+        "$(_localsend_asset_url 'linux-x86-64\.deb$')" \
+        "_localsend_asset_url falls back past an Android-only release to the newest Linux .deb"
+
+    assert_eq \
+        "https://github.com/localsend/localsend/releases/download/v1.18.0/LocalSend-1.18.0-linux-arm-64.deb" \
+        "$(_localsend_asset_url 'linux-arm-64\.deb$')" \
+        "_localsend_asset_url selects the arm-64 .deb when asked for it"
+
+    # The AppImage sits between the two .deb assets in the list; anchoring on the
+    # extension is what keeps it from being picked for a .deb install.
+    assert_eq \
+        "https://github.com/localsend/localsend/releases/download/v1.18.0/LocalSend-1.18.0-linux-x86-64.AppImage" \
+        "$(_localsend_asset_url 'linux-x86-64\.AppImage$')" \
+        "_localsend_asset_url does not confuse the AppImage with the .deb"
+
+    unset -f curl
+}
+
+test_localsend_asset_url_reports_no_match() {
+    curl() { _localsend_test_releases_json; }
+    assert_eq "" "$(_localsend_asset_url 'linux-x86-64\.rpm$')" \
+        "_localsend_asset_url prints nothing when no asset matches"
+    unset -f curl
+}
+
+test_localsend_install_deb_rejects_unknown_arch() {
+    uname() { echo "riscv64"; }
+    assert_false "_localsend_install_deb fails on an unsupported architecture" \
+        _localsend_install_deb
+    unset -f uname
+}
+
+test_localsend_asset_url_skips_android_only_release
+test_localsend_asset_url_reports_no_match
+test_localsend_install_deb_rejects_unknown_arch
+
+# ============================================================================
+# Pay Respects Tests
+# ============================================================================
+echo ""
+echo "=== Pay Respects Tests ==="
+
+# Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/pay_respects.sh"
+
+# Upstream's real release shape: a rolling "nightly" release sits at the top of
+# the list, published as an ordinary release rather than a prerelease, so its
+# assets are the first ones a naive newest-first scan would pick up.
+_payr_test_releases_json() {
+    cat <<'JSON_EOF'
+  "browser_download_url": "https://github.com/iffse/pay-respects/releases/download/nightly/pay-respects-nightly-x86_64-unknown-linux-musl.tar.zst",
+  "browser_download_url": "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects-0.8.8-1.aarch64.rpm",
+  "browser_download_url": "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects-0.8.8-1.i686.rpm",
+  "browser_download_url": "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects-0.8.8-1.x86_64.rpm",
+  "browser_download_url": "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects-0.8.8-x86_64-unknown-linux-musl.tar.zst",
+  "browser_download_url": "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects_0.8.8-1_amd64.deb",
+  "browser_download_url": "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects_0.8.8-1_arm64.deb",
+  "browser_download_url": "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects_0.8.8-1_i386.deb",
+  "browser_download_url": "https://github.com/iffse/pay-respects/releases/download/v0.8.7/pay-respects_0.8.7-1_amd64.deb",
+JSON_EOF
+}
+
+test_payr_asset_url_skips_nightly() {
+    # Stub curl for the duration of the test so no network call is made.
+    curl() { _payr_test_releases_json; }
+
+    assert_eq \
+        "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects_0.8.8-1_amd64.deb" \
+        "$(_payr_asset_url '_amd64\.deb$')" \
+        "_payr_asset_url takes the newest tagged .deb, not a nightly asset"
+
+    assert_eq \
+        "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects-0.8.8-1.x86_64.rpm" \
+        "$(_payr_asset_url '\.x86_64\.rpm$')" \
+        "_payr_asset_url selects the x86_64 .rpm"
+
+    # i686/i386 assets sort before the 64-bit ones in the release list, so the
+    # patterns have to be anchored to keep them from matching first.
+    assert_eq \
+        "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects_0.8.8-1_arm64.deb" \
+        "$(_payr_asset_url '_arm64\.deb$')" \
+        "_payr_asset_url selects the arm64 .deb without matching i386"
+
+    assert_eq \
+        "https://github.com/iffse/pay-respects/releases/download/v0.8.8/pay-respects-0.8.8-1.aarch64.rpm" \
+        "$(_payr_asset_url '\.aarch64\.rpm$')" \
+        "_payr_asset_url selects the aarch64 .rpm"
+
+    unset -f curl
+}
+
+test_payr_asset_url_reports_no_match() {
+    curl() { _payr_test_releases_json; }
+    assert_eq "" "$(_payr_asset_url 'riscv64\.deb$')" \
+        "_payr_asset_url prints nothing when no asset matches"
+    unset -f curl
+}
+
+test_payr_install_pkg_rejects_unknown_arch() {
+    uname() { echo "riscv64"; }
+    assert_false "_payr_install_pkg fails on an unsupported architecture" \
+        _payr_install_pkg deb
+    unset -f uname
+}
+
+test_payr_rc_block_is_written_once_and_removed() {
+    local rcfile
+    rcfile=$(mktemp /tmp/payr_bashrc_XXXXXX)
+    echo "# existing user content" > "$rcfile"
+
+    _payr_apply_rc "$rcfile" bash "$_PAYR_BASH_BEGIN" "$_PAYR_BASH_END" >/dev/null
+    assert_contains "$(cat "$rcfile")" 'eval "\$\(pay-respects bash\)"' \
+        "_payr_apply_rc writes the shell-init line unexpanded"
+    assert_contains "$(cat "$rcfile")" '^export _PR_AI_DISABLE=1$' \
+        "_payr_apply_rc disables the AI module by default"
+
+    # A second run must not stack a duplicate block.
+    _payr_apply_rc "$rcfile" bash "$_PAYR_BASH_BEGIN" "$_PAYR_BASH_END" >/dev/null
+    assert_eq "1" "$(grep -cF "$_PAYR_BASH_BEGIN" "$rcfile")" \
+        "_payr_apply_rc is idempotent"
+
+    _payr_remove_rc "$rcfile" "$_PAYR_BASH_BEGIN" "$_PAYR_BASH_END" >/dev/null
+    assert_eq "0" "$(grep -cF "pay-respects" "$rcfile")" \
+        "_payr_remove_rc removes the whole block"
+    assert_eq "# existing user content" "$(cat "$rcfile")" \
+        "_payr_remove_rc leaves surrounding rc content intact"
+
+    rm -f "$rcfile"
+}
+
+# Two command_not_found handlers in one rc file means the last one sourced wins,
+# so pay-respects is initialized with --nocnf when the Command-Not-Found Prompt
+# task already owns the hook in that file.
+test_payr_defers_cnf_to_existing_handler() {
+    local rcfile
+    rcfile=$(mktemp /tmp/payr_bashrc_XXXXXX)
+    echo "# linux_util: command-not-found auto-install (bash) -- begin" > "$rcfile"
+
+    _payr_apply_rc "$rcfile" bash "$_PAYR_BASH_BEGIN" "$_PAYR_BASH_END" >/dev/null
+    assert_contains "$(cat "$rcfile")" 'pay-respects bash --nocnf' \
+        "_payr_apply_rc adds --nocnf when a command-not-found handler is already present"
+
+    rm -f "$rcfile"
+}
+
+test_payr_takes_cnf_when_rc_is_clean() {
+    local rcfile
+    rcfile=$(mktemp /tmp/payr_bashrc_XXXXXX)
+    : > "$rcfile"
+
+    _payr_apply_rc "$rcfile" bash "$_PAYR_BASH_BEGIN" "$_PAYR_BASH_END" >/dev/null
+    assert_eq "0" "$(grep -c -- '--nocnf' "$rcfile")" \
+        "_payr_apply_rc keeps pay-respects' own command-not-found handler on a clean rc file"
+
+    rm -f "$rcfile"
+}
+
+test_payr_asset_url_skips_nightly
+test_payr_asset_url_reports_no_match
+test_payr_install_pkg_rejects_unknown_arch
+test_payr_rc_block_is_written_once_and_removed
+test_payr_defers_cnf_to_existing_handler
+test_payr_takes_cnf_when_rc_is_clean
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""

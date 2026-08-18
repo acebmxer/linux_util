@@ -195,6 +195,7 @@ register_utility "LACT"                install_lact             check_lact      
 register_utility "Libation"            install_libation         check_libation         uninstall_libation         update_libation            get_version_libation
 register_utility "LibreOffice"         install_libreoffice      check_libreoffice      uninstall_libreoffice      update_libreoffice         get_version_libreoffice
 register_utility "LibreWolf"           install_librewolf        check_librewolf        uninstall_librewolf        update_librewolf           get_version_librewolf
+register_utility "LocalSend"           install_localsend        check_localsend        uninstall_localsend        update_localsend           get_version_localsend
 register_utility "Logseq"              install_logseq           check_logseq           uninstall_logseq           update_logseq              get_version_logseq
 register_utility "Lutris"              install_lutris           check_lutris           uninstall_lutris           update_lutris              get_version_lutris
 register_utility "MangoHud"            install_mangohud         check_mangohud         uninstall_mangohud         update_mangohud            get_version_mangohud
@@ -210,6 +211,7 @@ register_utility "Obsidian"            install_obsidian         check_obsidian  
 register_utility "OnlyOffice"          install_onlyoffice       check_onlyoffice       uninstall_onlyoffice       update_onlyoffice          get_version_onlyoffice
 register_utility "OpenSSH Server"      install_openssh_server   check_openssh_server   uninstall_openssh_server   update_openssh_server      get_version_openssh_server
 register_utility "OpenTofu"            install_opentofu         check_opentofu         uninstall_opentofu         update_opentofu            get_version_opentofu
+register_utility "Pay Respects"        install_pay_respects     check_pay_respects     uninstall_pay_respects     update_pay_respects        get_version_pay_respects
 register_utility "PIA VPN"             install_pia_vpn          check_pia_vpn          uninstall_pia_vpn          update_pia_vpn             get_version_pia_vpn
 register_utility "Podman"              install_podman           check_podman           uninstall_podman           update_podman              get_version_podman
 register_utility "Postman"             install_postman          check_postman          uninstall_postman          update_postman             get_version_postman
@@ -595,6 +597,7 @@ UTILITY_CATEGORY["WireGuard Client"]="Internet"
 UTILITY_CATEGORY["WireGuard Server"]="Internet"
 UTILITY_CATEGORY["WPS Office"]="Productivity"
 UTILITY_CATEGORY["Zsh + Oh My Zsh"]="System Tools"
+UTILITY_CATEGORY["Pay Respects"]="System Tools"
 UTILITY_CATEGORY["Ansible"]="Development"
 UTILITY_CATEGORY["AnyDesk"]="Remote Admin Tools"
 UTILITY_CATEGORY["Audacity"]="Productivity"
@@ -618,6 +621,7 @@ UTILITY_CATEGORY["Krita"]="Productivity"
 UTILITY_CATEGORY["kubectl"]="Development"
 UTILITY_CATEGORY["Libation"]="Productivity"
 UTILITY_CATEGORY["LibreWolf"]="Internet"
+UTILITY_CATEGORY["LocalSend"]="Internet"
 UTILITY_CATEGORY["Logseq"]="Productivity"
 UTILITY_CATEGORY["Mark Text"]="Productivity"
 UTILITY_CATEGORY["Neovim"]="Development"
@@ -667,6 +671,7 @@ UTILITY_SUBCATEGORY["Proton Mail Bridge"]="Email Clients"
 UTILITY_SUBCATEGORY["Thunderbird"]="Email Clients"
 UTILITY_SUBCATEGORY["Trojita"]="Email Clients"
 UTILITY_SUBCATEGORY["FileZilla"]="File Transfer"
+UTILITY_SUBCATEGORY["LocalSend"]="File Transfer"
 UTILITY_SUBCATEGORY["Remmina"]="Remote Access"
 UTILITY_SUBCATEGORY["Termius SSH Client"]="Remote Access"
 UTILITY_SUBCATEGORY["OpenSSH Server"]="Remote Access"
@@ -873,6 +878,7 @@ UTILITY_DESCRIPTION["Neovim"]="Hyperextensible Vim-based text editor focused on 
 UTILITY_DESCRIPTION["Node.js"]="JavaScript runtime built on Chrome's V8 engine for building fast, scalable server-side and CLI applications."
 UTILITY_DESCRIPTION["NVM"]="Node Version Manager — install and switch between multiple Node.js versions with ease."
 UTILITY_DESCRIPTION["OpenTofu"]="Open-source Terraform fork for infrastructure-as-code provisioning across cloud providers and on-prem resources."
+UTILITY_DESCRIPTION["Pay Respects"]="Press F after a mistyped or failed command and it suggests the fix — a Rust replacement for thefuck, with an inline Ctrl+X correction mode and its own command-not-found handler. Installed from upstream's official .deb/.rpm (it is in no distro's repos) and wired into ~/.bashrc and ~/.zshrc. Its AI module, which would send failed commands to the author's API server, is disabled by default."
 UTILITY_DESCRIPTION["Podman"]="Daemonless container engine compatible with Docker CLI for building and running OCI containers without root."
 UTILITY_DESCRIPTION["Postman"]="API development and testing platform for designing, debugging, and collaborating on APIs."
 UTILITY_DESCRIPTION["PowerShell"]="Microsoft's cross-platform task automation shell and scripting language built on .NET. Provides powerful object-based pipelines, remote management via WinRM/SSH, and broad compatibility with Windows PowerShell scripts. Installed via the official Microsoft apt repository where available, otherwise via the GitHub release .deb."
@@ -932,6 +938,7 @@ UTILITY_DESCRIPTION["WireGuard Client"]="Modern, fast, and lightweight VPN clien
 UTILITY_DESCRIPTION["Angry IP Scanner"]="Fast and friendly network scanner that pings IP ranges, resolves hostnames, scans ports, and exports results to CSV, TXT, or XML. Requires Java."
 UTILITY_DESCRIPTION["AnyDesk"]="Fast remote desktop application with low latency for support and remote access across platforms."
 UTILITY_DESCRIPTION["Element (Matrix)"]="Open-source Matrix client for decentralized, end-to-end encrypted messaging and collaboration."
+UTILITY_DESCRIPTION["LocalSend"]="Open-source AirDrop alternative — sends files and text between devices on the same network, with no internet connection, account, or cloud service. Uses port 53317; the installer offers to open it if a firewall is active. Installed from the official .deb on Debian/Ubuntu and from Flathub elsewhere (upstream publishes no .rpm)."
 UTILITY_DESCRIPTION["LibreWolf"]="Privacy-hardened Firefox fork with tracking protection, telemetry removed, and strong security defaults."
 UTILITY_DESCRIPTION["RustDesk"]="Open-source remote desktop application — self-hostable alternative to AnyDesk and TeamViewer."
 UTILITY_DESCRIPTION["Slack"]="Team messaging and collaboration platform with channels, threads, integrations, and file sharing."
@@ -1044,6 +1051,6 @@ UTILITY_DESCRIPTION["paru"]="Feature-rich AUR helper for Arch-family distros, wr
 # in lib/utilities.sh); uninstalling an existing install is never affected.
 mark_aur_only_arch \
     "Angry IP Scanner" "AnyDesk" "Boxflat" "Brave Browser" "Brave Origin" \
-    "Devolutions RDM" "Euro-Office" "Google Chrome" "Libation" "PIA VPN" \
-    "PowerShell" "ProtonVPN" "Snap (snapd)" "Snapper GUI" "Stacer" \
+    "Devolutions RDM" "Euro-Office" "Google Chrome" "Libation" "Pay Respects" \
+    "PIA VPN" "PowerShell" "ProtonVPN" "Snap (snapd)" "Snapper GUI" "Stacer" \
     "Termius SSH Client" "Trojita" "Visual Studio Code" "Zotero"

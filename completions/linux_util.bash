@@ -51,6 +51,7 @@ KMail
 LibreOffice
 linux-tkg
 Local Time Zone / Locale
+LocalSend
 Lutris
 LXQt Desktop
 Mainline
@@ -65,6 +66,7 @@ Obsidian
 OnlyOffice
 OpenSSH Server
 Pantheon Desktop
+Pay Respects
 PIA VPN
 Postman
 Proton Mail Bridge
