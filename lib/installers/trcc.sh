@@ -155,10 +155,18 @@ _trcc_install_pypi() {
     # The udev rules, usb-storage quirks and modules-load entries that the
     # native packages ship are not part of the PyPI package — `system setup`
     # writes them, re-execing itself through sudo to do it.
+    #
+    # Deliberately NOT --yes. Upstream documents that flag as "non-interactive
+    # (assume yes to prompts)", but it maps to interactive=False, and
+    # LinuxPlatform.setup() reads interactive=False as a DRY RUN: it prints the
+    # rules it would write, touches nothing, and still exits 0. Passing it left
+    # installs with no device access at all. The plain form has no prompts to
+    # answer — the setup path contains no input()/confirm() calls, only work —
+    # so dropping the flag cannot make this block waiting on stdin.
     local trcc_bin="$HOME/.local/bin/trcc"
     [[ -x "$trcc_bin" ]] || trcc_bin=$(command -v trcc 2>/dev/null)
     if [[ -x "$trcc_bin" ]]; then
-        "$trcc_bin" system setup --yes \
+        "$trcc_bin" system setup \
             || warn "'trcc system setup' failed — device access needs it; rerun it manually."
     else
         warn "Could not find the trcc launcher — run 'trcc system setup' once before using TRCC."

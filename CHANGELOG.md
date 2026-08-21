@@ -82,9 +82,15 @@ when a release is cut.
   would land in `/root` where the desktop session never sees it. The udev
   rules, usb-storage quirks and `modules-load.d` entries that the native
   packages ship are not part of the PyPI package, so the installer runs
-  `trcc system setup --yes`, which re-execs itself through sudo to write them —
-  and uninstall removes those four files itself on that path, since no package
-  owns them there.
+  `trcc system setup`, which re-execs itself through sudo to write them — and
+  uninstall removes those four files itself on that path, since no package owns
+  them there. That call deliberately omits `--yes`: upstream documents the flag
+  as "non-interactive (assume yes to prompts)", but it maps to
+  `interactive=False`, which `LinuxPlatform.setup()` reads as a **dry run** —
+  it prints the rules it would write, changes nothing, and still exits 0, so
+  passing it left the install with no device access at all. The plain form has
+  no prompts to answer; that code path contains no `input()` or `confirm()`
+  calls, only work.
 
   Release assets are matched on their versioned names. Every package is
   published twice, once versioned and once under a stable `-latest` alias, and
