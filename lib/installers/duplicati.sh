@@ -7,7 +7,7 @@ install_duplicati() {
     info "Installing Duplicati..."
     ensure_tools
     if ! has_flatpak; then
-        error "Duplicati requires Flatpak. Install Flatpak first via the 'Flatpak Setup' system task."
+        error "Duplicati requires Flatpak. Install Flatpak first via 'Flatpak Setup' in the Package Managers category."
         return 1
     fi
     flatpak install -y flathub com.duplicati.Duplicati || return 1

@@ -8,7 +8,7 @@ check_distroshelf() { _check_standard "" "" com.ranfdev.DistroShelf; }
 install_distroshelf() {
     info "Installing DistroShelf..."
     if ! has_flatpak; then
-        error "DistroShelf is distributed via Flatpak — enable the 'Flatpak Setup' system task first."
+        error "DistroShelf is distributed via Flatpak — run 'Flatpak Setup' from the Package Managers category first."
         return 1
     fi
     flatpak install -y flathub com.ranfdev.DistroShelf || return 1
