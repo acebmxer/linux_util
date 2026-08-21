@@ -209,6 +209,7 @@ register_utility "OBS Studio"          install_obs_studio       check_obs_studio
 register_utility "OCCT"                install_occt             check_occt             uninstall_occt             update_occt                get_version_occt
 register_utility "Obsidian"            install_obsidian         check_obsidian         uninstall_obsidian         update_obsidian            get_version_obsidian
 register_utility "OnlyOffice"          install_onlyoffice       check_onlyoffice       uninstall_onlyoffice       update_onlyoffice          get_version_onlyoffice
+register_utility "OpenLogi"            install_openlogi         check_openlogi         uninstall_openlogi         update_openlogi            get_version_openlogi
 register_utility "OpenSSH Server"      install_openssh_server   check_openssh_server   uninstall_openssh_server   update_openssh_server      get_version_openssh_server
 register_utility "OpenTofu"            install_opentofu         check_opentofu         uninstall_opentofu         update_opentofu            get_version_opentofu
 register_utility "Pay Respects"        install_pay_respects     check_pay_respects     uninstall_pay_respects     update_pay_respects        get_version_pay_respects
@@ -235,6 +236,7 @@ register_utility "Tailscale"           install_tailscale        check_tailscale 
 register_utility "Telegram Desktop"    install_telegram         check_telegram         uninstall_telegram         update_telegram            get_version_telegram
 register_utility "Termius SSH Client"  install_termius          check_termius          uninstall_termius          update_termius             get_version_termius
 register_utility "Terraform"           install_terraform        check_terraform        uninstall_terraform        update_terraform           get_version_terraform
+register_utility "Thermalright TRCC"   install_trcc             check_trcc             uninstall_trcc             update_trcc                get_version_trcc
 register_utility "Thorium Browser"     install_thorium          check_thorium          uninstall_thorium          update_thorium             get_version_thorium
 register_utility "Thunderbird"         install_thunderbird      check_thunderbird      uninstall_thunderbird      update_thunderbird         get_version_thunderbird
 register_utility "Timeshift"           install_timeshift        check_timeshift        uninstall_timeshift        update_timeshift           get_version_timeshift
@@ -459,6 +461,8 @@ UTILITY_CATEGORY["AMD Drivers"]="Drivers"
 UTILITY_CATEGORY["Intel CPU Microcode & Thermal"]="Drivers"
 UTILITY_CATEGORY["LACT"]="Drivers"
 UTILITY_CATEGORY["NVIDIA Drivers"]="Drivers"
+UTILITY_CATEGORY["OpenLogi"]="Drivers"
+UTILITY_CATEGORY["Thermalright TRCC"]="Drivers"
 UTILITY_CATEGORY["XEN Guest Utilities"]="Drivers"
 UTILITY_CATEGORY["Nautilus"]="File Managers"
 UTILITY_CATEGORY["Dolphin"]="File Managers"
@@ -877,6 +881,8 @@ UTILITY_DESCRIPTION["kubectl"]="Official Kubernetes command-line tool for deploy
 UTILITY_DESCRIPTION["Neovim"]="Hyperextensible Vim-based text editor focused on extensibility and usability with Lua-powered configuration."
 UTILITY_DESCRIPTION["Node.js"]="JavaScript runtime built on Chrome's V8 engine for building fast, scalable server-side and CLI applications."
 UTILITY_DESCRIPTION["NVM"]="Node Version Manager — install and switch between multiple Node.js versions with ease."
+UTILITY_DESCRIPTION["Thermalright TRCC"]="Community Linux port of the Thermalright LCD Control Center — drives the LCD screens and RGB LED segments on Thermalright CPU coolers, AIO pump heads and fan hubs, with themes, video and GIF playback, sensor overlays, a CLI and a REST API. Installed from upstream's own package on Debian/Ubuntu and Arch; Fedora, RHEL and openSUSE get the PyPI build via pipx, because upstream's RPM is compiled against the maintainer's own Fedora release and hard-requires a python nvidia-ml-py module no RPM repository ships."
+UTILITY_DESCRIPTION["OpenLogi"]="Local-first alternative to Logitech Options+ for Logi Bolt, Unifying, Bluetooth, and wired Logitech peripherals — button and gesture remapping, DPI presets, SmartShift, keyboard F-key remapping, and UVC webcam controls, with no account or telemetry and a plain TOML config. Installed from upstream's own .deb/.rpm/.pkg.tar.zst (it is in no distro's repos); the package's udev rules grant device access without root, and the installer enables the per-user openlogi-agent.service that drives the devices."
 UTILITY_DESCRIPTION["OpenTofu"]="Open-source Terraform fork for infrastructure-as-code provisioning across cloud providers and on-prem resources."
 UTILITY_DESCRIPTION["Pay Respects"]="Press F after a mistyped or failed command and it suggests the fix — a Rust replacement for thefuck, with an inline Ctrl+X correction mode and its own command-not-found handler. Installed from upstream's official .deb/.rpm (it is in no distro's repos) and wired into ~/.bashrc and ~/.zshrc. Its AI module, which would send failed commands to the author's API server, is disabled by default."
 UTILITY_DESCRIPTION["Podman"]="Daemonless container engine compatible with Docker CLI for building and running OCI containers without root."

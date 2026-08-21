@@ -64,6 +64,7 @@ NVM
 OBS Studio
 Obsidian
 OnlyOffice
+OpenLogi
 OpenSSH Server
 Pantheon Desktop
 Pay Respects
@@ -85,6 +86,7 @@ System Updates
 Tailscale
 Telegram Desktop
 Termius SSH Client
+Thermalright TRCC
 Thorium Browser
 Thunderbird
 Timeshift

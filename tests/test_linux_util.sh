@@ -2593,6 +2593,217 @@ test_payr_defers_cnf_to_existing_handler
 test_payr_takes_cnf_when_rc_is_clean
 
 # ============================================================================
+# OpenLogi Tests
+# ============================================================================
+echo ""
+echo "=== OpenLogi Tests ==="
+
+# Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/openlogi.sh"
+
+# Upstream's real asset set: every package has a .minisig sibling, and the
+# Arch package's extension contains dots that must not act as wildcards.
+_openlogi_test_release_json() {
+    cat <<'JSON_EOF'
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-amd64.deb",
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-amd64.deb.minisig",
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-amd64.pkg.tar.zst",
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-amd64.pkg.tar.zst.minisig",
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-amd64.rpm",
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-amd64.rpm.minisig",
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-arm64.deb",
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-arm64.rpm",
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-arm64.pkg.tar.zst",
+  "browser_download_url": "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/SHA256SUMS",
+JSON_EOF
+}
+
+test_openlogi_asset_url_picks_the_package_not_its_signature() {
+    # Stub curl for the duration of the test so no network call is made.
+    curl() { _openlogi_test_release_json; }
+    uname() { echo "x86_64"; }
+
+    assert_eq \
+        "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-amd64.deb" \
+        "$(_openlogi_asset_url deb)" \
+        "_openlogi_asset_url picks the .deb, not its .minisig sibling"
+
+    assert_eq \
+        "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-amd64.rpm" \
+        "$(_openlogi_asset_url rpm)" \
+        "_openlogi_asset_url picks the .rpm, not its .minisig sibling"
+
+    # The dots in "pkg.tar.zst" are escaped before the pattern is built; an
+    # unescaped pattern would still match here, so the .minisig line above it
+    # is what makes this assertion meaningful.
+    assert_eq \
+        "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-amd64.pkg.tar.zst" \
+        "$(_openlogi_asset_url pkg.tar.zst)" \
+        "_openlogi_asset_url picks the Arch package, not its .minisig sibling"
+
+    unset -f curl uname
+}
+
+test_openlogi_asset_url_selects_the_running_arch() {
+    curl() { _openlogi_test_release_json; }
+    uname() { echo "aarch64"; }
+
+    assert_eq \
+        "https://github.com/AprilNEA/OpenLogi/releases/download/v0.7.3/openlogi-v0.7.3-linux-arm64.deb" \
+        "$(_openlogi_asset_url deb)" \
+        "_openlogi_asset_url maps aarch64 to the arm64 asset"
+
+    unset -f curl uname
+}
+
+test_openlogi_asset_url_rejects_unknown_arch() {
+    curl() { _openlogi_test_release_json; }
+    uname() { echo "riscv64"; }
+
+    assert_false "_openlogi_asset_url fails on an unsupported architecture" \
+        _openlogi_asset_url deb
+
+    unset -f curl uname
+}
+
+test_openlogi_install_pkg_rejects_unknown_arch() {
+    uname() { echo "riscv64"; }
+    assert_false "_openlogi_install_pkg fails on an unsupported architecture" \
+        _openlogi_install_pkg deb
+    unset -f uname
+}
+
+test_openlogi_asset_url_picks_the_package_not_its_signature
+test_openlogi_asset_url_selects_the_running_arch
+test_openlogi_asset_url_rejects_unknown_arch
+test_openlogi_install_pkg_rejects_unknown_arch
+
+# ============================================================================
+# Thermalright TRCC Tests
+# ============================================================================
+echo ""
+echo "=== Thermalright TRCC Tests ==="
+
+# Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/trcc.sh"
+
+# Upstream's real asset set: every package is published twice, once under a
+# versioned name and once under a stable "-latest" alias. Only the versioned
+# names appear in SHA256SUMS.txt.
+_trcc_test_release_json() {
+    cat <<'JSON_EOF'
+  "browser_download_url": "https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10/SHA256SUMS.txt",
+  "browser_download_url": "https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10/trcc-linux-9.9.10-1-any.pkg.tar.zst",
+  "browser_download_url": "https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10/trcc-linux-9.9.10-1.fc44.noarch.rpm",
+  "browser_download_url": "https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10/trcc-linux-latest-any.pkg.tar.zst",
+  "browser_download_url": "https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10/trcc-linux-latest.legacy_all.deb",
+  "browser_download_url": "https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10/trcc-linux-latest.noarch.rpm",
+  "browser_download_url": "https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10/trcc-linux-latest_all.deb",
+  "browser_download_url": "https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10/trcc-linux_9.9.10-1.legacy_all.deb",
+  "browser_download_url": "https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10/trcc-linux_9.9.10-1_all.deb",
+JSON_EOF
+}
+
+test_trcc_asset_url_skips_the_latest_aliases() {
+    # Stub curl for the duration of the test so no network call is made.
+    curl() { _trcc_test_release_json; }
+
+    local base="https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10"
+
+    assert_eq "${base}/trcc-linux_9.9.10-1_all.deb" \
+        "$(_trcc_asset_url '\-[0-9]+_all\.deb$')" \
+        "_trcc_asset_url takes the versioned .deb, not the -latest alias"
+
+    assert_eq "${base}/trcc-linux-9.9.10-1.fc44.noarch.rpm" \
+        "$(_trcc_asset_url '\.fc[0-9]+\.noarch\.rpm$')" \
+        "_trcc_asset_url takes the versioned .rpm, not the -latest alias"
+
+    assert_eq "${base}/trcc-linux-9.9.10-1-any.pkg.tar.zst" \
+        "$(_trcc_asset_url '\-any\.pkg\.tar\.zst$')" \
+        "_trcc_asset_url takes the versioned Arch package, not the -latest alias"
+
+    unset -f curl
+}
+
+# The two .deb names differ only in what sits before "_all.deb", so the standard
+# pattern has to reject the legacy package and vice versa — picking the wrong
+# one installs a package whose dependencies cannot resolve on that release.
+test_trcc_asset_url_separates_standard_from_legacy_deb() {
+    curl() { _trcc_test_release_json; }
+
+    local base="https://github.com/Lexonight1/thermalright-trcc-linux/releases/download/v9.9.10"
+
+    assert_eq "${base}/trcc-linux_9.9.10-1.legacy_all.deb" \
+        "$(_trcc_asset_url '\.legacy_all\.deb$')" \
+        "_trcc_asset_url selects the legacy .deb when asked for it"
+
+    assert_false "the standard .deb pattern does not match the legacy package" \
+        bash -c 'echo "trcc-linux_9.9.10-1.legacy_all.deb" | grep -qE "\-[0-9]+_all\.deb$"'
+
+    unset -f curl
+}
+
+test_trcc_asset_url_reports_no_match() {
+    curl() { _trcc_test_release_json; }
+    assert_eq "" "$(_trcc_asset_url '\.AppImage$')" \
+        "_trcc_asset_url prints nothing when no asset matches"
+    unset -f curl
+}
+
+test_trcc_download_reports_a_missing_asset() {
+    curl() { _trcc_test_release_json; }
+    assert_false "_trcc_download fails when the release has no matching asset" \
+        _trcc_download AppImage '\.AppImage$'
+    unset -f curl
+}
+
+# dnf treats '[' as a glob metacharacter, so an extras provide like
+# pythonX.Ydist(uvicorn[standard]) has to be escaped before it is queried —
+# unescaped it silently reports as unmet and sends a usable RPM to the fallback.
+test_trcc_rpm_unmet_requires_escapes_glob_brackets() {
+    local queried
+    queried=$(mktemp /tmp/trcc_queried_XXXXXX)
+
+    rpm() { printf 'python3.14dist(uvicorn[standard]) >= 0.20\nrpmlib(FileDigests) <= 4.6.0-1\n/bin/sh\n'; }
+    # Stand in for dnf: record the query, and answer "provided" only for the
+    # bracket-escaped form that a real dnf would match.
+    dnf() {
+        local q="${*: -1}"
+        printf '%s\n' "$q" >> "$queried"
+        [[ "$q" == 'python3.14dist(uvicorn[[]standard])' ]] && echo "python3-uvicorn+standard"
+    }
+    PKG_MGR=dnf
+
+    assert_eq "" "$(_trcc_rpm_unmet_requires /nonexistent.rpm)" \
+        "_trcc_rpm_unmet_requires reports nothing unmet when the escaped query resolves"
+
+    assert_eq "1" "$(wc -l < "$queried")" \
+        "_trcc_rpm_unmet_requires skips rpmlib() and file requires"
+
+    rm -f "$queried"
+    unset -f rpm dnf
+}
+
+test_trcc_rpm_unmet_requires_names_what_is_missing() {
+    rpm() { printf 'python3.14dist(nvidia-ml-py) >= 11\npython3-numpy\n'; }
+    dnf() { [[ "${*: -1}" == "python3-numpy" ]] && echo "python3-numpy-0:2.5.2"; }
+    PKG_MGR=dnf
+
+    assert_eq "python3.14dist(nvidia-ml-py)" \
+        "$(_trcc_rpm_unmet_requires /nonexistent.rpm)" \
+        "_trcc_rpm_unmet_requires names only the requires nothing provides"
+
+    unset -f rpm dnf
+}
+
+test_trcc_asset_url_skips_the_latest_aliases
+test_trcc_asset_url_separates_standard_from_legacy_deb
+test_trcc_asset_url_reports_no_match
+test_trcc_download_reports_a_missing_asset
+test_trcc_rpm_unmet_requires_escapes_glob_brackets
+test_trcc_rpm_unmet_requires_names_what_is_missing
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""
