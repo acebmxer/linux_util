@@ -10,6 +10,29 @@ below 1.0.0 predate tagging and are grouped by month, newest first. Add new
 entries under **[Unreleased]** as work lands; move them into a versioned section
 when a release is cut.
 
+## [Unreleased]
+
+### Changed
+
+- **Flatpak Setup moved from System Tasks to the Package Managers category**,
+  alongside Snap, Homebrew, Nix and the AUR/deb helpers — it is the same class
+  of thing as those (a cross-distro manager running beside the native one), and
+  unlike a true system task it already tracked real installed state and a
+  version. It is registered with `register_utility` instead of
+  `register_system_task` and listed first inside the category, since Bottles,
+  BoxBuddy, DistroShelf, Boxflat, Duplicati and ProtonUp-Qt install through it.
+  The name is unchanged, so `--install "Flatpak Setup"`, shell completions and
+  existing custom profiles keep working; the Home Desktop profile now selects
+  it with `_profile_select_for_install` (which skips it when Flatpak is already
+  configured) rather than `_profile_select_task`. Prompts that pointed at "the
+  'Flatpak Setup' system task" now point at the Package Managers category.
+
+### Added
+
+- **Package Managers section in the README's "Utilities by Category"**, which
+  had never been written — Flatpak Setup, Homebrew, Nix, Snap (snapd),
+  deb-get, Pacstall, yay and paru are now documented there.
+
 ## [1.2.0] - 2026-08-20
 
 ### Changed

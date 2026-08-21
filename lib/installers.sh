@@ -54,7 +54,6 @@ register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_gu
 register_utility "Enable RDP"             install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
 register_utility "OpenRSAT"               install_openrsat        check_openrsat        uninstall_openrsat        update_openrsat           get_version_openrsat
 register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
-register_system_task "Flatpak Setup"      install_flatpak_setup   check_flatpak_setup   uninstall_flatpak_setup   update_flatpak_setup      get_version_flatpak_setup
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 register_system_task "GTK Window Fix" install_window_buttons check_always_false noop_function install_window_buttons get_version_window_buttons
@@ -412,6 +411,9 @@ NO_RETRY["SDDM Astronaut"]=1
 
 # --- Package Managers (additional / third-party — native managers untouched) ---
 # Cross-distro managers that run alongside the native package manager.
+# Flatpak is listed first: several utilities (Bottles, BoxBuddy, DistroShelf,
+# Boxflat, Duplicati, ProtonUp-Qt) install through it and need it set up first.
+register_utility "Flatpak Setup"       install_flatpak_setup    check_flatpak_setup    uninstall_flatpak_setup    update_flatpak_setup       get_version_flatpak_setup
 register_utility "Homebrew"            install_homebrew         check_homebrew         uninstall_homebrew         update_homebrew            get_version_homebrew
 register_utility "Nix"                 install_nix              check_nix              uninstall_nix              update_nix                 get_version_nix
 register_utility "Snap (snapd)"        install_snap             check_snap             uninstall_snap             update_snap                get_version_snap
@@ -500,6 +502,7 @@ UTILITY_CATEGORY["SDDM Breeze Theme"]="Login Screens"
 UTILITY_CATEGORY["SDDM Sugar Candy"]="Login Screens"
 UTILITY_CATEGORY["SDDM Astronaut"]="Login Screens"
 UTILITY_CATEGORY["LightDM Slick Greeter"]="Login Screens"
+UTILITY_CATEGORY["Flatpak Setup"]="Package Managers"
 UTILITY_CATEGORY["Homebrew"]="Package Managers"
 UTILITY_CATEGORY["Nix"]="Package Managers"
 UTILITY_CATEGORY["Snap (snapd)"]="Package Managers"
@@ -895,13 +898,13 @@ UTILITY_DESCRIPTION["Virt-Manager"]="Graphical desktop tool for managing KVM/QEM
 UTILITY_DESCRIPTION["Visual Studio Code"]="Microsoft's extensible code editor with a rich ecosystem of extensions and built-in Git support."
 
 # Gaming
-UTILITY_DESCRIPTION["Bottles"]="Wine prefix manager for running Windows software on Linux with per-app isolation. Requires Flatpak — enable the 'Flatpak Setup' system task first on non-Arch systems."
+UTILITY_DESCRIPTION["Bottles"]="Wine prefix manager for running Windows software on Linux with per-app isolation. Requires Flatpak — run 'Flatpak Setup' from the Package Managers category first on non-Arch systems."
 UTILITY_DESCRIPTION["Boxflat"]="Settings manager for Moza Racing sim-racing hardware (wheelbase, wheel, pedals, shifter) on Linux. Installed via Flatpak from Flathub by default; on Arch it falls back to the boxflat-git AUR package when Flatpak is unavailable."
 UTILITY_DESCRIPTION["Feral Gamemode"]="Optimizes Linux system performance while gaming by adjusting CPU governor, I/O priority, and more. For Steam games add the launch option: gamemoderun %command%"
 UTILITY_DESCRIPTION["Heroic Games Launcher"]="Open-source launcher for Epic Games Store, GOG, and Amazon Prime Gaming libraries."
 UTILITY_DESCRIPTION["Lutris"]="Open gaming platform for managing and running games from multiple sources including Steam, GOG, and more."
 UTILITY_DESCRIPTION["MangoHud"]="Vulkan and OpenGL overlay for monitoring FPS, frame times, CPU/GPU usage, and temperatures in-game."
-UTILITY_DESCRIPTION["ProtonUp-Qt"]="Graphical tool for managing Proton-GE and Wine-GE compatibility layers for Steam and Lutris. Requires Flatpak — enable the 'Flatpak Setup' system task first on non-Arch systems."
+UTILITY_DESCRIPTION["ProtonUp-Qt"]="Graphical tool for managing Proton-GE and Wine-GE compatibility layers for Steam and Lutris. Requires Flatpak — run 'Flatpak Setup' from the Package Managers category first on non-Arch systems."
 UTILITY_DESCRIPTION["Steam App"]="Valve's gaming platform for purchasing, downloading, and playing PC games on Linux."
 UTILITY_DESCRIPTION["Wine"]="Compatibility layer that enables Windows applications and games to run natively on Linux without a virtual machine."
 
@@ -996,7 +999,7 @@ UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incrementa
 UTILITY_DESCRIPTION["Déjà Dup"]="(GNOME) Simple, beginner-friendly backup tool for backing up files and folders to local drives, network shares, or cloud storage. Uses duplicity under the hood for encrypted, incremental backups."
 UTILITY_DESCRIPTION["Kup"]="(KDE) Backup tool that integrates with Plasma System Settings. Supports incremental versioned backups (via bup) and synchronized folder copies (via rsync) to local drives or external media. On Fedora, installed from the zawertun/kde-kup Copr as it is not in the official repos. Not available for RHEL-based systems."
 UTILITY_DESCRIPTION["Vorta"]="GUI frontend for BorgBackup — a fast, deduplicating backup tool with encryption and compression. Installs both Borg (CLI) and Vorta (GUI). On RHEL-based systems, only BorgBackup is installed via EPEL as Vorta is not packaged there."
-UTILITY_DESCRIPTION["Duplicati"]="Cloud backup tool with a web-based GUI supporting S3, Google Drive, OneDrive, SFTP, and many more backends. Features encryption, deduplication, and scheduling. Installed via Flatpak — run 'Flatpak Setup' first if not already configured."
+UTILITY_DESCRIPTION["Duplicati"]="Cloud backup tool with a web-based GUI supporting S3, Google Drive, OneDrive, SFTP, and many more backends. Features encryption, deduplication, and scheduling. Installed via Flatpak — run 'Flatpak Setup' from the Package Managers category first if not already configured."
 UTILITY_DESCRIPTION["Snapper"]="Btrfs and LVM snapshot manager. Supports automatic pre/post snapshots on Arch, openSUSE, Debian/Ubuntu, and Fedora. Conflicts with Timeshift — the installer will prompt to remove it first."
 UTILITY_DESCRIPTION["Snapper GUI"]="GTK graphical interface for Snapper. Browse, create, delete, and compare snapshots visually. Works on any filesystem Snapper supports — does not require Btrfs."
 UTILITY_DESCRIPTION["Btrfs Assistant"]="Qt GUI for managing Btrfs filesystems and Snapper snapshots. Includes subvolume management, snapshot browsing, and scrub/balance operations. Available on Arch, Debian/Ubuntu, Fedora, and openSUSE."

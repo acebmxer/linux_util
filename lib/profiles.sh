@@ -29,7 +29,7 @@
 # ── AVAILABLE UTILITY NAMES (pass to helpers exactly as shown) ───────────
 # System Tasks:  "Full System Upgrade/Update"  "System Updates"
 #                "NVIDIA Drivers"  "XEN Guest Utilities"
-#                "AMD Drivers"  "Flatpak Setup"
+#                "AMD Drivers"
 #                "Num Lock at Boot"  "Local Time Zone / Locale"
 #                "Create Snapshot"  "Restore Snapshot"
 #                "Command-Not-Found Prompt" (Ubuntu/Kubuntu/Neon)
@@ -37,7 +37,7 @@
 #                "Brave Browser"  "Btop"  "Claude Code"  "Cursor IDE"
 #                "DBeaver"  "Devolutions RDM"  "Discord"  "Docker"
 #                "Fastfetch"  "Feral Gamemode"  "FileZilla"
-#                "Firefox"  "GIMP"  "GitHub CLI"  "Google Chrome"
+#                "Flatpak Setup"  "Firefox"  "GIMP"  "GitHub CLI"  "Google Chrome"
 #                "Heroic Games Launcher"  "JetBrains Toolbox"
 #                "Joplin Client"  "Joplin Web Clipper"  "KMail"
 #                "LibreOffice"  "Lutris"  "MangoHud"  "Nextcloud Desktop"
@@ -259,7 +259,7 @@ register_profile "Default Physical PC" \
 # AVAILABLE HELPERS:
 #   _profile_select_for_install "Name"  — mark for install (skipped if installed)
 #   _profile_select_for_update  "Name"  — mark for update  (skipped if not installed)
-#   _profile_select_task        "Name"  — mark a system task (e.g. "Flatpak Setup")
+#   _profile_select_task        "Name"  — mark a system task (e.g. "Num Lock at Boot")
 #
 # UTILITY NAMES must match the exact strings used in installers.sh.
 # See the reference list at the top of this file for all valid names.
@@ -290,7 +290,7 @@ register_profile "Developer Workstation" \
 # cloud sync, notes, torrent client, VPN, and a polished shell environment.
 # ----------------------------------------------------------------------------
 _profile_custom_2() {
-    _profile_select_task        "Flatpak Setup"
+    _profile_select_for_install "Flatpak Setup"
     _profile_select_for_install "Firefox"
     _profile_select_for_install "Thunderbird"
     _profile_select_for_install "Signal Desktop"

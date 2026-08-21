@@ -18,7 +18,7 @@ install_boxflat() {
             aur_build boxflat-git || return 1
         fi
     else
-        error "Boxflat is distributed via Flatpak — enable the 'Flatpak Setup' system task first."
+        error "Boxflat is distributed via Flatpak — run 'Flatpak Setup' from the Package Managers category first."
         return 1
     fi
     info "Boxflat installed."

@@ -8,7 +8,7 @@ check_boxbuddy() { _check_standard boxbuddy "" io.github.dvlv.boxbuddyrs; }
 install_boxbuddy() {
     info "Installing BoxBuddy..."
     if ! has_flatpak; then
-        error "BoxBuddy is distributed via Flatpak — enable the 'Flatpak Setup' system task first."
+        error "BoxBuddy is distributed via Flatpak — run 'Flatpak Setup' from the Package Managers category first."
         return 1
     fi
     flatpak install -y flathub io.github.dvlv.boxbuddyrs || return 1

@@ -132,7 +132,6 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Mount NFS Share** | Discover and mount an NFS export from a remote server, persisted in `/etc/fstab` |
 | **Mount SMB Share** | Connect to an SMB/CIFS server, store credentials securely, and persist mount in `/etc/fstab` |
 | **Manage Share** | Update or unmount an existing linux_util-managed mount |
-| **Flatpak Setup** | Configures Flatpak and adds the Flathub repository |
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
 | **Num Lock at Boot** | Enables Num Lock on TTY consoles and the display manager login screen |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
@@ -298,6 +297,21 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **WireGuard Server** | Sets up a WireGuard VPN server |
 | **Zen Browser** | Privacy-focused Firefox-based browser with vertical tabs and split view (beta) |
 | **Zoom** | Video conferencing and collaboration platform |
+
+#### Package Managers
+
+Additional, cross-distro managers that run alongside the native package manager — the native one is never replaced or touched.
+
+| Utility | Description |
+|---------|-------------|
+| **Flatpak Setup** | Configures Flatpak and adds the Flathub repository — the install path for several utilities here (Bottles, BoxBuddy, DistroShelf, Boxflat, Duplicati, ProtonUp-Qt) |
+| **Homebrew** | Linuxbrew — installs into your home directory and runs entirely in user space; newer CLI tools without root. Cannot be installed as root |
+| **Nix** | Purely-functional manager with reproducible, isolated, rollback-able installs, via the Determinate Systems installer |
+| **Snap (snapd)** | Canonical's sandboxed self-contained apps; enables the snapd socket and `/snap` path automatically |
+| **deb-get** | `apt-get`-style management of third-party .debs (Chrome, VS Code, Discord…) *(Debian/Ubuntu only)* |
+| **Pacstall** | The "AUR for Ubuntu/Debian" — community build scripts (pacscripts) *(Debian/Ubuntu only)* |
+| **yay** | Popular Go-based AUR helper wrapping pacman *(Arch family only)* |
+| **paru** | Feature-rich Rust-based AUR helper, an alternative to yay *(Arch family only)* |
 
 #### Productivity
 
