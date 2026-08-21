@@ -10,7 +10,7 @@ below 1.0.0 predate tagging and are grouped by month, newest first. Add new
 entries under **[Unreleased]** as work lands; move them into a versioned section
 when a release is cut.
 
-## [Unreleased]
+## [1.2.0] - 2026-08-20
 
 ### Changed
 
