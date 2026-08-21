@@ -38,6 +38,97 @@ when a release is cut.
 
 ### Added
 
+- **Thermalright TRCC** under **Drivers** — the community Linux port of the
+  Thermalright LCD Control Center, which drives the LCD screens and RGB LED
+  segments on Thermalright CPU coolers, AIO pump heads and fan hubs: themes,
+  video and GIF playback, sensor overlays, a CLI and a REST API.
+
+  Which package gets installed is decided per family, because upstream's
+  release carries four Linux packages and not all of them work everywhere.
+
+  **Debian/Ubuntu** get one of two `.deb`s. The standard one depends on the
+  apt-split `python3-pyside6.*` modules; the legacy one installs its Python
+  dependencies into a venv under `/opt/trcc-linux` for releases where apt has
+  no PySide6 at all. The installer picks by asking `apt-cache policy` whether
+  `python3-pyside6.qtcore` has a candidate, rather than matching release
+  numbers — derivatives version themselves however they like, and what
+  actually decides is whether the dependency resolves.
+
+  **Arch** installs upstream's `.pkg.tar.zst`; every dependency is in the
+  official repos, so no AUR route is needed and the entry stays visible while
+  AUR support is disabled.
+
+  **Fedora, RHEL and openSUSE** install the PyPI build with `pipx` instead of
+  upstream's RPM — the first pipx-based installer in this project. The RPM is
+  built on whatever Fedora the maintainer happens to run (`fc43` in older
+  releases, `fc44` now) and pins `python(abi)` to that release's interpreter,
+  so it cannot resolve on any other Fedora; and as of v9.9.10 it also hard-
+  requires `pythonX.Ydist(nvidia-ml-py)` — upstream's optional `[nvidia]`
+  extra leaked into `Requires` — which no Fedora or RPM Fusion repo packages,
+  so `dnf` refuses it even on the Fedora it was built for. Rather than assume
+  that, the Fedora path downloads the RPM and asks the repos: it walks the
+  package's hard `Requires` through `dnf repoquery --whatprovides` and installs
+  it when everything resolves, naming what is missing and falling back to PyPI
+  when it does not. So the RPM starts being used again the moment upstream
+  fixes it. `[` is a glob metacharacter to dnf and is escaped before each
+  query — without that, extras provides such as
+  `pythonX.Ydist(uvicorn[standard])` read as unmet when they are not.
+
+  On the PyPI path only genuine system libraries come from the package manager
+  (`sg3_utils`, `portaudio`, `libusb`, `xcb-util-cursor`, plus best-effort
+  `7zip`/`ffmpeg`/`lm_sensors` where the repo has them); PySide6 and the rest
+  of the Python stack install as wheels. `pipx` deliberately runs without
+  `sudo`, since it installs into the invoking user's `~/.local` and a root run
+  would land in `/root` where the desktop session never sees it. The udev
+  rules, usb-storage quirks and `modules-load.d` entries that the native
+  packages ship are not part of the PyPI package, so the installer runs
+  `trcc system setup --yes`, which re-execs itself through sudo to write them —
+  and uninstall removes those four files itself on that path, since no package
+  owns them there.
+
+  Release assets are matched on their versioned names. Every package is
+  published twice, once versioned and once under a stable `-latest` alias, and
+  only the versioned names appear in `SHA256SUMS.txt` — picking an alias would
+  silently skip checksum verification, because `github_verify_checksum` treats
+  a filename that is absent from the checksums file as nothing to check rather
+  than as a failure.
+
+- **OpenLogi** under **Drivers** — a local-first alternative to Logitech
+  Options+ for Logi Bolt, Unifying, Bluetooth and wired Logitech peripherals:
+  button and gesture remapping, DPI presets, SmartShift, keyboard F-key
+  remapping, and UVC webcam controls, with no account, no telemetry, and a
+  plain TOML config at `~/.config/openlogi/config.toml`.
+
+  OpenLogi is in no distribution's repositories, so every family installs
+  upstream's own package (x86-64 and arm64) through `pkg_install_local` — the
+  `.deb` on Debian/Ubuntu, the `.rpm` on Fedora, RHEL and openSUSE (zypper gets
+  its `--allow-unsigned-rpm` from `pkg_install_local`), and the
+  `.pkg.tar.zst` on Arch, which is why this entry needs no AUR route and stays
+  visible while AUR support is disabled. Each download is checked with
+  `verify_download` and against the release's `SHA256SUMS` via
+  `github_verify_checksum`. GitHub's `latest` endpoint is used directly here:
+  upstream publishes only numbered releases, every one of them carrying the
+  full Linux asset set. The asset pattern is anchored on the extension because
+  every package ships a `.minisig` sibling that would otherwise match first.
+
+  The packages install the udev rules that grant the active-seat user access to
+  `/dev/hidraw*`, `/dev/uinput` and the mouse's `/dev/input/event*` node without
+  root, and reload udev themselves. What they deliberately leave undone is the
+  agent: `openlogi-agent.service` is a *user* unit, so it has to be enabled per
+  user, and without it the GUI opens but drives nothing. The installer enables
+  and starts it, falling back to printing the `systemctl --user` command when no
+  systemd user session is reachable (a container, or SSH with no lingering user
+  instance) rather than failing the install over it. An update restarts the
+  agent, since the package upgrade replaces the binary underneath it.
+
+  Only one program can own a receiver's HID++ channel at a time, so the
+  installer warns when Solaar or Logi Options+ is already running. Uninstall
+  disables the agent first, removes the package, clears
+  `~/.config/openlogi`, and deletes the private copy of the unit that the GUI's
+  "launch at login" setting writes into `~/.config/systemd/user/` — that copy
+  outlives the package and would otherwise keep pointing at a binary that is
+  gone.
+
 - **Pay Respects** under **System Tools** — press `F` after a mistyped or failed
   command and it prints the fix for confirmation; a Rust replacement for
   `thefuck`, with an inline `Ctrl+X` correction mode that rewrites the command

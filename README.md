@@ -167,6 +167,8 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Intel CPU Microcode & Thermal** | Installs Intel CPU microcode updates and thermal management tools |
 | **LACT** | Linux AMDGPU Control Application — fan curves, power limits, overclocking |
 | **NVIDIA Drivers** | Detects available drivers, lets you choose a version, installs 32-bit libs, nvtop, and NVIDIA Container Toolkit if Docker is present |
+| **OpenLogi** | Local-first alternative to Logitech Options+ — button/gesture remapping, DPI, SmartShift, and webcam controls for Logi Bolt, Unifying, Bluetooth, and wired devices. Installed from upstream's `.deb`/`.rpm`/`.pkg.tar.zst` (in no distro repo); enables the per-user `openlogi-agent.service` |
+| **Thermalright TRCC** | Community Linux port of the Thermalright LCD Control Center — LCD screens and RGB LED segments on Thermalright coolers, AIO pump heads and fan hubs. Upstream's `.deb`/`.pkg.tar.zst` on Debian/Ubuntu and Arch; PyPI via `pipx` on Fedora, RHEL and openSUSE, whose RPM upstream cannot serve |
 | **XEN Guest Utilities** | Mounts XCP-NG ISO and runs the tools installer |
 
 #### Desktop Environments
