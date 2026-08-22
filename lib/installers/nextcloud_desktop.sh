@@ -24,7 +24,7 @@ install_nextcloud_desktop() {
             sudo "$PKG_MGR" install -y nextcloud-client 2>/dev/null || {
                 warn "nextcloud-client not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub com.nextcloud.desktopclient.nextcloud
+                    sudo flatpak install -y flathub com.nextcloud.desktopclient.nextcloud
                     return $?
                 fi
                 error "Nextcloud Desktop requires Flatpak on this system."
@@ -37,7 +37,7 @@ install_nextcloud_desktop() {
         suse)
             sudo zypper install -y nextcloud-client 2>/dev/null || {
                 if has_flatpak; then
-                    flatpak install -y flathub com.nextcloud.desktopclient.nextcloud
+                    sudo flatpak install -y flathub com.nextcloud.desktopclient.nextcloud
                 else
                     error "Nextcloud Desktop requires Flatpak on this openSUSE system."
                     return 1

@@ -24,7 +24,7 @@ install_rustdesk() {
                 "https://github.com/rustdesk/rustdesk/releases/download/${version}/rustdesk-${version}-${arch}.deb" 2>/dev/null; then
                 warn "Direct .deb download failed. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub com.rustdesk.RustDesk
+                    sudo flatpak install -y flathub com.rustdesk.RustDesk
                     return $?
                 fi
                 error "RustDesk installation failed."
@@ -43,7 +43,7 @@ install_rustdesk() {
                 "https://github.com/rustdesk/rustdesk/releases/download/${version}/rustdesk-${version#v}-x86_64.rpm" 2>/dev/null; then
                 warn "Direct .rpm download failed. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub com.rustdesk.RustDesk
+                    sudo flatpak install -y flathub com.rustdesk.RustDesk
                     return $?
                 fi
                 error "RustDesk installation failed."
@@ -56,7 +56,7 @@ install_rustdesk() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub com.rustdesk.RustDesk
+                sudo flatpak install -y flathub com.rustdesk.RustDesk
             else
                 error "RustDesk requires Flatpak on this openSUSE system. Install Flatpak first."
                 return 1
@@ -90,7 +90,7 @@ update_rustdesk() {
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_rustdesk ;;
-            arch)               aur_ensure rustdesk-bin ;;
+            arch)               repo_or_aur rustdesk-bin ;;
             suse)               install_rustdesk ;;
         esac
     fi

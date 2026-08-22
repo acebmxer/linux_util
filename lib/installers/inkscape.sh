@@ -20,7 +20,7 @@ install_inkscape() {
             sudo "$PKG_MGR" install -y inkscape 2>/dev/null || {
                 warn "inkscape not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub org.inkscape.Inkscape
+                    sudo flatpak install -y flathub org.inkscape.Inkscape
                     return $?
                 fi
                 error "Inkscape requires Flatpak on this RHEL-based system."

@@ -52,7 +52,7 @@ install_mangohud() {
             sudo "$PKG_MGR" install -y mangohud 2>/dev/null || {
                 warn "MangoHud not found in EPEL. Attempting Flatpak fallback..."
                 if has_flatpak; then
-                    flatpak install -y flathub org.freedesktop.Platform.VulkanLayer.MangoHud
+                    sudo flatpak install -y flathub org.freedesktop.Platform.VulkanLayer.MangoHud
                 else
                     error "MangoHud unavailable on this RHEL-based system."
                     return 1
@@ -67,7 +67,7 @@ install_mangohud() {
             sudo zypper install -y mangohud 2>/dev/null || {
                 warn "MangoHud not in default repos. Attempting Flatpak fallback..."
                 if has_flatpak; then
-                    flatpak install -y flathub org.freedesktop.Platform.VulkanLayer.MangoHud
+                    sudo flatpak install -y flathub org.freedesktop.Platform.VulkanLayer.MangoHud
                 else
                     error "MangoHud unavailable on this openSUSE system."
                     return 1

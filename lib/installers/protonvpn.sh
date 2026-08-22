@@ -1,12 +1,26 @@
 #!/bin/bash
 # ProtonVPN installer functions
+#
+# Package name differs by family: Proton's own apt/dnf repos ship
+# proton-vpn-gnome-desktop, while Arch packages the same app in extra as
+# proton-vpn-gtk-app (binary /usr/bin/protonvpn-app, pulling proton-vpn-daemon
+# and the python-proton-* stack as real dependencies).
+#
+# Arch does NOT go through the AUR. This used to call repo_or_aur protonvpn,
+# but the `protonvpn` AUR package no longer exists — it is gone from the AUR
+# entirely, and an AUR search turns up only unrelated community forks such as
+# protonvpn-cli-community. So on any system where pacman could not resolve the
+# name, the fallback cloned aur.archlinux.org/protonvpn.git and failed. The
+# official extra build is the correct source and needs no AUR helper.
 
 # --- ProtonVPN ---
 
 check_protonvpn() {
     _have_cmd protonvpn-cli || \
         _have_cmd protonvpn || \
+        _have_cmd protonvpn-app || \
         pkg_check_installed proton-vpn-gnome-desktop || \
+        pkg_check_installed proton-vpn-gtk-app || \
         (flatpak_is_installed "com.protonvpn.www")
 }
 
@@ -53,18 +67,21 @@ install_protonvpn() {
             ;;
         rhel)
             if has_flatpak; then
-                flatpak install -y flathub com.protonvpn.www
+                sudo flatpak install -y flathub com.protonvpn.www
             else
                 error "ProtonVPN requires Flatpak on RHEL-based systems without the official repo."
                 return 1
             fi
             ;;
         arch)
-            aur_ensure protonvpn
+            pkg_install proton-vpn-gtk-app || {
+                error "Failed to install proton-vpn-gtk-app from the official repos."
+                return 1
+            }
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub com.protonvpn.www
+                sudo flatpak install -y flathub com.protonvpn.www
             else
                 error "ProtonVPN requires Flatpak on openSUSE."
                 return 1
@@ -88,8 +105,13 @@ uninstall_protonvpn() {
                 sudo rm -f /etc/yum.repos.d/protonvpn-stable-release.repo
                 ;;
             arch)
-                aur_remove protonvpn 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm protonvpn 2>/dev/null || true
+                # protonvpn is the dead AUR name, kept here only so an install
+                # predating the switch to the repo package still uninstalls.
+                pkg_check_installed proton-vpn-gtk-app && \
+                    pkg_remove proton-vpn-gtk-app 2>/dev/null
+                pkg_check_installed protonvpn && \
+                    sudo pacman -Rs --noconfirm protonvpn 2>/dev/null
+                true
                 ;;
         esac
     fi
@@ -104,14 +126,18 @@ update_protonvpn() {
         case "$DISTRO_FAMILY" in
             debian)   sudo apt-get install -y --only-upgrade proton-vpn-gnome-desktop ;;
             fedora)   sudo "$PKG_MGR" upgrade -y proton-vpn-gnome-desktop ;;
-            arch)
-                aur_ensure protonvpn
-                ;;
+            arch)    pkg_install proton-vpn-gtk-app ;;
         esac
     fi
 }
 
 get_version_protonvpn() {
+    # Arch's package is queried by name first: proton-vpn-gtk-app installs
+    # protonvpn-app, which has no --version flag of its own.
+    if pkg_check_installed proton-vpn-gtk-app; then
+        pkg_get_version proton-vpn-gtk-app | sed 's/-[0-9]*$//'
+        return
+    fi
     _run_native protonvpn-cli --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
     _run_native protonvpn --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || \
     (has_flatpak && flatpak list 2>/dev/null | grep -i "com.protonvpn.www" | awk -F'\t' '{print $3}') || \

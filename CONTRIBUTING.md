@@ -67,7 +67,11 @@ install_<slug>() {
             # dnf/yum-based install
             ;;
         arch)
-            pkg_install <package>   # or: aur_ensure <aur-package>
+            # Always repo_or_aur, never aur_ensure: it tries pacman first and
+            # only falls back to the AUR when the package is absent from the
+            # configured repos. Derivatives such as CachyOS ship many AUR-named
+            # packages (brave-bin, google-chrome, ...) in their own repos.
+            repo_or_aur <package>
             ;;
         suse)
             sudo zypper install -y <package>

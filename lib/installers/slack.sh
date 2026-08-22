@@ -18,7 +18,7 @@ install_slack() {
             if ! wget -qO "$tmpfile" "$url"; then
                 warn "Direct .deb download failed. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub com.slack.Slack
+                    sudo flatpak install -y flathub com.slack.Slack
                     return $?
                 fi
                 error "Slack installation failed. Install Flatpak and try again."
@@ -29,7 +29,7 @@ install_slack() {
             ;;
         fedora|rhel)
             if has_flatpak; then
-                flatpak install -y flathub com.slack.Slack
+                sudo flatpak install -y flathub com.slack.Slack
             else
                 error "Slack requires Flatpak on this system. Install Flatpak first."
                 return 1
@@ -40,7 +40,7 @@ install_slack() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub com.slack.Slack
+                sudo flatpak install -y flathub com.slack.Slack
             else
                 error "Slack requires Flatpak on this openSUSE system. Install Flatpak first."
                 return 1
@@ -75,7 +75,7 @@ update_slack() {
         case "$DISTRO_FAMILY" in
             debian)       install_slack ;;
             fedora|rhel)  install_slack ;;
-            arch)         aur_ensure slack-desktop ;;
+            arch)         repo_or_aur slack-desktop ;;
             suse)         install_slack ;;
         esac
     fi

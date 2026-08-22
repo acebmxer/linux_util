@@ -20,7 +20,7 @@ install_signal() {
             ;;
         fedora|rhel|suse)
             if has_flatpak; then
-                flatpak install -y flathub org.signal.Signal
+                sudo flatpak install -y flathub org.signal.Signal
             else
                 error "Signal requires Flatpak on this system. Install Flatpak first."
                 return 1

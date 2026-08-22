@@ -34,7 +34,7 @@ _WINAPPS_WEB_PORT=8006
 # only carry FreeRDP 2, which WinApps refuses to run against.
 _winapps_freerdp_flatpak() {
     ensure_flatpak || return 1
-    flatpak install -y flathub com.freerdp.FreeRDP || return 1
+    sudo flatpak install -y flathub com.freerdp.FreeRDP || return 1
     # WinApps hands FreeRDP host paths for the shared home drive, so the
     # sandbox needs to see $HOME.
     flatpak override --user --filesystem=home com.freerdp.FreeRDP 2>/dev/null || \

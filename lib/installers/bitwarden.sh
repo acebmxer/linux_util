@@ -55,13 +55,13 @@ install_bitwarden() {
             ;;
         arch)
             # extra/bitwarden is the official build; bitwarden-bin is the AUR fallback
-            sudo pacman -S --noconfirm --needed bitwarden 2>/dev/null || aur_ensure bitwarden-bin
+            sudo pacman -S --noconfirm --needed bitwarden 2>/dev/null || repo_or_aur bitwarden-bin
             ;;
         *)
             if has_snap; then
                 sudo snap install bitwarden
             elif ensure_flatpak; then
-                flatpak install -y flathub com.bitwarden.desktop
+                sudo flatpak install -y flathub com.bitwarden.desktop
             else
                 echo "Error: snap or flatpak is required to install Bitwarden."
                 return 1

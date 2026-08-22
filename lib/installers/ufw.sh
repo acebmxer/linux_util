@@ -12,25 +12,25 @@ install_ufw() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y ufw
+            sudo apt install -y ufw || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y ufw
+            sudo "$PKG_MGR" install -y ufw || return 1
             ;;
         rhel)
+            # ufw lives in EPEL on RHEL-based distros, not in the base repos
             sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y ufw
+            sudo "$PKG_MGR" install -y ufw || return 1
             ;;
         arch)
-            sudo pacman -S --noconfirm ufw
+            sudo pacman -S --noconfirm ufw || return 1
             ;;
         suse)
+            # Tumbleweed and Leap 16.0 ship ufw; Leap 15.6 and older do not
             sudo zypper install -y ufw 2>/dev/null || {
-                warn "UFW not available in default repos. Installing firewalld instead..."
-                sudo zypper install -y firewalld
-                sudo systemctl enable --now firewalld
-                info "firewalld installed as alternative firewall management tool."
-                return 0
+                warn "UFW is not available in this openSUSE version's repos (Leap 15.6 and older do not ship it)."
+                warn "Install firewalld from the Firewalls category instead — it is the supported firewall here."
+                return 1
             }
             ;;
     esac
@@ -46,7 +46,9 @@ install_ufw() {
     sudo ufw default allow outgoing
     sudo ufw allow ssh         # Keep SSH accessible
     sudo ufw --force enable
-    sudo systemctl enable ufw 2>/dev/null || true
+    # 'ufw enable' loads the rules itself but leaves ufw.service inactive, so
+    # systemd's view stays out of sync until the next boot — start it as well
+    sudo systemctl enable --now ufw 2>/dev/null || true
 
     info "UFW installed and enabled with default rules (deny incoming, allow outgoing, allow SSH)."
 }

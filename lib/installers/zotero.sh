@@ -14,7 +14,7 @@ install_zotero() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         arch)
-            aur_ensure zotero
+            repo_or_aur zotero
             ;;
         *)
             _install_zotero_tarball
@@ -83,7 +83,7 @@ uninstall_zotero() {
 update_zotero() {
     info "Updating Zotero..."
     if [[ "$DISTRO_FAMILY" == "arch" ]] && ! [[ -d "$_ZOTERO_INSTALL_DIR" ]]; then
-        aur_ensure zotero
+        repo_or_aur zotero
     else
         _install_zotero_tarball
     fi

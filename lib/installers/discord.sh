@@ -22,7 +22,7 @@ install_discord() {
             ;;
         fedora|rhel)
             if has_flatpak; then
-                flatpak install -y flathub com.discordapp.Discord
+                sudo flatpak install -y flathub com.discordapp.Discord
             else
                 local tmpfile
                 tmpfile=$(mktemp /tmp/discord-XXXXXX.tar.gz)
@@ -44,7 +44,7 @@ install_discord() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub com.discordapp.Discord
+                sudo flatpak install -y flathub com.discordapp.Discord
             else
                 error "Discord requires Flatpak on openSUSE. Install Flatpak first."
                 return 1

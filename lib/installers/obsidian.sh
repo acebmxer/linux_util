@@ -37,7 +37,7 @@ install_obsidian() {
             if [[ -z "$url" ]]; then
                 warn "Could not find Obsidian .rpm. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub md.obsidian.Obsidian
+                    sudo flatpak install -y flathub md.obsidian.Obsidian
                     return $?
                 fi
                 error "Obsidian requires Flatpak on this system."
@@ -57,7 +57,7 @@ install_obsidian() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub md.obsidian.Obsidian
+                sudo flatpak install -y flathub md.obsidian.Obsidian
             else
                 error "Obsidian requires Flatpak on openSUSE."
                 return 1

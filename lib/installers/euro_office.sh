@@ -290,7 +290,7 @@ _euroffice_install_arch() {
     _euroffice_require_docker || return 1
     _euroffice_confirm_build "the AUR package '$_EUROOFFICE_AUR_PKG', which runs the same containerised build" || return 1
     _euroffice_report_space
-    aur_ensure "$_EUROOFFICE_AUR_PKG" || {
+    repo_or_aur "$_EUROOFFICE_AUR_PKG" || {
         error "Failed to build $_EUROOFFICE_AUR_PKG from the AUR."
         return 1
     }
@@ -344,7 +344,7 @@ update_euro_office() {
     if [[ "$DISTRO_FAMILY" == "arch" ]]; then
         _euroffice_require_docker || return 1
         _euroffice_confirm_build "the newest $_EUROOFFICE_AUR_PKG from the AUR" || return 1
-        aur_ensure "$_EUROOFFICE_AUR_PKG" || {
+        repo_or_aur "$_EUROOFFICE_AUR_PKG" || {
             error "Failed to rebuild $_EUROOFFICE_AUR_PKG from the AUR."
             return 1
         }

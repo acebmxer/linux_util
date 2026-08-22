@@ -52,7 +52,7 @@ install_heroic() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub com.heroicgameslauncher.hgl
+                sudo flatpak install -y flathub com.heroicgameslauncher.hgl
             else
                 error "Heroic requires Flatpak on openSUSE. Install Flatpak first."
                 return 1
@@ -94,7 +94,7 @@ update_heroic() {
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_heroic ;;
             arch)
-                aur_ensure heroic-games-launcher-bin
+                repo_or_aur heroic-games-launcher-bin
                 ;;
         esac
     fi

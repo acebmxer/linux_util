@@ -10,7 +10,7 @@
 
 # --- Brave Origin ---
 
-check_brave_origin() { _check_standard brave-origin brave-origin ""; }
+check_brave_origin() { _check_standard brave-origin brave-origin "" brave-origin-bin; }
 install_brave_origin() {
     info "Installing Brave Origin..."
     ensure_tools
@@ -30,7 +30,7 @@ install_brave_origin() {
             sudo "$PKG_MGR" install -y brave-origin
             ;;
         arch)
-            aur_ensure brave-origin-bin
+            repo_or_aur brave-origin-bin
             ;;
         suse)
             sudo rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
@@ -69,7 +69,7 @@ update_brave_origin() {
             sudo apt install -y --only-upgrade brave-origin
             ;;
         arch)
-            aur_ensure brave-origin-bin
+            repo_or_aur brave-origin-bin
             ;;
         *)
             pkg_upgrade brave-origin

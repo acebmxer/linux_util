@@ -75,7 +75,7 @@ install_wps_office() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub com.wps.Office
+                sudo flatpak install -y flathub com.wps.Office
             else
                 echo "Error: No supported installation method for openSUSE. Install flatpak and retry."
                 return 1
@@ -83,7 +83,7 @@ install_wps_office() {
             ;;
         *)
             if has_flatpak; then
-                flatpak install -y flathub com.wps.Office
+                sudo flatpak install -y flathub com.wps.Office
             else
                 echo "Error: Unsupported distribution and flatpak is not available."
                 return 1
@@ -141,7 +141,7 @@ update_wps_office() {
             if flatpak_is_installed "com.wps.Office"; then
                 flatpak update -y com.wps.Office
             else
-                aur_ensure wps-office
+                repo_or_aur wps-office
             fi
             ;;
         *)

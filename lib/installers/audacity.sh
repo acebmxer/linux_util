@@ -20,7 +20,7 @@ install_audacity() {
             sudo "$PKG_MGR" install -y audacity 2>/dev/null || {
                 warn "audacity not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub org.audacityteam.Audacity
+                    sudo flatpak install -y flathub org.audacityteam.Audacity
                     return $?
                 fi
                 error "Audacity requires Flatpak on this RHEL-based system."
@@ -33,7 +33,7 @@ install_audacity() {
         suse)
             sudo zypper install -y audacity 2>/dev/null || {
                 if has_flatpak; then
-                    flatpak install -y flathub org.audacityteam.Audacity
+                    sudo flatpak install -y flathub org.audacityteam.Audacity
                 else
                     error "Audacity requires Flatpak on this openSUSE system."
                     return 1

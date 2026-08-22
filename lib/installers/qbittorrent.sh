@@ -25,7 +25,7 @@ install_qbittorrent() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub org.qbittorrent.qBittorrent
+                sudo flatpak install -y flathub org.qbittorrent.qBittorrent
             else
                 sudo zypper install -y qbittorrent
             fi

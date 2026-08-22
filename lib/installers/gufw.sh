@@ -17,10 +17,13 @@ install_gufw() {
     fi
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y gufw
+            sudo apt install -y gufw || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y gufw
+            sudo "$PKG_MGR" install -y gufw 2>/dev/null || {
+                warn "Gufw is not packaged for Fedora. Use UFW from the command line, or install firewalld with the firewall-config GUI instead."
+                return 1
+            }
             ;;
         rhel)
             sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
@@ -30,7 +33,7 @@ install_gufw() {
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm gufw
+            sudo pacman -S --noconfirm gufw || return 1
             ;;
         suse)
             sudo zypper install -y gufw 2>/dev/null || {

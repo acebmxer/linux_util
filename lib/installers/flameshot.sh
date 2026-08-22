@@ -20,7 +20,7 @@ install_flameshot() {
             sudo "$PKG_MGR" install -y flameshot 2>/dev/null || {
                 warn "flameshot not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub org.flameshot.Flameshot
+                    sudo flatpak install -y flathub org.flameshot.Flameshot
                     return $?
                 fi
                 error "Flameshot requires Flatpak on this RHEL-based system."

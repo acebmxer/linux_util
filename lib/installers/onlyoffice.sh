@@ -23,7 +23,7 @@ install_onlyoffice() {
             ;;
         fedora|rhel)
             if has_flatpak; then
-                flatpak install -y flathub org.onlyoffice.desktopeditors
+                sudo flatpak install -y flathub org.onlyoffice.desktopeditors
             else
                 echo "Error: No supported installation method for this distribution. Install flatpak and retry."
                 return 1
@@ -34,7 +34,7 @@ install_onlyoffice() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub org.onlyoffice.desktopeditors
+                sudo flatpak install -y flathub org.onlyoffice.desktopeditors
             else
                 echo "Error: No supported installation method for this distribution. Install flatpak and retry."
                 return 1
@@ -42,7 +42,7 @@ install_onlyoffice() {
             ;;
         *)
             if has_flatpak; then
-                flatpak install -y flathub org.onlyoffice.desktopeditors
+                sudo flatpak install -y flathub org.onlyoffice.desktopeditors
             else
                 echo "Error: Unsupported distribution and flatpak is not available."
                 return 1
@@ -103,7 +103,7 @@ update_onlyoffice() {
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
                 flatpak update -y org.onlyoffice.desktopeditors
             else
-                aur_ensure onlyoffice-bin
+                repo_or_aur onlyoffice-bin
             fi
             ;;
         *)

@@ -14,6 +14,66 @@ when a release is cut.
 
 ### Changed
 
+- **Stacer now tracks the maintained `QuentiumYT/Stacer` fork** instead of
+  `oguzhaninan/Stacer`, which is dormant — last release v1.1.0 in **2019**, last
+  push February 2024 — and whose age was the sole cause of every workaround this
+  installer carried. The fork is the same codebase carried forward (oguzhaninan
+  is still its top contributor at 524 commits, QuentiumYT has 138 on top), is
+  ported to Qt6, and has shipped ten releases between May 2025 and v1.7.0 in May
+  2026. Of the original's 100 forks it is the only one with any activity — the
+  runner-up has two stars and was last pushed in 2017 — and both AUR packages
+  (`stacer-bin` and `stacer`, different maintainers) already point at it, so
+  Arch users were getting it regardless.
+  - **Fedora/RHEL install the `.rpm` again**, dropping the AppImage workaround.
+    The 2019 rpm predated payload digests, so rpm >= 6 (Fedora 41+) rejected it
+    with "does not verify: no digest" and there was no bypass short of lowering
+    `%_pkgverify_level` system-wide. The current rpm verifies clean and its
+    `Requires` are Fedora-named (`qt6-qtbase`, `qt6-qtbase-gui`, `qt6-qtcharts`,
+    `qt6-qtsvg`), so dnf resolves them from the distro repos. An existing
+    extracted AppImage is torn out and replaced by the package on update;
+    the AppImage remains as a fallback if the rpm install fails.
+  - **openSUSE keeps the AppImage** — the rpm hard-requires those Fedora
+    package names, which do not exist there, so zypper cannot resolve it.
+  - **Debian gets a current build**, plus an explicit Qt6 runtime install: the
+    upstream `.deb` declares **no `Depends` at all**, so apt pulled nothing while
+    the binary needs libQt6Core/Gui/Widgets/Network/Charts. Names are tried
+    individually and best-effort, since Debian's time_t transition renamed
+    several of them with a `t64` suffix.
+  - **Arch is unchanged** — `stacer-bin` already packaged this fork.
+
+  Asset matching is now architecture-aware per artifact type, since the three
+  differ in shape (`stacer_1.7.0-1_amd64.deb`, `stacer-1.7.0.x86_64.rpm`,
+  `Stacer-1.7.0-x86_64.AppImage`) and the old code just excluded "arm". The
+  AppImage desktop entry's icon path was corrected: the fork no longer ships a
+  `stacer.png` at the root of the AppImage, only `icons/hicolor/<size>/apps/`,
+  so the menu icon had silently broken. The Qt6 AppImage still bundles only
+  `libqxcb.so` with no Wayland platform plugin, so the wrapper keeps pinning
+  `QT_QPA_PLATFORM=xcb`.
+
+- **Termius on Arch is now unpacked from the upstream `.deb` instead of built
+  from the AUR**, the same native path the tool already used on
+  Fedora/RHEL/openSUSE. `termius-deb` is not the plain repack its name suggests:
+  it keeps only `resources/` (`app.asar` and friends), discards the Electron
+  runtime that Termius ships, and execs the app on `electron21` instead —
+  a release from September 2022 that went EOL around October 2023. Arch's repos
+  carry `electron39`–`electron43` and nothing near 21, so that dependency could
+  only come from `electron21-bin` in the AUR (last touched June 2024, four
+  votes): an unpatched ~4-year-old Chromium under the program holding the user's
+  SSH keys. The native unpack keeps upstream's own Electron, needs no AUR helper
+  and no `AUR_ENABLED=true`, and picks up `$SHELL` on first run exactly as it
+  does on Debian. Runtime dependencies for Arch (`gtk3`, `libnotify`, `nss`,
+  `libxss`, `libxtst`, `xdg-utils`, `at-spi2-core`, `util-linux-libs`,
+  `libsecret`, `mesa`, `alsa-lib`) were each verified to resolve in core/extra.
+  A derivative that ever ships a real `termius` package in its own repos is
+  still preferred and installed with plain `pacman`; the AUR is no longer a
+  fallback, since a failed native install should report an error rather than
+  quietly land the user on EOL Electron. Termius is consequently no longer
+  marked AUR-only, so it stays visible in the menu with `AUR_ENABLED=false`.
+  Existing `termius-deb` installs are left alone — it owns `/opt/termius`
+  (lowercase), which never overlapped this tool's `/opt/Termius` — but installs
+  and updates now warn that the leftover copy is a second menu entry still
+  running Electron 21, with the `pacman -Rs` line to remove it. Uninstall
+  already removed `termius-deb` by name and still does.
 - **Flatpak Setup moved from System Tasks to the Package Managers category**,
   alongside Snap, Homebrew, Nix and the AUR/deb helpers — it is the same class
   of thing as those (a cross-distro manager running beside the native one), and
@@ -26,6 +86,234 @@ when a release is cut.
   it with `_profile_select_for_install` (which skips it when Flatpak is already
   configured) rather than `_profile_select_task`. Prompts that pointed at "the
   'Flatpak Setup' system task" now point at the Package Managers category.
+
+### Fixed
+
+- **Every Flatpak install failed on systems with no polkit agent**, taking the
+  Arch fallback ladder down with it. `ensure_flatpak` adds flathub as a *system*
+  remote (`sudo flatpak remote-add`), so `flatpak install -y flathub <id>`
+  deploys system-wide — but it was invoked unprivileged at all 76 call sites.
+  An unprivileged process asking `flatpak-system-helper` to deploy is refused by
+  polkit outright ("Flatpak system operation Deploy not allowed for user"), and
+  it is refused *after* the whole download finishes: an attempted VS Code
+  install pulled ~700 MB of runtime, was denied, and then did it twice more
+  through the retry logic. All 76 sites now run under `sudo`, matching the
+  Termius installer, which already handled this. The only bare `flatpak install`
+  left is the advice string printed by the PIA VPN installer, where a user
+  typing it interactively does get a polkit prompt.
+
+- **Visual Studio Code could not be installed on Arch at all** once the Flatpak
+  tier was failing. Microsoft publishes no pacman repository —
+  `packages.microsoft.com` serves apt and yum repos only, and their Linux docs
+  send Arch users to the AUR, which this tool keeps disabled — so the
+  upstream-binary tier of `arch_install_ordered` was left empty and the ladder
+  ran out of rungs. Microsoft does publish a distro-agnostic x64 tarball, and it
+  is exactly what the AUR's `visual-studio-code-bin` repackages, so the Arch
+  path now fetches it straight from the vendor: unpacked per-user to
+  `~/.local/share/vscode`, symlinked to `~/.local/bin/code`, with a `.desktop`
+  entry and the icon shipped inside the archive. Tier order is unchanged —
+  repos → Flathub → **Microsoft tarball** → AUR (disabled) — so a derivative
+  that carries the package in its own repos still wins. `check`, `update`,
+  `uninstall` and version reporting all understand the tarball copy; the version
+  is read from `resources/app/package.json` rather than by running the binary,
+  since `~/.local/bin` is not always on PATH. Note the endpoint publishes no
+  checksum or signature (the AUR PKGBUILD does not verify one either), so HTTPS
+  to the vendor is the guarantee, as with the Termius and Zen Browser paths.
+  The ~330 MB download calls `curl` directly with a 30-minute cap rather than
+  going through `download_file`, whose 30-second `--max-time` is a *total*
+  limit no download that size can meet — the same reason the OCCT installer
+  bypasses it.
+
+- **Steam failed to install on CachyOS** with "unresolvable package conflicts
+  detected". Steam depends on the virtual `vulkan-driver` and
+  `lib32-vulkan-driver`; nothing in a default install provides them, because
+  `mesa` provides `opengl-driver` and `libva-driver` but not `vulkan-driver`. So
+  pacman must pick a provider, and `--noconfirm` makes it take the first one
+  offered — which repo order decides, not suitability. On plain Arch that list
+  starts at `extra` and any pick works, which is why other distros never showed
+  this. CachyOS inserts `cachyos-v3` and `cachyos` ahead of `extra` and they
+  carry `mesa-git`, so provider #1 became `mesa-git`/`lib32-mesa-git`, whose
+  `conflicts=('mesa')` collides with the stable `mesa` CachyOS itself installed,
+  aborting the transaction. Being deterministic, all three retries reproduced it
+  exactly. The dependency is now settled explicitly *before* Steam is requested,
+  using `pacman -T` to leave an existing provider alone and otherwise installing
+  `vulkan-swrast` (Lavapipe) — a software rasteriser that needs no GPU, so it
+  works in a VM, headless, or on any hardware, and conflicts with nothing.
+  **Installing Steam no longer depends on what graphics hardware is present.**
+  A matching hardware driver is added afterwards as a pure optimisation that can
+  never fail the install; a virtual adapter (QXL, VMware SVGA, Bochs, VirtualBox)
+  matches nothing and correctly stays on software rendering. This also replaces
+  a shotgun `lib32-vulkan-intel lib32-vulkan-radeon lib32-nvidia-utils` install
+  that pulled the NVIDIA stack onto AMD machines and, with `2>/dev/null || true`,
+  silently installed nothing whenever one name in the batch failed.
+- **Enable RDP could not install on Arch, and reported success anyway.** The
+  Arch branch ran `pacman -S --noconfirm xrdp`, but `xrdp` is AUR-only (152
+  votes) and absent from Arch's repos and from CachyOS's, so it could only fail
+  with "target not found". `xorgxrdp` — also AUR-only — was never installed at
+  all, and without it sesman has no Xorg backend and logins fail with "X server
+  could not be started", the same reason the Fedora branch installs it
+  explicitly. Both now go through `repo_or_aur`, which still probes the repos
+  first. Nothing checked any of the results, so the installer printed "xrdp
+  installed and started" after the failed install and failed `systemctl`, and
+  the runner logged "Successfully installed: Enable RDP" for a machine with no
+  xrdp on it — only the health check dissented. The Arch branch now fails on a
+  bad install or a failed enable/start, and a final `systemctl is-active` gate
+  applies to **every** family, so success is never reported for a service that
+  is not running. Enable RDP is marked AUR-only on Arch accordingly.
+
+- **Mark Text on Arch ran on Electron 15, and its Debian download never
+  worked.** The `marktext` AUR package pins `_electron=electron15` and rewrites
+  `package.json` so the app runs on that system runtime instead of the Electron
+  upstream bundles. Electron 15 shipped September 2021 and went EOL in May 2022;
+  Arch carries `electron39`–`electron43`, so the dependency resolves only from
+  AUR `electron15` (last touched **2022-08-31**) or `electron15-bin` — about
+  four years of unpatched Chromium, reached through a from-source
+  yarn/`electron-rebuild` build, stuck at 0.17.1, and flagged out-of-date since
+  2026-07-10 while upstream is at 0.19.1. Flathub remains the first choice on
+  every family; where Flatpak is absent, Arch now unpacks upstream's own
+  `.tar.gz` per-user into `~/.local/share/marktext` — root-free, carrying the
+  Electron Mark Text actually ships, and avoiding the AppImage runtime's
+  `libfuse.so.2` dependency the same way `stacer.sh` does. Separately, the
+  Debian branch asked for `marktext-amd64.deb`, a filename upstream has never
+  published — assets are named `marktext-linux-0.19.1.deb` — so every Debian
+  install silently 404'd into the Flatpak fallback. Both now resolve the asset
+  URL from the release API.
+- **Pay Respects no longer needs the AUR on Arch.** The `pay-respects-bin`
+  package was sound — its maintainer, `iff`, is upstream — but it was never
+  necessary: upstream publishes a static-pie musl tarball carrying the same
+  binaries, so there is nothing to build and no dependency to resolve. Arch now
+  unpacks that into `/usr/local` (not `/usr`, since pacman does not own these
+  files), mirroring upstream's own `.deb` layout — all three binaries on `PATH`,
+  man pages beside them — so every family ends up with the same arrangement and
+  module discovery keeps working off the `_pay-respects-*` naming convention
+  with no `_PR_LIB` wiring. A derivative that packages it is still preferred.
+  Pay Respects is consequently no longer marked AUR-only and stays visible with
+  `AUR_ENABLED=false`.
+
+- **Five Arch installers named AUR packages that no longer exist**, three of
+  them fatally. `repo_or_aur` only checks whether pacman can resolve a name
+  before falling back to the AUR — it never verified the AUR package was still
+  there, so each of these cloned `aur.archlinux.org/<pkg>.git` for a repository
+  that has been deleted and failed:
+  - **ProtonVPN** asked for `protonvpn`, gone from the AUR (only unrelated
+    community forks like `protonvpn-cli-community` remain). Arch packages the
+    real app in **extra as `proton-vpn-gtk-app`** — binary `protonvpn-app`,
+    pulling `proton-vpn-daemon` and the `python-proton-*` stack as proper
+    dependencies — so it now installs with plain `pacman`, needs no AUR helper,
+    and is no longer marked AUR-only. `check_`/`get_version_` learned the Arch
+    package name, which differs from the `proton-vpn-gnome-desktop` that
+    Proton's own apt/dnf repos ship.
+  - **PIA VPN** asked for `privateinternetaccess-bin`, gone with no replacement
+    under any similar name. It now uses upstream's `.run` bundle — the same
+    `_pia_install_via_run` this file already used for Debian/Fedora/RHEL.
+  - **Snapper GUI** asked for `snapper-gui`, which has never existed as an Arch
+    package at all; only `snapper-gui-git` does (51 votes, ordinary current
+    dependencies). This one stays AUR-only, and legitimately so: upstream
+    `ricardomv/snapper-gui` is a frozen Python/GTK source tree with no releases
+    and no binary artifacts, so there is nothing to install directly. `update_`
+    now rebuilds through the AUR helper rather than calling `pkg_upgrade`, which
+    cannot move a `-git` package.
+  - **LibreWolf** asked for `librewolf-bin`, gone. `librewolf` is in **extra**,
+    so Arch now installs it from the repos, with Flathub kept as the fallback
+    for a derivative that lacks it.
+  - **Standard Notes** asked for `standard-notes-bin`, gone. Flathub stays the
+    first choice; when Flatpak is absent it now falls back to upstream's
+    AppImage, which this file already used on every other family, instead of a
+    dead AUR clone.
+
+  Each uninstaller still tries the old AUR name so installs predating this
+  change are cleaned up. Separately, PIA VPN's uninstall now runs
+  `/opt/piavpn/bin/uninstall.sh` when present, on **every** family: the `.run`
+  bundle never registers with a package manager, so the previous
+  `apt purge`/`dnf remove` of `privateinternetaccess` could not have removed a
+  bundle-installed copy on Debian or Fedora either.
+- **Arch installs now use the distro's own repos before falling back to the
+  AUR.** 33 installers called `aur_ensure` directly, so on an Arch derivative
+  that packages the software itself the tool ignored the repo build and demanded
+  an AUR helper plus `AUR_ENABLED=true`. CachyOS ships `brave-bin`,
+  `brave-origin-bin`, `zotero` and other AUR-named packages in its own repos,
+  where `sudo pacman -S brave-bin` just works — but Brave Browser, Brave Origin, Google
+  Chrome, VS Code and the rest of the AUR-only list were hidden from the menu
+  entirely and unreachable. Every one of those call sites now goes through
+  `repo_or_aur`, which tries `pacman -S --needed` first and only reaches for the
+  AUR when the package is genuinely absent from the configured repos. The
+  hand-rolled `has_aur_helper`/`aur_install`/`aur_build` branches in Devolutions
+  RDM, Boxflat and PIA VPN were folded into the same helper; PIA VPN no longer
+  dead-ends with "requires an AUR helper" on a system whose repos carry the
+  package. Behaviour on upstream Arch is unchanged.
+- **AUR-only entries stay visible when the local repos carry the package.**
+  `_utility_hidden_aur_only` hid every entry marked AUR-only whenever
+  `AUR_ENABLED=false`, without ever asking pacman whether the package existed —
+  correct for upstream Arch, wrong for derivatives with a larger repo set. Each
+  entry in `mark_aur_only_arch` now carries its package name
+  (`"Brave Browser=brave-bin"`), and the gate skips hiding when the new
+  `arch_repo_has` helper finds it in a configured repo. Probe results are cached
+  per run, since the menu re-evaluates the gate on every redraw.
+- **`flatpak_or_aur` prefers a native repo package over Flathub.** A distro-
+  signed package needs no runtime stack and no unreviewed PKGBUILD, so it is now
+  tried first, ahead of both Flatpak and the AUR; it takes an optional third
+  argument for when the repo name differs from the AUR name. Systems without the
+  package in their repos are unaffected. Boxflat, whose Flatpak-first logic sits
+  in its own installer, follows the same order.
+- **Arch installs of Brave and friends no longer report as "not installed".**
+  `check_brave` tested for a `brave-browser` binary and package, but the Arch
+  package is `brave-bin` and its binary is `brave`, so a successful install still
+  showed unchecked in the menu. `_check_standard` takes optional Arch package and
+  binary names, consulted only under pacman, and Brave Browser, Brave Origin,
+  AnyDesk, Stacer, PowerShell, VS Code and Google Chrome now pass their Arch
+  package names.
+- **Angry IP Scanner installs on Arch again, without the AUR.** `ipscan` is not
+  in the Arch or CachyOS repos — only the AUR, which this tool keeps disabled, so
+  the entry was hidden and unreachable on Arch family. Upstream also publishes a
+  self-contained JAR next to the .deb and .rpm, and the Arch branch now installs
+  that: `ipscan-linux64-<ver>.jar` into `~/.local/share/angry-ip-scanner`, with a
+  wrapper at `~/.local/bin/ipscan`, a menu entry, and the icon extracted from the
+  JAR itself. No root, no AUR, no packaging. The JAR bundles its own SWT/GTK
+  natives and needs only a JRE; its classes target Java 17, so `_angry_ip_ensure_java`
+  installs one from the distro's repos when java is missing or older. Angry IP
+  Scanner is no longer marked AUR-only, so it lists normally on Arch. Downloads
+  are checked with the existing `verify_download`/`github_verify_checksum` pair,
+  which gained a `jar` magic-byte case.
+- **Uninstalling Angry IP Scanner on Arch targeted the wrong package name.**
+  Install and update use `ipscan`, but the Arch branch of the uninstall tried
+  `angryipscanner` first — a name nothing in the file installs — and the failure
+  was hidden by the trailing `|| true`. It now removes the JAR install and then
+  any older package-based copy, trying `ipscan` before the legacy `angryipscanner`.
+- **Gufw is now offered only on the distro families that can install it —
+  Debian/Ubuntu and Arch.** No RPM-family distro packages it: it is absent from
+  Fedora, EPEL 9 and 10, openSUSE Tumbleweed and openSUSE Leap (verified against
+  each distribution's own repository metadata), and there is no Flatpak or COPR
+  build either, so the entry could only ever fail there. It is now registered
+  behind a distro-family guard, the same way Snapper GUI already was. Users on
+  those distros wanting a firewall GUI need firewalld with its firewall-config
+  front-end, both listed in the same Firewalls subcategory. UFW itself is
+  unaffected and still fully supported on all of them from the command line.
+- **A failed Gufw install now reports as a failure.** The Fedora branch of
+  `install_gufw` ran `dnf install -y gufw` without checking the result, and the
+  function ended with an unconditional `info "Gufw installed."`, so it returned 0
+  even when dnf had said `No match for argument: gufw` — the failure surfaced
+  only afterwards, as a health-check warning, and the summary counted the
+  install as successful. Every branch now propagates its package manager's
+  failure, and the RPM-family branches warn and return 1 as a safety net for
+  direct calls now that the entry is unregistered there.
+- **A failed UFW install no longer reports success either.** `install_ufw`
+  ignored its package manager's exit status too, then went on to run `ufw
+  default deny incoming` and friends against a binary that might not exist, and
+  returned 0 regardless. That also defeated the `install_ufw || return 1` guard
+  `install_gufw` uses to pull UFW in first. Each branch now propagates failure.
+- **UFW on openSUSE no longer silently installs firewalld in its place.** On
+  Leap 15.6 and older, where `ufw` is not in the repos, `install_ufw` quietly
+  installed and enabled firewalld instead and returned success — so the run
+  summary reported "Successfully installed: UFW Firewall" for a machine that had
+  just been given a different firewall the user never chose. It now explains
+  that this openSUSE version does not ship UFW, points at the firewalld entry in
+  the same category, and returns 1. Tumbleweed and Leap 16.0 do ship `ufw` and
+  are unaffected.
+- **UFW's systemd unit is now started, not just enabled.** `ufw --force enable`
+  loads the rules into netfilter itself but leaves `ufw.service` inactive, so
+  `systemctl is-active ufw` reported `inactive` on a freshly installed and
+  working firewall until the next reboot. The install now uses `systemctl enable
+  --now ufw`, matching the `enable --now` the firewalld installer already used.
 
 ### Added
 

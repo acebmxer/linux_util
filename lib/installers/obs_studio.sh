@@ -31,7 +31,7 @@ install_obs_studio() {
             sudo "$PKG_MGR" install -y obs-studio 2>/dev/null || {
                 warn "obs-studio not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub com.obsproject.Studio
+                    sudo flatpak install -y flathub com.obsproject.Studio
                     return $?
                 fi
                 error "OBS Studio requires Flatpak on this RHEL-based system."
@@ -44,7 +44,7 @@ install_obs_studio() {
         suse)
             sudo zypper install -y obs-studio 2>/dev/null || {
                 if has_flatpak; then
-                    flatpak install -y flathub com.obsproject.Studio
+                    sudo flatpak install -y flathub com.obsproject.Studio
                 else
                     error "OBS Studio requires Flatpak on this openSUSE system."
                     return 1

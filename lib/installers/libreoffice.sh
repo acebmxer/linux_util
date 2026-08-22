@@ -82,7 +82,7 @@ install_libreoffice() {
             ;;
         *)
             if has_flatpak; then
-                flatpak install -y flathub org.libreoffice.LibreOffice
+                sudo flatpak install -y flathub org.libreoffice.LibreOffice
             else
                 echo "Error: Unsupported distribution and flatpak is not available."
                 return 1

@@ -1741,16 +1741,29 @@ _run_native() {
     "$_bin" "$@"
 }
 
-# Standard 3-way installation check used by most simple installers.
-# Usage: _check_standard binary pkg flatpak_id
-#   binary     — command name to test on PATH (WinApps launchers excluded);
-#                pass "" to skip
-#   pkg        — package name for pkg_check_installed; pass "" to skip
-#   flatpak_id — Flatpak application ID for "flatpak list | grep -qi"; pass "" to skip
+# Standard installation check used by most simple installers.
+# Usage: _check_standard binary pkg flatpak_id [arch_pkg [arch_binary]]
+#   binary      — command name to test on PATH (WinApps launchers excluded);
+#                 pass "" to skip
+#   pkg         — package name for pkg_check_installed; pass "" to skip
+#   flatpak_id  — Flatpak application ID for "flatpak list | grep -qi"; pass "" to skip
+#   arch_pkg    — package name on Arch family, when it differs from pkg (e.g.
+#                 brave-bin vs brave-browser); only consulted under pacman
+#   arch_binary — command name on Arch family, when it differs from binary
+#                 (e.g. brave vs brave-browser)
+#
+# The Arch-specific arguments exist because the repo/AUR package for a lot of
+# third-party software carries a different name and ships a differently named
+# binary than the vendor's own .deb/.rpm. Without them a successful Arch install
+# still reports as "not installed" in the menu.
 _check_standard() {
-    local binary="$1" pkg="$2" flatpak_id="$3"
+    local binary="$1" pkg="$2" flatpak_id="$3" arch_pkg="${4:-}" arch_binary="${5:-}"
     [[ -n "$binary"     ]] && _have_cmd "$binary"               && return 0
     [[ -n "$pkg"        ]] && pkg_check_installed "$pkg"       && return 0
+    if [[ "${PKG_MGR:-}" == "pacman" ]]; then
+        [[ -n "$arch_binary" ]] && _have_cmd "$arch_binary"     && return 0
+        [[ -n "$arch_pkg"    ]] && pkg_check_installed "$arch_pkg" && return 0
+    fi
     [[ -n "$flatpak_id" ]] && has_flatpak && flatpak list 2>/dev/null | grep -qi "$flatpak_id" && return 0
     return 1
 }

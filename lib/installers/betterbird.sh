@@ -26,7 +26,7 @@ install_betterbird() {
                 error "Betterbird is not in any distro repo and requires Flatpak here, but Flatpak could not be set up."
                 return 1
             fi
-            flatpak install -y flathub "$_BETTERBIRD_FLATPAK" || return 1
+            sudo flatpak install -y flathub "$_BETTERBIRD_FLATPAK" || return 1
             ;;
     esac
     info "Betterbird installed. It reads a Thunderbird profile directly, so back up"
@@ -52,7 +52,7 @@ update_betterbird() {
     if flatpak_is_installed "$_BETTERBIRD_FLATPAK"; then
         flatpak update -y "$_BETTERBIRD_FLATPAK"
     elif [[ "$DISTRO_FAMILY" == "arch" ]]; then
-        aur_ensure "$_BETTERBIRD_AUR"
+        repo_or_aur "$_BETTERBIRD_AUR"
     else
         warn "Betterbird not found via Flatpak; nothing to update."
         return 1

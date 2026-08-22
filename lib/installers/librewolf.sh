@@ -1,5 +1,10 @@
 #!/bin/bash
 # LibreWolf privacy-hardened browser installer functions
+#
+# Arch does NOT go through the AUR: librewolf is packaged in extra, and the old
+# librewolf-bin fallback no longer exists in the AUR at all (an AUR search finds
+# only add-ons and themes under that prefix, no browser package). Flathub stays
+# as the fallback for a derivative whose repos lack it.
 
 # --- LibreWolf ---
 
@@ -34,18 +39,25 @@ EOF
             ;;
         rhel)
             if has_flatpak; then
-                flatpak install -y flathub io.gitlab.librewolf-community.librewolf
+                sudo flatpak install -y flathub io.gitlab.librewolf-community.librewolf
             else
                 error "LibreWolf requires Flatpak on this RHEL-based system. Install Flatpak first."
                 return 1
             fi
             ;;
         arch)
-            flatpak_or_aur io.gitlab.librewolf-community.librewolf librewolf-bin
+            if arch_repo_has librewolf && pkg_install librewolf; then
+                :
+            elif has_flatpak && ensure_flatpak; then
+                sudo flatpak install -y flathub io.gitlab.librewolf-community.librewolf
+            else
+                error "LibreWolf is not in this system's repos and Flatpak is not installed."
+                return 1
+            fi
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub io.gitlab.librewolf-community.librewolf
+                sudo flatpak install -y flathub io.gitlab.librewolf-community.librewolf
             else
                 error "LibreWolf requires Flatpak on this openSUSE system. Install Flatpak first."
                 return 1
@@ -71,8 +83,13 @@ uninstall_librewolf() {
                 sudo "$PKG_MGR" copr disable -y bgstack15/librewolf 2>/dev/null || true
                 ;;
             arch)
-                aur_remove librewolf-bin 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm librewolf 2>/dev/null || true
+                # librewolf-bin is the dead AUR name, tried only so an install
+                # predating the switch to the repo package still uninstalls.
+                pkg_check_installed librewolf && \
+                    pkg_remove librewolf 2>/dev/null
+                pkg_check_installed librewolf-bin && \
+                    sudo pacman -Rs --noconfirm librewolf-bin 2>/dev/null
+                true
                 ;;
         esac
     fi
@@ -87,7 +104,7 @@ update_librewolf() {
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade librewolf ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y librewolf ;;
-            arch)        aur_ensure librewolf-bin ;;
+            arch)        pkg_install librewolf ;;
             suse)        sudo zypper update -y librewolf ;;
         esac
     fi

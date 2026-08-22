@@ -35,7 +35,7 @@ install_zoom() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub us.zoom.Zoom
+                sudo flatpak install -y flathub us.zoom.Zoom
             else
                 local tmpfile
                 tmpfile=$(mktemp /tmp/zoom-XXXXXX.rpm)
@@ -76,7 +76,7 @@ update_zoom() {
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_zoom ;;
-            arch)               aur_ensure zoom ;;
+            arch)               repo_or_aur zoom ;;
             suse)               sudo zypper update -y zoom 2>/dev/null || install_zoom ;;
         esac
     fi

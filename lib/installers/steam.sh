@@ -95,6 +95,88 @@ detect_debian_repo_mix() {
     fi
     return 0
 }
+# Settle Steam's vulkan-driver / lib32-vulkan-driver dependencies BEFORE asking
+# pacman for steam itself.
+#
+# Both are virtual: nothing in a default install provides them, because mesa
+# provides opengl-driver and libva-driver but not vulkan-driver. pacman
+# therefore has to choose a provider, and --noconfirm makes it take the first
+# one offered -- which is decided by repo order, not by suitability.
+#
+# On plain Arch that list begins at extra and any pick works. CachyOS inserts
+# cachyos-v3 and cachyos ahead of extra, and they carry mesa-git, so provider #1
+# becomes mesa-git / lib32-mesa-git. Those declare conflicts=('mesa'), which
+# collides with the stable mesa CachyOS itself installed, and the whole
+# transaction aborts with "unresolvable package conflicts detected". It is
+# deterministic, so retrying re-runs the identical failure.
+#
+# vulkan-swrast (Lavapipe) settles it on ANY machine: it is a software
+# rasteriser, so it needs no GPU at all -- a VM, a headless box or a system with
+# no graphics hardware installs it fine -- and it conflicts with nothing.
+# Installing Steam must never depend on what graphics hardware is present.
+_steam_arch_settle_vulkan() {
+    local virt pkg
+    # pacman -T prints the dependencies that nothing installed satisfies, so
+    # empty output means a provider is already present and must be left alone.
+    for virt in vulkan-driver lib32-vulkan-driver; do
+        [[ -z "$(pacman -T "$virt" 2>/dev/null)" ]] && continue
+        pkg="vulkan-swrast"
+        [[ "$virt" == lib32-* ]] && pkg="lib32-vulkan-swrast"
+        echo "Installing ${pkg} to satisfy ${virt} (software rendering, no GPU required)..."
+        if ! sudo pacman -S --noconfirm --needed "$pkg"; then
+            echo "Error: Failed to install ${pkg}, which Steam requires."
+            return 1
+        fi
+    done
+
+    # The loaders are what actually dispatch to whichever ICD is present.
+    for pkg in vulkan-icd-loader lib32-vulkan-icd-loader; do
+        pkg_check_installed "$pkg" && continue
+        sudo pacman -S --noconfirm --needed "$pkg" || \
+            warn "Could not install ${pkg}; Vulkan may not work until it is present."
+    done
+    return 0
+}
+
+# Add the vulkan driver matching the detected GPU, on top of the swrast fallback
+# already in place. Entirely best-effort: Steam is installed and working by the
+# time this runs, so nothing here returns non-zero.
+#
+# Deliberately NOT a shotgun. The previous code installed lib32-vulkan-intel,
+# lib32-vulkan-radeon and lib32-nvidia-utils together with "2>/dev/null || true",
+# which pulled the NVIDIA stack onto AMD machines and -- because one bad name
+# fails the whole batch -- silently installed nothing at all when it failed.
+#
+# A VM adapter (QXL, VMware SVGA, Bochs, VirtualBox) matches nothing here and is
+# left on swrast, which is the correct answer for it.
+_steam_arch_add_gpu_driver() {
+    local gpu="" drivers=()
+
+    if command -v lspci &>/dev/null; then
+        gpu=$(lspci 2>/dev/null | grep -i 'vga\|3d controller\|display controller' | head -1)
+    fi
+
+    case "${gpu,,}" in
+        *nvidia*)          drivers=(nvidia-utils lib32-nvidia-utils) ;;
+        *amd*|*ati*|*radeon*) drivers=(vulkan-radeon lib32-vulkan-radeon) ;;
+        *intel*)           drivers=(vulkan-intel lib32-vulkan-intel) ;;
+        *virtio*)          drivers=(vulkan-virtio lib32-vulkan-virtio) ;;
+        *)
+            verbose "No hardware-specific Vulkan driver for '${gpu:-unknown GPU}' — keeping software rendering."
+            return 0
+            ;;
+    esac
+
+    local pkg
+    for pkg in "${drivers[@]}"; do
+        pkg_check_installed "$pkg" && continue
+        # Individually, so one unavailable name cannot cost the other.
+        sudo pacman -S --noconfirm --needed "$pkg" || \
+            warn "Could not install ${pkg}; Steam will fall back to software rendering."
+    done
+    return 0
+}
+
 install_steam() {
     echo "Installing Steam..."
 
@@ -175,7 +257,7 @@ install_steam() {
             echo "Steam is not officially available for RHEL-based distributions."
             if has_flatpak; then
                 echo "Installing via Flatpak..."
-                flatpak install -y flathub com.valvesoftware.Steam
+                sudo flatpak install -y flathub com.valvesoftware.Steam
             else
                 echo "Consider installing Flatpak: https://flatpak.org/setup/"
                 return 1
@@ -187,16 +269,17 @@ install_steam() {
                 sudo bash -c 'echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf'
                 sudo pacman -Sy
             fi
+
+            _steam_arch_settle_vulkan || return 1
+
             echo "Installing Steam..."
             if ! sudo pacman -S --noconfirm steam; then
                 echo "Error: Failed to install Steam."
                 return 1
             fi
-            
-            # Install 32-bit graphics libraries for better compatibility
-            echo "Installing 32-bit graphics libraries (Vulkan, Mesa)..."
-            sudo pacman -S --noconfirm lib32-mesa lib32-vulkan-icd-loader lib32-vulkan-intel \
-                lib32-vulkan-radeon lib32-nvidia-utils 2>/dev/null || true
+
+            # Purely an optimisation on top of a working install -- never fatal.
+            _steam_arch_add_gpu_driver
             ;;
         suse)
             echo "Installing Steam..."

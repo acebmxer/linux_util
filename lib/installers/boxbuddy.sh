@@ -11,7 +11,7 @@ install_boxbuddy() {
         error "BoxBuddy is distributed via Flatpak — run 'Flatpak Setup' from the Package Managers category first."
         return 1
     fi
-    flatpak install -y flathub io.github.dvlv.boxbuddyrs || return 1
+    sudo flatpak install -y flathub io.github.dvlv.boxbuddyrs || return 1
     _have_cmd distrobox || \
         warn "BoxBuddy is a front-end for Distrobox — install Distrobox too (same subcategory)."
     info "BoxBuddy installed."

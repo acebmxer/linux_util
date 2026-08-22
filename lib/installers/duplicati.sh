@@ -10,7 +10,7 @@ install_duplicati() {
         error "Duplicati requires Flatpak. Install Flatpak first via 'Flatpak Setup' in the Package Managers category."
         return 1
     fi
-    flatpak install -y flathub com.duplicati.Duplicati || return 1
+    sudo flatpak install -y flathub com.duplicati.Duplicati || return 1
     info "Duplicati installed."
 }
 

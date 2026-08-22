@@ -1,7 +1,19 @@
 #!/bin/bash
 # PIA VPN installer functions
+#
+# Every family except openSUSE installs from upstream's own .run bundle, which
+# is self-contained and distro-agnostic — it unpacks into /opt/piavpn and
+# registers a systemd unit rather than going through any package manager.
+#
+# Arch used to call repo_or_aur privateinternetaccess-bin. That package is gone
+# from the AUR — an AUR search for "privateinternetaccess" returns no results at
+# all — so the call could only fail: pacman has no such package, and the AUR
+# fallback cloned a repository that does not exist. Since the .run bundle was
+# already in this file for debian/fedora/rhel, Arch now uses it too.
 
 # --- PIA VPN ---
+
+_PIA_UNINSTALL="/opt/piavpn/bin/uninstall.sh"
 
 check_pia_vpn() {
     _have_cmd piactl || \
@@ -20,18 +32,12 @@ install_pia_vpn() {
             _pia_install_via_run || return 1
             ;;
         arch)
-            # Install from AUR
-            if has_aur_helper; then
-                aur_install privateinternetaccess-bin
-            else
-                echo "Installing from AUR requires an AUR helper (yay/paru). Please install one first."
-                return 1
-            fi
+            _pia_install_via_run || return 1
             ;;
         suse)
             # For openSUSE, try Flatpak as primary method
             if has_flatpak; then
-                flatpak install -y flathub com.privateinternetaccess.PIA
+                sudo flatpak install -y flathub com.privateinternetaccess.PIA
             else
                 echo "PIA is not available in default openSUSE repositories."
                 echo "Please install Flatpak and use: flatpak install flathub com.privateinternetaccess.PIA"
@@ -72,6 +78,16 @@ _pia_install_via_run() {
 
 uninstall_pia_vpn() {
     echo "Uninstalling PIA VPN..."
+    # The .run bundle never registers with a package manager, so its own script
+    # is the only thing that can remove it. Checked first on every family,
+    # because debian/fedora/rhel install from the bundle too — the package
+    # manager branches below only ever match a copy that came from a repo.
+    if [[ -x "$_PIA_UNINSTALL" ]]; then
+        sudo "$_PIA_UNINSTALL" || true
+        rm -rf ~/.config/privateinternetaccess ~/.privateinternetaccess
+        echo "PIA VPN has been uninstalled."
+        return 0
+    fi
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt purge --autoremove -y privateinternetaccess
@@ -83,6 +99,8 @@ uninstall_pia_vpn() {
             sudo "$PKG_MGR" remove -y privateinternetaccess
             ;;
         arch)
+            # Only reachable for an install predating the switch to the .run
+            # bundle; privateinternetaccess-bin no longer exists in the AUR.
             sudo pacman -Rs --noconfirm privateinternetaccess-bin 2>/dev/null || \
             sudo pacman -Rs --noconfirm privateinternetaccess 2>/dev/null || true
             ;;
@@ -98,12 +116,8 @@ uninstall_pia_vpn() {
 update_pia_vpn() {
     echo "Updating PIA VPN..."
     case "$DISTRO_FAMILY" in
-        debian|fedora|rhel)
+        debian|fedora|rhel|arch)
             _pia_install_via_run || return 1
-            ;;
-        arch)
-            sudo pacman -S --noconfirm privateinternetaccess-bin 2>/dev/null || \
-            sudo pacman -S --noconfirm privateinternetaccess 2>/dev/null || true
             ;;
         suse)
             flatpak update -y com.privateinternetaccess.PIA 2>/dev/null || true
