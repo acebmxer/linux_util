@@ -5,6 +5,18 @@
 
 # --- Pay Respects ---
 
+# Arch installs upstream's static musl tarball rather than the AUR. The AUR
+# package is honest (its maintainer, iff, is upstream), but it is not needed:
+# the tarball carries the same static-pie binaries, so there is nothing to build
+# and no dependency to resolve, and using it keeps Pay Respects installable with
+# AUR_ENABLED=false. The layout below mirrors upstream's own .deb -- all three
+# binaries on PATH, man pages beside them -- so every family ends up with the
+# same arrangement. Module discovery works off PATH by the _pay-respects-*
+# naming convention, which is why no _PR_LIB wiring is needed here.
+_PAYR_PREFIX="/usr/local"
+_PAYR_BINS=(pay-respects _pay-respects-module-100-runtime-rules
+            _pay-respects-fallback-100-request-ai)
+
 _PAYR_BASH_BEGIN="# linux_util: pay-respects (bash) -- begin"
 _PAYR_BASH_END="# linux_util: pay-respects (bash) -- end"
 _PAYR_ZSH_BEGIN="# linux_util: pay-respects (zsh) -- begin"
@@ -66,6 +78,87 @@ _payr_install_pkg() {
         "https://api.github.com/repos/iffse/pay-respects/releases/tags/${tag}" \
         "$(basename "$url")" "$tmpfile" || return 1
     pkg_install_local "$tmpfile"
+}
+
+# Install upstream's static musl tarball into /usr/local (Arch path).
+#
+# /usr/local, not /usr: nothing here is registered with pacman, and writing into
+# pacman's prefix would put unowned files where a future repo package would
+# collide with them.
+_payr_install_tarball() {
+    local pattern url tmpdir tarball tag arch
+    arch=$(uname -m)
+
+    case "$arch" in
+        x86_64)        pattern='x86_64-unknown-linux-musl\.tar\.zst$' ;;
+        aarch64|arm64) pattern='aarch64-unknown-linux-musl\.tar\.zst$' ;;
+        armv7l)        pattern='armv7-unknown-linux-musleabihf\.tar\.zst$' ;;
+        i686|i386)     pattern='i686-unknown-linux-musl\.tar\.zst$' ;;
+        *)
+            error "Unsupported architecture for Pay Respects: ${arch}"
+            return 1
+            ;;
+    esac
+
+    if ! command -v zstd &>/dev/null; then
+        info "Installing zstd (needed to unpack the Pay Respects tarball)..."
+        pkg_install zstd || { error "Could not install zstd."; return 1; }
+    fi
+
+    url=$(_payr_asset_url "$pattern")
+    if [[ -z "$url" ]]; then
+        error "Could not find a Pay Respects musl tarball release asset."
+        return 1
+    fi
+
+    tmpdir=$(mktemp -d /tmp/pay-respects-XXXXXX) || return 1
+    CLEANUP_FILES+=("$tmpdir")
+    tarball="$tmpdir/payr.tar.zst"
+
+    wget -qO "$tarball" "$url" || { error "Failed to download Pay Respects tarball."; return 1; }
+    tag=$(basename "$(dirname "$url")")
+    github_verify_checksum \
+        "https://api.github.com/repos/iffse/pay-respects/releases/tags/${tag}" \
+        "$(basename "$url")" "$tarball" || return 1
+
+    mkdir -p "$tmpdir/payload"
+    if ! zstd -dc "$tarball" | tar x -C "$tmpdir/payload"; then
+        error "Failed to unpack the Pay Respects tarball."
+        return 1
+    fi
+
+    # Verify before installing anything: a layout change upstream should abort
+    # rather than leave a half-installed set of binaries behind.
+    local b
+    for b in "${_PAYR_BINS[@]}"; do
+        if [[ ! -f "$tmpdir/payload/$b" ]]; then
+            error "Pay Respects tarball is missing '${b}' — upstream layout changed."
+            return 1
+        fi
+    done
+
+    for b in "${_PAYR_BINS[@]}"; do
+        sudo install -Dm755 "$tmpdir/payload/$b" "${_PAYR_PREFIX}/bin/$b" || {
+            error "Failed to install ${b} to ${_PAYR_PREFIX}/bin."
+            return 1
+        }
+    done
+
+    # Man pages are best-effort: a missing page is not a reason to fail an
+    # otherwise working install. Section comes from the filename suffix.
+    local page name section
+    for page in "$tmpdir"/payload/man/*.[15]; do
+        [[ -f "$page" ]] || continue
+        name=$(basename "$page")
+        section="${name##*.}"
+        sudo install -Dm644 "$page" \
+            "${_PAYR_PREFIX}/share/man/man${section}/${name}" 2>/dev/null || true
+    done
+    [[ -f "$tmpdir/payload/LICENSE" ]] && sudo install -Dm644 "$tmpdir/payload/LICENSE" \
+        "${_PAYR_PREFIX}/share/licenses/pay-respects/LICENSE" 2>/dev/null
+
+    command -v mandb &>/dev/null && sudo mandb -q 2>/dev/null || true
+    return 0
 }
 
 # pay-respects installs a command_not_found hook of its own. When the
@@ -138,9 +231,11 @@ install_pay_respects() {
             _payr_install_pkg rpm || return 1
             ;;
         arch)
-            # No official repo build — the AUR is the only Arch path, which is
-            # why "Pay Respects" is marked AUR-only in lib/installers.sh.
-            repo_or_aur pay-respects-bin || return 1
+            # A derivative that packages it in its own repos still wins; the
+            # fallback is upstream's tarball, never the AUR.
+            if ! (arch_repo_has pay-respects && pkg_install pay-respects); then
+                _payr_install_tarball || return 1
+            fi
             ;;
         *)
             warn "Pay Respects installation not implemented for ${DISTRO_NAME}."
@@ -156,6 +251,22 @@ install_pay_respects() {
     info "AI suggestions are off by default — remove the _PR_AI_DISABLE line from your shell rc file to enable them."
 }
 
+# Remove what _payr_install_tarball laid down. Only ever called on Arch, and
+# only touches paths this installer owns.
+_payr_remove_tarball() {
+    local b
+    for b in "${_PAYR_BINS[@]}"; do
+        sudo rm -f "${_PAYR_PREFIX}/bin/$b"
+    done
+    sudo rm -f "${_PAYR_PREFIX}/share/man/man1/pay-respects.1" \
+               "${_PAYR_PREFIX}/share/man/man5/pay-respects.5" \
+               "${_PAYR_PREFIX}/share/man/man5/pay-respects-rules.5" \
+               "${_PAYR_PREFIX}/share/man/man5/pay-respects-modules.5"
+    sudo rm -rf "${_PAYR_PREFIX}/share/licenses/pay-respects"
+    command -v mandb &>/dev/null && sudo mandb -q 2>/dev/null || true
+    return 0
+}
+
 uninstall_pay_respects() {
     info "Uninstalling Pay Respects..."
 
@@ -167,8 +278,14 @@ uninstall_pay_respects() {
             sudo "$PKG_MGR" remove -y pay-respects 2>/dev/null || true
             ;;
         arch)
-            aur_remove pay-respects-bin 2>/dev/null || \
+            # Package first (an AUR or repo install predating the tarball
+            # path), then the files this installer lays down itself.
+            if pkg_check_installed pay-respects-bin; then
+                sudo pacman -Rs --noconfirm pay-respects-bin 2>/dev/null || true
+            elif pkg_check_installed pay-respects; then
                 sudo pacman -Rs --noconfirm pay-respects 2>/dev/null || true
+            fi
+            _payr_remove_tarball
             ;;
     esac
 
@@ -186,7 +303,13 @@ update_pay_respects() {
     case "$DISTRO_FAMILY" in
         debian)            _payr_install_pkg deb || return 1 ;;
         fedora|rhel|suse)  _payr_install_pkg rpm || return 1 ;;
-        arch)              repo_or_aur pay-respects-bin || return 1 ;;
+        arch)
+            if pkg_check_installed pay-respects || pkg_check_installed pay-respects-bin; then
+                repo_or_aur pay-respects || _payr_install_tarball || return 1
+            else
+                _payr_install_tarball || return 1
+            fi
+            ;;
         *)                 install_pay_respects; return ;;
     esac
     # Picks up a ~/.zshrc that appeared after the initial install.
@@ -194,6 +317,8 @@ update_pay_respects() {
 }
 
 get_version_pay_respects() {
+    # The tarball install is not registered with any package manager, so the
+    # binary's own --version ("version: 0.8.8") is the only source for it.
     _ver_from_pkg pay-respects \
         || _ver_from_pkg pay-respects-bin \
         || _ver_from_cmd pay-respects \

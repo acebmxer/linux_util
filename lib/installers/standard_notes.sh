@@ -1,5 +1,11 @@
 #!/bin/bash
 # Standard Notes installer functions
+#
+# Arch does NOT go through the AUR. standard-notes-bin is gone from the AUR --
+# an AUR search for "standard-notes" returns nothing -- so flatpak_or_aur could
+# only ever reach its Flathub arm, and fell into a broken AUR clone whenever
+# Flatpak was not installed. Upstream's AppImage (already used as the fallback
+# on debian/fedora/rhel/suse in this file) covers that case properly.
 
 # --- Standard Notes ---
 
@@ -49,7 +55,11 @@ install_standard_notes() {
             fi
             ;;
         arch)
-            flatpak_or_aur org.standardnotes.standardnotes standard-notes-bin
+            if has_flatpak && ensure_flatpak; then
+                flatpak install -y flathub org.standardnotes.standardnotes
+            else
+                _sn_install_appimage
+            fi
             ;;
         suse)
             if has_flatpak; then
@@ -98,7 +108,9 @@ uninstall_standard_notes() {
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt purge --autoremove -y standard-notes 2>/dev/null || true ;;
-            arch)    aur_remove standard-notes-bin 2>/dev/null || sudo pacman -Rs --noconfirm standard-notes 2>/dev/null || true ;;
+            # standard-notes-bin is the dead AUR name, tried only so an
+            # install predating the AppImage fallback still uninstalls.
+            arch)    sudo pacman -Rs --noconfirm standard-notes-bin 2>/dev/null || sudo pacman -Rs --noconfirm standard-notes 2>/dev/null || true ;;
         esac
     fi
     rm -f "$_SN_APPIMAGE"
@@ -118,9 +130,7 @@ update_standard_notes() {
     else
         case "$DISTRO_FAMILY" in
             debian)   install_standard_notes ;;
-            arch)
-                repo_or_aur standard-notes-bin
-                ;;
+            arch)     install_standard_notes ;;
         esac
     fi
 }

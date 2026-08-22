@@ -1082,8 +1082,7 @@ mark_aur_only_arch \
     "Brave Browser=brave-bin" "Brave Origin=brave-origin-bin" \
     "Devolutions RDM=remote-desktop-manager" \
     "Euro-Office=euro-office-desktopeditors-git" "Google Chrome=google-chrome" \
-    "Libation=libation" "Pay Respects=pay-respects-bin" \
-    "PIA VPN=privateinternetaccess-bin" "PowerShell=powershell-bin" \
-    "ProtonVPN=protonvpn" "Snap (snapd)=snapd" "Snapper GUI=snapper-gui" \
+    "Libation=libation" "PowerShell=powershell-bin" \
+    "Snap (snapd)=snapd" "Snapper GUI=snapper-gui-git" \
     "Stacer=stacer-bin" "Trojita=trojita" \
     "Visual Studio Code=visual-studio-code-bin" "Zotero=zotero"

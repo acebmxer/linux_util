@@ -14,6 +14,42 @@ when a release is cut.
 
 ### Changed
 
+- **Stacer now tracks the maintained `QuentiumYT/Stacer` fork** instead of
+  `oguzhaninan/Stacer`, which is dormant — last release v1.1.0 in **2019**, last
+  push February 2024 — and whose age was the sole cause of every workaround this
+  installer carried. The fork is the same codebase carried forward (oguzhaninan
+  is still its top contributor at 524 commits, QuentiumYT has 138 on top), is
+  ported to Qt6, and has shipped ten releases between May 2025 and v1.7.0 in May
+  2026. Of the original's 100 forks it is the only one with any activity — the
+  runner-up has two stars and was last pushed in 2017 — and both AUR packages
+  (`stacer-bin` and `stacer`, different maintainers) already point at it, so
+  Arch users were getting it regardless.
+  - **Fedora/RHEL install the `.rpm` again**, dropping the AppImage workaround.
+    The 2019 rpm predated payload digests, so rpm >= 6 (Fedora 41+) rejected it
+    with "does not verify: no digest" and there was no bypass short of lowering
+    `%_pkgverify_level` system-wide. The current rpm verifies clean and its
+    `Requires` are Fedora-named (`qt6-qtbase`, `qt6-qtbase-gui`, `qt6-qtcharts`,
+    `qt6-qtsvg`), so dnf resolves them from the distro repos. An existing
+    extracted AppImage is torn out and replaced by the package on update;
+    the AppImage remains as a fallback if the rpm install fails.
+  - **openSUSE keeps the AppImage** — the rpm hard-requires those Fedora
+    package names, which do not exist there, so zypper cannot resolve it.
+  - **Debian gets a current build**, plus an explicit Qt6 runtime install: the
+    upstream `.deb` declares **no `Depends` at all**, so apt pulled nothing while
+    the binary needs libQt6Core/Gui/Widgets/Network/Charts. Names are tried
+    individually and best-effort, since Debian's time_t transition renamed
+    several of them with a `t64` suffix.
+  - **Arch is unchanged** — `stacer-bin` already packaged this fork.
+
+  Asset matching is now architecture-aware per artifact type, since the three
+  differ in shape (`stacer_1.7.0-1_amd64.deb`, `stacer-1.7.0.x86_64.rpm`,
+  `Stacer-1.7.0-x86_64.AppImage`) and the old code just excluded "arm". The
+  AppImage desktop entry's icon path was corrected: the fork no longer ships a
+  `stacer.png` at the root of the AppImage, only `icons/hicolor/<size>/apps/`,
+  so the menu icon had silently broken. The Qt6 AppImage still bundles only
+  `libqxcb.so` with no Wayland platform plugin, so the wrapper keeps pinning
+  `QT_QPA_PLATFORM=xcb`.
+
 - **Termius on Arch is now unpacked from the upstream `.deb` instead of built
   from the AUR**, the same native path the tool already used on
   Fedora/RHEL/openSUSE. `termius-deb` is not the plain repack its name suggests:
@@ -53,6 +89,72 @@ when a release is cut.
 
 ### Fixed
 
+- **Mark Text on Arch ran on Electron 15, and its Debian download never
+  worked.** The `marktext` AUR package pins `_electron=electron15` and rewrites
+  `package.json` so the app runs on that system runtime instead of the Electron
+  upstream bundles. Electron 15 shipped September 2021 and went EOL in May 2022;
+  Arch carries `electron39`–`electron43`, so the dependency resolves only from
+  AUR `electron15` (last touched **2022-08-31**) or `electron15-bin` — about
+  four years of unpatched Chromium, reached through a from-source
+  yarn/`electron-rebuild` build, stuck at 0.17.1, and flagged out-of-date since
+  2026-07-10 while upstream is at 0.19.1. Flathub remains the first choice on
+  every family; where Flatpak is absent, Arch now unpacks upstream's own
+  `.tar.gz` per-user into `~/.local/share/marktext` — root-free, carrying the
+  Electron Mark Text actually ships, and avoiding the AppImage runtime's
+  `libfuse.so.2` dependency the same way `stacer.sh` does. Separately, the
+  Debian branch asked for `marktext-amd64.deb`, a filename upstream has never
+  published — assets are named `marktext-linux-0.19.1.deb` — so every Debian
+  install silently 404'd into the Flatpak fallback. Both now resolve the asset
+  URL from the release API.
+- **Pay Respects no longer needs the AUR on Arch.** The `pay-respects-bin`
+  package was sound — its maintainer, `iff`, is upstream — but it was never
+  necessary: upstream publishes a static-pie musl tarball carrying the same
+  binaries, so there is nothing to build and no dependency to resolve. Arch now
+  unpacks that into `/usr/local` (not `/usr`, since pacman does not own these
+  files), mirroring upstream's own `.deb` layout — all three binaries on `PATH`,
+  man pages beside them — so every family ends up with the same arrangement and
+  module discovery keeps working off the `_pay-respects-*` naming convention
+  with no `_PR_LIB` wiring. A derivative that packages it is still preferred.
+  Pay Respects is consequently no longer marked AUR-only and stays visible with
+  `AUR_ENABLED=false`.
+
+- **Five Arch installers named AUR packages that no longer exist**, three of
+  them fatally. `repo_or_aur` only checks whether pacman can resolve a name
+  before falling back to the AUR — it never verified the AUR package was still
+  there, so each of these cloned `aur.archlinux.org/<pkg>.git` for a repository
+  that has been deleted and failed:
+  - **ProtonVPN** asked for `protonvpn`, gone from the AUR (only unrelated
+    community forks like `protonvpn-cli-community` remain). Arch packages the
+    real app in **extra as `proton-vpn-gtk-app`** — binary `protonvpn-app`,
+    pulling `proton-vpn-daemon` and the `python-proton-*` stack as proper
+    dependencies — so it now installs with plain `pacman`, needs no AUR helper,
+    and is no longer marked AUR-only. `check_`/`get_version_` learned the Arch
+    package name, which differs from the `proton-vpn-gnome-desktop` that
+    Proton's own apt/dnf repos ship.
+  - **PIA VPN** asked for `privateinternetaccess-bin`, gone with no replacement
+    under any similar name. It now uses upstream's `.run` bundle — the same
+    `_pia_install_via_run` this file already used for Debian/Fedora/RHEL.
+  - **Snapper GUI** asked for `snapper-gui`, which has never existed as an Arch
+    package at all; only `snapper-gui-git` does (51 votes, ordinary current
+    dependencies). This one stays AUR-only, and legitimately so: upstream
+    `ricardomv/snapper-gui` is a frozen Python/GTK source tree with no releases
+    and no binary artifacts, so there is nothing to install directly. `update_`
+    now rebuilds through the AUR helper rather than calling `pkg_upgrade`, which
+    cannot move a `-git` package.
+  - **LibreWolf** asked for `librewolf-bin`, gone. `librewolf` is in **extra**,
+    so Arch now installs it from the repos, with Flathub kept as the fallback
+    for a derivative that lacks it.
+  - **Standard Notes** asked for `standard-notes-bin`, gone. Flathub stays the
+    first choice; when Flatpak is absent it now falls back to upstream's
+    AppImage, which this file already used on every other family, instead of a
+    dead AUR clone.
+
+  Each uninstaller still tries the old AUR name so installs predating this
+  change are cleaned up. Separately, PIA VPN's uninstall now runs
+  `/opt/piavpn/bin/uninstall.sh` when present, on **every** family: the `.run`
+  bundle never registers with a package manager, so the previous
+  `apt purge`/`dnf remove` of `privateinternetaccess` could not have removed a
+  bundle-installed copy on Debian or Fedora either.
 - **Arch installs now use the distro's own repos before falling back to the
   AUR.** 33 installers called `aur_ensure` directly, so on an Arch derivative
   that packages the software itself the tool ignored the repo build and demanded
