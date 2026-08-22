@@ -3,7 +3,7 @@
 
 # --- AnyDesk ---
 
-check_anydesk() { _check_standard anydesk anydesk ""; }
+check_anydesk() { _check_standard anydesk anydesk "" anydesk-bin; }
 
 install_anydesk() {
     info "Installing AnyDesk..."
@@ -31,7 +31,7 @@ REPO
             sudo "$PKG_MGR" install -y anydesk
             ;;
         arch)
-            aur_ensure anydesk-bin
+            repo_or_aur anydesk-bin
             ;;
         suse)
             sudo zypper addrepo -f "https://rpm.anydesk.com/opensuse/anydesk.repo" anydesk 2>/dev/null || true
@@ -74,7 +74,7 @@ update_anydesk() {
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade anydesk ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y anydesk ;;
-        arch)        aur_ensure anydesk-bin ;;
+        arch)        repo_or_aur anydesk-bin ;;
         suse)        sudo zypper update -y anydesk ;;
     esac
 }

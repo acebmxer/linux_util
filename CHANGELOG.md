@@ -27,6 +27,79 @@ when a release is cut.
   configured) rather than `_profile_select_task`. Prompts that pointed at "the
   'Flatpak Setup' system task" now point at the Package Managers category.
 
+### Fixed
+
+- **Arch installs now use the distro's own repos before falling back to the
+  AUR.** 33 installers called `aur_ensure` directly, so on an Arch derivative
+  that packages the software itself the tool ignored the repo build and demanded
+  an AUR helper plus `AUR_ENABLED=true`. CachyOS ships `brave-bin`,
+  `google-chrome` and many other AUR-named packages in its own repos, where
+  `sudo pacman -S brave-bin` just works — but Brave Browser, Brave Origin, Google
+  Chrome, VS Code and the rest of the AUR-only list were hidden from the menu
+  entirely and unreachable. Every one of those call sites now goes through
+  `repo_or_aur`, which tries `pacman -S --needed` first and only reaches for the
+  AUR when the package is genuinely absent from the configured repos. The
+  hand-rolled `has_aur_helper`/`aur_install`/`aur_build` branches in Devolutions
+  RDM, Boxflat and PIA VPN were folded into the same helper; PIA VPN no longer
+  dead-ends with "requires an AUR helper" on a system whose repos carry the
+  package. Behaviour on upstream Arch is unchanged.
+- **AUR-only entries stay visible when the local repos carry the package.**
+  `_utility_hidden_aur_only` hid every entry marked AUR-only whenever
+  `AUR_ENABLED=false`, without ever asking pacman whether the package existed —
+  correct for upstream Arch, wrong for derivatives with a larger repo set. Each
+  entry in `mark_aur_only_arch` now carries its package name
+  (`"Brave Browser=brave-bin"`), and the gate skips hiding when the new
+  `arch_repo_has` helper finds it in a configured repo. Probe results are cached
+  per run, since the menu re-evaluates the gate on every redraw.
+- **`flatpak_or_aur` prefers a native repo package over Flathub.** A distro-
+  signed package needs no runtime stack and no unreviewed PKGBUILD, so it is now
+  tried first, ahead of both Flatpak and the AUR; it takes an optional third
+  argument for when the repo name differs from the AUR name. Systems without the
+  package in their repos are unaffected. Boxflat, whose Flatpak-first logic sits
+  in its own installer, follows the same order.
+- **Arch installs of Brave and friends no longer report as "not installed".**
+  `check_brave` tested for a `brave-browser` binary and package, but the Arch
+  package is `brave-bin` and its binary is `brave`, so a successful install still
+  showed unchecked in the menu. `_check_standard` takes optional Arch package and
+  binary names, consulted only under pacman, and Brave Browser, Brave Origin,
+  AnyDesk, Stacer, PowerShell, VS Code and Google Chrome now pass their Arch
+  package names.
+- **Gufw is now offered only on the distro families that can install it —
+  Debian/Ubuntu and Arch.** No RPM-family distro packages it: it is absent from
+  Fedora, EPEL 9 and 10, openSUSE Tumbleweed and openSUSE Leap (verified against
+  each distribution's own repository metadata), and there is no Flatpak or COPR
+  build either, so the entry could only ever fail there. It is now registered
+  behind a distro-family guard, the same way Snapper GUI already was. Users on
+  those distros wanting a firewall GUI need firewalld with its firewall-config
+  front-end, both listed in the same Firewalls subcategory. UFW itself is
+  unaffected and still fully supported on all of them from the command line.
+- **A failed Gufw install now reports as a failure.** The Fedora branch of
+  `install_gufw` ran `dnf install -y gufw` without checking the result, and the
+  function ended with an unconditional `info "Gufw installed."`, so it returned 0
+  even when dnf had said `No match for argument: gufw` — the failure surfaced
+  only afterwards, as a health-check warning, and the summary counted the
+  install as successful. Every branch now propagates its package manager's
+  failure, and the RPM-family branches warn and return 1 as a safety net for
+  direct calls now that the entry is unregistered there.
+- **A failed UFW install no longer reports success either.** `install_ufw`
+  ignored its package manager's exit status too, then went on to run `ufw
+  default deny incoming` and friends against a binary that might not exist, and
+  returned 0 regardless. That also defeated the `install_ufw || return 1` guard
+  `install_gufw` uses to pull UFW in first. Each branch now propagates failure.
+- **UFW on openSUSE no longer silently installs firewalld in its place.** On
+  Leap 15.6 and older, where `ufw` is not in the repos, `install_ufw` quietly
+  installed and enabled firewalld instead and returned success — so the run
+  summary reported "Successfully installed: UFW Firewall" for a machine that had
+  just been given a different firewall the user never chose. It now explains
+  that this openSUSE version does not ship UFW, points at the firewalld entry in
+  the same category, and returns 1. Tumbleweed and Leap 16.0 do ship `ufw` and
+  are unaffected.
+- **UFW's systemd unit is now started, not just enabled.** `ufw --force enable`
+  loads the rules into netfilter itself but leaves `ufw.service` inactive, so
+  `systemctl is-active ufw` reported `inactive` on a freshly installed and
+  working firewall until the next reboot. The install now uses `systemctl enable
+  --now ufw`, matching the `enable --now` the firewalld installer already used.
+
 ### Added
 
 - **Package Managers section in the README's "Utilities by Category"**, which

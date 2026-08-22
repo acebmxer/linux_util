@@ -51,14 +51,33 @@ aur_ensure() {
     fi
 }
 
-# Install a package that lives in the official Arch repos, falling back to the
-# AUR only if it is missing there (e.g. on a derivative with a smaller repo set).
+# True when pacman can resolve the package from a configured repo (no AUR).
+# Answers are cached for the life of the run — the menu probes this for every
+# AUR-only entry on each redraw, and pacman -Si is a local sync-db lookup.
+declare -A _ARCH_REPO_PROBE=()
+arch_repo_has() {
+    local pkg="$1"
+    [[ "${PKG_MGR:-}" == "pacman" ]] || return 1
+    if [[ -z "${_ARCH_REPO_PROBE[$pkg]:-}" ]]; then
+        if pacman -Si "$pkg" &>/dev/null; then
+            _ARCH_REPO_PROBE["$pkg"]=yes
+        else
+            _ARCH_REPO_PROBE["$pkg"]=no
+        fi
+    fi
+    [[ "${_ARCH_REPO_PROBE[$pkg]}" == "yes" ]]
+}
+
+# Install a package, preferring a configured repo and falling back to the AUR
+# only if it is missing there.
 #
-# Use this instead of aur_ensure for anything in core/extra. yay and paru happily
-# resolve repo packages, which hides the problem, but on a system with no AUR
-# helper aur_ensure drops to aur_build, and aur_build clones
-# aur.archlinux.org/<pkg>.git — which does not exist for a repo-only package, so
-# the install fails outright.
+# Use this instead of aur_ensure for everything. It matters in both directions:
+# a derivative with a smaller repo set than Arch (aur_ensure with no helper drops
+# to aur_build, which clones aur.archlinux.org/<pkg>.git — nonexistent for a
+# repo-only package, so the install fails outright), and a derivative with a
+# LARGER set. CachyOS ships brave-bin, google-chrome and other AUR-name packages
+# in its own repos, so aur_ensure there demanded an AUR helper and AUR_ENABLED=true
+# for packages plain pacman could install.
 repo_or_aur() {
     sudo pacman -S --noconfirm --needed "$@" 2>/dev/null && return 0
     aur_ensure "$@"
@@ -67,15 +86,25 @@ repo_or_aur() {
 # Install a package that has no official Arch repo build, preferring Flathub over
 # the AUR so the system does not have to build and trust an unreviewed PKGBUILD.
 #
+# A native repo package beats both and is tried first: it is signed by the distro
+# and needs no runtime stack. "No official Arch repo build" is only true of
+# upstream Arch — derivatives such as CachyOS carry many of these packages
+# themselves, so probe before falling through to Flathub.
+#
 # Only takes the Flatpak route when flatpak is already installed — a system with
 # no flatpak has not opted into it, and pulling in the whole runtime stack to
 # avoid one AUR package would be a worse trade. ensure_flatpak still runs in that
 # case, but only to add the flathub remote (has_flatpak short-circuits the
 # install branch inside it).
 #
-# Usage: flatpak_or_aur <flathub-app-id> <aur-package>
+# Usage: flatpak_or_aur <flathub-app-id> <aur-package> [repo-package]
+# repo-package defaults to <aur-package>; pass it when the repo name differs.
 flatpak_or_aur() {
-    local flatpak_id="$1" aur_pkg="$2"
+    local flatpak_id="$1" aur_pkg="$2" repo_pkg="${3:-$2}"
+    if arch_repo_has "$repo_pkg"; then
+        sudo pacman -S --noconfirm --needed "$repo_pkg" 2>/dev/null && return 0
+        warn "Repo install of ${repo_pkg} failed; falling back to Flatpak/AUR."
+    fi
     if has_flatpak && ensure_flatpak; then
         flatpak install -y flathub "$flatpak_id" && return 0
         warn "Flatpak install of ${flatpak_id} failed; falling back to the AUR."

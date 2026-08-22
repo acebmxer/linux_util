@@ -76,7 +76,7 @@ update_zoom() {
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_zoom ;;
-            arch)               aur_ensure zoom ;;
+            arch)               repo_or_aur zoom ;;
             suse)               sudo zypper update -y zoom 2>/dev/null || install_zoom ;;
         esac
     fi

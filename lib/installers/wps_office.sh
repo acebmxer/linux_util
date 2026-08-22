@@ -141,7 +141,7 @@ update_wps_office() {
             if flatpak_is_installed "com.wps.Office"; then
                 flatpak update -y com.wps.Office
             else
-                aur_ensure wps-office
+                repo_or_aur wps-office
             fi
             ;;
         *)

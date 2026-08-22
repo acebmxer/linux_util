@@ -305,7 +305,7 @@ install_termius() {
             _termius_warn_sandboxed_copy
             ;;
         arch)
-            aur_ensure termius-deb
+            repo_or_aur termius-deb
             ;;
         *)
             if has_snap; then
@@ -386,7 +386,7 @@ update_termius() {
             fi
             ;;
         arch)
-            aur_ensure termius-deb
+            repo_or_aur termius-deb
             ;;
         *)
             if has_snap && snap list termius-app &>/dev/null; then

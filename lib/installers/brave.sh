@@ -3,7 +3,7 @@
 
 # --- Brave Browser ---
 
-check_brave() { _check_standard brave-browser brave-browser ""; }
+check_brave() { _check_standard brave-browser brave-browser "" brave-bin brave; }
 install_brave() {
     info "Installing Brave Browser..."
     ensure_tools
@@ -23,7 +23,7 @@ install_brave() {
             sudo "$PKG_MGR" install -y brave-browser
             ;;
         arch)
-            aur_ensure brave-bin
+            repo_or_aur brave-bin
             ;;
         suse)
             sudo rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
@@ -65,7 +65,7 @@ update_brave() {
             sudo apt install -y --only-upgrade brave-browser
             ;;
         arch)
-            aur_ensure brave-bin
+            repo_or_aur brave-bin
             ;;
         *)
             pkg_upgrade brave-browser

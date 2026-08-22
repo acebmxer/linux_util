@@ -41,7 +41,7 @@ _STACER_DESKTOP="$HOME/.local/share/applications/stacer.desktop"
 
 check_stacer() {
     [[ -x "$_STACER_APP/AppRun" ]] && return 0
-    _check_standard stacer stacer ""
+    _check_standard stacer stacer "" stacer-bin
 }
 
 _stacer_latest_url() {
@@ -142,7 +142,7 @@ install_stacer() {
             _stacer_install_appimage || return 1
             ;;
         arch)
-            aur_ensure stacer-bin || return 1
+            repo_or_aur stacer-bin || return 1
             ;;
     esac
     info "Stacer installed."
@@ -182,7 +182,7 @@ update_stacer() {
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel|suse) install_stacer ;;
             arch)
-                aur_ensure stacer-bin
+                repo_or_aur stacer-bin
                 ;;
         esac
     fi

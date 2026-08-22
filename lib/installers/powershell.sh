@@ -4,7 +4,7 @@
 # --- PowerShell ---
 
 check_powershell() {
-    _check_standard pwsh powershell "" || { has_snap && snap list powershell &>/dev/null 2>&1; }
+    _check_standard pwsh powershell "" powershell-bin || { has_snap && snap list powershell &>/dev/null 2>&1; }
 }
 
 # Downloads the latest PowerShell .deb from GitHub releases and installs via dpkg.
@@ -96,7 +96,7 @@ install_powershell() {
             sudo "$PKG_MGR" install -y powershell
             ;;
         arch)
-            aur_ensure powershell-bin
+            repo_or_aur powershell-bin
             ;;
         suse)
             if has_snap; then
@@ -160,7 +160,7 @@ update_powershell() {
             fi
             ;;
         fedora|rhel) sudo "$PKG_MGR" upgrade -y powershell ;;
-        arch)        aur_ensure powershell-bin ;;
+        arch)        repo_or_aur powershell-bin ;;
         suse)        sudo zypper update -y powershell ;;
     esac
 }

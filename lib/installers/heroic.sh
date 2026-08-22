@@ -94,7 +94,7 @@ update_heroic() {
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_heroic ;;
             arch)
-                aur_ensure heroic-games-launcher-bin
+                repo_or_aur heroic-games-launcher-bin
                 ;;
         esac
     fi

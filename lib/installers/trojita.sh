@@ -19,7 +19,7 @@ install_trojita() {
             sudo "$PKG_MGR" install -y trojita
             ;;
         arch)
-            aur_ensure trojita || return 1
+            repo_or_aur trojita || return 1
             ;;
         suse)
             sudo zypper install -y trojita
@@ -65,7 +65,7 @@ update_trojita() {
             pkg_upgrade trojita
             ;;
         arch)
-            aur_ensure trojita
+            repo_or_aur trojita
             ;;
         *)
             warn "Trojitá is not installable on this distro, so there is nothing to update."

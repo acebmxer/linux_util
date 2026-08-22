@@ -5,7 +5,8 @@
 
 check_google_chrome() {
     _have_cmd google-chrome-stable || _have_cmd google-chrome || \
-        pkg_check_installed google-chrome-stable
+        pkg_check_installed google-chrome-stable || \
+        pkg_check_installed google-chrome
 }
 
 install_google_chrome() {
@@ -32,7 +33,7 @@ EOF
             sudo "$PKG_MGR" install -y google-chrome-stable
             ;;
         arch)
-            aur_ensure google-chrome
+            repo_or_aur google-chrome
             ;;
         suse)
             sudo rpm --import https://dl.google.com/linux/linux_signing_key.pub
@@ -75,7 +76,7 @@ update_google_chrome() {
             sudo apt install -y --only-upgrade google-chrome-stable
             ;;
         arch)
-            aur_ensure google-chrome
+            repo_or_aur google-chrome
             ;;
         *)
             pkg_upgrade google-chrome-stable

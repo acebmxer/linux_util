@@ -46,7 +46,7 @@ update_protonup_qt() {
     else
         case "$DISTRO_FAMILY" in
             arch)
-                aur_ensure protonup-qt
+                repo_or_aur protonup-qt
                 ;;
         esac
     fi

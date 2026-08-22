@@ -103,7 +103,7 @@ update_onlyoffice() {
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
                 flatpak update -y org.onlyoffice.desktopeditors
             else
-                aur_ensure onlyoffice-bin
+                repo_or_aur onlyoffice-bin
             fi
             ;;
         *)

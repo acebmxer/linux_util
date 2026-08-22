@@ -87,7 +87,7 @@ update_librewolf() {
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade librewolf ;;
             fedora|rhel) sudo "$PKG_MGR" upgrade -y librewolf ;;
-            arch)        aur_ensure librewolf-bin ;;
+            arch)        repo_or_aur librewolf-bin ;;
             suse)        sudo zypper update -y librewolf ;;
         esac
     fi

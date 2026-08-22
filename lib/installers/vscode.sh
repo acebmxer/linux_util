@@ -3,7 +3,7 @@
 
 # --- Visual Studio Code ---
 
-check_vscode() { _check_standard code code ""; }
+check_vscode() { _check_standard code code "" visual-studio-code-bin; }
 install_vscode() {
     echo "Installing Visual Studio Code..."
     ensure_tools
@@ -27,7 +27,7 @@ install_vscode() {
             sudo "$PKG_MGR" install -y code
             ;;
         arch)
-            aur_ensure visual-studio-code-bin
+            repo_or_aur visual-studio-code-bin
             ;;
         suse)
             sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
@@ -70,7 +70,7 @@ update_vscode() {
             sudo apt install -y --only-upgrade code
             ;;
         arch)
-            aur_ensure visual-studio-code-bin
+            repo_or_aur visual-studio-code-bin
             ;;
         *)
             pkg_upgrade code

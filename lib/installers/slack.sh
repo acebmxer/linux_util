@@ -75,7 +75,7 @@ update_slack() {
         case "$DISTRO_FAMILY" in
             debian)       install_slack ;;
             fedora|rhel)  install_slack ;;
-            arch)         aur_ensure slack-desktop ;;
+            arch)         repo_or_aur slack-desktop ;;
             suse)         install_slack ;;
         esac
     fi

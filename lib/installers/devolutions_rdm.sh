@@ -74,13 +74,9 @@ install_devolutions_rdm() {
             sudo "$PKG_MGR" install -y RemoteDesktopManager
             ;;
         arch)
-            # Arch-based distributions using AUR
-            if has_aur_helper; then
-                echo "Installing from AUR..."
-                aur_install remote-desktop-manager
-            else
-                aur_build remote-desktop-manager
-            fi
+            # Repo package where the distro ships one (CachyOS and friends),
+            # otherwise the AUR.
+            repo_or_aur remote-desktop-manager
             ;;
         suse)
             # openSUSE support via Flatpak or snap (as direct repos may not be available)

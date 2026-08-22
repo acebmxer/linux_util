@@ -208,7 +208,7 @@ update_localsend() {
     fi
     case "$DISTRO_FAMILY" in
         debian) _localsend_install_deb ;;
-        arch)   aur_ensure localsend-bin ;;
+        arch)   repo_or_aur localsend-bin ;;
         *)      install_localsend ;;
     esac
 }

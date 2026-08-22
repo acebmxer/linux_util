@@ -83,7 +83,7 @@ update_logseq() {
         _install_logseq_appimage
     else
         case "$DISTRO_FAMILY" in
-            arch) aur_ensure logseq-desktop-bin ;;
+            arch) repo_or_aur logseq-desktop-bin ;;
             *)    install_logseq ;;
         esac
     fi

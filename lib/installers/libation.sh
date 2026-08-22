@@ -58,7 +58,7 @@ install_libation() {
             fi
             ;;
         arch)
-            aur_ensure libation
+            repo_or_aur libation
             ;;
     esac
     info "Libation installed."
@@ -91,7 +91,7 @@ update_libation() {
     case "$DISTRO_FAMILY" in
         debian|fedora|rhel|suse) install_libation ;;
         arch)
-            aur_ensure libation
+            repo_or_aur libation
             ;;
     esac
 }

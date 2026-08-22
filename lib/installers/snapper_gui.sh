@@ -14,7 +14,7 @@ install_snapper_gui() {
             sudo apt install -y snapper-gui || return 1
             ;;
         arch)
-            aur_ensure snapper-gui || return 1
+            repo_or_aur snapper-gui || return 1
             ;;
         *)
             warn "Snapper GUI is not available for ${DISTRO_NAME}."

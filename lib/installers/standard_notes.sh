@@ -119,7 +119,7 @@ update_standard_notes() {
         case "$DISTRO_FAMILY" in
             debian)   install_standard_notes ;;
             arch)
-                aur_ensure standard-notes-bin
+                repo_or_aur standard-notes-bin
                 ;;
         esac
     fi

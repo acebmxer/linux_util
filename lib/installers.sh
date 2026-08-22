@@ -18,6 +18,13 @@
 # │  OPTIONAL (1 function):
 # │    └─ get_version_foobar() — outputs clean version string "X.Y.Z"
 # │
+# │  ARCH BRANCH: use repo_or_aur (or flatpak_or_aur), never aur_ensure —
+# │  derivatives like CachyOS carry many AUR-named packages in their own repos.
+# │  If the AUR really is the only source on upstream Arch, add the utility to
+# │  mark_aur_only_arch below WITH its package name ("Name=pkg"), and give
+# │  check_foobar the Arch package/binary names when they differ from the
+# │  .deb/.rpm ones (see _check_standard's 4th and 5th arguments).
+# │
 # ├─ Step 3: Add a register_utility line below (alphabetical order in the
 # │  Utilities section). For system tasks, use register_system_task instead.
 # │
@@ -164,7 +171,12 @@ register_utility "Filelight"           install_filelight        check_filelight 
 register_utility "Firefox"             install_firefox          check_firefox          uninstall_firefox          update_firefox             get_version_firefox
 # Firewalls subcategory: host firewall managers followed by their GUI front-ends
 register_utility "UFW Firewall"        install_ufw              check_ufw              uninstall_ufw              update_ufw                 get_version_ufw
-register_utility "Gufw (Firewall GUI)" install_gufw             check_gufw             uninstall_gufw             update_gufw                get_version_gufw
+# Gufw: packaged only for Debian/Ubuntu and Arch. No RPM-family distro ships it
+# — not Fedora, EPEL 9/10, openSUSE Tumbleweed or Leap — and there is no Flatpak
+# or COPR build either. Those users want firewalld plus firewall-config below.
+if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "arch" ]]; then
+    register_utility "Gufw (Firewall GUI)" install_gufw         check_gufw             uninstall_gufw             update_gufw                get_version_gufw
+fi
 register_utility "firewalld"           install_firewalld        check_firewalld        uninstall_firewalld        update_firewalld           get_version_firewalld
 register_utility "firewall-config (GUI)" install_firewall_config check_firewall_config uninstall_firewall_config update_firewall_config    get_version_firewall_config
 register_utility "Flameshot"           install_flameshot        check_flameshot        uninstall_flameshot        update_flameshot           get_version_flameshot
@@ -1054,12 +1066,24 @@ UTILITY_DESCRIPTION["yay"]="Popular AUR helper for Arch-family distros, written 
 UTILITY_DESCRIPTION["paru"]="Feature-rich AUR helper for Arch-family distros, written in Rust — an alternative to yay with the same pacman-style workflow. Arch family only; installed from the repo where available or built from the AUR."
 
 # --- AUR-only utilities (Arch) ---
-# These have no official-repo or Flatpak fallback in their installer — the
-# AUR is their only Arch install path. Hidden from the install listing while
-# AUR_ENABLED=false and not already installed (see _utility_hidden_aur_only
-# in lib/utilities.sh); uninstalling an existing install is never affected.
+# These have no official-repo or Flatpak fallback in their installer — on
+# upstream Arch the AUR is their only install path. Hidden from the install
+# listing while AUR_ENABLED=false and not already installed (see
+# _utility_hidden_aur_only in lib/utilities.sh); uninstalling an existing
+# install is never affected.
+#
+# Each entry carries its Arch package name. Derivatives ship many of these in
+# their own repos — CachyOS has brave-bin, google-chrome and others — and an
+# entry stays visible, installing with plain pacman, wherever the configured
+# repos carry the package. Keep the package name in sync with the repo_or_aur
+# call in the matching lib/installers/*.sh file.
 mark_aur_only_arch \
-    "Angry IP Scanner" "AnyDesk" "Boxflat" "Brave Browser" "Brave Origin" \
-    "Devolutions RDM" "Euro-Office" "Google Chrome" "Libation" "Pay Respects" \
-    "PIA VPN" "PowerShell" "ProtonVPN" "Snap (snapd)" "Snapper GUI" "Stacer" \
-    "Termius SSH Client" "Trojita" "Visual Studio Code" "Zotero"
+    "Angry IP Scanner=ipscan" "AnyDesk=anydesk-bin" "Boxflat=boxflat-git" \
+    "Brave Browser=brave-bin" "Brave Origin=brave-origin-bin" \
+    "Devolutions RDM=remote-desktop-manager" \
+    "Euro-Office=euro-office-desktopeditors-git" "Google Chrome=google-chrome" \
+    "Libation=libation" "Pay Respects=pay-respects-bin" \
+    "PIA VPN=privateinternetaccess-bin" "PowerShell=powershell-bin" \
+    "ProtonVPN=protonvpn" "Snap (snapd)=snapd" "Snapper GUI=snapper-gui" \
+    "Stacer=stacer-bin" "Termius SSH Client=termius-deb" "Trojita=trojita" \
+    "Visual Studio Code=visual-studio-code-bin" "Zotero=zotero"

@@ -40,7 +40,7 @@ install_thorium() {
             rm -f "$tmp_rpm"
             ;;
         arch)
-            aur_ensure thorium-browser-bin
+            repo_or_aur thorium-browser-bin
             ;;
         suse)
             # Install via GitHub release RPM (same approach as Fedora/RHEL)
@@ -99,7 +99,7 @@ update_thorium() {
             install_thorium
             ;;
         arch)
-            aur_ensure thorium-browser-bin
+            repo_or_aur thorium-browser-bin
             ;;
     esac
 }

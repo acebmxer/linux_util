@@ -140,7 +140,7 @@ install_pay_respects() {
         arch)
             # No official repo build — the AUR is the only Arch path, which is
             # why "Pay Respects" is marked AUR-only in lib/installers.sh.
-            aur_ensure pay-respects-bin || return 1
+            repo_or_aur pay-respects-bin || return 1
             ;;
         *)
             warn "Pay Respects installation not implemented for ${DISTRO_NAME}."
@@ -186,7 +186,7 @@ update_pay_respects() {
     case "$DISTRO_FAMILY" in
         debian)            _payr_install_pkg deb || return 1 ;;
         fedora|rhel|suse)  _payr_install_pkg rpm || return 1 ;;
-        arch)              aur_ensure pay-respects-bin || return 1 ;;
+        arch)              repo_or_aur pay-respects-bin || return 1 ;;
         *)                 install_pay_respects; return ;;
     esac
     # Picks up a ~/.zshrc that appeared after the initial install.

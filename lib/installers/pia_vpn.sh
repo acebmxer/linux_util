@@ -20,13 +20,8 @@ install_pia_vpn() {
             _pia_install_via_run || return 1
             ;;
         arch)
-            # Install from AUR
-            if has_aur_helper; then
-                aur_install privateinternetaccess-bin
-            else
-                echo "Installing from AUR requires an AUR helper (yay/paru). Please install one first."
-                return 1
-            fi
+            # Repo package where the distro ships one, otherwise the AUR.
+            repo_or_aur privateinternetaccess-bin
             ;;
         suse)
             # For openSUSE, try Flatpak as primary method

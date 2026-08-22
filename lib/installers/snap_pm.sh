@@ -54,7 +54,7 @@ install_snap() {
             ;;
         arch)
             # snapd is not in the official Arch repos; install it from the AUR.
-            aur_ensure snapd || { error "Failed to install snapd from the AUR."; return 1; }
+            repo_or_aur snapd || { error "Failed to install snapd from the AUR."; return 1; }
             ;;
         *)
             error "snapd is not supported on this distribution."

@@ -76,7 +76,7 @@ update_marktext() {
         case "$DISTRO_FAMILY" in
             debian)      install_marktext ;;
             fedora|rhel) install_marktext ;;
-            arch)        aur_ensure marktext ;;
+            arch)        repo_or_aur marktext ;;
             suse)        install_marktext ;;
         esac
     fi

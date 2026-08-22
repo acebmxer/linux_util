@@ -8,15 +8,14 @@ check_boxflat() { _check_standard boxflat "" io.github.lawstorant.boxflat; }
 install_boxflat() {
     info "Installing Boxflat..."
     # Flatpak is the default (and officially supported) distribution method.
-    if has_flatpak; then
+    if [[ "$DISTRO_FAMILY" == "arch" ]] && arch_repo_has boxflat-git; then
+        # Distro repo build (CachyOS and friends) beats Flatpak: signed, no runtime.
+        repo_or_aur boxflat-git || return 1
+    elif has_flatpak; then
         flatpak install -y flathub io.github.lawstorant.boxflat || return 1
     elif [[ "$DISTRO_FAMILY" == "arch" ]]; then
         # Fall back to the AUR git package when Flatpak is unavailable on Arch.
-        if has_aur_helper; then
-            aur_install boxflat-git || return 1
-        else
-            aur_build boxflat-git || return 1
-        fi
+        repo_or_aur boxflat-git || return 1
     else
         error "Boxflat is distributed via Flatpak — run 'Flatpak Setup' from the Package Managers category first."
         return 1
@@ -39,7 +38,7 @@ update_boxflat() {
     if flatpak_is_installed "io.github.lawstorant.boxflat"; then
         flatpak update -y io.github.lawstorant.boxflat
     elif [[ "$DISTRO_FAMILY" == "arch" ]]; then
-        aur_ensure boxflat-git
+        repo_or_aur boxflat-git
     fi
 }
 

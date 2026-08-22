@@ -60,7 +60,7 @@ install_protonvpn() {
             fi
             ;;
         arch)
-            aur_ensure protonvpn
+            repo_or_aur protonvpn
             ;;
         suse)
             if has_flatpak; then
@@ -105,7 +105,7 @@ update_protonvpn() {
             debian)   sudo apt-get install -y --only-upgrade proton-vpn-gnome-desktop ;;
             fedora)   sudo "$PKG_MGR" upgrade -y proton-vpn-gnome-desktop ;;
             arch)
-                aur_ensure protonvpn
+                repo_or_aur protonvpn
                 ;;
         esac
     fi

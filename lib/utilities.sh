@@ -22,15 +22,23 @@ declare -a CATEGORIES=()        # ordered list of category tab names (populated 
 declare -A SUBCATEGORY_ORDER    # maps category name → pipe-separated ordered subcategory list
 declare -A SUBCATEGORY_INTERLEAVED  # if set for a category, subcategory folders are emitted in registration order (interleaved with plain items)
 declare -A UTILITY_AUR_ONLY_ARCH    # utility name → 1 if its only Arch install path is the AUR (no repo/Flatpak fallback)
+declare -A UTILITY_ARCH_PKG         # utility name → Arch package name, probed against the configured repos
 
 # Mark one or more utilities whose only Arch install path is the AUR (no
 # official-repo or Flatpak fallback in their installer). Used to hide them
 # from the "available to install" listing while AUR_ENABLED=false and they
 # are not already installed — see _utility_hidden_aur_only below.
+#
+# Accepts either a bare name or "Name=pkg". The package form is strongly
+# preferred: "AUR-only" holds for upstream Arch, but derivatives like CachyOS
+# ship a lot of these in their own repos, and a name registered with its package
+# stays visible (and installs with plain pacman) wherever the repo carries it.
 mark_aur_only_arch() {
-    local name
-    for name in "$@"; do
+    local entry name
+    for entry in "$@"; do
+        name="${entry%%=*}"
         UTILITY_AUR_ONLY_ARCH["$name"]=1
+        [[ "$entry" == *=* ]] && UTILITY_ARCH_PKG["$name"]="${entry#*=}"
     done
 }
 
@@ -45,6 +53,10 @@ _utility_hidden_aur_only() {
     [[ "${UTILITY_AUR_ONLY_ARCH[$name]:-}" == "1" ]] || return 1
     [[ "${AUR_ENABLED:-false}" == "true" ]] && return 1
     [[ "${INSTALLED[$idx]:-0}" == "1" ]] && return 1
+    # Not AUR-only on THIS system if the configured repos carry the package —
+    # pacman installs it without touching the AUR, so there is nothing to hide.
+    local pkg="${UTILITY_ARCH_PKG[$name]:-}"
+    [[ -n "$pkg" ]] && arch_repo_has "$pkg" && return 1
     return 0
 }
 

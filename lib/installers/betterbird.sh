@@ -52,7 +52,7 @@ update_betterbird() {
     if flatpak_is_installed "$_BETTERBIRD_FLATPAK"; then
         flatpak update -y "$_BETTERBIRD_FLATPAK"
     elif [[ "$DISTRO_FAMILY" == "arch" ]]; then
-        aur_ensure "$_BETTERBIRD_AUR"
+        repo_or_aur "$_BETTERBIRD_AUR"
     else
         warn "Betterbird not found via Flatpak; nothing to update."
         return 1

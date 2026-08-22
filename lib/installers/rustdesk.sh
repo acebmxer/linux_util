@@ -90,7 +90,7 @@ update_rustdesk() {
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_rustdesk ;;
-            arch)               aur_ensure rustdesk-bin ;;
+            arch)               repo_or_aur rustdesk-bin ;;
             suse)               install_rustdesk ;;
         esac
     fi
