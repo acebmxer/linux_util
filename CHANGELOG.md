@@ -14,6 +14,30 @@ when a release is cut.
 
 ### Changed
 
+- **Termius on Arch is now unpacked from the upstream `.deb` instead of built
+  from the AUR**, the same native path the tool already used on
+  Fedora/RHEL/openSUSE. `termius-deb` is not the plain repack its name suggests:
+  it keeps only `resources/` (`app.asar` and friends), discards the Electron
+  runtime that Termius ships, and execs the app on `electron21` instead —
+  a release from September 2022 that went EOL around October 2023. Arch's repos
+  carry `electron39`–`electron43` and nothing near 21, so that dependency could
+  only come from `electron21-bin` in the AUR (last touched June 2024, four
+  votes): an unpatched ~4-year-old Chromium under the program holding the user's
+  SSH keys. The native unpack keeps upstream's own Electron, needs no AUR helper
+  and no `AUR_ENABLED=true`, and picks up `$SHELL` on first run exactly as it
+  does on Debian. Runtime dependencies for Arch (`gtk3`, `libnotify`, `nss`,
+  `libxss`, `libxtst`, `xdg-utils`, `at-spi2-core`, `util-linux-libs`,
+  `libsecret`, `mesa`, `alsa-lib`) were each verified to resolve in core/extra.
+  A derivative that ever ships a real `termius` package in its own repos is
+  still preferred and installed with plain `pacman`; the AUR is no longer a
+  fallback, since a failed native install should report an error rather than
+  quietly land the user on EOL Electron. Termius is consequently no longer
+  marked AUR-only, so it stays visible in the menu with `AUR_ENABLED=false`.
+  Existing `termius-deb` installs are left alone — it owns `/opt/termius`
+  (lowercase), which never overlapped this tool's `/opt/Termius` — but installs
+  and updates now warn that the leftover copy is a second menu entry still
+  running Electron 21, with the `pacman -Rs` line to remove it. Uninstall
+  already removed `termius-deb` by name and still does.
 - **Flatpak Setup moved from System Tasks to the Package Managers category**,
   alongside Snap, Homebrew, Nix and the AUR/deb helpers — it is the same class
   of thing as those (a cross-distro manager running beside the native one), and

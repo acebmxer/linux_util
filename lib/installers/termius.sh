@@ -8,8 +8,29 @@
 # file:
 #
 #   - debian: the upstream .deb installs directly.
-#   - arch:   termius-deb in the AUR (repacks the same .deb).
-#   - fedora/rhel/suse: the .deb payload is unpacked natively into /opt.
+#   - everyone else: the .deb payload is unpacked natively into /opt.
+#
+# Why NOT the AUR on Arch (this used to be repo_or_aur termius-deb):
+#
+#   termius-deb does not repack the .deb as shipped — it keeps only resources/
+#   (app.asar and friends), throws upstream's bundled Electron away, and execs
+#   the app on a system runtime instead:
+#
+#       _electron=electron21
+#       depends=("$_electron-bin" ...)
+#       exec electron21 /opt/termius/app.asar "$@"
+#
+#   Electron 21 shipped in September 2022 and went EOL around October 2023.
+#   Arch's repos carry electron39..electron43, nothing close, so that dependency
+#   can only come from electron21-bin in the AUR — last touched June 2024, four
+#   votes, an unpatched ~4-year-old Chromium. That is a bad runtime for any
+#   Electron app and a worse one for the program holding the user's SSH keys.
+#   Unpacking upstream's .deb keeps the Electron that Termius actually ships
+#   and tests against.
+#
+#   Note the AUR package installs to /opt/termius (lowercase), /usr/bin/termius
+#   and termius.desktop — no path overlaps this file's /opt/Termius,
+#   /usr/local/bin/termius-app and termius-app.desktop, so the two can coexist.
 #
 # Why NOT Flatpak on the rpm families (this used to be a Flathub install):
 #
@@ -72,6 +93,14 @@ _termius_install_runtime_deps() {
         suse)
             deps=(gtk3 libnotify4 mozilla-nss libXss1 libXtst6 xdg-utils
                   at-spi2-atk-common libuuid1 libsecret-1-0 libgbm1 libasound2)
+            ;;
+        arch)
+            # Unlike the rpm branches above, every one of these was checked
+            # against archlinux.org and resolves in core/extra: at-spi2-atk is
+            # merged into at-spi2-core here, libuuid ships in util-linux-libs
+            # (already part of base) and libgbm comes from mesa.
+            deps=(gtk3 libnotify nss libxss libxtst xdg-utils
+                  at-spi2-core util-linux-libs libsecret mesa alsa-lib)
             ;;
     esac
     (( ${#deps[@]} == 0 )) && return 0
@@ -259,10 +288,18 @@ _termius_install_native() {
     info "Termius installed natively — it will pick up \$SHELL (${SHELL:-unset}) on first run."
 }
 
-# Warn when a sandboxed copy is left over from the old Flathub/snap path: it
-# keeps its own settings tree, so the user can end up staring at the stale
-# /bin/sh terminal in the wrong copy of the app.
-_termius_warn_sandboxed_copy() {
+# Warn when a copy from one of the paths this file used to take is left over.
+# A sandboxed copy keeps its own settings tree, so the user can end up staring
+# at the stale /bin/sh terminal in the wrong copy of the app; a leftover
+# termius-deb is the Arch equivalent — it installs beside the native tree
+# rather than over it, so nothing here removes it, and it would leave the user
+# a second menu entry still running EOL Electron 21.
+_termius_warn_leftover_copy() {
+    if pkg_check_installed termius-deb; then
+        warn "The AUR package termius-deb is also installed; it runs on Electron 21 (EOL since 2023)."
+        warn "It installs to /opt/termius, separate from this install, and adds a second menu entry."
+        warn "Remove it with: sudo pacman -Rs termius-deb"
+    fi
     if flatpak_is_installed termius; then
         warn "A Flatpak copy of Termius is also installed and still uses /bin/sh for its local terminal."
         warn "Remove it with: flatpak uninstall -y com.termius.Termius"
@@ -300,12 +337,23 @@ install_termius() {
             sudo apt install -y "$tmp_deb"
             rm -f "$tmp_deb"
             ;;
+        arch)
+            # A derivative that ships a real Termius package in its own repos
+            # still wins — it is signed and tracked by pacman. Probed, never
+            # installed from the AUR: the fallback here is the native unpack,
+            # because dropping the user onto electron21-bin is worse than the
+            # error a failed native install produces. (No Arch repo carries
+            # Termius today, CachyOS included, so this probe is for the future.)
+            if arch_repo_has termius && \
+               sudo pacman -S --noconfirm --needed termius 2>/dev/null; then
+                return 0
+            fi
+            _termius_install_native || return 1
+            _termius_warn_leftover_copy
+            ;;
         fedora|rhel|suse)
             _termius_install_native || return 1
-            _termius_warn_sandboxed_copy
-            ;;
-        arch)
-            repo_or_aur termius-deb
+            _termius_warn_leftover_copy
             ;;
         *)
             if has_snap; then
@@ -327,10 +375,11 @@ uninstall_termius() {
     # below always succeeds, so without this the caller would read a removal
     # failure as success.
     local rc=0
-    # Gate on the marker, never on /opt/Termius alone: the Debian .deb and the
-    # Arch termius-deb package own that same directory, and tearing it out from
-    # under them would leave dpkg/pacman holding a registered but gutted
-    # package (and delete package-owned icons).
+    # Gate on the marker, never on /opt/Termius alone: the Debian .deb owns that
+    # same directory, and tearing it out from under dpkg would leave a
+    # registered but gutted package (and delete package-owned icons). The AUR's
+    # termius-deb is not part of this — it installs to /opt/termius, lowercase —
+    # but it is still removed by name in the branch below.
     if [[ -f "$_TERMIUS_VERSION_FILE" ]]; then
         sudo rm -rf "$_TERMIUS_PREFIX" || rc=1
         sudo rm -f "$_TERMIUS_LAUNCHER" "$_TERMIUS_DESKTOP" || rc=1
@@ -375,18 +424,20 @@ update_termius() {
             sudo apt install -y "$tmp_deb"
             rm -f "$tmp_deb"
             ;;
-        fedora|rhel|suse)
+        arch|fedora|rhel|suse)
             # The download URL carries no version, so there is nothing to
             # compare against without fetching the package itself — just
             # reinstall over the top.
+            #
+            # No marker means this is not a native install yet: on Arch that is
+            # the migration case, where install_termius replaces an AUR
+            # termius-deb (or a snap/Flatpak copy) with the native tree and
+            # warns about whatever is left behind.
             if [[ -f "$_TERMIUS_VERSION_FILE" ]]; then
                 _termius_install_native || return 1
             else
                 install_termius
             fi
-            ;;
-        arch)
-            repo_or_aur termius-deb
             ;;
         *)
             if has_snap && snap list termius-app &>/dev/null; then

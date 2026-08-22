@@ -1085,5 +1085,5 @@ mark_aur_only_arch \
     "Libation=libation" "Pay Respects=pay-respects-bin" \
     "PIA VPN=privateinternetaccess-bin" "PowerShell=powershell-bin" \
     "ProtonVPN=protonvpn" "Snap (snapd)=snapd" "Snapper GUI=snapper-gui" \
-    "Stacer=stacer-bin" "Termius SSH Client=termius-deb" "Trojita=trojita" \
+    "Stacer=stacer-bin" "Trojita=trojita" \
     "Visual Studio Code=visual-studio-code-bin" "Zotero=zotero"
