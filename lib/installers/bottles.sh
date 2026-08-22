@@ -15,7 +15,7 @@ install_bottles() {
         *)
             # Flatpak is the officially supported distribution method
             if has_flatpak; then
-                flatpak install -y flathub com.usebottles.bottles
+                sudo flatpak install -y flathub com.usebottles.bottles
             else
                 error "Bottles requires Flatpak on this system. Install Flatpak first."
                 return 1

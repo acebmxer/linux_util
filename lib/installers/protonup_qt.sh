@@ -15,7 +15,7 @@ install_protonup_qt() {
         *)
             # Flatpak is the primary distribution method on all other distros
             if has_flatpak; then
-                flatpak install -y flathub net.davidotek.pupgui2
+                sudo flatpak install -y flathub net.davidotek.pupgui2
             else
                 error "ProtonUp-Qt requires Flatpak on this system. Install Flatpak first."
                 return 1

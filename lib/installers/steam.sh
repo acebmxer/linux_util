@@ -257,7 +257,7 @@ install_steam() {
             echo "Steam is not officially available for RHEL-based distributions."
             if has_flatpak; then
                 echo "Installing via Flatpak..."
-                flatpak install -y flathub com.valvesoftware.Steam
+                sudo flatpak install -y flathub com.valvesoftware.Steam
             else
                 echo "Consider installing Flatpak: https://flatpak.org/setup/"
                 return 1

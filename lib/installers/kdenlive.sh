@@ -17,7 +17,7 @@ install_kdenlive() {
             ;;
         rhel)
             if has_flatpak; then
-                flatpak install -y flathub org.kde.kdenlive
+                sudo flatpak install -y flathub org.kde.kdenlive
             else
                 error "Kdenlive requires Flatpak on this RHEL-based system. Install Flatpak first."
                 return 1
@@ -29,7 +29,7 @@ install_kdenlive() {
         suse)
             sudo zypper install -y kdenlive 2>/dev/null || {
                 if has_flatpak; then
-                    flatpak install -y flathub org.kde.kdenlive
+                    sudo flatpak install -y flathub org.kde.kdenlive
                 else
                     error "Kdenlive requires Flatpak on this openSUSE system."
                     return 1

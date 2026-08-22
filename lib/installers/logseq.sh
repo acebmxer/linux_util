@@ -19,7 +19,7 @@ install_logseq() {
         *)
             # Flatpak is the recommended distribution method for most distros
             if has_flatpak; then
-                flatpak install -y flathub com.logseq.Logseq
+                sudo flatpak install -y flathub com.logseq.Logseq
             else
                 _install_logseq_appimage
             fi

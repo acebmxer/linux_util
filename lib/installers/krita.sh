@@ -17,7 +17,7 @@ install_krita() {
             ;;
         rhel)
             if has_flatpak; then
-                flatpak install -y flathub org.kde.krita
+                sudo flatpak install -y flathub org.kde.krita
             else
                 error "Krita requires Flatpak on this RHEL-based system. Install Flatpak first."
                 return 1

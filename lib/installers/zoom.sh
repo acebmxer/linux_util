@@ -35,7 +35,7 @@ install_zoom() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub us.zoom.Zoom
+                sudo flatpak install -y flathub us.zoom.Zoom
             else
                 local tmpfile
                 tmpfile=$(mktemp /tmp/zoom-XXXXXX.rpm)

@@ -29,7 +29,7 @@ install_vlc() {
             sudo "$PKG_MGR" install -y vlc 2>/dev/null || {
                 warn "VLC not found in repos. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub org.videolan.VLC
+                    sudo flatpak install -y flathub org.videolan.VLC
                     return $?
                 fi
                 error "VLC requires Flatpak on this RHEL-based system."
@@ -42,7 +42,7 @@ install_vlc() {
         suse)
             sudo zypper install -y vlc 2>/dev/null || {
                 if has_flatpak; then
-                    flatpak install -y flathub org.videolan.VLC
+                    sudo flatpak install -y flathub org.videolan.VLC
                 else
                     error "VLC requires Flatpak on this openSUSE system."
                     return 1

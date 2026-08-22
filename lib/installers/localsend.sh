@@ -154,7 +154,7 @@ install_localsend() {
                 error "Flatpak is required to install LocalSend on ${DISTRO_NAME} (upstream publishes no .rpm)."
                 return 1
             }
-            flatpak install -y flathub org.localsend.localsend_app || return 1
+            sudo flatpak install -y flathub org.localsend.localsend_app || return 1
             ;;
         arch)
             # Not in the official Arch repos — Flathub first, AUR as fallback.

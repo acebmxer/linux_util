@@ -82,7 +82,7 @@ install_devolutions_rdm() {
             # openSUSE support via Flatpak or snap (as direct repos may not be available)
             if ensure_flatpak; then
                 echo "Installing via Flatpak..."
-                flatpak install -y flathub com.devolutions.RemoteDesktopManager
+                sudo flatpak install -y flathub com.devolutions.RemoteDesktopManager
             elif has_snap; then
                 echo "Installing via Snap..."
                 sudo snap install remote-desktop-manager
@@ -96,7 +96,7 @@ install_devolutions_rdm() {
             # Fallback to Flatpak or Snap
             if ensure_flatpak; then
                 echo "Installing via Flatpak..."
-                flatpak install -y flathub com.devolutions.RemoteDesktopManager
+                sudo flatpak install -y flathub com.devolutions.RemoteDesktopManager
             elif has_snap; then
                 echo "Installing via Snap..."
                 sudo snap install remote-desktop-manager

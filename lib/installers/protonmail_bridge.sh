@@ -24,7 +24,7 @@ install_protonmail_bridge() {
         error "Proton Mail Bridge is distributed as a Flatpak here, but Flatpak could not be set up."
         return 1
     fi
-    flatpak install -y flathub "$_PROTONMAIL_BRIDGE_FLATPAK" || return 1
+    sudo flatpak install -y flathub "$_PROTONMAIL_BRIDGE_FLATPAK" || return 1
     info "Proton Mail Bridge installed."
     info "Bridge requires a paid Proton Mail plan — it will not accept a free account."
     info "It also needs a running secret service (gnome-keyring, kwallet, or pass)"

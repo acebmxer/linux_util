@@ -106,7 +106,13 @@ flatpak_or_aur() {
         warn "Repo install of ${repo_pkg} failed; falling back to Flatpak/AUR."
     fi
     if has_flatpak && ensure_flatpak; then
-        flatpak install -y flathub "$flatpak_id" && return 0
+        # sudo, not bare flatpak: ensure_flatpak adds flathub as a SYSTEM remote,
+        # so this deploys system-wide. An unprivileged process asking
+        # flatpak-system-helper to do that is refused by polkit outright
+        # ("Flatpak system operation Deploy not allowed for user") whenever no
+        # authentication agent is reachable -- and it is refused only after the
+        # whole download has completed.
+        sudo flatpak install -y flathub "$flatpak_id" && return 0
         warn "Flatpak install of ${flatpak_id} failed; falling back to the AUR."
     fi
     aur_ensure "$aur_pkg"
@@ -141,7 +147,8 @@ arch_install_ordered() {
     # 2. Flathub. Only when flatpak is already present: pulling in the whole
     #    runtime stack to avoid a lower tier is a worse trade than using it.
     if [[ -n "$flatpak_id" ]] && has_flatpak && ensure_flatpak; then
-        if flatpak install -y flathub "$flatpak_id"; then
+        # sudo is required here -- see the note in flatpak_or_aur above.
+        if sudo flatpak install -y flathub "$flatpak_id"; then
             return 0
         fi
         warn "Flatpak install of ${flatpak_id} failed; trying the next source."

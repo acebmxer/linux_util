@@ -49,7 +49,7 @@ install_standard_notes() {
             ;;
         fedora|rhel)
             if has_flatpak; then
-                flatpak install -y flathub org.standardnotes.standardnotes
+                sudo flatpak install -y flathub org.standardnotes.standardnotes
             else
                 _sn_install_appimage
             fi
@@ -61,7 +61,7 @@ install_standard_notes() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub org.standardnotes.standardnotes
+                sudo flatpak install -y flathub org.standardnotes.standardnotes
             else
                 _sn_install_appimage
             fi

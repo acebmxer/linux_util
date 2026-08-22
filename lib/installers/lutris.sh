@@ -40,7 +40,7 @@ install_lutris() {
                 sudo zypper refresh
                 sudo zypper install -y lutris
             elif has_flatpak; then
-                flatpak install -y flathub net.lutris.Lutris
+                sudo flatpak install -y flathub net.lutris.Lutris
             else
                 error "Could not install Lutris on this openSUSE system."
                 return 1

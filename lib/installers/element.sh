@@ -21,7 +21,7 @@ install_element() {
             ;;
         fedora|rhel)
             if has_flatpak; then
-                flatpak install -y flathub im.riot.Riot
+                sudo flatpak install -y flathub im.riot.Riot
             else
                 error "Element requires Flatpak on this system. Install Flatpak first."
                 return 1
@@ -32,7 +32,7 @@ install_element() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub im.riot.Riot
+                sudo flatpak install -y flathub im.riot.Riot
             else
                 error "Element requires Flatpak on this openSUSE system. Install Flatpak first."
                 return 1

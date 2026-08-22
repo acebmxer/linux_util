@@ -67,7 +67,7 @@ install_protonvpn() {
             ;;
         rhel)
             if has_flatpak; then
-                flatpak install -y flathub com.protonvpn.www
+                sudo flatpak install -y flathub com.protonvpn.www
             else
                 error "ProtonVPN requires Flatpak on RHEL-based systems without the official repo."
                 return 1
@@ -81,7 +81,7 @@ install_protonvpn() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub com.protonvpn.www
+                sudo flatpak install -y flathub com.protonvpn.www
             else
                 error "ProtonVPN requires Flatpak on openSUSE."
                 return 1

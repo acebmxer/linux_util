@@ -11,7 +11,7 @@ install_distroshelf() {
         error "DistroShelf is distributed via Flatpak — run 'Flatpak Setup' from the Package Managers category first."
         return 1
     fi
-    flatpak install -y flathub com.ranfdev.DistroShelf || return 1
+    sudo flatpak install -y flathub com.ranfdev.DistroShelf || return 1
     _have_cmd distrobox || \
         warn "DistroShelf is a front-end for Distrobox — install Distrobox too (same subcategory)."
     info "DistroShelf installed."

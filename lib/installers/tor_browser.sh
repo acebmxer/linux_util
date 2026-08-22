@@ -23,7 +23,7 @@ install_tor_browser() {
             sudo "$PKG_MGR" install -y torbrowser-launcher 2>/dev/null || {
                 warn "torbrowser-launcher not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub com.github.micahflee.torbrowser-launcher
+                    sudo flatpak install -y flathub com.github.micahflee.torbrowser-launcher
                     return $?
                 fi
                 error "Tor Browser requires Flatpak on this RHEL-based system."
@@ -35,7 +35,7 @@ install_tor_browser() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub com.github.micahflee.torbrowser-launcher
+                sudo flatpak install -y flathub com.github.micahflee.torbrowser-launcher
             else
                 error "Tor Browser requires Flatpak on this openSUSE system. Install Flatpak first."
                 return 1

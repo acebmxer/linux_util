@@ -1882,17 +1882,26 @@ test_flatpak_or_aur_uses_aur_without_flatpak() {
         grep -q "ENSURE_FLATPAK_CALLED" <<< "$out"
 }
 
+# The flathub remote is added system-wide (sudo flatpak remote-add), so the
+# install deploys system-wide too and MUST be elevated: an unprivileged process
+# is refused by polkit with "Flatpak system operation Deploy not allowed for
+# user" -- and only after the whole download has finished. The sudo stub
+# forwards to the flatpak stub so both halves are asserted here, and so the
+# suite can never shell out to real sudo.
 test_flatpak_or_aur_prefers_flathub() {
     local out
     out=$(
         has_flatpak() { return 0; }
         ensure_flatpak() { return 0; }
+        sudo() { echo "SUDO_CALLED"; "$@"; }
         flatpak() { echo "FLATPAK_CALLED $*"; return 0; }
         aur_ensure() { echo "AUR_CALLED"; }
         flatpak_or_aur com.slack.Slack slack-desktop 2>&1
     )
     assert_contains "$out" "FLATPAK_CALLED install -y flathub com.slack.Slack" \
         "flatpak_or_aur installs the Flathub app when flatpak is set up"
+    assert_contains "$out" "SUDO_CALLED" \
+        "flatpak_or_aur installs the Flathub app with root privileges"
     assert_false "flatpak_or_aur does not also hit the AUR on a successful Flatpak install" \
         grep -q "AUR_CALLED" <<< "$out"
 }
@@ -1903,6 +1912,7 @@ test_flatpak_or_aur_falls_back_on_flatpak_failure() {
     out=$(
         has_flatpak() { return 0; }
         ensure_flatpak() { return 0; }
+        sudo() { "$@"; }
         flatpak() { return 1; }
         aur_ensure() { echo "AUR_CALLED"; }
         flatpak_or_aur com.slack.Slack slack-desktop 2>&1
@@ -1911,11 +1921,68 @@ test_flatpak_or_aur_falls_back_on_flatpak_failure() {
         "flatpak_or_aur falls back to the AUR when the Flatpak install fails"
 }
 
+# --- arch_install_ordered: the tier ladder ---
+# repos -> Flathub -> upstream binary -> AUR. The binary tier is what keeps a
+# package installable at all once AUR_ENABLED stays false, so its position
+# between Flathub and the AUR is load-bearing.
+test_arch_install_ordered_flatpak_tier_is_elevated() {
+    local out
+    out=$(
+        arch_repo_has() { return 1; }
+        has_flatpak() { return 0; }
+        ensure_flatpak() { return 0; }
+        sudo() { echo "SUDO_CALLED"; "$@"; }
+        flatpak() { echo "FLATPAK_CALLED $*"; return 0; }
+        aur_ensure() { echo "AUR_CALLED"; }
+        arch_install_ordered "" com.slack.Slack "" slack-desktop 2>&1
+    )
+    assert_contains "$out" "FLATPAK_CALLED install -y flathub com.slack.Slack" \
+        "arch_install_ordered installs from Flathub when the repos miss"
+    assert_contains "$out" "SUDO_CALLED" \
+        "arch_install_ordered runs the Flathub tier with root privileges"
+}
+
+test_arch_install_ordered_prefers_binary_over_aur() {
+    local out
+    out=$(
+        arch_repo_has() { return 1; }
+        has_flatpak() { return 1; }
+        _fake_binary_install() { echo "BINARY_CALLED"; return 0; }
+        aur_ensure() { echo "AUR_CALLED"; }
+        arch_install_ordered "nope" com.example.App _fake_binary_install some-aur-pkg 2>&1
+    )
+    assert_contains "$out" "BINARY_CALLED" \
+        "arch_install_ordered uses the upstream binary when repos and Flathub are unavailable"
+    assert_false "arch_install_ordered does not reach the AUR when the upstream binary succeeds" \
+        grep -q "AUR_CALLED" <<< "$out"
+}
+
+test_arch_install_ordered_binary_catches_flatpak_failure() {
+    local out
+    out=$(
+        arch_repo_has() { return 1; }
+        has_flatpak() { return 0; }
+        ensure_flatpak() { return 0; }
+        sudo() { "$@"; }
+        flatpak() { return 1; }
+        _fake_binary_install() { echo "BINARY_CALLED"; return 0; }
+        aur_ensure() { echo "AUR_CALLED"; }
+        arch_install_ordered "" com.example.App _fake_binary_install some-aur-pkg 2>&1
+    )
+    assert_contains "$out" "BINARY_CALLED" \
+        "arch_install_ordered falls to the upstream binary when the Flatpak install fails"
+    assert_false "a failed Flatpak install does not skip the binary tier and hit the AUR" \
+        grep -q "AUR_CALLED" <<< "$out"
+}
+
 test_repo_or_aur_prefers_pacman
 test_repo_or_aur_falls_back_to_aur
 test_flatpak_or_aur_uses_aur_without_flatpak
 test_flatpak_or_aur_prefers_flathub
 test_flatpak_or_aur_falls_back_on_flatpak_failure
+test_arch_install_ordered_flatpak_tier_is_elevated
+test_arch_install_ordered_prefers_binary_over_aur
+test_arch_install_ordered_binary_catches_flatpak_failure
 
 # --- AUR disabled-by-default kill switch ---
 
@@ -2802,6 +2869,78 @@ test_trcc_asset_url_reports_no_match
 test_trcc_download_reports_a_missing_asset
 test_trcc_rpm_unmet_requires_escapes_glob_brackets
 test_trcc_rpm_unmet_requires_names_what_is_missing
+
+# ============================================================================
+# Visual Studio Code Tests
+# ============================================================================
+echo ""
+echo "=== Visual Studio Code Tests ==="
+
+source "${SCRIPT_DIR}/lib/installers/vscode.sh"
+
+# Microsoft publishes no pacman repo, so on Arch the vendor tarball IS the
+# non-AUR path. If it is not wired into the binary tier, a machine whose repos
+# lack the package and whose Flatpak install fails has nowhere left to go --
+# exactly the failure this tier was added to close.
+test_vscode_arch_wires_the_microsoft_tarball() {
+    local out
+    out=$(
+        DISTRO_FAMILY=arch
+        ensure_tools() { :; }
+        arch_install_ordered() { echo "TIERS: $*"; }
+        install_vscode 2>&1
+    )
+    assert_contains "$out" "TIERS: visual-studio-code-bin com.visualstudio.code _vscode_install_tarball visual-studio-code-bin" \
+        "install_vscode passes the Microsoft tarball as the upstream-binary tier on Arch"
+}
+
+test_vscode_update_wires_the_microsoft_tarball() {
+    local out
+    out=$(
+        DISTRO_FAMILY=arch
+        arch_install_ordered() { echo "TIERS: $*"; }
+        update_vscode 2>&1
+    )
+    assert_contains "$out" "_vscode_install_tarball" \
+        "update_vscode also routes through the Microsoft tarball tier on Arch"
+}
+
+_vscode_tarball_fn_exists() { declare -F _vscode_install_tarball >/dev/null; }
+test_vscode_tarball_installer_is_defined() {
+    assert_true "_vscode_install_tarball is defined" _vscode_tarball_fn_exists
+}
+
+# ~/.local/bin is not always on PATH, so the version must come from the install
+# tree rather than from running the binary.
+test_vscode_version_reads_the_install_tree() {
+    local tmp
+    tmp=$(mktemp -d)
+    mkdir -p "$tmp/resources/app"
+    echo "{\"name\":\"Code\",\"version\":\"1.99.3\",\"distro\":\"x\"}" > "$tmp/resources/app/package.json"
+    local out
+    out=$(
+        _VSCODE_DIR="$tmp"
+        _run_native() { echo "SHOULD_NOT_RUN"; }
+        get_version_vscode
+    )
+    assert_eq "1.99.3" "$out" "get_version_vscode reads the version from the installed package.json"
+    rm -rf "$tmp"
+}
+
+test_vscode_remove_tarball_reports_nothing_to_do() {
+    local out
+    out=$(
+        _VSCODE_DIR="/nonexistent/vscode/path"
+        _vscode_remove_tarball && echo "REMOVED"
+    )
+    assert_eq "" "$out" "_vscode_remove_tarball returns non-zero when no tarball install is present"
+}
+
+test_vscode_arch_wires_the_microsoft_tarball
+test_vscode_update_wires_the_microsoft_tarball
+test_vscode_tarball_installer_is_defined
+test_vscode_version_reads_the_install_tree
+test_vscode_remove_tarball_reports_nothing_to_do
 
 # ============================================================================
 # Results Summary

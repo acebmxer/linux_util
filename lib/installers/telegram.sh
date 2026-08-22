@@ -17,7 +17,7 @@ install_telegram() {
                 sudo snap install telegram-desktop
             elif has_flatpak; then
                 info "telegram-desktop not in apt repos. Installing via Flatpak..."
-                flatpak install -y flathub org.telegram.desktop
+                sudo flatpak install -y flathub org.telegram.desktop
             else
                 error "telegram-desktop not available via apt, snap, or Flatpak."
                 return 1
@@ -31,7 +31,7 @@ install_telegram() {
             sudo "$PKG_MGR" install -y telegram-desktop 2>/dev/null || {
                 warn "telegram-desktop not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub org.telegram.desktop
+                    sudo flatpak install -y flathub org.telegram.desktop
                 else
                     error "Telegram requires Flatpak on this system."
                     return 1
@@ -44,7 +44,7 @@ install_telegram() {
         suse)
             sudo zypper install -y telegram-desktop 2>/dev/null || {
                 if has_flatpak; then
-                    flatpak install -y flathub org.telegram.desktop
+                    sudo flatpak install -y flathub org.telegram.desktop
                 else
                     error "Telegram requires Flatpak on this openSUSE system."
                     return 1

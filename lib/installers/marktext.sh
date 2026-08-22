@@ -113,7 +113,7 @@ install_marktext() {
             if ! wget -qO "$tmpfile" "$url"; then
                 warn "Direct .deb download failed. Falling back to Flatpak..."
                 if has_flatpak; then
-                    flatpak install -y flathub com.github.marktext.marktext
+                    sudo flatpak install -y flathub com.github.marktext.marktext
                     return $?
                 fi
                 error "Mark Text installation failed."
@@ -123,7 +123,7 @@ install_marktext() {
             ;;
         fedora|rhel)
             if has_flatpak; then
-                flatpak install -y flathub com.github.marktext.marktext
+                sudo flatpak install -y flathub com.github.marktext.marktext
             else
                 error "Mark Text requires Flatpak on this system. Install Flatpak first."
                 return 1
@@ -136,7 +136,7 @@ install_marktext() {
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub com.github.marktext.marktext
+                sudo flatpak install -y flathub com.github.marktext.marktext
             else
                 error "Mark Text requires Flatpak on this openSUSE system. Install Flatpak first."
                 return 1

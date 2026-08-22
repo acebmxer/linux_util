@@ -12,7 +12,7 @@ install_boxflat() {
         # Distro repo build (CachyOS and friends) beats Flatpak: signed, no runtime.
         repo_or_aur boxflat-git || return 1
     elif has_flatpak; then
-        flatpak install -y flathub io.github.lawstorant.boxflat || return 1
+        sudo flatpak install -y flathub io.github.lawstorant.boxflat || return 1
     elif [[ "$DISTRO_FAMILY" == "arch" ]]; then
         # Fall back to the AUR git package when Flatpak is unavailable on Arch.
         repo_or_aur boxflat-git || return 1

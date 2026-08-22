@@ -112,7 +112,7 @@ install_zen_browser() {
         :
     elif has_flatpak; then
         info "Tarball install unavailable — falling back to Flatpak."
-        flatpak install -y flathub "$_ZEN_FLATPAK_ID"
+        sudo flatpak install -y flathub "$_ZEN_FLATPAK_ID"
     else
         error "Could not install the Zen Browser tarball and Flatpak is not available."
         return 1

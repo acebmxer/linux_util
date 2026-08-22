@@ -39,7 +39,7 @@ EOF
             ;;
         rhel)
             if has_flatpak; then
-                flatpak install -y flathub io.gitlab.librewolf-community.librewolf
+                sudo flatpak install -y flathub io.gitlab.librewolf-community.librewolf
             else
                 error "LibreWolf requires Flatpak on this RHEL-based system. Install Flatpak first."
                 return 1
@@ -49,7 +49,7 @@ EOF
             if arch_repo_has librewolf && pkg_install librewolf; then
                 :
             elif has_flatpak && ensure_flatpak; then
-                flatpak install -y flathub io.gitlab.librewolf-community.librewolf
+                sudo flatpak install -y flathub io.gitlab.librewolf-community.librewolf
             else
                 error "LibreWolf is not in this system's repos and Flatpak is not installed."
                 return 1
@@ -57,7 +57,7 @@ EOF
             ;;
         suse)
             if has_flatpak; then
-                flatpak install -y flathub io.gitlab.librewolf-community.librewolf
+                sudo flatpak install -y flathub io.gitlab.librewolf-community.librewolf
             else
                 error "LibreWolf requires Flatpak on this openSUSE system. Install Flatpak first."
                 return 1

@@ -14,7 +14,7 @@ install_handbrake() {
                 sudo apt install -y handbrake-gtk 2>/dev/null || {
                     warn "handbrake not in repos. Falling back to Flatpak..."
                     if has_flatpak; then
-                        flatpak install -y flathub fr.handbrake.ghb
+                        sudo flatpak install -y flathub fr.handbrake.ghb
                         return $?
                     fi
                     error "HandBrake requires Flatpak on this system."
@@ -31,7 +31,7 @@ install_handbrake() {
             ;;
         rhel)
             if has_flatpak; then
-                flatpak install -y flathub fr.handbrake.ghb
+                sudo flatpak install -y flathub fr.handbrake.ghb
             else
                 error "HandBrake requires Flatpak on this RHEL-based system. Install Flatpak first."
                 return 1
@@ -43,7 +43,7 @@ install_handbrake() {
         suse)
             sudo zypper install -y handbrake 2>/dev/null || {
                 if has_flatpak; then
-                    flatpak install -y flathub fr.handbrake.ghb
+                    sudo flatpak install -y flathub fr.handbrake.ghb
                 else
                     error "HandBrake requires Flatpak on this openSUSE system."
                     return 1

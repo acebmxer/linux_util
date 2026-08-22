@@ -89,6 +89,41 @@ when a release is cut.
 
 ### Fixed
 
+- **Every Flatpak install failed on systems with no polkit agent**, taking the
+  Arch fallback ladder down with it. `ensure_flatpak` adds flathub as a *system*
+  remote (`sudo flatpak remote-add`), so `flatpak install -y flathub <id>`
+  deploys system-wide — but it was invoked unprivileged at all 76 call sites.
+  An unprivileged process asking `flatpak-system-helper` to deploy is refused by
+  polkit outright ("Flatpak system operation Deploy not allowed for user"), and
+  it is refused *after* the whole download finishes: an attempted VS Code
+  install pulled ~700 MB of runtime, was denied, and then did it twice more
+  through the retry logic. All 76 sites now run under `sudo`, matching the
+  Termius installer, which already handled this. The only bare `flatpak install`
+  left is the advice string printed by the PIA VPN installer, where a user
+  typing it interactively does get a polkit prompt.
+
+- **Visual Studio Code could not be installed on Arch at all** once the Flatpak
+  tier was failing. Microsoft publishes no pacman repository —
+  `packages.microsoft.com` serves apt and yum repos only, and their Linux docs
+  send Arch users to the AUR, which this tool keeps disabled — so the
+  upstream-binary tier of `arch_install_ordered` was left empty and the ladder
+  ran out of rungs. Microsoft does publish a distro-agnostic x64 tarball, and it
+  is exactly what the AUR's `visual-studio-code-bin` repackages, so the Arch
+  path now fetches it straight from the vendor: unpacked per-user to
+  `~/.local/share/vscode`, symlinked to `~/.local/bin/code`, with a `.desktop`
+  entry and the icon shipped inside the archive. Tier order is unchanged —
+  repos → Flathub → **Microsoft tarball** → AUR (disabled) — so a derivative
+  that carries the package in its own repos still wins. `check`, `update`,
+  `uninstall` and version reporting all understand the tarball copy; the version
+  is read from `resources/app/package.json` rather than by running the binary,
+  since `~/.local/bin` is not always on PATH. Note the endpoint publishes no
+  checksum or signature (the AUR PKGBUILD does not verify one either), so HTTPS
+  to the vendor is the guarantee, as with the Termius and Zen Browser paths.
+  The ~330 MB download calls `curl` directly with a 30-minute cap rather than
+  going through `download_file`, whose 30-second `--max-time` is a *total*
+  limit no download that size can meet — the same reason the OCCT installer
+  bypasses it.
+
 - **Steam failed to install on CachyOS** with "unresolvable package conflicts
   detected". Steam depends on the virtual `vulkan-driver` and
   `lib32-vulkan-driver`; nothing in a default install provides them, because

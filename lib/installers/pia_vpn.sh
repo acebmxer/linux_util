@@ -37,7 +37,7 @@ install_pia_vpn() {
         suse)
             # For openSUSE, try Flatpak as primary method
             if has_flatpak; then
-                flatpak install -y flathub com.privateinternetaccess.PIA
+                sudo flatpak install -y flathub com.privateinternetaccess.PIA
             else
                 echo "PIA is not available in default openSUSE repositories."
                 echo "Please install Flatpak and use: flatpak install flathub com.privateinternetaccess.PIA"
