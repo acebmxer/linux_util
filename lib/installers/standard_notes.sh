@@ -55,11 +55,9 @@ install_standard_notes() {
             fi
             ;;
         arch)
-            if has_flatpak && ensure_flatpak; then
-                flatpak install -y flathub org.standardnotes.standardnotes
-            else
-                _sn_install_appimage
-            fi
+            # Tier order: repos, then Flathub, then upstream's own binary.
+            # The AUR is not a tier here -- see this file's header.
+            arch_install_ordered "standard-notes" "org.standardnotes.standardnotes" "_sn_install_appimage" "" || return 1
             ;;
         suse)
             if has_flatpak; then

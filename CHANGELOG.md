@@ -89,6 +89,43 @@ when a release is cut.
 
 ### Fixed
 
+- **Steam failed to install on CachyOS** with "unresolvable package conflicts
+  detected". Steam depends on the virtual `vulkan-driver` and
+  `lib32-vulkan-driver`; nothing in a default install provides them, because
+  `mesa` provides `opengl-driver` and `libva-driver` but not `vulkan-driver`. So
+  pacman must pick a provider, and `--noconfirm` makes it take the first one
+  offered — which repo order decides, not suitability. On plain Arch that list
+  starts at `extra` and any pick works, which is why other distros never showed
+  this. CachyOS inserts `cachyos-v3` and `cachyos` ahead of `extra` and they
+  carry `mesa-git`, so provider #1 became `mesa-git`/`lib32-mesa-git`, whose
+  `conflicts=('mesa')` collides with the stable `mesa` CachyOS itself installed,
+  aborting the transaction. Being deterministic, all three retries reproduced it
+  exactly. The dependency is now settled explicitly *before* Steam is requested,
+  using `pacman -T` to leave an existing provider alone and otherwise installing
+  `vulkan-swrast` (Lavapipe) — a software rasteriser that needs no GPU, so it
+  works in a VM, headless, or on any hardware, and conflicts with nothing.
+  **Installing Steam no longer depends on what graphics hardware is present.**
+  A matching hardware driver is added afterwards as a pure optimisation that can
+  never fail the install; a virtual adapter (QXL, VMware SVGA, Bochs, VirtualBox)
+  matches nothing and correctly stays on software rendering. This also replaces
+  a shotgun `lib32-vulkan-intel lib32-vulkan-radeon lib32-nvidia-utils` install
+  that pulled the NVIDIA stack onto AMD machines and, with `2>/dev/null || true`,
+  silently installed nothing whenever one name in the batch failed.
+- **Enable RDP could not install on Arch, and reported success anyway.** The
+  Arch branch ran `pacman -S --noconfirm xrdp`, but `xrdp` is AUR-only (152
+  votes) and absent from Arch's repos and from CachyOS's, so it could only fail
+  with "target not found". `xorgxrdp` — also AUR-only — was never installed at
+  all, and without it sesman has no Xorg backend and logins fail with "X server
+  could not be started", the same reason the Fedora branch installs it
+  explicitly. Both now go through `repo_or_aur`, which still probes the repos
+  first. Nothing checked any of the results, so the installer printed "xrdp
+  installed and started" after the failed install and failed `systemctl`, and
+  the runner logged "Successfully installed: Enable RDP" for a machine with no
+  xrdp on it — only the health check dissented. The Arch branch now fails on a
+  bad install or a failed enable/start, and a final `systemctl is-active` gate
+  applies to **every** family, so success is never reported for a service that
+  is not running. Enable RDP is marked AUR-only on Arch accordingly.
+
 - **Mark Text on Arch ran on Electron 15, and its Debian download never
   worked.** The `marktext` AUR package pins `_electron=electron15` and rewrites
   `package.json` so the app runs on that system runtime instead of the Electron
@@ -159,8 +196,8 @@ when a release is cut.
   AUR.** 33 installers called `aur_ensure` directly, so on an Arch derivative
   that packages the software itself the tool ignored the repo build and demanded
   an AUR helper plus `AUR_ENABLED=true`. CachyOS ships `brave-bin`,
-  `google-chrome` and many other AUR-named packages in its own repos, where
-  `sudo pacman -S brave-bin` just works — but Brave Browser, Brave Origin, Google
+  `brave-origin-bin`, `zotero` and other AUR-named packages in its own repos,
+  where `sudo pacman -S brave-bin` just works — but Brave Browser, Brave Origin, Google
   Chrome, VS Code and the rest of the AUR-only list were hidden from the menu
   entirely and unreachable. Every one of those call sites now goes through
   `repo_or_aur`, which tries `pacman -S --needed` first and only reaches for the

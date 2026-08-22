@@ -112,6 +112,58 @@ flatpak_or_aur() {
     aur_ensure "$aur_pkg"
 }
 
+# The project's install-source policy for Arch, in one place. Tiers, in order:
+#
+#   1. pacman, from any configured repo -- distro-signed, dependency-tracked,
+#      and on a derivative like CachyOS this covers packages that are AUR-only
+#      on upstream Arch (brave-bin, brave-origin-bin, zotero).
+#   2. Flatpak from Flathub -- sandboxed but vendor-published and versioned.
+#   3. An upstream binary the caller unpacks itself (AppImage, tarball, .deb
+#      payload), passed as a function name.
+#   4. The AUR, last, and only when AUR_ENABLED=true -- which it is NOT by
+#      default (see AUR_ENABLED above). AUR packages are unreviewed build
+#      scripts that run as root, so this tier is opt-in and must never be
+#      reached while a higher tier can satisfy the request.
+#
+# Usage: arch_install_ordered <repo_pkg> <flatpak_id> <binary_fn> <aur_pkg>
+# Any tier may be "" to skip it. Returns 0 on the first tier that succeeds.
+arch_install_ordered() {
+    local repo_pkg="$1" flatpak_id="$2" binary_fn="$3" aur_pkg="$4"
+
+    # 1. repos
+    if [[ -n "$repo_pkg" ]] && arch_repo_has "$repo_pkg"; then
+        if sudo pacman -S --noconfirm --needed "$repo_pkg"; then
+            return 0
+        fi
+        warn "Repo install of ${repo_pkg} failed; trying the next source."
+    fi
+
+    # 2. Flathub. Only when flatpak is already present: pulling in the whole
+    #    runtime stack to avoid a lower tier is a worse trade than using it.
+    if [[ -n "$flatpak_id" ]] && has_flatpak && ensure_flatpak; then
+        if flatpak install -y flathub "$flatpak_id"; then
+            return 0
+        fi
+        warn "Flatpak install of ${flatpak_id} failed; trying the next source."
+    fi
+
+    # 3. upstream binary
+    if [[ -n "$binary_fn" ]] && declare -F "$binary_fn" >/dev/null; then
+        if "$binary_fn"; then
+            return 0
+        fi
+        warn "Upstream binary install failed; trying the next source."
+    fi
+
+    # 4. the AUR -- refuses on its own unless AUR_ENABLED=true
+    if [[ -n "$aur_pkg" ]]; then
+        aur_ensure "$aur_pkg" && return 0
+    fi
+
+    error "No available install source succeeded for this package."
+    return 1
+}
+
 aur_remove() {
     _aur_helper_run -Rs --noconfirm "$@" || sudo pacman -Rs --noconfirm "$@"
 }

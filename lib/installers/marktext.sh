@@ -130,11 +130,9 @@ install_marktext() {
             fi
             ;;
         arch)
-            if has_flatpak && ensure_flatpak; then
-                flatpak install -y flathub com.github.marktext.marktext
-            else
-                _mt_install_tarball || return 1
-            fi
+            # Tier order: repos, then Flathub, then upstream's own binary.
+            # The AUR is not a tier here -- see this file's header.
+            arch_install_ordered "marktext" "com.github.marktext.marktext" "_mt_install_tarball" "" || return 1
             ;;
         suse)
             if has_flatpak; then

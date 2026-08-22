@@ -1077,12 +1077,13 @@ UTILITY_DESCRIPTION["paru"]="Feature-rich AUR helper for Arch-family distros, wr
 # entry stays visible, installing with plain pacman, wherever the configured
 # repos carry the package. Keep the package name in sync with the repo_or_aur
 # call in the matching lib/installers/*.sh file.
+# AnyDesk, Boxflat, Google Chrome and Visual Studio Code are NOT listed: each
+# now has a Flathub tier ahead of the AUR. PowerShell and Libation are not
+# listed either -- both install from upstream's own binaries. See
+# arch_install_ordered in lib/aur.sh for the tier order.
 mark_aur_only_arch \
-    "AnyDesk=anydesk-bin" "Boxflat=boxflat-git" \
     "Brave Browser=brave-bin" "Brave Origin=brave-origin-bin" \
     "Devolutions RDM=remote-desktop-manager" \
-    "Euro-Office=euro-office-desktopeditors-git" "Google Chrome=google-chrome" \
-    "Libation=libation" "PowerShell=powershell-bin" \
+    "Euro-Office=euro-office-desktopeditors-git" \
     "Snap (snapd)=snapd" "Snapper GUI=snapper-gui-git" \
-    "Stacer=stacer-bin" "Trojita=trojita" \
-    "Visual Studio Code=visual-studio-code-bin" "Zotero=zotero"
+    "Trojita=trojita" "Zotero=zotero"

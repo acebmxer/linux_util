@@ -280,6 +280,105 @@ _xrdp_configure_kwallet_pam() {
     _xrdp_kwallet_postamble "$pam_file"
 }
 
+# --- Arch: build xrdp from upstream source ---
+#
+# Neither xrdp nor xorgxrdp is packaged in any Arch repo, and CachyOS does not
+# carry them either, so `pacman -S xrdp` could only ever fail with "target not
+# found". The AUR is not an option: it is disabled in this tool.
+#
+# There is also no upstream binary to unpack instead. neutrinolabs publishes
+# source only -- release v0.10.6.1 consists of exactly xrdp-0.10.6.1.tar.gz and
+# its .asc signature, no .deb, .rpm, AppImage or static build -- which is why
+# Debian, Fedora and EPEL all compile it for their own packages. So this branch
+# compiles the same released tarball those distros do.
+#
+# The tarballs ship a pre-generated configure script, so autoconf/automake/
+# libtool are NOT needed; the documented prerequisites are just a compiler,
+# make, and the openssl/pam/libX11/libXfixes/libXrandr headers, plus nasm and
+# the Xorg server SDK for xorgxrdp. Arch does not split -devel packages, so the
+# ordinary library packages carry the headers.
+_XRDP_GH_API="https://api.github.com/repos/neutrinolabs/xrdp/releases/latest"
+_XORGXRDP_GH_API="https://api.github.com/repos/neutrinolabs/xorgxrdp/releases/latest"
+
+# Fetch, configure, build and install one project. $1=API url, $2=tarball stem,
+# $3=work dir; remaining arguments are passed to ./configure.
+_xrdp_fetch_and_build() {
+    local api="$1" name="$2" workdir="$3"
+    shift 3
+    local url tarball srcdir
+
+    url=$(curl -fsSL "$api" 2>/dev/null \
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+' \
+        | grep -m1 -E "/${name}-[0-9][^/]*\.tar\.gz$")
+    if [[ -z "$url" ]]; then
+        error "Could not find a ${name} source tarball in the latest release."
+        return 1
+    fi
+
+    tarball="$workdir/$(basename "$url")"
+    info "Downloading ${name} source..."
+    wget -qO "$tarball" "$url" || { error "Failed to download ${name}."; return 1; }
+    tar xzf "$tarball" -C "$workdir" || { error "Failed to unpack ${name}."; return 1; }
+
+    srcdir=$(find "$workdir" -maxdepth 1 -type d -name "${name}-[0-9]*" | head -1)
+    if [[ ! -d "$srcdir" ]]; then
+        error "Unpacked ${name} tarball has no source directory."
+        return 1
+    fi
+
+    info "Building ${name} (this takes a few minutes)..."
+    if ! ( cd "$srcdir" && ./configure "$@" && make -j"$(nproc 2>/dev/null || echo 2)" ); then
+        error "Failed to build ${name}."
+        return 1
+    fi
+    if ! ( cd "$srcdir" && run_as_root make install ); then
+        error "Failed to install ${name}."
+        return 1
+    fi
+    return 0
+}
+
+_xrdp_install_from_source() {
+    # Arch ships headers in the ordinary library packages, so these are the
+    # documented prerequisites verbatim; each name was checked against the
+    # Arch repos. nasm and xorg-server-devel are xorgxrdp's requirements.
+    info "Installing build dependencies for xrdp..."
+    if ! pkg_install gcc make pkgconf openssl pam libx11 libxfixes libxrandr \
+                     nasm xorg-server-devel fuse3 pixman; then
+        error "Could not install the build dependencies for xrdp."
+        return 1
+    fi
+
+    local workdir
+    workdir=$(mktemp -d /tmp/xrdp-src-XXXXXX) || return 1
+    CLEANUP_FILES+=("$workdir")
+
+    _xrdp_fetch_and_build "$_XRDP_GH_API" xrdp "$workdir" \
+        --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
+        --enable-fuse --enable-pixman || return 1
+
+    # xorgxrdp must be built after xrdp is installed: it locates xrdp through
+    # the xrdp.pc that xrdp's own `make install` drops into /usr/lib/pkgconfig.
+    _xrdp_fetch_and_build "$_XORGXRDP_GH_API" xorgxrdp "$workdir" \
+        --prefix=/usr || return 1
+
+    # make install generates rsakeys.ini via xrdp-keygen but not the TLS
+    # material, which distro packaging normally creates in a post-install step.
+    # Without it, connections negotiating TLS fail.
+    if [[ ! -f /etc/xrdp/cert.pem || ! -f /etc/xrdp/key.pem ]]; then
+        info "Generating a self-signed certificate for xrdp..."
+        run_as_root openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+            -subj "/C=US/ST=None/L=None/O=xrdp/CN=$(hostname)" \
+            -keyout /etc/xrdp/key.pem -out /etc/xrdp/cert.pem 2>/dev/null || \
+            warn "Could not generate an xrdp certificate; TLS connections may fail."
+        run_as_root chmod 600 /etc/xrdp/key.pem 2>/dev/null || true
+    fi
+
+    run_as_root ldconfig 2>/dev/null || true
+    run_as_root systemctl daemon-reload 2>/dev/null || true
+    return 0
+}
+
 install_xrdp() {
     info "Installing xrdp..."
     ensure_tools
@@ -335,9 +434,21 @@ install_xrdp() {
             run_as_root systemctl start xrdp
             ;;
         arch)
-            run_as_root pacman -S --noconfirm xrdp
-            run_as_root systemctl enable xrdp
-            run_as_root systemctl start xrdp
+            # Built from upstream source -- see _xrdp_install_from_source.
+            # A repo package is still preferred if a derivative ever ships one.
+            if arch_repo_has xrdp && pkg_install xrdp xorgxrdp; then
+                :
+            elif ! _xrdp_install_from_source; then
+                return 1
+            fi
+            run_as_root systemctl enable xrdp || {
+                error "Failed to enable xrdp.service."
+                return 1
+            }
+            run_as_root systemctl start xrdp || {
+                error "Failed to start xrdp.service."
+                return 1
+            }
             ;;
         suse)
             run_as_root zypper install -y xrdp
@@ -354,6 +465,16 @@ install_xrdp() {
     # polkit problem and, on KDE, the missing wallet unlock.
     _xrdp_install_polkit_rule
     _xrdp_configure_kwallet_pam
+
+    # Never claim success without checking. The arch branch used to print this
+    # line after "target not found: xrdp" and a failed systemctl, so the runner
+    # reported "Successfully installed: Enable RDP" for a machine with no xrdp
+    # on it at all -- only the health check caught it. This gate applies to
+    # every family, not just the one that exposed the problem.
+    if ! systemctl is-active --quiet xrdp 2>/dev/null; then
+        error "xrdp.service is not running after installation."
+        return 1
+    fi
 
     info "xrdp installed and started."
     return 0

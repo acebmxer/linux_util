@@ -31,7 +31,8 @@ REPO
             sudo "$PKG_MGR" install -y anydesk
             ;;
         arch)
-            repo_or_aur anydesk-bin
+            # repos -> Flathub -> AUR (AUR is disabled by default).
+            arch_install_ordered "anydesk-bin" "com.anydesk.Anydesk" "" "anydesk-bin"
             ;;
         suse)
             sudo zypper addrepo -f "https://rpm.anydesk.com/opensuse/anydesk.repo" anydesk 2>/dev/null || true

@@ -27,7 +27,8 @@ install_vscode() {
             sudo "$PKG_MGR" install -y code
             ;;
         arch)
-            repo_or_aur visual-studio-code-bin
+            # repos -> Flathub -> AUR (AUR is disabled by default).
+            arch_install_ordered "visual-studio-code-bin" "com.visualstudio.code" "" "visual-studio-code-bin"
             ;;
         suse)
             sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
@@ -70,7 +71,8 @@ update_vscode() {
             sudo apt install -y --only-upgrade code
             ;;
         arch)
-            repo_or_aur visual-studio-code-bin
+            # repos -> Flathub -> AUR (AUR is disabled by default).
+            arch_install_ordered "visual-studio-code-bin" "com.visualstudio.code" "" "visual-studio-code-bin"
             ;;
         *)
             pkg_upgrade code

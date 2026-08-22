@@ -30,6 +30,66 @@ _powershell_install_github_deb() {
     rm -f "$_deb_tmp"
 }
 
+# Install PowerShell from Microsoft's own linux tarball.
+#
+# Used on Arch, which has no repo package. This is the same artifact Microsoft
+# publishes for every distro they do not ship a repo for, and the release
+# carries a hashes.sha256 manifest, so the download is verified rather than
+# trusted on TLS alone.
+_PWSH_GH_API="https://api.github.com/repos/PowerShell/PowerShell/releases/latest"
+_PWSH_DIR="/opt/microsoft/powershell"
+_PWSH_LINK="/usr/local/bin/pwsh"
+
+_pwsh_install_tarball() {
+    local machine pattern url tmpdir tarball sums
+    machine=$(uname -m)
+    case "$machine" in
+        x86_64)        pattern='linux-x64\.tar\.gz$' ;;
+        aarch64|arm64) pattern='linux-arm64\.tar\.gz$' ;;
+        armv7l)        pattern='linux-arm32\.tar\.gz$' ;;
+        *) error "Unsupported architecture for PowerShell: ${machine}"; return 1 ;;
+    esac
+
+    url=$(curl -fsSL "$_PWSH_GH_API" 2>/dev/null \
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+' | grep -m1 -E "$pattern")
+    [[ -z "$url" ]] && { error "Could not find a PowerShell tarball asset."; return 1; }
+
+    tmpdir=$(mktemp -d /tmp/pwsh-XXXXXX) || return 1
+    CLEANUP_FILES+=("$tmpdir")
+    tarball="$tmpdir/$(basename "$url")"
+
+    info "Downloading PowerShell..."
+    wget -qO "$tarball" "$url" || { error "Failed to download PowerShell."; return 1; }
+
+    # Verify against upstream's hashes.sha256 when it is present in the release.
+    sums=$(curl -fsSL "$_PWSH_GH_API" 2>/dev/null \
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+hashes\.sha256')
+    if [[ -n "$sums" ]]; then
+        local want got
+        want=$(curl -fsSL "$sums" 2>/dev/null | grep -F "$(basename "$url")" | awk '{print $1}' | head -1)
+        got=$(sha256sum "$tarball" | awk '{print $1}')
+        if [[ -n "$want" && "$want" != "$got" ]]; then
+            error "PowerShell checksum mismatch — refusing to install."
+            return 1
+        fi
+        [[ -n "$want" ]] && verbose "PowerShell checksum verified."
+    else
+        warn "No hashes.sha256 in the PowerShell release; skipping checksum verification."
+    fi
+
+    local version
+    version=$(basename "$url" | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    local dest="${_PWSH_DIR}/${version:-current}"
+
+    info "Installing PowerShell to ${dest}..."
+    sudo rm -rf "$dest"
+    sudo mkdir -p "$dest" || { error "Could not create ${dest}."; return 1; }
+    sudo tar xzf "$tarball" -C "$dest" || { error "Failed to unpack PowerShell."; return 1; }
+    sudo chmod +x "$dest/pwsh"
+    sudo ln -sf "$dest/pwsh" "$_PWSH_LINK"
+    return 0
+}
+
 install_powershell() {
     info "Installing PowerShell..."
     ensure_tools
@@ -96,7 +156,8 @@ install_powershell() {
             sudo "$PKG_MGR" install -y powershell
             ;;
         arch)
-            repo_or_aur powershell-bin
+            # repos -> (not on Flathub) -> Microsoft's tarball -> AUR.
+            arch_install_ordered "powershell-bin" "" "_pwsh_install_tarball" "powershell-bin"
             ;;
         suse)
             if has_snap; then

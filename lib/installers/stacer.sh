@@ -22,10 +22,13 @@
 #     (qt6-qtbase, qt6-qtbase-gui, qt6-qtcharts, qt6-qtsvg), so dnf resolves
 #     them from the distro repos. This replaces the AppImage workaround.
 #   - debian: a current build instead of one from 2019.
-#   - arch: unchanged -- stacer-bin already packaged this fork.
+#   - arch: the AppImage, extracted per-user. No AUR.
 #
-# openSUSE still gets the AppImage: the rpm hard-requires the Fedora package
-# names above, which do not exist there, so zypper cannot resolve it.
+# openSUSE and Arch both get the AppImage. openSUSE because the rpm
+# hard-requires the Fedora package names above, which do not exist there; Arch
+# because it has no repo package and the AUR is disabled in this tool -- and
+# stacer-bin was only ever a repack of the same .deb this release publishes,
+# so the AppImage loses nothing.
 #
 # Why NOT Flatpak, which the original file also warned about:
 #
@@ -222,7 +225,15 @@ install_stacer() {
             _stacer_install_appimage || return 1
             ;;
         arch)
-            repo_or_aur stacer-bin || return 1
+            # No AUR: stacer-bin repacks the very .deb this release publishes,
+            # and the AppImage carries the same build with its Qt6 bundled, so
+            # nothing is gained by building a package for it. A repo package is
+            # still preferred if a derivative ever ships one.
+            if arch_repo_has stacer && pkg_install stacer; then
+                :
+            else
+                _stacer_install_appimage || return 1
+            fi
             ;;
     esac
     info "Stacer installed."
@@ -238,7 +249,9 @@ uninstall_stacer() {
         case "$DISTRO_FAMILY" in
             debian)     sudo apt purge --autoremove -y stacer ;;
             fedora|rhel) sudo "$PKG_MGR" remove -y stacer 2>/dev/null || true ;;
-            arch)       aur_remove stacer-bin 2>/dev/null || sudo pacman -Rs --noconfirm stacer 2>/dev/null || true ;;
+            # stacer-bin is the old AUR name, tried only so an install
+            # predating the AppImage path is still removed.
+            arch)       sudo pacman -Rs --noconfirm stacer-bin 2>/dev/null || sudo pacman -Rs --noconfirm stacer 2>/dev/null || true ;;
             suse)       sudo zypper remove -y stacer 2>/dev/null || true ;;
         esac
     fi
@@ -273,7 +286,7 @@ update_stacer() {
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel|suse) install_stacer ;;
-            arch)                    repo_or_aur stacer-bin ;;
+            arch)                    install_stacer ;;
         esac
     fi
 }
