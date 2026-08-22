@@ -64,6 +64,23 @@ when a release is cut.
   binary names, consulted only under pacman, and Brave Browser, Brave Origin,
   AnyDesk, Stacer, PowerShell, VS Code and Google Chrome now pass their Arch
   package names.
+- **Angry IP Scanner installs on Arch again, without the AUR.** `ipscan` is not
+  in the Arch or CachyOS repos — only the AUR, which this tool keeps disabled, so
+  the entry was hidden and unreachable on Arch family. Upstream also publishes a
+  self-contained JAR next to the .deb and .rpm, and the Arch branch now installs
+  that: `ipscan-linux64-<ver>.jar` into `~/.local/share/angry-ip-scanner`, with a
+  wrapper at `~/.local/bin/ipscan`, a menu entry, and the icon extracted from the
+  JAR itself. No root, no AUR, no packaging. The JAR bundles its own SWT/GTK
+  natives and needs only a JRE; its classes target Java 17, so `_angry_ip_ensure_java`
+  installs one from the distro's repos when java is missing or older. Angry IP
+  Scanner is no longer marked AUR-only, so it lists normally on Arch. Downloads
+  are checked with the existing `verify_download`/`github_verify_checksum` pair,
+  which gained a `jar` magic-byte case.
+- **Uninstalling Angry IP Scanner on Arch targeted the wrong package name.**
+  Install and update use `ipscan`, but the Arch branch of the uninstall tried
+  `angryipscanner` first — a name nothing in the file installs — and the failure
+  was hidden by the trailing `|| true`. It now removes the JAR install and then
+  any older package-based copy, trying `ipscan` before the legacy `angryipscanner`.
 - **Gufw is now offered only on the distro families that can install it —
   Debian/Ubuntu and Arch.** No RPM-family distro packages it: it is absent from
   Fedora, EPEL 9 and 10, openSUSE Tumbleweed and openSUSE Leap (verified against

@@ -1078,7 +1078,7 @@ UTILITY_DESCRIPTION["paru"]="Feature-rich AUR helper for Arch-family distros, wr
 # repos carry the package. Keep the package name in sync with the repo_or_aur
 # call in the matching lib/installers/*.sh file.
 mark_aur_only_arch \
-    "Angry IP Scanner=ipscan" "AnyDesk=anydesk-bin" "Boxflat=boxflat-git" \
+    "AnyDesk=anydesk-bin" "Boxflat=boxflat-git" \
     "Brave Browser=brave-bin" "Brave Origin=brave-origin-bin" \
     "Devolutions RDM=remote-desktop-manager" \
     "Euro-Office=euro-office-desktopeditors-git" "Google Chrome=google-chrome" \

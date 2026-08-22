@@ -59,6 +59,13 @@ _verify_magic_bytes() {
                 warn "Download: ${label} may not be a valid AppImage (expected ELF executable)."
             return 0
             ;;
+        jar)
+            # A JAR is a Zip container; file reports "Java archive data (JAR)"
+            # and, for JARs without a leading manifest entry, plain "Zip archive".
+            echo "$file_output" | grep -qiE "Java archive|Zip archive" && return 0
+            error "Download verification failed: ${label} does not appear to be a valid .jar file."
+            return 1
+            ;;
         run)
             # Self-extracting scripts vary — non-empty / non-HTML check suffices.
             return 0
