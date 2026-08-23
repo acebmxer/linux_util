@@ -2958,12 +2958,14 @@ _lg_setup() {
     _LG_FILE=$(mktemp /tmp/locale_gen_XXXXXX)
     printf '%s\n' "$1" > "$_LG_FILE"
     run_as_root() { "$@"; }
-    locale-gen() { :; }
+    # Stand in for the sbin lookup: /usr/sbin is not on a Debian user's PATH,
+    # so the real code resolves locale-gen by path before running it.
+    _sbin_command() { [[ "$1" == "locale-gen" ]] && echo /bin/true || return 1; }
 }
 
 _lg_teardown() {
     rm -f "$_LG_FILE"
-    unset -f locale-gen
+    unset -f _sbin_command
     run_as_root() { sudo "$@"; }
 }
 
@@ -3021,21 +3023,33 @@ test_locale_gen_entry_reports_a_missing_locale_gen() {
 # tools are present.
 _al_setup() {
     _AL_CALLS=$(mktemp /tmp/apply_locale_XXXXXX)
-    run_as_root() { printf '%s\n' "$1" >> "$_AL_CALLS"; "$@"; }
+    _AL_FAIL="${1:-}"      # basename of the tool that should fail, if any
+    _AL_MISSING="${2:-}"   # basename of the tool that is not installed, if any
+    _sbin_command() {
+        [[ "$1" == "$_AL_MISSING" ]] && return 1
+        case "$1" in
+            update-locale) echo "/usr/sbin/update-locale" ;;
+            localectl)     echo "/usr/bin/localectl" ;;
+            *)             return 1 ;;
+        esac
+    }
+    # Record what would run instead of running it; sudo is never invoked.
+    run_as_root() {
+        local base="${1##*/}"
+        printf '%s\n' "$base" >> "$_AL_CALLS"
+        [[ "$base" == "$_AL_FAIL" ]] && return 1
+        return 0
+    }
 }
 
 _al_teardown() {
     rm -f "$_AL_CALLS"
-    unset -f command update-locale localectl
+    unset -f _sbin_command
     run_as_root() { sudo "$@"; }
 }
 
 test_apply_locale_setting_prefers_update_locale() {
     _al_setup
-    command() { [[ "$2" == "update-locale" || "$2" == "localectl" ]] && return 0; builtin command "$@"; }
-    update-locale() { :; }
-    localectl() { :; }
-
     assert_true "_apply_locale_setting succeeds when update-locale is present" \
         _apply_locale_setting "LANG=en_US.UTF-8"
     assert_eq "update-locale" "$(cat "$_AL_CALLS")" \
@@ -3044,11 +3058,7 @@ test_apply_locale_setting_prefers_update_locale() {
 }
 
 test_apply_locale_setting_falls_back_to_localectl() {
-    _al_setup
-    command() { [[ "$2" == "update-locale" || "$2" == "localectl" ]] && return 0; builtin command "$@"; }
-    update-locale() { return 1; }
-    localectl() { :; }
-
+    _al_setup update-locale
     assert_true "_apply_locale_setting falls back when update-locale fails" \
         _apply_locale_setting "LANG=en_US.UTF-8"
     assert_eq "update-locale
@@ -3057,10 +3067,21 @@ localectl" "$(cat "$_AL_CALLS")" \
     _al_teardown
 }
 
+# The bug this guards: /usr/sbin is absent from a Debian user's PATH, so
+# update-locale looked missing and the run fell through to localectl, which
+# Debian denies outright.
+test_apply_locale_setting_finds_update_locale_off_path() {
+    _al_setup "" localectl
+    assert_true "_apply_locale_setting works with localectl unavailable" \
+        _apply_locale_setting "LANG=en_US.UTF-8"
+    assert_eq "update-locale" "$(cat "$_AL_CALLS")" \
+        "_apply_locale_setting runs update-locale by its resolved sbin path"
+    _al_teardown
+}
+
 test_apply_locale_setting_reports_no_tool() {
     _al_setup
-    command() { [[ "$2" == "update-locale" || "$2" == "localectl" ]] && return 1; builtin command "$@"; }
-
+    _sbin_command() { return 1; }
     assert_false "_apply_locale_setting fails when neither tool is installed" \
         _apply_locale_setting "LANG=en_US.UTF-8"
     _al_teardown
@@ -3073,6 +3094,7 @@ test_locale_gen_entry_rejects_an_entry_without_a_charset
 test_locale_gen_entry_reports_a_missing_locale_gen
 test_apply_locale_setting_prefers_update_locale
 test_apply_locale_setting_falls_back_to_localectl
+test_apply_locale_setting_finds_update_locale_off_path
 test_apply_locale_setting_reports_no_tool
 
 # ============================================================================

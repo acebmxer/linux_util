@@ -172,7 +172,12 @@ _locale_gen_entry() {
         }
     fi
 
-    run_as_root locale-gen
+    local gen_bin
+    gen_bin=$(_sbin_command locale-gen) || {
+        warn "locale-gen not found."
+        return 1
+    }
+    run_as_root "$gen_bin"
 }
 
 # Writes LANG=/LC_TIME= assignments with whichever tool the distro supports.
@@ -185,21 +190,24 @@ _locale_gen_entry() {
 # (/etc/default/locale is a symlink to it) and exists only on Debian/Ubuntu;
 # everywhere else localectl is the right tool.
 _apply_locale_setting() {
-    if ! command -v update-locale &> /dev/null && ! command -v localectl &> /dev/null; then
+    local update_bin localectl_bin
+    update_bin=$(_sbin_command update-locale) || update_bin=""
+    localectl_bin=$(_sbin_command localectl) || localectl_bin=""
+
+    if [[ -z "$update_bin" && -z "$localectl_bin" ]]; then
         warn "No supported locale configuration tool found (localectl/update-locale)."
         return 1
     fi
 
-    local tool
-    for tool in update-locale localectl; do
-        command -v "$tool" &> /dev/null || continue
-        if [[ "$tool" == "localectl" ]]; then
-            run_as_root localectl set-locale "$@" && return 0
-        else
-            run_as_root update-locale "$@" && return 0
-        fi
-        warn "${tool} could not set the locale."
-    done
+    if [[ -n "$update_bin" ]]; then
+        run_as_root "$update_bin" "$@" && return 0
+        warn "update-locale could not set the locale."
+    fi
+
+    if [[ -n "$localectl_bin" ]]; then
+        run_as_root "$localectl_bin" set-locale "$@" && return 0
+        warn "localectl could not set the locale."
+    fi
 
     return 1
 }
@@ -238,7 +246,7 @@ _select_locale() {
     if (( ${#matches[@]} == 0 )); then
         # On minimal systems (cloud VMs, containers), locales may not be generated
         # or the locales package may not be installed at all.
-        if ! command -v locale-gen &>/dev/null; then
+        if ! _have_sbin_cmd locale-gen; then
             if command -v apt-get &>/dev/null; then
                 warn "The 'locales' package is not installed. It is required to generate locales."
                 local confirm

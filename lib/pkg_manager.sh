@@ -1731,6 +1731,29 @@ _have_cmd() {
     _native_command "$1" >/dev/null
 }
 
+# Print the path of a system tool, searching the sbin directories as well as
+# PATH. Debian gives non-root users a PATH with no sbin entries at all
+# (/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games, set by
+# /etc/profile), so "command -v locale-gen" fails for the invoking user even
+# though /usr/sbin/locale-gen exists — while sudo finds it through its own
+# secure_path. Detection of a root-only tool has to look where sudo will run it
+# from, and the caller should run the path this prints.
+_sbin_command() {
+    local _cmd="$1" _dir
+    _native_command "$_cmd" && return 0
+    for _dir in /usr/local/sbin /usr/sbin /sbin; do
+        [[ -f "$_dir/$_cmd" && -x "$_dir/$_cmd" ]] || continue
+        printf '%s\n' "$_dir/$_cmd"
+        return 0
+    done
+    return 1
+}
+
+# Boolean form of _sbin_command.
+_have_sbin_cmd() {
+    _sbin_command "$1" >/dev/null
+}
+
 # Run a command through its resolved native path. Version functions use this
 # instead of the bare name, so reading a version can never start a VM.
 # Usage: _run_native node --version

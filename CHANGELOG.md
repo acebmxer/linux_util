@@ -104,6 +104,19 @@ when a release is cut.
   says so instead of falling through to the generic "no matching locales"
   message.
 
+- **Root-only tools in `/usr/sbin` were invisible to detection on Debian.**
+  Debian's `/etc/profile` gives non-root users
+  `/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games` — no sbin
+  directories at all — while sudo finds those tools through its own
+  `secure_path`. So `command -v locale-gen` was false even with the `locales`
+  package installed (the task offered to install it every run, and apt answered
+  "already the newest version"), and `command -v update-locale` was false too,
+  which sent the locale write to `localectl` and straight into Debian's deny.
+  New `_sbin_command` / `_have_sbin_cmd` helpers in `lib/pkg_manager.sh` search
+  `/usr/local/sbin`, `/usr/sbin`, and `/sbin` after PATH and print the resolved
+  path, which the caller then runs under sudo. The locale task uses them for
+  `locale-gen` and `update-locale`.
+
 - **Setting a locale could never succeed on Debian either.** Once the locale
   generated, `localectl set-locale` failed with "Failed to issue method call:
   Access denied". Debian ships
