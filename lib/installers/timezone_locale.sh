@@ -175,6 +175,35 @@ _locale_gen_entry() {
     run_as_root locale-gen
 }
 
+# Writes LANG=/LC_TIME= assignments with whichever tool the distro supports.
+#
+# update-locale is tried first on purpose. Debian ships a D-Bus policy
+# (/usr/share/dbus-1/system.d/systemd-localed-read-only.conf) that denies
+# locale1.SetLocale to everyone, root included — "locales are not set via
+# localed" there — so localectl always fails with "Access denied". update-locale,
+# from the same 'locales' package as locale-gen, writes /etc/locale.conf directly
+# (/etc/default/locale is a symlink to it) and exists only on Debian/Ubuntu;
+# everywhere else localectl is the right tool.
+_apply_locale_setting() {
+    if ! command -v update-locale &> /dev/null && ! command -v localectl &> /dev/null; then
+        warn "No supported locale configuration tool found (localectl/update-locale)."
+        return 1
+    fi
+
+    local tool
+    for tool in update-locale localectl; do
+        command -v "$tool" &> /dev/null || continue
+        if [[ "$tool" == "localectl" ]]; then
+            run_as_root localectl set-locale "$@" && return 0
+        else
+            run_as_root update-locale "$@" && return 0
+        fi
+        warn "${tool} could not set the locale."
+    done
+
+    return 1
+}
+
 _select_locale() {
     local current_lang
     current_lang=$(locale 2>/dev/null | awk -F= '/^LANG=/{print $2; exit}')
@@ -313,20 +342,10 @@ _select_locale() {
     local -a locale_args=("LANG=${canonical_locale}")
     locale_args+=("LC_TIME=$(_normalize_locale "${current_lc_time}")")
 
-    if command -v localectl &>/dev/null; then
-        run_as_root localectl set-locale "${locale_args[@]}" || {
-            warn "Failed to set locale to ${selected_locale}."
-            return 1
-        }
-    elif command -v update-locale &>/dev/null; then
-        run_as_root update-locale "${locale_args[@]}" || {
-            warn "Failed to set locale to ${selected_locale}."
-            return 1
-        }
-    else
-        warn "No supported locale configuration tool found (localectl/update-locale)."
+    _apply_locale_setting "${locale_args[@]}" || {
+        warn "Failed to set locale to ${selected_locale}."
         return 1
-    fi
+    }
 
     info "Locale set to ${selected_locale} (LC_TIME preserved as ${current_lc_time})."
     return 0

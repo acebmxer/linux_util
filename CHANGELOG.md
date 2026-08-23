@@ -104,6 +104,20 @@ when a release is cut.
   says so instead of falling through to the generic "no matching locales"
   message.
 
+- **Setting a locale could never succeed on Debian either.** Once the locale
+  generated, `localectl set-locale` failed with "Failed to issue method call:
+  Access denied". Debian ships
+  `/usr/share/dbus-1/system.d/systemd-localed-read-only.conf`, which denies
+  `locale1.SetLocale` to *every* caller including root — its own comment reads
+  "On Debian and derivatives keymap/locales/etc are not set via localed... Ensure
+  not even root can use it to modify the settings." There is no privilege that
+  gets past it. The apply step now tries `update-locale` first and falls back to
+  `localectl`: `update-locale` ships in the same `locales` package as
+  `locale-gen`, writes `/etc/locale.conf` directly (`/etc/default/locale` is a
+  symlink to it), and exists only on Debian/Ubuntu, so the ordering picks the
+  right tool per distro without a distro test. `timedatectl set-timezone` was
+  never affected — the deny covers `locale1` only.
+
 - **Cancelling a task during a retry was logged as a failure.** The first
   attempt treats exit code 2 as "cancelled by user" and 3 as "succeeded, no
   changes", but the retry loop used a bare `if $func; then`, so choosing

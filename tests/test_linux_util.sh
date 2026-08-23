@@ -3016,11 +3016,64 @@ test_locale_gen_entry_reports_a_missing_locale_gen() {
     _lg_teardown
 }
 
+# Debian denies locale1.SetLocale over D-Bus to everyone, root included, so
+# localectl can never set a locale there — update-locale has to win when both
+# tools are present.
+_al_setup() {
+    _AL_CALLS=$(mktemp /tmp/apply_locale_XXXXXX)
+    run_as_root() { printf '%s\n' "$1" >> "$_AL_CALLS"; "$@"; }
+}
+
+_al_teardown() {
+    rm -f "$_AL_CALLS"
+    unset -f command update-locale localectl
+    run_as_root() { sudo "$@"; }
+}
+
+test_apply_locale_setting_prefers_update_locale() {
+    _al_setup
+    command() { [[ "$2" == "update-locale" || "$2" == "localectl" ]] && return 0; builtin command "$@"; }
+    update-locale() { :; }
+    localectl() { :; }
+
+    assert_true "_apply_locale_setting succeeds when update-locale is present" \
+        _apply_locale_setting "LANG=en_US.UTF-8"
+    assert_eq "update-locale" "$(cat "$_AL_CALLS")" \
+        "_apply_locale_setting uses update-locale and never reaches localectl"
+    _al_teardown
+}
+
+test_apply_locale_setting_falls_back_to_localectl() {
+    _al_setup
+    command() { [[ "$2" == "update-locale" || "$2" == "localectl" ]] && return 0; builtin command "$@"; }
+    update-locale() { return 1; }
+    localectl() { :; }
+
+    assert_true "_apply_locale_setting falls back when update-locale fails" \
+        _apply_locale_setting "LANG=en_US.UTF-8"
+    assert_eq "update-locale
+localectl" "$(cat "$_AL_CALLS")" \
+        "_apply_locale_setting tries localectl after update-locale fails"
+    _al_teardown
+}
+
+test_apply_locale_setting_reports_no_tool() {
+    _al_setup
+    command() { [[ "$2" == "update-locale" || "$2" == "localectl" ]] && return 1; builtin command "$@"; }
+
+    assert_false "_apply_locale_setting fails when neither tool is installed" \
+        _apply_locale_setting "LANG=en_US.UTF-8"
+    _al_teardown
+}
+
 test_locale_gen_entry_uncomments_an_existing_line
 test_locale_gen_entry_appends_a_missing_line
 test_locale_gen_entry_does_not_match_a_longer_locale_name
 test_locale_gen_entry_rejects_an_entry_without_a_charset
 test_locale_gen_entry_reports_a_missing_locale_gen
+test_apply_locale_setting_prefers_update_locale
+test_apply_locale_setting_falls_back_to_localectl
+test_apply_locale_setting_reports_no_tool
 
 # ============================================================================
 # Results Summary
