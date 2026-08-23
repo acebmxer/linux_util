@@ -2943,6 +2943,86 @@ test_vscode_version_reads_the_install_tree
 test_vscode_remove_tarball_reports_nothing_to_do
 
 # ============================================================================
+# Local Time Zone / Locale Tests
+# ============================================================================
+echo ""
+echo "=== Local Time Zone / Locale Tests ==="
+
+# Not sourced by default — this file only defines functions.
+source "${SCRIPT_DIR}/lib/installers/timezone_locale.sh"
+
+# Debian's locale-gen discards any locale passed as an argument and generates
+# only what is uncommented in /etc/locale.gen, so _locale_gen_entry has to edit
+# that file first. Stand in for sudo and for locale-gen itself.
+_lg_setup() {
+    _LG_FILE=$(mktemp /tmp/locale_gen_XXXXXX)
+    printf '%s\n' "$1" > "$_LG_FILE"
+    run_as_root() { "$@"; }
+    locale-gen() { :; }
+}
+
+_lg_teardown() {
+    rm -f "$_LG_FILE"
+    unset -f locale-gen
+    run_as_root() { sudo "$@"; }
+}
+
+test_locale_gen_entry_uncomments_an_existing_line() {
+    _lg_setup '# en_US.UTF-8 UTF-8
+# de_DE.UTF-8 UTF-8'
+    _locale_gen_entry "en_US.UTF-8 UTF-8" "$_LG_FILE"
+
+    assert_eq "en_US.UTF-8 UTF-8" "$(grep '^en_US' "$_LG_FILE")" \
+        "_locale_gen_entry uncomments the requested locale in locale.gen"
+    assert_eq "# de_DE.UTF-8 UTF-8" "$(grep '^#\s*de_DE' "$_LG_FILE")" \
+        "_locale_gen_entry leaves other commented locales alone"
+    _lg_teardown
+}
+
+test_locale_gen_entry_appends_a_missing_line() {
+    _lg_setup '# de_DE.UTF-8 UTF-8'
+    _locale_gen_entry "en_US.UTF-8 UTF-8" "$_LG_FILE"
+
+    assert_eq "en_US.UTF-8 UTF-8" "$(tail -1 "$_LG_FILE")" \
+        "_locale_gen_entry appends a locale that locale.gen does not list at all"
+    _lg_teardown
+}
+
+# The '.' in a locale name must be escaped: an unescaped "en_US" pattern would
+# match the "en_US.UTF-8" line and generate the wrong charset.
+test_locale_gen_entry_does_not_match_a_longer_locale_name() {
+    _lg_setup '# en_US.UTF-8 UTF-8'
+    _locale_gen_entry "en_US ISO-8859-1" "$_LG_FILE"
+
+    assert_eq "# en_US.UTF-8 UTF-8" "$(head -1 "$_LG_FILE")" \
+        "_locale_gen_entry does not uncomment en_US.UTF-8 when asked for en_US"
+    assert_eq "en_US ISO-8859-1" "$(tail -1 "$_LG_FILE")" \
+        "_locale_gen_entry appends the exact entry it was given"
+    _lg_teardown
+}
+
+test_locale_gen_entry_rejects_an_entry_without_a_charset() {
+    _lg_setup '# en_US.UTF-8 UTF-8'
+    assert_false "_locale_gen_entry refuses an entry with no charset field" \
+        _locale_gen_entry "en_US.UTF-8" "$_LG_FILE"
+    _lg_teardown
+}
+
+test_locale_gen_entry_reports_a_missing_locale_gen() {
+    _lg_setup ''
+    rm -f "$_LG_FILE"
+    assert_false "_locale_gen_entry fails when locale.gen does not exist" \
+        _locale_gen_entry "en_US.UTF-8 UTF-8" "$_LG_FILE"
+    _lg_teardown
+}
+
+test_locale_gen_entry_uncomments_an_existing_line
+test_locale_gen_entry_appends_a_missing_line
+test_locale_gen_entry_does_not_match_a_longer_locale_name
+test_locale_gen_entry_rejects_an_entry_without_a_charset
+test_locale_gen_entry_reports_a_missing_locale_gen
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""

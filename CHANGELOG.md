@@ -89,6 +89,30 @@ when a release is cut.
 
 ### Fixed
 
+- **"Local Time Zone / Locale" could never generate a missing locale on Debian.**
+  Picking `en_US` on a minimal Debian 13 image ran `locale-gen en_US.UTF-8`,
+  which printed "Generating locales… Generation complete." and generated
+  nothing, so the re-scan of `locale -a` reported "No matching locales found"
+  and the task failed. Debian's `/usr/sbin/locale-gen` compares `$1` only
+  against `--keep-existing` and otherwise **discards its arguments**, generating
+  exactly the entries that are uncommented in `/etc/locale.gen` — on a cloud
+  image, none. (Ubuntu ships a variant that does honour arguments, which is why
+  this path looked correct.) The locale is now uncommented in, or appended to,
+  `/etc/locale.gen` before `locale-gen` is run with no arguments, and the
+  charset field is carried over from `/usr/share/i18n/SUPPORTED`, which
+  `/etc/locale.gen` requires. If the locale is still absent afterwards the task
+  says so instead of falling through to the generic "no matching locales"
+  message.
+
+- **Cancelling a task during a retry was logged as a failure.** The first
+  attempt treats exit code 2 as "cancelled by user" and 3 as "succeeded, no
+  changes", but the retry loop used a bare `if $func; then`, so choosing
+  *Cancel* at a re-prompted menu produced "Retry 2/3 failed" and burned the
+  remaining attempts. The retry path now reads the same exit codes as the first
+  attempt. "Local Time Zone / Locale" is also `NO_RETRY` now — it is an
+  interactive menu, so re-running it after a failure only asks the same
+  questions again.
+
 - **Every Flatpak install failed on systems with no polkit agent**, taking the
   Arch fallback ladder down with it. `ensure_flatpak` adds flathub as a *system*
   remote (`sudo flatpak remote-add`), so `flatpak install -y flathub <id>`

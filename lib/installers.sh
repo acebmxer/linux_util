@@ -63,6 +63,8 @@ register_utility "OpenRSAT"               install_openrsat        check_openrsat
 register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
+# Fully interactive prompt flow — re-running the menu after a failure only asks again
+NO_RETRY["Local Time Zone / Locale"]=1
 register_system_task "GTK Window Fix" install_window_buttons check_always_false noop_function install_window_buttons get_version_window_buttons
 
 # Debian/Ubuntu-only system tasks

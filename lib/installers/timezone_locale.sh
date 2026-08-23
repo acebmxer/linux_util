@@ -138,6 +138,43 @@ _select_timezone() {
     return 0
 }
 
+# Debian's locale-gen ignores any locale name given as an argument: it only
+# generates the entries that are uncommented in /etc/locale.gen (Ubuntu ships a
+# variant that does honour arguments). Enable the entry first, then run it.
+_locale_gen_entry() {
+    local entry="$1"                    # e.g. "en_US.UTF-8 UTF-8"
+    local gen_file="${2:-/etc/locale.gen}"
+
+    if [[ "$entry" != *[[:space:]]* ]]; then
+        warn "Malformed locale entry '${entry}' (missing charset)."
+        return 1
+    fi
+
+    local name="${entry%%[[:space:]]*}"
+    local name_re="${name//./\\.}"
+
+    if [[ ! -f "$gen_file" ]]; then
+        warn "${gen_file} not found; cannot generate locales on this system."
+        return 1
+    fi
+
+    if grep -qE "^[[:space:]]*${name_re}[[:space:]]" "$gen_file"; then
+        :   # already enabled
+    elif grep -qE "^[[:space:]]*#[[:space:]]*${name_re}[[:space:]]" "$gen_file"; then
+        run_as_root sed -i -E "s|^[[:space:]]*#[[:space:]]*(${name_re}[[:space:]])|\\1|" "$gen_file" || {
+            warn "Failed to uncomment ${name} in ${gen_file}."
+            return 1
+        }
+    else
+        printf '%s\n' "$entry" | run_as_root tee -a "$gen_file" > /dev/null || {
+            warn "Failed to add ${name} to ${gen_file}."
+            return 1
+        }
+    fi
+
+    run_as_root locale-gen
+}
+
 _select_locale() {
     local current_lang
     current_lang=$(locale 2>/dev/null | awk -F= '/^LANG=/{print $2; exit}')
@@ -194,8 +231,10 @@ _select_locale() {
             fi
         fi
 
-        local gen_candidate
-        gen_candidate=$(grep -i "^${loc_term}" /usr/share/i18n/SUPPORTED 2>/dev/null | head -1 | awk '{print $1}')
+        # SUPPORTED lines are "<locale> <charset>"; /etc/locale.gen needs both fields.
+        local gen_entry gen_candidate
+        gen_entry=$(grep -i "^${loc_term}" /usr/share/i18n/SUPPORTED 2>/dev/null | head -1)
+        gen_candidate="${gen_entry%%[[:space:]]*}"
         if [[ -n "$gen_candidate" ]]; then
             warn "Locale '${loc_term}' is not generated yet. Nearest supported: ${gen_candidate}"
             local confirm
@@ -203,12 +242,16 @@ _select_locale() {
                 read -rp "Generate ${gen_candidate} now? [y/N]: " confirm < /dev/tty
                 case "${confirm,,}" in
                     y|yes)
-                        run_as_root locale-gen "$gen_candidate" || {
+                        _locale_gen_entry "$gen_entry" || {
                             warn "locale-gen failed for ${gen_candidate}."
                             return 1
                         }
                         mapfile -t available_locales < <(locale -a 2>/dev/null)
                         mapfile -t matches < <(printf '%s\n' "${available_locales[@]}" | grep -i "${loc_term}" | head -20)
+                        if (( ${#matches[@]} == 0 )); then
+                            warn "${gen_candidate} is still unavailable after running locale-gen."
+                            return 1
+                        fi
                         break
                         ;;
                     n|no|'') break ;;
