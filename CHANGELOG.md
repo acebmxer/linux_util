@@ -89,6 +89,157 @@ when a release is cut.
 
 ### Fixed
 
+- **WPS Office installs again.** Every direct install had been failing with
+  "Could not determine WPS Office download URL from linux.wps.com": that host
+  now 301s to `www.wps.com/office/linux/`, a Nuxt single-page app whose HTML
+  contains no package links at all, so the scrape for an `href` ending in
+  `_amd64.deb` matched nothing. Four separate faults were in the way, each of
+  which alone was enough to break the install:
+  - **The download URL is now read from the page's entry JS bundle**, where the
+    Deb and RPM buttons get their targets. Packages live under a per-build
+    directory on `wdl1.pcfg.cache.wpscdn.com` and carry an `.XA` suffix
+    (`.../linux/11723/wps-office_11.1.0.11723.XA_amd64.deb`). The bundle
+    filename is content-hashed and changes on every site rebuild, so the entry
+    `<script type="module">` is read out of the page rather than hardcoded. The
+    resolved URL is checked with a HEAD request before the ~320 MB download
+    starts, and falls back to a pinned known-good build if the scrape comes up
+    empty — WPS ships Linux builds rarely, so a pin is a safety net rather than
+    a stale-version trap. The `wps-linux-personal.wpscdn.cn` URLs also present
+    in that bundle are the China-personal CDN and answer 403 from outside it,
+    so they are not used.
+  - **`dpkg -i` and `dnf localinstall` are replaced by `pkg_install_local`**,
+    which hands the file to apt/dnf so dependencies resolve. `dpkg -i` cannot
+    pull the dozen libraries the package needs, and `localinstall` was removed
+    in dnf5 (Fedora 41+), which left the rpm branch falling through to a bare
+    `rpm -i` that aborts on unresolved dependencies.
+  - **`xdg-utils` is installed first.** The package's `postinst` calls
+    `xdg-icon-resource` but declares no dependency on it, so on a minimal system
+    the script dies with "command not found" (exit 127) and leaves the package
+    half-configured (`iF` in `dpkg -l`), which apt then trips over on every
+    later run.
+  - **Fedora and RHEL now install the Flatpak.** Upstream's `.rpm` predates
+    payload digests, so rpm 6 refuses it: dnf resolves all 24 dependencies and
+    then aborts with "does not verify: no digest", with no bypass short of
+    lowering `%_pkgverify_level` system-wide — the same wall the Stacer
+    installer hit. Flathub carries the same upstream build, so the Flatpak is
+    the working path; the `.rpm` remains a fallback for older rpm releases that
+    still accept it. Uninstall and update follow the Flatpak on those distros
+    too, so an installed copy no longer survives its own removal.
+
+  Also on this installer: the **aarch64 branch was fiction** — it built
+  `_arm64.deb` URLs that have never existed on the CDN (they 403), so it is
+  replaced by the Flatpak where available and a clear error otherwise; the
+  download is now checked with `verify_download` like every other installer
+  here; and **`get_version_wps_office` no longer shells out to `dpkg`**, which
+  only exists on Debian, so an installed WPS Office finally reports a version on
+  Fedora and openSUSE instead of a blank.
+
+- **`curl: (23) Failure writing output to destination` no longer appears during
+  installs that scrape a download URL.** Five installers piped `curl` straight
+  into a filter that stops at the first match — `grep -m1` in Pay Respects,
+  `head -1` in JetBrains Toolbox, Go, WPS Office and PIA VPN. The filter exits
+  the moment it has its line, closing the pipe while curl is still writing the
+  rest of the body; curl ignores SIGPIPE and reports the short write as error 23
+  on stderr instead of exiting quietly the way grep does. The URL was always
+  correct and the installs succeeded — the message was pure noise — but it read
+  as a failure in the log, and it only showed up when the transfer was slow
+  enough to still be in flight, which is why it surfaced on remote machines and
+  not locally. Each site now captures the response into a variable first and
+  filters it afterwards, taking the first line with a parameter expansion so no
+  stage of the pipeline exits early. As a side effect these lookups now return a
+  meaningful exit status under `set -o pipefail`, where before a genuine network
+  failure was visible only as an empty URL.
+
+- **OCCT no longer runs its 207 MB binary on every menu render — and no longer
+  segfaults doing it.** `check_installed_utilities` calls each utility's version
+  function at startup, and OCCT's ran `occt --version`. That command produces no
+  output at all (exit 0, nothing on stdout or stderr), so version detection could
+  only ever return an empty string, while each call paid a full exec of the .NET
+  single-file bundle. It was also crashing: OCCT's `main()` calls
+  `IsAnotherLauncherRunning()` before it parses argv, which reads the PID that the
+  previous run left in `/tmp/OCCTLAUNCHER.PID` (never cleaned up on exit),
+  resolves `/proc/<pid>/exe`, and passes the result to `std::filesystem::path`
+  with no null check — `strlen(NULL)`, SIGSEGV, and a coredump in the journal for
+  every affected launch. Not every stale PID triggers it, so the crashes looked
+  random. OCCT is now registered with no version function; its status line reads
+  "Installed" with no version, which is what it effectively showed anyway.
+
+- **`$SHELL` was empty in Termius terminals, breaking every tool that reads it.**
+  Typing `toolbox create` in a Termius local terminal failed with "failed to get
+  the current user's default shell" — Toolbx reads `os.Getenv("SHELL")` and
+  refuses an empty value. The cause is Termius: it reads `$SHELL` to choose
+  which binary to launch (correctly picking zsh), then removes it from the
+  environment it hands the pty — the spawning helper process carries
+  `SHELL=/usr/bin/zsh` while the zsh below it has the identical variable set
+  minus `SHELL`. Nothing downstream restores it, because zsh does not set
+  `$SHELL` itself; on a normal login PAM does. **Zsh + Oh My Zsh** now installs a
+  guard into `~/.zshenv`:
+
+  ```zsh
+  [[ -n $SHELL ]] || export SHELL=${${:-/proc/$$/exe}:A}
+  ```
+
+  `.zshenv` rather than `.zshrc` because it is sourced before Oh My Zsh and the
+  Powerlevel10k instant prompt block — both of which read `$SHELL` — and because
+  it also covers non-interactive shells. Reading `/proc/$$/exe` reports the
+  interpreter actually running rather than baking in a path that varies across
+  the distro families this module supports, and zsh's `:A` modifier resolves it
+  without forking, so shell startup pays nothing. The guard only fills a gap: a
+  `$SHELL` that is already set is left alone, making it a no-op in Konsole,
+  VS Code, SSH sessions, and scripts. It is applied on update as well as install,
+  and removed on uninstall.
+
+- **"Local Time Zone / Locale" could never generate a missing locale on Debian.**
+  Picking `en_US` on a minimal Debian 13 image ran `locale-gen en_US.UTF-8`,
+  which printed "Generating locales… Generation complete." and generated
+  nothing, so the re-scan of `locale -a` reported "No matching locales found"
+  and the task failed. Debian's `/usr/sbin/locale-gen` compares `$1` only
+  against `--keep-existing` and otherwise **discards its arguments**, generating
+  exactly the entries that are uncommented in `/etc/locale.gen` — on a cloud
+  image, none. (Ubuntu ships a variant that does honour arguments, which is why
+  this path looked correct.) The locale is now uncommented in, or appended to,
+  `/etc/locale.gen` before `locale-gen` is run with no arguments, and the
+  charset field is carried over from `/usr/share/i18n/SUPPORTED`, which
+  `/etc/locale.gen` requires. If the locale is still absent afterwards the task
+  says so instead of falling through to the generic "no matching locales"
+  message.
+
+- **Root-only tools in `/usr/sbin` were invisible to detection on Debian.**
+  Debian's `/etc/profile` gives non-root users
+  `/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games` — no sbin
+  directories at all — while sudo finds those tools through its own
+  `secure_path`. So `command -v locale-gen` was false even with the `locales`
+  package installed (the task offered to install it every run, and apt answered
+  "already the newest version"), and `command -v update-locale` was false too,
+  which sent the locale write to `localectl` and straight into Debian's deny.
+  New `_sbin_command` / `_have_sbin_cmd` helpers in `lib/pkg_manager.sh` search
+  `/usr/local/sbin`, `/usr/sbin`, and `/sbin` after PATH and print the resolved
+  path, which the caller then runs under sudo. The locale task uses them for
+  `locale-gen` and `update-locale`.
+
+- **Setting a locale could never succeed on Debian either.** Once the locale
+  generated, `localectl set-locale` failed with "Failed to issue method call:
+  Access denied". Debian ships
+  `/usr/share/dbus-1/system.d/systemd-localed-read-only.conf`, which denies
+  `locale1.SetLocale` to *every* caller including root — its own comment reads
+  "On Debian and derivatives keymap/locales/etc are not set via localed... Ensure
+  not even root can use it to modify the settings." There is no privilege that
+  gets past it. The apply step now tries `update-locale` first and falls back to
+  `localectl`: `update-locale` ships in the same `locales` package as
+  `locale-gen`, writes `/etc/locale.conf` directly (`/etc/default/locale` is a
+  symlink to it), and exists only on Debian/Ubuntu, so the ordering picks the
+  right tool per distro without a distro test. `timedatectl set-timezone` was
+  never affected — the deny covers `locale1` only.
+
+- **Cancelling a task during a retry was logged as a failure.** The first
+  attempt treats exit code 2 as "cancelled by user" and 3 as "succeeded, no
+  changes", but the retry loop used a bare `if $func; then`, so choosing
+  *Cancel* at a re-prompted menu produced "Retry 2/3 failed" and burned the
+  remaining attempts. The retry path now reads the same exit codes as the first
+  attempt. "Local Time Zone / Locale" is also `NO_RETRY` now — it is an
+  interactive menu, so re-running it after a failure only asks the same
+  questions again.
+
 - **Every Flatpak install failed on systems with no polkit agent**, taking the
   Arch fallback ladder down with it. `ensure_flatpak` adds flathub as a *system*
   remote (`sudo flatpak remote-add`), so `flatpak install -y flathub <id>`

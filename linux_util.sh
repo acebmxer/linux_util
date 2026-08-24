@@ -469,8 +469,17 @@ process_selected() {
                         echo "${YELLOW}Retrying ${_verb} for ${util} (attempt ${_attempt}/${CFG_RETRY_ATTEMPTS})...${RESET}"
                         > "$_stderr_tmp"  # Reset capture for retry
                         local _retry_start=$SECONDS
-                        if $func 2> >(tee -a "$_stderr_tmp" >&2); then
-                            local _retry_dur=$(( SECONDS - _retry_start ))
+                        local _retry_code=0
+                        $func 2> >(tee -a "$_stderr_tmp" >&2) || _retry_code=$?
+                        local _retry_dur=$(( SECONDS - _retry_start ))
+                        # Same contract as the first attempt: 2 = cancelled by user,
+                        # 3 = success with no changes. Neither is a failed retry.
+                        if [[ $_retry_code -eq 2 ]]; then
+                            echo "${YELLOW}⊘ Cancelled: $util${RESET} ${DIM}(${_retry_dur}s)${RESET}"
+                            log_info "Cancelled by user: $util"
+                            rm -f "$_stderr_tmp"
+                            return 0
+                        elif [[ $_retry_code -eq 0 || $_retry_code -eq 3 ]]; then
                             echo "${GREEN}✓ Retry succeeded: $util${RESET} ${DIM}(${_retry_dur}s)${RESET}"
                             log_success "Retry ${_verb} succeeded: $util (attempt ${_attempt})"
                             metrics_record "${_verb}_retry" "$util" "$_retry_dur" "success"

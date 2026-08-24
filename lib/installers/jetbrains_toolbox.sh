@@ -13,15 +13,21 @@ install_jetbrains_toolbox() {
     info "Installing JetBrains Toolbox..."
     ensure_tools
 
-    # Fetch latest download URL from JetBrains data API
+    # Fetch latest download URL from JetBrains data API.
+    # The response is captured before it is filtered rather than piped straight
+    # into grep: `head -1` closes the pipe as soon as it has its line, and curl
+    # reports that as "(23) Failure writing output to destination" on stderr.
     local api_url="https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release"
-    local download_url
-    download_url=$(curl -fsSL "$api_url" | grep -oP '"linux"\s*:\s*\{[^}]*"link"\s*:\s*"\K[^"]+' | head -1)
+    local download_url body links
+    body=$(curl -fsSL "$api_url")
+    links=$(printf '%s\n' "$body" | grep -oP '"linux"\s*:\s*\{[^}]*"link"\s*:\s*"\K[^"]+')
+    download_url="${links%%$'\n'*}"
 
     if [[ -z "$download_url" ]]; then
         # Fallback: scrape the toolbox download page
-        download_url=$(curl -fsSL "https://www.jetbrains.com/toolbox-app/download/download-thanks.html?platform=linux" \
-            | grep -oP 'https://download\.jetbrains\.com/toolbox/jetbrains-toolbox-[^"]+\.tar\.gz' | head -1)
+        body=$(curl -fsSL "https://www.jetbrains.com/toolbox-app/download/download-thanks.html?platform=linux")
+        links=$(printf '%s\n' "$body" | grep -oP 'https://download\.jetbrains\.com/toolbox/jetbrains-toolbox-[^"]+\.tar\.gz')
+        download_url="${links%%$'\n'*}"
     fi
 
     if [[ -z "$download_url" ]]; then

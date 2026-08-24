@@ -63,6 +63,8 @@ register_utility "OpenRSAT"               install_openrsat        check_openrsat
 register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
+# Fully interactive prompt flow — re-running the menu after a failure only asks again
+NO_RETRY["Local Time Zone / Locale"]=1
 register_system_task "GTK Window Fix" install_window_buttons check_always_false noop_function install_window_buttons get_version_window_buttons
 
 # Debian/Ubuntu-only system tasks
@@ -217,7 +219,8 @@ register_utility "Nextcloud Desktop"   install_nextcloud_desktop check_nextcloud
 register_utility "NVM"                 install_nvm              check_nvm              uninstall_nvm              update_nvm                 get_version_nvm
 register_utility "Node.js"             install_nodejs           check_nodejs           uninstall_nodejs           update_nodejs              get_version_nodejs
 register_utility "OBS Studio"          install_obs_studio       check_obs_studio       uninstall_obs_studio       update_obs_studio          get_version_obs_studio
-register_utility "OCCT"                install_occt             check_occt             uninstall_occt             update_occt                get_version_occt
+# OCCT has no version function by design — see the note in installers/occt.sh.
+register_utility "OCCT"                install_occt             check_occt             uninstall_occt             update_occt
 register_utility "Obsidian"            install_obsidian         check_obsidian         uninstall_obsidian         update_obsidian            get_version_obsidian
 register_utility "OnlyOffice"          install_onlyoffice       check_onlyoffice       uninstall_onlyoffice       update_onlyoffice          get_version_onlyoffice
 register_utility "OpenLogi"            install_openlogi         check_openlogi         uninstall_openlogi         update_openlogi            get_version_openlogi

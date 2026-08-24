@@ -2943,6 +2943,161 @@ test_vscode_version_reads_the_install_tree
 test_vscode_remove_tarball_reports_nothing_to_do
 
 # ============================================================================
+# Local Time Zone / Locale Tests
+# ============================================================================
+echo ""
+echo "=== Local Time Zone / Locale Tests ==="
+
+# Not sourced by default — this file only defines functions.
+source "${SCRIPT_DIR}/lib/installers/timezone_locale.sh"
+
+# Debian's locale-gen discards any locale passed as an argument and generates
+# only what is uncommented in /etc/locale.gen, so _locale_gen_entry has to edit
+# that file first. Stand in for sudo and for locale-gen itself.
+_lg_setup() {
+    _LG_FILE=$(mktemp /tmp/locale_gen_XXXXXX)
+    printf '%s\n' "$1" > "$_LG_FILE"
+    run_as_root() { "$@"; }
+    # Stand in for the sbin lookup: /usr/sbin is not on a Debian user's PATH,
+    # so the real code resolves locale-gen by path before running it.
+    _sbin_command() { [[ "$1" == "locale-gen" ]] && echo /bin/true || return 1; }
+}
+
+_lg_teardown() {
+    rm -f "$_LG_FILE"
+    unset -f _sbin_command
+    run_as_root() { sudo "$@"; }
+}
+
+test_locale_gen_entry_uncomments_an_existing_line() {
+    _lg_setup '# en_US.UTF-8 UTF-8
+# de_DE.UTF-8 UTF-8'
+    _locale_gen_entry "en_US.UTF-8 UTF-8" "$_LG_FILE"
+
+    assert_eq "en_US.UTF-8 UTF-8" "$(grep '^en_US' "$_LG_FILE")" \
+        "_locale_gen_entry uncomments the requested locale in locale.gen"
+    assert_eq "# de_DE.UTF-8 UTF-8" "$(grep '^#\s*de_DE' "$_LG_FILE")" \
+        "_locale_gen_entry leaves other commented locales alone"
+    _lg_teardown
+}
+
+test_locale_gen_entry_appends_a_missing_line() {
+    _lg_setup '# de_DE.UTF-8 UTF-8'
+    _locale_gen_entry "en_US.UTF-8 UTF-8" "$_LG_FILE"
+
+    assert_eq "en_US.UTF-8 UTF-8" "$(tail -1 "$_LG_FILE")" \
+        "_locale_gen_entry appends a locale that locale.gen does not list at all"
+    _lg_teardown
+}
+
+# The '.' in a locale name must be escaped: an unescaped "en_US" pattern would
+# match the "en_US.UTF-8" line and generate the wrong charset.
+test_locale_gen_entry_does_not_match_a_longer_locale_name() {
+    _lg_setup '# en_US.UTF-8 UTF-8'
+    _locale_gen_entry "en_US ISO-8859-1" "$_LG_FILE"
+
+    assert_eq "# en_US.UTF-8 UTF-8" "$(head -1 "$_LG_FILE")" \
+        "_locale_gen_entry does not uncomment en_US.UTF-8 when asked for en_US"
+    assert_eq "en_US ISO-8859-1" "$(tail -1 "$_LG_FILE")" \
+        "_locale_gen_entry appends the exact entry it was given"
+    _lg_teardown
+}
+
+test_locale_gen_entry_rejects_an_entry_without_a_charset() {
+    _lg_setup '# en_US.UTF-8 UTF-8'
+    assert_false "_locale_gen_entry refuses an entry with no charset field" \
+        _locale_gen_entry "en_US.UTF-8" "$_LG_FILE"
+    _lg_teardown
+}
+
+test_locale_gen_entry_reports_a_missing_locale_gen() {
+    _lg_setup ''
+    rm -f "$_LG_FILE"
+    assert_false "_locale_gen_entry fails when locale.gen does not exist" \
+        _locale_gen_entry "en_US.UTF-8 UTF-8" "$_LG_FILE"
+    _lg_teardown
+}
+
+# Debian denies locale1.SetLocale over D-Bus to everyone, root included, so
+# localectl can never set a locale there — update-locale has to win when both
+# tools are present.
+_al_setup() {
+    _AL_CALLS=$(mktemp /tmp/apply_locale_XXXXXX)
+    _AL_FAIL="${1:-}"      # basename of the tool that should fail, if any
+    _AL_MISSING="${2:-}"   # basename of the tool that is not installed, if any
+    _sbin_command() {
+        [[ "$1" == "$_AL_MISSING" ]] && return 1
+        case "$1" in
+            update-locale) echo "/usr/sbin/update-locale" ;;
+            localectl)     echo "/usr/bin/localectl" ;;
+            *)             return 1 ;;
+        esac
+    }
+    # Record what would run instead of running it; sudo is never invoked.
+    run_as_root() {
+        local base="${1##*/}"
+        printf '%s\n' "$base" >> "$_AL_CALLS"
+        [[ "$base" == "$_AL_FAIL" ]] && return 1
+        return 0
+    }
+}
+
+_al_teardown() {
+    rm -f "$_AL_CALLS"
+    unset -f _sbin_command
+    run_as_root() { sudo "$@"; }
+}
+
+test_apply_locale_setting_prefers_update_locale() {
+    _al_setup
+    assert_true "_apply_locale_setting succeeds when update-locale is present" \
+        _apply_locale_setting "LANG=en_US.UTF-8"
+    assert_eq "update-locale" "$(cat "$_AL_CALLS")" \
+        "_apply_locale_setting uses update-locale and never reaches localectl"
+    _al_teardown
+}
+
+test_apply_locale_setting_falls_back_to_localectl() {
+    _al_setup update-locale
+    assert_true "_apply_locale_setting falls back when update-locale fails" \
+        _apply_locale_setting "LANG=en_US.UTF-8"
+    assert_eq "update-locale
+localectl" "$(cat "$_AL_CALLS")" \
+        "_apply_locale_setting tries localectl after update-locale fails"
+    _al_teardown
+}
+
+# The bug this guards: /usr/sbin is absent from a Debian user's PATH, so
+# update-locale looked missing and the run fell through to localectl, which
+# Debian denies outright.
+test_apply_locale_setting_finds_update_locale_off_path() {
+    _al_setup "" localectl
+    assert_true "_apply_locale_setting works with localectl unavailable" \
+        _apply_locale_setting "LANG=en_US.UTF-8"
+    assert_eq "update-locale" "$(cat "$_AL_CALLS")" \
+        "_apply_locale_setting runs update-locale by its resolved sbin path"
+    _al_teardown
+}
+
+test_apply_locale_setting_reports_no_tool() {
+    _al_setup
+    _sbin_command() { return 1; }
+    assert_false "_apply_locale_setting fails when neither tool is installed" \
+        _apply_locale_setting "LANG=en_US.UTF-8"
+    _al_teardown
+}
+
+test_locale_gen_entry_uncomments_an_existing_line
+test_locale_gen_entry_appends_a_missing_line
+test_locale_gen_entry_does_not_match_a_longer_locale_name
+test_locale_gen_entry_rejects_an_entry_without_a_charset
+test_locale_gen_entry_reports_a_missing_locale_gen
+test_apply_locale_setting_prefers_update_locale
+test_apply_locale_setting_falls_back_to_localectl
+test_apply_locale_setting_finds_update_locale_off_path
+test_apply_locale_setting_reports_no_tool
+
+# ============================================================================
 # Results Summary
 # ============================================================================
 echo ""

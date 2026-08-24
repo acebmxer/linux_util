@@ -138,6 +138,80 @@ _select_timezone() {
     return 0
 }
 
+# Debian's locale-gen ignores any locale name given as an argument: it only
+# generates the entries that are uncommented in /etc/locale.gen (Ubuntu ships a
+# variant that does honour arguments). Enable the entry first, then run it.
+_locale_gen_entry() {
+    local entry="$1"                    # e.g. "en_US.UTF-8 UTF-8"
+    local gen_file="${2:-/etc/locale.gen}"
+
+    if [[ "$entry" != *[[:space:]]* ]]; then
+        warn "Malformed locale entry '${entry}' (missing charset)."
+        return 1
+    fi
+
+    local name="${entry%%[[:space:]]*}"
+    local name_re="${name//./\\.}"
+
+    if [[ ! -f "$gen_file" ]]; then
+        warn "${gen_file} not found; cannot generate locales on this system."
+        return 1
+    fi
+
+    if grep -qE "^[[:space:]]*${name_re}[[:space:]]" "$gen_file"; then
+        :   # already enabled
+    elif grep -qE "^[[:space:]]*#[[:space:]]*${name_re}[[:space:]]" "$gen_file"; then
+        run_as_root sed -i -E "s|^[[:space:]]*#[[:space:]]*(${name_re}[[:space:]])|\\1|" "$gen_file" || {
+            warn "Failed to uncomment ${name} in ${gen_file}."
+            return 1
+        }
+    else
+        printf '%s\n' "$entry" | run_as_root tee -a "$gen_file" > /dev/null || {
+            warn "Failed to add ${name} to ${gen_file}."
+            return 1
+        }
+    fi
+
+    local gen_bin
+    gen_bin=$(_sbin_command locale-gen) || {
+        warn "locale-gen not found."
+        return 1
+    }
+    run_as_root "$gen_bin"
+}
+
+# Writes LANG=/LC_TIME= assignments with whichever tool the distro supports.
+#
+# update-locale is tried first on purpose. Debian ships a D-Bus policy
+# (/usr/share/dbus-1/system.d/systemd-localed-read-only.conf) that denies
+# locale1.SetLocale to everyone, root included — "locales are not set via
+# localed" there — so localectl always fails with "Access denied". update-locale,
+# from the same 'locales' package as locale-gen, writes /etc/locale.conf directly
+# (/etc/default/locale is a symlink to it) and exists only on Debian/Ubuntu;
+# everywhere else localectl is the right tool.
+_apply_locale_setting() {
+    local update_bin localectl_bin
+    update_bin=$(_sbin_command update-locale) || update_bin=""
+    localectl_bin=$(_sbin_command localectl) || localectl_bin=""
+
+    if [[ -z "$update_bin" && -z "$localectl_bin" ]]; then
+        warn "No supported locale configuration tool found (localectl/update-locale)."
+        return 1
+    fi
+
+    if [[ -n "$update_bin" ]]; then
+        run_as_root "$update_bin" "$@" && return 0
+        warn "update-locale could not set the locale."
+    fi
+
+    if [[ -n "$localectl_bin" ]]; then
+        run_as_root "$localectl_bin" set-locale "$@" && return 0
+        warn "localectl could not set the locale."
+    fi
+
+    return 1
+}
+
 _select_locale() {
     local current_lang
     current_lang=$(locale 2>/dev/null | awk -F= '/^LANG=/{print $2; exit}')
@@ -172,7 +246,7 @@ _select_locale() {
     if (( ${#matches[@]} == 0 )); then
         # On minimal systems (cloud VMs, containers), locales may not be generated
         # or the locales package may not be installed at all.
-        if ! command -v locale-gen &>/dev/null; then
+        if ! _have_sbin_cmd locale-gen; then
             if command -v apt-get &>/dev/null; then
                 warn "The 'locales' package is not installed. It is required to generate locales."
                 local confirm
@@ -194,8 +268,10 @@ _select_locale() {
             fi
         fi
 
-        local gen_candidate
-        gen_candidate=$(grep -i "^${loc_term}" /usr/share/i18n/SUPPORTED 2>/dev/null | head -1 | awk '{print $1}')
+        # SUPPORTED lines are "<locale> <charset>"; /etc/locale.gen needs both fields.
+        local gen_entry gen_candidate
+        gen_entry=$(grep -i "^${loc_term}" /usr/share/i18n/SUPPORTED 2>/dev/null | head -1)
+        gen_candidate="${gen_entry%%[[:space:]]*}"
         if [[ -n "$gen_candidate" ]]; then
             warn "Locale '${loc_term}' is not generated yet. Nearest supported: ${gen_candidate}"
             local confirm
@@ -203,12 +279,16 @@ _select_locale() {
                 read -rp "Generate ${gen_candidate} now? [y/N]: " confirm < /dev/tty
                 case "${confirm,,}" in
                     y|yes)
-                        run_as_root locale-gen "$gen_candidate" || {
+                        _locale_gen_entry "$gen_entry" || {
                             warn "locale-gen failed for ${gen_candidate}."
                             return 1
                         }
                         mapfile -t available_locales < <(locale -a 2>/dev/null)
                         mapfile -t matches < <(printf '%s\n' "${available_locales[@]}" | grep -i "${loc_term}" | head -20)
+                        if (( ${#matches[@]} == 0 )); then
+                            warn "${gen_candidate} is still unavailable after running locale-gen."
+                            return 1
+                        fi
                         break
                         ;;
                     n|no|'') break ;;
@@ -270,20 +350,10 @@ _select_locale() {
     local -a locale_args=("LANG=${canonical_locale}")
     locale_args+=("LC_TIME=$(_normalize_locale "${current_lc_time}")")
 
-    if command -v localectl &>/dev/null; then
-        run_as_root localectl set-locale "${locale_args[@]}" || {
-            warn "Failed to set locale to ${selected_locale}."
-            return 1
-        }
-    elif command -v update-locale &>/dev/null; then
-        run_as_root update-locale "${locale_args[@]}" || {
-            warn "Failed to set locale to ${selected_locale}."
-            return 1
-        }
-    else
-        warn "No supported locale configuration tool found (localectl/update-locale)."
+    _apply_locale_setting "${locale_args[@]}" || {
+        warn "Failed to set locale to ${selected_locale}."
         return 1
-    fi
+    }
 
     info "Locale set to ${selected_locale} (LC_TIME preserved as ${current_lc_time})."
     return 0

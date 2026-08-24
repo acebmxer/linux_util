@@ -35,12 +35,20 @@ check_pay_respects() {
 # versions on GitHub's /releases/latest endpoint at any time. Requiring a
 # /download/vX.Y.Z/ path skips it and takes the newest numbered release; the
 # list is returned newest-first, so the first match is the right one.
+#
+# curl is kept out of the pipeline and no filter stops early: a consumer that
+# exits on its first match closes the pipe mid-body, and curl reports that as
+# "(23) Failure writing output to destination" on stderr instead of dying
+# quietly on SIGPIPE the way grep does. The first line of the result is taken
+# with a parameter expansion for the same reason.
 _payr_asset_url() {
-    local pattern="$1"
-    curl -fsSL "https://api.github.com/repos/iffse/pay-respects/releases?per_page=10" \
+    local pattern="$1" json matches
+    json=$(curl -fsSL "https://api.github.com/repos/iffse/pay-respects/releases?per_page=10") || return 1
+    matches=$(printf '%s\n' "$json" \
         | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+' \
         | grep -E '/download/v[0-9]+\.[0-9]+\.[0-9]+/' \
-        | grep -m1 -E "$pattern"
+        | grep -E "$pattern") || return 1
+    printf '%s\n' "${matches%%$'\n'*}"
 }
 
 # Install upstream's own .deb or .rpm ($1 = deb|rpm). Both are dependency-free

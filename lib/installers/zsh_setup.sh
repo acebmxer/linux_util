@@ -59,8 +59,46 @@ _zsh_setup_remove_legacy_starship() {
     fi
 }
 
+_ZSH_SETUP_SHELL_ENV_MARKER="# linux_util:zsh_setup:shell-env"
+
+# Some terminal apps read $SHELL to decide which shell to launch, then drop it
+# from the environment they hand that shell — Termius does exactly this, and a
+# GUI app spawned outside a login session has no PAM to set it either. zsh never
+# sets $SHELL on its own, so it stays empty for the whole session and anything
+# reading it breaks: `toolbox create` refuses to run, tmux and editors fall back
+# to /bin/sh. .zshenv rather than .zshrc because it is sourced first (before Oh
+# My Zsh and the p10k instant prompt block, both of which read $SHELL) and also
+# covers non-interactive shells. Resolving /proc/$$/exe reports the interpreter
+# actually running instead of hardcoding a path that differs per distro, and the
+# zsh :A modifier does it without forking, so shell startup pays nothing.
+_zsh_setup_ensure_shell_env() {
+    local zshenv="$HOME/.zshenv"
+
+    if [[ -f "$zshenv" ]] && grep -qF "$_ZSH_SETUP_SHELL_ENV_MARKER" "$zshenv"; then
+        info "\$SHELL guard already present in ~/.zshenv"
+        return
+    fi
+
+    cat >> "$zshenv" << 'EOF'
+
+# linux_util:zsh_setup:shell-env
+[[ -n $SHELL ]] || export SHELL=${${:-/proc/$$/exe}:A}
+EOF
+    info "Added \$SHELL guard to ~/.zshenv"
+}
+
+_zsh_setup_remove_shell_env() {
+    local zshenv="$HOME/.zshenv"
+    [[ -f "$zshenv" ]] || return
+    if grep -qF "$_ZSH_SETUP_SHELL_ENV_MARKER" "$zshenv"; then
+        sed -i '/^# linux_util:zsh_setup:shell-env$/{N;d}' "$zshenv"
+        info "Removed \$SHELL guard from ~/.zshenv"
+    fi
+}
+
 _zsh_setup_deconfigure_shells() {
     _zsh_setup_remove_legacy_starship
+    _zsh_setup_remove_shell_env
     if [[ -f "$HOME/.zshrc" ]]; then
         sed -i 's/ zsh-autosuggestions//g; s/ zsh-syntax-highlighting//g' "$HOME/.zshrc"
         info "Removed custom plugins from ~/.zshrc"
@@ -250,6 +288,9 @@ install_zsh_setup() {
         chsh -s "$zsh_path" || warn "Could not change default shell. Run: chsh -s $zsh_path"
     fi
 
+    # 8. Keep $SHELL populated in terminals that spawn zsh without it
+    _zsh_setup_ensure_shell_env
+
     info "Zsh + Oh My Zsh installed. Log out and back in for new terminals to use Zsh, or run 'zsh' to start it now."
 }
 
@@ -306,6 +347,7 @@ update_zsh_setup() {
 
     _zsh_setup_remove_legacy_starship
     _zsh_setup_configure_plugins
+    _zsh_setup_ensure_shell_env
 
     echo ""
     while true; do
