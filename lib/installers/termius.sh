@@ -47,6 +47,16 @@
 #   Unpacking the .deb sidesteps all of it: the app runs unconfined, sees the
 #   real /usr, and auto-detects $SHELL exactly as it does on Debian.
 #
+#   One gap survives the native install, and it is Termius's own doing rather
+#   than the sandbox's: it reads $SHELL to pick the binary, then strips it from
+#   the environment it hands the pty. Compare the two processes — the Termius
+#   helper carries SHELL=/usr/bin/zsh, and the zsh it spawns has the identical
+#   variable set minus SHELL. zsh does not set $SHELL itself (that is normally
+#   PAM's job at login), so it stays empty for the session and callers that read
+#   it fail — `toolbox create` exits with "failed to get the current user's
+#   default shell". The fix lives in zsh_setup.sh, which drops a guard into
+#   ~/.zshenv; nothing here can repair an environment the app builds at runtime.
+#
 # The payload is a self-contained Electron bundle — verified with ldd against a
 # current Fedora system, every linked library resolves from the runtime deps
 # installed below. Only two things from the .deb are deliberately dropped:
@@ -285,7 +295,10 @@ _termius_install_native() {
     refresh_desktop_caches
     _termius_check_libs
 
-    info "Termius installed natively — it will pick up \$SHELL (${SHELL:-unset}) on first run."
+    info "Termius installed natively — it will detect \$SHELL (${SHELL:-unset}) and launch it on first run."
+    info "Note: Termius does not pass \$SHELL through to that shell. The zsh_setup module"
+    info "installs a ~/.zshenv guard that restores it; without it, \$SHELL is empty in"
+    info "Termius terminals and tools that read it (e.g. 'toolbox create') will fail."
 }
 
 # Warn when a copy from one of the paths this file used to take is left over.

@@ -89,6 +89,31 @@ when a release is cut.
 
 ### Fixed
 
+- **`$SHELL` was empty in Termius terminals, breaking every tool that reads it.**
+  Typing `toolbox create` in a Termius local terminal failed with "failed to get
+  the current user's default shell" — Toolbx reads `os.Getenv("SHELL")` and
+  refuses an empty value. The cause is Termius: it reads `$SHELL` to choose
+  which binary to launch (correctly picking zsh), then removes it from the
+  environment it hands the pty — the spawning helper process carries
+  `SHELL=/usr/bin/zsh` while the zsh below it has the identical variable set
+  minus `SHELL`. Nothing downstream restores it, because zsh does not set
+  `$SHELL` itself; on a normal login PAM does. **Zsh + Oh My Zsh** now installs a
+  guard into `~/.zshenv`:
+
+  ```zsh
+  [[ -n $SHELL ]] || export SHELL=${${:-/proc/$$/exe}:A}
+  ```
+
+  `.zshenv` rather than `.zshrc` because it is sourced before Oh My Zsh and the
+  Powerlevel10k instant prompt block — both of which read `$SHELL` — and because
+  it also covers non-interactive shells. Reading `/proc/$$/exe` reports the
+  interpreter actually running rather than baking in a path that varies across
+  the distro families this module supports, and zsh's `:A` modifier resolves it
+  without forking, so shell startup pays nothing. The guard only fills a gap: a
+  `$SHELL` that is already set is left alone, making it a no-op in Konsole,
+  VS Code, SSH sessions, and scripts. It is applied on update as well as install,
+  and removed on uninstall.
+
 - **"Local Time Zone / Locale" could never generate a missing locale on Debian.**
   Picking `en_US` on a minimal Debian 13 image ran `locale-gen en_US.UTF-8`,
   which printed "Generating locales… Generation complete." and generated
