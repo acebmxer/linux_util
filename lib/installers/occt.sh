@@ -132,6 +132,14 @@ update_occt() {
     install_occt
 }
 
-get_version_occt() {
-    _ver_from_cmd occt --version || echo ""
-}
+# No get_version_occt on purpose — do NOT add one back.
+#
+# OCCT has no --version output: `occt --version` exits 0 and prints nothing on
+# either stream, so version detection could only ever return an empty string.
+# Worse, asking costs a full exec of the 207 MB .NET single-file bundle on every
+# menu render, and OCCT's launcher crashes outright some of the time when it
+# does: main() calls IsAnotherLauncherRunning() before it looks at argv, which
+# reads the PID left in /tmp/OCCTLAUNCHER.PID by the previous run (never cleaned
+# up on exit), resolves /proc/<pid>/exe, and hands the result to
+# std::filesystem::path without a null check — strlen(NULL), SIGSEGV, coredump.
+# All cost, no version. OCCT is registered without a version function.

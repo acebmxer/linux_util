@@ -89,6 +89,20 @@ when a release is cut.
 
 ### Fixed
 
+- **OCCT no longer runs its 207 MB binary on every menu render — and no longer
+  segfaults doing it.** `check_installed_utilities` calls each utility's version
+  function at startup, and OCCT's ran `occt --version`. That command produces no
+  output at all (exit 0, nothing on stdout or stderr), so version detection could
+  only ever return an empty string, while each call paid a full exec of the .NET
+  single-file bundle. It was also crashing: OCCT's `main()` calls
+  `IsAnotherLauncherRunning()` before it parses argv, which reads the PID that the
+  previous run left in `/tmp/OCCTLAUNCHER.PID` (never cleaned up on exit),
+  resolves `/proc/<pid>/exe`, and passes the result to `std::filesystem::path`
+  with no null check — `strlen(NULL)`, SIGSEGV, and a coredump in the journal for
+  every affected launch. Not every stale PID triggers it, so the crashes looked
+  random. OCCT is now registered with no version function; its status line reads
+  "Installed" with no version, which is what it effectively showed anyway.
+
 - **`$SHELL` was empty in Termius terminals, breaking every tool that reads it.**
   Typing `toolbox create` in a Termius local terminal failed with "failed to get
   the current user's default shell" — Toolbx reads `os.Getenv("SHELL")` and
