@@ -50,12 +50,15 @@ install_pia_vpn() {
 
 # Download and install PIA VPN from the official website.
 _pia_install_via_run() {
-    local pia_installer pia_url
+    local pia_installer pia_url page matches
     pia_installer=$(mktemp /tmp/pia-XXXXXX.run)
     CLEANUP_FILES+=("$pia_installer")
-    # Scrape the current x64 .run download URL from the PIA website
-    pia_url=$(curl -fsSL "https://www.privateinternetaccess.com/download/linux-vpn" | \
-        grep -oE 'https://[^"]+pia-linux-[0-9][^"]*\.run' | head -1)
+    # Scrape the current x64 .run download URL from the PIA website. The page is
+    # captured before it is filtered: piping curl into `head -1` closes the pipe
+    # early and curl reports that as "(23) Failure writing output to destination".
+    page=$(curl -fsSL "https://www.privateinternetaccess.com/download/linux-vpn")
+    matches=$(printf '%s\n' "$page" | grep -oE 'https://[^"]+pia-linux-[0-9][^"]*\.run')
+    pia_url="${matches%%$'\n'*}"
     if [[ -z "$pia_url" ]]; then
         echo "Error: Failed to get PIA VPN download URL from website."
         rm -f "$pia_installer"

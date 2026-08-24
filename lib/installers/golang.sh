@@ -37,8 +37,12 @@ install_golang() {
 # Install the official Go binary tarball for distros with no/old Go packages
 _install_golang_binary() {
     info "Installing Go from official binary release..."
-    local go_version arch tmpfile
-    go_version=$(curl -fsSL https://go.dev/VERSION?m=text | head -1)
+    local go_version arch tmpfile version_text
+    # VERSION?m=text returns the version on the first line and a timestamp on the
+    # second. Captured and trimmed rather than piped to `head -1`, which closes
+    # the pipe early and makes curl report error 23 on stderr.
+    version_text=$(curl -fsSL https://go.dev/VERSION?m=text)
+    go_version="${version_text%%$'\n'*}"
     [[ -z "$go_version" ]] && { error "Could not determine latest Go version."; return 1; }
     arch="amd64"
     [[ "$(uname -m)" == "aarch64" ]] && arch="arm64"

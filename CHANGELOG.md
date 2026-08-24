@@ -89,6 +89,67 @@ when a release is cut.
 
 ### Fixed
 
+- **WPS Office installs again.** Every direct install had been failing with
+  "Could not determine WPS Office download URL from linux.wps.com": that host
+  now 301s to `www.wps.com/office/linux/`, a Nuxt single-page app whose HTML
+  contains no package links at all, so the scrape for an `href` ending in
+  `_amd64.deb` matched nothing. Four separate faults were in the way, each of
+  which alone was enough to break the install:
+  - **The download URL is now read from the page's entry JS bundle**, where the
+    Deb and RPM buttons get their targets. Packages live under a per-build
+    directory on `wdl1.pcfg.cache.wpscdn.com` and carry an `.XA` suffix
+    (`.../linux/11723/wps-office_11.1.0.11723.XA_amd64.deb`). The bundle
+    filename is content-hashed and changes on every site rebuild, so the entry
+    `<script type="module">` is read out of the page rather than hardcoded. The
+    resolved URL is checked with a HEAD request before the ~320 MB download
+    starts, and falls back to a pinned known-good build if the scrape comes up
+    empty — WPS ships Linux builds rarely, so a pin is a safety net rather than
+    a stale-version trap. The `wps-linux-personal.wpscdn.cn` URLs also present
+    in that bundle are the China-personal CDN and answer 403 from outside it,
+    so they are not used.
+  - **`dpkg -i` and `dnf localinstall` are replaced by `pkg_install_local`**,
+    which hands the file to apt/dnf so dependencies resolve. `dpkg -i` cannot
+    pull the dozen libraries the package needs, and `localinstall` was removed
+    in dnf5 (Fedora 41+), which left the rpm branch falling through to a bare
+    `rpm -i` that aborts on unresolved dependencies.
+  - **`xdg-utils` is installed first.** The package's `postinst` calls
+    `xdg-icon-resource` but declares no dependency on it, so on a minimal system
+    the script dies with "command not found" (exit 127) and leaves the package
+    half-configured (`iF` in `dpkg -l`), which apt then trips over on every
+    later run.
+  - **Fedora and RHEL now install the Flatpak.** Upstream's `.rpm` predates
+    payload digests, so rpm 6 refuses it: dnf resolves all 24 dependencies and
+    then aborts with "does not verify: no digest", with no bypass short of
+    lowering `%_pkgverify_level` system-wide — the same wall the Stacer
+    installer hit. Flathub carries the same upstream build, so the Flatpak is
+    the working path; the `.rpm` remains a fallback for older rpm releases that
+    still accept it. Uninstall and update follow the Flatpak on those distros
+    too, so an installed copy no longer survives its own removal.
+
+  Also on this installer: the **aarch64 branch was fiction** — it built
+  `_arm64.deb` URLs that have never existed on the CDN (they 403), so it is
+  replaced by the Flatpak where available and a clear error otherwise; the
+  download is now checked with `verify_download` like every other installer
+  here; and **`get_version_wps_office` no longer shells out to `dpkg`**, which
+  only exists on Debian, so an installed WPS Office finally reports a version on
+  Fedora and openSUSE instead of a blank.
+
+- **`curl: (23) Failure writing output to destination` no longer appears during
+  installs that scrape a download URL.** Five installers piped `curl` straight
+  into a filter that stops at the first match — `grep -m1` in Pay Respects,
+  `head -1` in JetBrains Toolbox, Go, WPS Office and PIA VPN. The filter exits
+  the moment it has its line, closing the pipe while curl is still writing the
+  rest of the body; curl ignores SIGPIPE and reports the short write as error 23
+  on stderr instead of exiting quietly the way grep does. The URL was always
+  correct and the installs succeeded — the message was pure noise — but it read
+  as a failure in the log, and it only showed up when the transfer was slow
+  enough to still be in flight, which is why it surfaced on remote machines and
+  not locally. Each site now captures the response into a variable first and
+  filters it afterwards, taking the first line with a parameter expansion so no
+  stage of the pipeline exits early. As a side effect these lookups now return a
+  meaningful exit status under `set -o pipefail`, where before a genuine network
+  failure was visible only as an empty URL.
+
 - **OCCT no longer runs its 207 MB binary on every menu render — and no longer
   segfaults doing it.** `check_installed_utilities` calls each utility's version
   function at startup, and OCCT's ran `occt --version`. That command produces no
