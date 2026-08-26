@@ -241,6 +241,7 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 | **Terraform** | HashiCorp infrastructure-as-code tool |
 | **Virt-Manager** | GUI for managing KVM/QEMU virtual machines |
 | **Visual Studio Code** | Microsoft's extensible code editor |
+| **VSCodium** | Telemetry-free community build of VS Code (Open VSX extensions) |
 
 #### Gaming
 

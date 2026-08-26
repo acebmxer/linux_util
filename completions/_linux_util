@@ -95,6 +95,7 @@ _linux_util_utilities=(
     'Trojita'
     'UFW Firewall'
     'Visual Studio Code'
+    'VSCodium'
     'Vivaldi Browser'
     'WinApps'
     'Wine'

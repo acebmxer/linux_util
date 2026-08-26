@@ -89,6 +89,36 @@ when a release is cut.
 
 ### Fixed
 
+- **JetBrains Toolbox now installs a working application instead of a launcher
+  that dies on start.** The installer pulled the ~150 MB upstream tarball and
+  then `find`-ed a single file out of it — `jetbrains-toolbox` — copying only
+  that 1.2 MB stub into place and deleting the other 900-odd extracted files.
+  But the archive is a self-contained bundle: `jetbrains-toolbox-<version>/bin/`
+  holds the stub *plus* the JRE it runs on (`jre/`), its jars (`lib/`) and its
+  native libraries. The stub is only a native loader that `dlopen()`s
+  `bin/jre/lib/server/libjvm.so` relative to its own directory, so with the JRE
+  discarded every launch aborted instantly with `Failed to start JVM` — visible
+  only in `~/.local/share/JetBrains/Toolbox/logs/toolbox-native.log`, since the
+  install ran in the background and reported success either way. The whole
+  `bin/` tree is now copied with `cp -a`, and an unexpected archive layout is a
+  hard error rather than a silent partial install. Only `bin/` is replaced on
+  update; installed IDEs under `apps/` are untouched.
+- **JetBrains Toolbox appears in the application menu right after install.**
+  Toolbox writes its own `.desktop` entry, but only once it has started
+  successfully — which, given the above, never happened, leaving no menu entry
+  and no obvious way to launch it. The installer now writes the entry and
+  installs the bundled `toolbox.svg` icon itself, then calls
+  `refresh_desktop_caches`. `Exec=` is the absolute path to the binary rather
+  than the `~/.local/bin` symlink, which desktop sessions do not reliably have
+  on `PATH`. Uninstall removes the icon and the full Toolbox directory.
+- **A half-installed JetBrains Toolbox is no longer reported as installed.**
+  `check_jetbrains_toolbox` tested only for the stub's existence, so the broken
+  tree above satisfied it — the TUI showed Toolbox as present and `--check`
+  exited 0. It now requires the bundled `libjvm.so` as well, while still
+  recognising a copy installed by other means elsewhere on `PATH`. The launch
+  after install is also skipped when neither `DISPLAY` nor `WAYLAND_DISPLAY` is
+  set, since starting a tray app over SSH just exits silently; the message then
+  says how to start it later instead of claiming it is about to appear.
 - **WPS Office installs again.** Every direct install had been failing with
   "Could not determine WPS Office download URL from linux.wps.com": that host
   now 301s to `www.wps.com/office/linux/`, a Nuxt single-page app whose HTML
@@ -468,6 +498,22 @@ when a release is cut.
 
 ### Added
 
+- **VSCodium** (Development → IDEs & Editors), the community build of the VS
+  Code source with Microsoft's telemetry, branding, and proprietary marketplace
+  stripped out (extensions resolve against Open VSX). It coexists with
+  **Visual Studio Code** rather than replacing it — different binary (`codium`),
+  config (`~/.config/VSCodium`), and extension directory (`~/.vscode-oss`), so
+  both can be installed at once and the uninstall only clears its own state.
+  Debian and the rpm distros use the signed repos vscodium.com points at
+  (`download.vscodium.com`, keyed from the paulcarroty repo project);
+  `repo_gpgcheck` is on for the rpm side because that repo publishes a detached
+  `repomd.xml.asc`. Arch has no repository package — `vscodium-bin` is AUR-only,
+  and this tool keeps the AUR disabled — so it follows the same tiering as the
+  VS Code installer: repos → Flathub → the project's own GitHub release tarball
+  → AUR. That tarball is what `vscodium-bin` repackages, it ships `.sha256`
+  sidecars so the download is checksum-verified, and unlike Microsoft's it
+  unpacks flat, so it is extracted straight into `~/.local/share/vscodium`
+  with no root needed.
 - **Package Managers section in the README's "Utilities by Category"**, which
   had never been written — Flatpak Setup, Homebrew, Nix, Snap (snapd),
   deb-get, Pacstall, yay and paru are now documented there.

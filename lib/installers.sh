@@ -300,6 +300,7 @@ fi
 register_utility "Ventoy"              install_ventoy           check_ventoy           uninstall_ventoy           update_ventoy              get_version_ventoy
 register_utility "Virt-Manager"        install_virt_manager     check_virt_manager     uninstall_virt_manager     update_virt_manager        get_version_virt_manager
 register_utility "Visual Studio Code"  install_vscode           check_vscode           uninstall_vscode           update_vscode              get_version_vscode
+register_utility "VSCodium"            install_vscodium         check_vscodium         uninstall_vscodium         update_vscodium            get_version_vscodium
 register_utility "Vorta"               install_vorta            check_vorta            uninstall_vorta            update_vorta               get_version_vorta
 register_utility "Vivaldi Browser"     install_vivaldi          check_vivaldi          uninstall_vivaldi          update_vivaldi             get_version_vivaldi
 register_utility "VLC"                 install_vlc              check_vlc              uninstall_vlc              update_vlc                 get_version_vlc
@@ -612,6 +613,7 @@ UTILITY_CATEGORY["Kup"]="Backup"
 UTILITY_CATEGORY["Vorta"]="Backup"
 UTILITY_CATEGORY["Duplicati"]="Backup"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
+UTILITY_CATEGORY["VSCodium"]="Development"
 UTILITY_CATEGORY["Vivaldi Browser"]="Internet"
 UTILITY_CATEGORY["WinApps"]="Productivity"
 UTILITY_CATEGORY["Wine"]="Gaming"
@@ -716,6 +718,7 @@ UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["VSCodium"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Distrobox"]="Distrobox"
 UTILITY_SUBCATEGORY["BoxBuddy"]="Distrobox"
 UTILITY_SUBCATEGORY["DistroShelf"]="Distrobox"
@@ -911,6 +914,7 @@ UTILITY_DESCRIPTION["Rustup"]="Official Rust toolchain installer and version man
 UTILITY_DESCRIPTION["Terraform"]="HashiCorp's infrastructure-as-code tool for provisioning and managing cloud resources with declarative HCL configs."
 UTILITY_DESCRIPTION["Virt-Manager"]="Graphical desktop tool for managing KVM/QEMU virtual machines with full libvirt integration."
 UTILITY_DESCRIPTION["Visual Studio Code"]="Microsoft's extensible code editor with a rich ecosystem of extensions and built-in Git support."
+UTILITY_DESCRIPTION["VSCodium"]="Community build of the VS Code source with Microsoft's telemetry, branding, and proprietary marketplace removed (extensions come from Open VSX). Installs side by side with Visual Studio Code — separate 'codium' binary, config, and extensions. On Arch it falls back to the project's own release tarball when the AUR is disabled."
 
 # Gaming
 UTILITY_DESCRIPTION["Bottles"]="Wine prefix manager for running Windows software on Linux with per-app isolation. Requires Flatpak — run 'Flatpak Setup' from the Package Managers category first on non-Arch systems."
