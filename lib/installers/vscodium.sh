@@ -37,11 +37,40 @@ check_vscodium() {
 
 # Write the rpm-md repo definition used by dnf and zypper. $1 is the file to
 # write; $2 adds the type= line zypper wants and dnf ignores.
+#
+# No metadata_expire override: it is not local to this repo — any check-update
+# refreshes every configured repo, so an hourly expiry forced a refresh on
+# practically every invocation. dnf's default is what the other rpm repos this
+# project writes (VS Code, Brave, Docker) all rely on.
 _vscodium_write_rpm_repo() {
     local dest="$1" extra="${2:-}"
-    printf "[vscodium]\nname=VSCodium\nbaseurl=%s\nenabled=1\n%sgpgcheck=1\nrepo_gpgcheck=1\ngpgkey=%s\nmetadata_expire=1h\n" \
+    printf "[vscodium]\nname=VSCodium\nbaseurl=%s\nenabled=1\n%sgpgcheck=1\nrepo_gpgcheck=1\ngpgkey=%s\n" \
         "$_VSCODIUM_RPM_BASEURL" "$extra" "$_VSCODIUM_KEY_URL" | \
         sudo tee "$dest" > /dev/null
+}
+
+# Accept the repo signing key for the *invoking user*, not just root.
+#
+# repo_gpgcheck=1 above makes dnf verify the repository metadata signature on
+# every metadata refresh. The `rpm --import` in install_vscodium populates
+# root's rpm keyring, which covers `sudo dnf install` — but an unprivileged dnf
+# has its own trust store under ~/.cache/libdnf5 and has never seen this key, so
+# it stops and asks:
+#
+#     Importing OpenPGP key 0x5A278D9C: ... Is this ok [y/N]:
+#
+# Anything that runs check-update unprivileged therefore blocks on that prompt.
+# When the caller has stdout captured and stderr discarded the question is never
+# shown, and it waits on the terminal forever with nothing on screen.
+#
+# `-y` accepts the import non-interactively and the trust persists, so this runs
+# once at install time and the prompt never appears again. Non-fatal: if it
+# fails the install is still good, the user just gets the prompt on their next
+# unprivileged refresh.
+_vscodium_trust_repo_key_for_user() {
+    "$PKG_MGR" -y --refresh --disablerepo="*" --enablerepo=vscodium makecache \
+        >/dev/null 2>&1 || \
+        warn "Could not pre-accept the VSCodium repo key for ${USER}; an unprivileged '${PKG_MGR} check-update' may prompt to import it."
 }
 
 # Install the project's own release tarball per-user. Used as the
@@ -153,6 +182,7 @@ install_vscodium() {
             sudo rpm --import "$_VSCODIUM_KEY_URL"
             _vscodium_write_rpm_repo /etc/yum.repos.d/vscodium.repo
             sudo "$PKG_MGR" install -y codium
+            _vscodium_trust_repo_key_for_user
             ;;
         arch)
             # repos -> Flathub -> VSCodium's own tarball -> AUR (disabled by default).

@@ -89,6 +89,25 @@ when a release is cut.
 
 ### Fixed
 
+- **Installing VSCodium no longer leaves the menu hanging forever on
+  "Checking installed utilities...".** The repo it writes sets
+  `repo_gpgcheck=1`, so dnf verifies the repository metadata signature on every
+  metadata refresh. The key was only ever imported with `rpm --import`, which
+  populates **root's** rpm keyring — fine for `sudo dnf install`, but the menu's
+  pending-update count runs **unprivileged**, against its own trust store in
+  `~/.cache/libdnf5`, where the key was absent. dnf therefore stopped to ask
+  `Importing OpenPGP key 0x5A278D9C ... Is this ok [y/N]:` and waited for an
+  answer. That call is `_out=$("${PKG_MGR}" check-update 2>/dev/null)` — stdout
+  captured by the command substitution, stderr discarded — so the question was
+  never displayed and the script sat on a prompt nobody could see. It only
+  reproduced with a terminal attached; with stdin closed dnf cannot prompt and
+  fails in about a second, which is why it went unnoticed. `install_vscodium`
+  now also accepts the key once for the installing user, non-interactively, so
+  the prompt never arises. `metadata_expire=1h` is gone from the repo as well:
+  expiry is not repo-local — any `check-update` refreshes every configured repo
+  — so an hourly expiry forced a refresh on practically every invocation and
+  turned a rare prompt into one on every startup. `repo_gpgcheck=1` is
+  deliberately kept; the metadata signature is still verified.
 - **JetBrains Toolbox now installs a working application instead of a launcher
   that dies on start.** The installer pulled the ~150 MB upstream tarball and
   then `find`-ed a single file out of it — `jetbrains-toolbox` — copying only
