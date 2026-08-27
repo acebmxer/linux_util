@@ -119,6 +119,23 @@ when a release is cut.
   after install is also skipped when neither `DISPLAY` nor `WAYLAND_DISPLAY` is
   set, since starting a tray app over SSH just exits silently; the message then
   says how to start it later instead of claiming it is about to appear.
+- **ClamAV's clamd daemon now actually starts on Fedora and RHEL.** Fedora ships
+  `/etc/clamd.d/scan.conf` with every socket line commented out — the only active
+  settings in the stock file are `LogSyslog` and `User` — so `clamd` exited
+  immediately with "ERROR: Please define server type (local and/or TCP)" on every
+  start, and systemd gave up after five restarts. `systemctl enable --now
+  clamd@scan` was wrapped in `2>/dev/null || true`, so the enable "succeeded",
+  the daemon was dead, and the install reported success. On-access scanning was
+  silently unavailable, and front-ends reported the service as N/A. The installer
+  now uncomments the `LocalSocket` line the packaged unit and its tmpfiles entry
+  (`/run/clamd.scan`, 0710 clamscan:virusgroup) already expect, touching only the
+  first of the two commented copies the stock file carries, and leaving any
+  socket an admin has already defined alone.
+  - **A daemon that fails to start is now reported instead of swallowed.** The
+    enable is checked with `systemctl is-active`, and a dead unit prints the last
+    error from the journal plus the `systemctl status` command to investigate,
+    while making clear that on-demand `clamscan` is unaffected.
+
 - **ClamAV no longer fails to install on Arch.** `clamtk` is AUR-only, so naming
   it in the same `pacman -S` call as `clamav` made the call fail as a unit and
   left the machine with no antivirus at all — the same in `update_clamav`, and

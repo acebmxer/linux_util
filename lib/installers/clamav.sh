@@ -102,8 +102,14 @@ install_clamav() {
             sudo usermod -aG "$(id -gn)" clamav 2>/dev/null || true
             ;;
         fedora|rhel)
-            sudo systemctl enable --now clamd@scan 2>/dev/null || \
-                sudo systemctl enable --now clamd 2>/dev/null || true
+            _configure_clamd_socket
+            if sudo systemctl enable --now clamd@scan 2>/dev/null; then
+                _verify_clamd clamd@scan
+            elif sudo systemctl enable --now clamd 2>/dev/null; then
+                _verify_clamd clamd
+            else
+                warn "Could not enable the clamd daemon. On-demand scanning with 'clamscan' still works."
+            fi
             ;;
     esac
 
@@ -112,6 +118,43 @@ install_clamav() {
     info "ClamAV installed."
     info "Run 'clamscan -r /path/to/scan' to scan a directory."
     info "Run 'sudo freshclam' to update virus definitions manually."
+}
+
+# Fedora and RHEL ship /etc/clamd.d/scan.conf with every socket line commented
+# out, so clamd exits at once with "Please define server type (local and/or
+# TCP)": the unit enables cleanly and then dies on every restart until systemd
+# gives up. Define the local socket the packaged unit and its tmpfiles entry
+# (/run/clamd.scan) already expect.
+_configure_clamd_socket() {
+    local conf="/etc/clamd.d/scan.conf"
+    [[ -f "$conf" ]] || return 0
+
+    # A socket the admin already defined wins — never rewrite a working config.
+    grep -qE '^[[:space:]]*(LocalSocket|TCPSocket)[[:space:]]' "$conf" && return 0
+
+    info "Defining clamd's local socket in $conf..."
+    # First match only: the stock file carries the commented line twice, and one
+    # definition is all clamd needs.
+    sudo sed -i '0,/^#LocalSocket /s//LocalSocket /' "$conf"
+
+    # Some rebuilds keep upstream's "Example" line, which clamd treats as a
+    # refusal to run until an admin has actually read the file.
+    sudo sed -i 's/^[[:space:]]*Example[[:space:]]*$/#Example/' "$conf"
+}
+
+# Report what the daemon is actually doing rather than assuming "enable --now"
+# worked. A clamd that enables and then dies used to be silent: the failure went
+# to /dev/null and the install claimed success.
+_verify_clamd() {
+    local unit="$1"
+    systemctl is-active --quiet "$unit" 2>/dev/null && return 0
+
+    warn "$unit is enabled but is not running."
+    local _why
+    _why=$(journalctl -u "$unit" -p err -n 1 --no-pager -o cat 2>/dev/null | tail -1)
+    [[ -n "$_why" ]] && warn "  $_why"
+    warn "  Check with: systemctl status $unit"
+    warn "  On-demand scanning with 'clamscan' is unaffected."
 }
 
 # Lay down whichever front-end(s) _select_clamav_ui settled on.
