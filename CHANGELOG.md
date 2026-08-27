@@ -119,6 +119,11 @@ when a release is cut.
   after install is also skipped when neither `DISPLAY` nor `WAYLAND_DISPLAY` is
   set, since starting a tray app over SSH just exits silently; the message then
   says how to start it later instead of claiming it is about to appear.
+- **ClamAV no longer fails to install on Arch.** `clamtk` is AUR-only, so naming
+  it in the same `pacman -S` call as `clamav` made the call fail as a unit and
+  left the machine with no antivirus at all — the same in `update_clamav`, and
+  `pacman -Rs` on uninstall. Arch installs the engine alone now and gets ClamUI
+  as its GUI.
 - **WPS Office installs again.** Every direct install had been failing with
   "Could not determine WPS Office download URL from linux.wps.com": that host
   now 301s to `www.wps.com/office/linux/`, a Nuxt single-page app whose HTML
@@ -514,6 +519,31 @@ when a release is cut.
   sidecars so the download is checksum-verified, and unlike Microsoft's it
   unpacks flat, so it is extracted straight into `~/.local/share/vscodium`
   with no root needed.
+- **ClamAV now offers the ClamUI desktop front-end** (`io.github.linx_systems.ClamUI`,
+  MIT) from Flathub. ClamUI is a GTK4/libadwaita app — graphical scanning,
+  quarantine management, scheduled scans and file-manager integration — and its
+  Flathub build is publisher-verified. It bundles no scanner of its own: the
+  Flatpak reaches the host's `clamscan`/`freshclam` through `flatpak-spawn
+  --host`, so the engine packages this installer lays down are what it drives.
+  Being a Flatpak on the GNOME runtime, it pulls no GNOME packages onto the
+  system and runs anywhere — its tray registers with the KDE/XFCE/Cinnamon/MATE
+  StatusNotifierItem watchers, and upstream integrates with Dolphin and Nemo as
+  well as Nautilus.
+  - **The installer now asks which front-end to install**, defaulting to ClamUI:
+    ClamUI, ClamTk, or both. The prompt comes first, before any package work, so
+    the rest of the install runs unattended instead of stopping for input
+    part-way through. Arch is not asked (ClamTk is AUR-only there), and neither
+    is a run with no controlling terminal — profile-driven installs take the
+    default rather than hanging on `/dev/tty`.
+  - **ClamTk remains available** wherever the distro packages it (Debian,
+    Fedora/RHEL, openSUSE). Its preference seeding is now guarded on the binary
+    actually being present rather than assumed, and a failed ClamTk install
+    falls back to ClamUI rather than leaving no GUI at all.
+  - **The engine is installed on its own**, separately from the front-end, so a
+    GUI that is declined or unavailable can no longer take the scanner down with
+    it. `update_clamav` updates whichever front-end is actually present and no
+    longer force-installs ClamTk; an install with no GUI at all — one predating
+    this change, or one whose front-end was removed by hand — gets ClamUI.
 - **Package Managers section in the README's "Utilities by Category"**, which
   had never been written — Flatpak Setup, Homebrew, Nix, Snap (snapd),
   deb-get, Pacstall, yay and paru are now documented there.

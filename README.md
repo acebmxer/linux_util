@@ -361,7 +361,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | Utility | Description |
 |---------|-------------|
 | **Btop** | Terminal-based resource monitor with rich visuals |
-| **ClamAV** | Open-source antivirus engine |
+| **ClamAV** | Open-source antivirus engine — prompts for a desktop front-end, defaulting to ClamUI (Flathub) |
 | **Fastfetch** | Fast system information display tool |
 | **Filelight** | Disk usage analyzer with interactive sunburst chart |
 | **Input Leap** | Software KVM — share keyboard and mouse across machines |
