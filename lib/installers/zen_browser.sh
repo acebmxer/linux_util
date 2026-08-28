@@ -123,7 +123,8 @@ install_zen_browser() {
 uninstall_zen_browser() {
     info "Uninstalling Zen Browser..."
     if flatpak_is_installed "$_ZEN_FLATPAK_ID"; then
-        flatpak uninstall -y "$_ZEN_FLATPAK_ID"
+        flatpak uninstall -y --user "$_ZEN_FLATPAK_ID" 2>/dev/null || \
+            sudo flatpak uninstall -y --system "$_ZEN_FLATPAK_ID"
     fi
     rm -f "$HOME/.local/bin/zen-browser"
     rm -f "$_ZEN_DESKTOP"
@@ -140,7 +141,8 @@ update_zen_browser() {
         # Re-download and re-extract the latest tarball in place
         _install_zen_tarball
     elif flatpak_is_installed "$_ZEN_FLATPAK_ID"; then
-        flatpak update -y "$_ZEN_FLATPAK_ID"
+        flatpak update -y --user "$_ZEN_FLATPAK_ID" 2>/dev/null || \
+            sudo flatpak update -y --system "$_ZEN_FLATPAK_ID"
     fi
 }
 

@@ -94,7 +94,8 @@ install_protonvpn() {
 uninstall_protonvpn() {
     info "Uninstalling ProtonVPN..."
     if flatpak_is_installed "com.protonvpn.www"; then
-        flatpak uninstall -y com.protonvpn.www
+        flatpak uninstall -y --user com.protonvpn.www 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.protonvpn.www
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -121,7 +122,8 @@ uninstall_protonvpn() {
 update_protonvpn() {
     info "Updating ProtonVPN..."
     if flatpak_is_installed "com.protonvpn.www"; then
-        flatpak update -y com.protonvpn.www
+        flatpak update -y --user com.protonvpn.www 2>/dev/null || \
+            sudo flatpak update -y --system com.protonvpn.www
     else
         case "$DISTRO_FAMILY" in
             debian)   sudo apt-get install -y --only-upgrade proton-vpn-gnome-desktop ;;

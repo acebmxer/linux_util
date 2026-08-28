@@ -28,7 +28,8 @@ install_protonup_qt() {
 uninstall_protonup_qt() {
     info "Uninstalling ProtonUp-Qt..."
     if flatpak_is_installed "net.davidotek.pupgui2"; then
-        flatpak uninstall -y net.davidotek.pupgui2
+        flatpak uninstall -y --user net.davidotek.pupgui2 2>/dev/null || \
+            sudo flatpak uninstall -y --system net.davidotek.pupgui2
     else
         case "$DISTRO_FAMILY" in
             arch)
@@ -42,7 +43,8 @@ uninstall_protonup_qt() {
 update_protonup_qt() {
     info "Updating ProtonUp-Qt..."
     if flatpak_is_installed "net.davidotek.pupgui2"; then
-        flatpak update -y net.davidotek.pupgui2
+        flatpak update -y --user net.davidotek.pupgui2 2>/dev/null || \
+            sudo flatpak update -y --system net.davidotek.pupgui2
     else
         case "$DISTRO_FAMILY" in
             arch)

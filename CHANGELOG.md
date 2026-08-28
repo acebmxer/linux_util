@@ -89,6 +89,24 @@ when a release is cut.
 
 ### Fixed
 
+- **Every Flatpak update/uninstall failed the same way the Aug 22 install
+  sweep fixed for installs**: `"Flatpak system operation Deploy not allowed
+  for user"` (or `Uninstall`/`Undeploy`). That sweep put `sudo` on all 76
+  `flatpak install` sites but never touched `update`/`uninstall`, which hit
+  the identical polkit refusal for the same reason — Flathub is a *system*
+  remote and every app in this project deploys system-wide, so an
+  unprivileged `flatpak update`/`uninstall` can't get the system-helper to
+  act on it. This showed up most visibly in **System Updates**, where the
+  blanket `flatpak update -y` step failed outright on every runtime
+  (`org.freedesktop.Platform.GL.default`, `.Locale`, etc.) with `Error: There
+  were one or more errors`. All `update_x`/`uninstall_x` call sites across
+  every Flatpak-based installer (~45 files) now try the unprivileged `--user`
+  installation first (a silent no-op if nothing is user-scoped) and fall back
+  to `sudo … --system`, matching the pattern already used by the Termius
+  installer. The blanket calls in **System Updates** and **Flatpak Setup**'s
+  own `update` action got the same two-step treatment. ClamAV, qBittorrent,
+  and Termius already had a working sudo fallback and were left alone.
+
 - **Installing VSCodium no longer leaves the menu hanging forever on
   "Checking installed utilities...".** The repo it writes sets
   `repo_gpgcheck=1`, so dnf verifies the repository metadata signature on every

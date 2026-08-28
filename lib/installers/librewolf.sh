@@ -70,7 +70,8 @@ EOF
 uninstall_librewolf() {
     info "Uninstalling LibreWolf..."
     if flatpak_is_installed "io.gitlab.librewolf-community.librewolf"; then
-        flatpak uninstall -y io.gitlab.librewolf-community.librewolf
+        flatpak uninstall -y --user io.gitlab.librewolf-community.librewolf 2>/dev/null || \
+            sudo flatpak uninstall -y --system io.gitlab.librewolf-community.librewolf
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -99,7 +100,8 @@ uninstall_librewolf() {
 update_librewolf() {
     info "Updating LibreWolf..."
     if flatpak_is_installed "io.gitlab.librewolf-community.librewolf"; then
-        flatpak update -y io.gitlab.librewolf-community.librewolf
+        flatpak update -y --user io.gitlab.librewolf-community.librewolf 2>/dev/null || \
+            sudo flatpak update -y --system io.gitlab.librewolf-community.librewolf
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade librewolf ;;

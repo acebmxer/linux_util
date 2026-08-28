@@ -20,14 +20,16 @@ install_distroshelf() {
 uninstall_distroshelf() {
     info "Uninstalling DistroShelf..."
     if flatpak_is_installed "com.ranfdev.DistroShelf"; then
-        flatpak uninstall -y com.ranfdev.DistroShelf
+        flatpak uninstall -y --user com.ranfdev.DistroShelf 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.ranfdev.DistroShelf
     fi
 }
 
 update_distroshelf() {
     info "Updating DistroShelf..."
     if flatpak_is_installed "com.ranfdev.DistroShelf"; then
-        flatpak update -y com.ranfdev.DistroShelf
+        flatpak update -y --user com.ranfdev.DistroShelf 2>/dev/null || \
+            sudo flatpak update -y --system com.ranfdev.DistroShelf
     fi
 }
 

@@ -69,7 +69,8 @@ install_rustdesk() {
 uninstall_rustdesk() {
     info "Uninstalling RustDesk..."
     if flatpak_is_installed "com.rustdesk.RustDesk"; then
-        flatpak uninstall -y com.rustdesk.RustDesk
+        flatpak uninstall -y --user com.rustdesk.RustDesk 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.rustdesk.RustDesk
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y rustdesk ;;
@@ -86,7 +87,8 @@ uninstall_rustdesk() {
 update_rustdesk() {
     info "Updating RustDesk..."
     if flatpak_is_installed "com.rustdesk.RustDesk"; then
-        flatpak update -y com.rustdesk.RustDesk
+        flatpak update -y --user com.rustdesk.RustDesk 2>/dev/null || \
+            sudo flatpak update -y --system com.rustdesk.RustDesk
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_rustdesk ;;

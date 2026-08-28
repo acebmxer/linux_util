@@ -62,28 +62,32 @@ uninstall_onlyoffice() {
             ;;
         fedora|rhel)
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
-                flatpak uninstall -y org.onlyoffice.desktopeditors
+                flatpak uninstall -y --user org.onlyoffice.desktopeditors 2>/dev/null || \
+                    sudo flatpak uninstall -y --system org.onlyoffice.desktopeditors
             else
                 sudo "$PKG_MGR" remove -y onlyoffice-desktopeditors 2>/dev/null || true
             fi
             ;;
         arch)
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
-                flatpak uninstall -y org.onlyoffice.desktopeditors
+                flatpak uninstall -y --user org.onlyoffice.desktopeditors 2>/dev/null || \
+                    sudo flatpak uninstall -y --system org.onlyoffice.desktopeditors
             else
                 aur_remove onlyoffice-bin 2>/dev/null || pkg_remove onlyoffice-desktopeditors 2>/dev/null || true
             fi
             ;;
         suse)
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
-                flatpak uninstall -y org.onlyoffice.desktopeditors
+                flatpak uninstall -y --user org.onlyoffice.desktopeditors 2>/dev/null || \
+                    sudo flatpak uninstall -y --system org.onlyoffice.desktopeditors
             else
                 sudo zypper remove -y onlyoffice-desktopeditors 2>/dev/null || true
             fi
             ;;
         *)
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
-                flatpak uninstall -y org.onlyoffice.desktopeditors
+                flatpak uninstall -y --user org.onlyoffice.desktopeditors 2>/dev/null || \
+                    sudo flatpak uninstall -y --system org.onlyoffice.desktopeditors
             fi
             ;;
     esac
@@ -101,14 +105,16 @@ update_onlyoffice() {
             ;;
         arch)
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
-                flatpak update -y org.onlyoffice.desktopeditors
+                flatpak update -y --user org.onlyoffice.desktopeditors 2>/dev/null || \
+                    sudo flatpak update -y --system org.onlyoffice.desktopeditors
             else
                 repo_or_aur onlyoffice-bin
             fi
             ;;
         *)
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then
-                flatpak update -y org.onlyoffice.desktopeditors
+                flatpak update -y --user org.onlyoffice.desktopeditors 2>/dev/null || \
+                    sudo flatpak update -y --system org.onlyoffice.desktopeditors
             else
                 pkg_upgrade onlyoffice-desktopeditors
             fi

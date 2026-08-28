@@ -28,7 +28,8 @@ install_bottles() {
 uninstall_bottles() {
     info "Uninstalling Bottles..."
     if flatpak_is_installed "com.usebottles.bottles"; then
-        flatpak uninstall -y com.usebottles.bottles
+        flatpak uninstall -y --user com.usebottles.bottles 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.usebottles.bottles
     else
         case "$DISTRO_FAMILY" in
             arch)
@@ -43,7 +44,8 @@ uninstall_bottles() {
 update_bottles() {
     info "Updating Bottles..."
     if flatpak_is_installed "com.usebottles.bottles"; then
-        flatpak update -y com.usebottles.bottles
+        flatpak update -y --user com.usebottles.bottles 2>/dev/null || \
+            sudo flatpak update -y --system com.usebottles.bottles
     else
         case "$DISTRO_FAMILY" in
             arch)

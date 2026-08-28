@@ -36,7 +36,8 @@ install_signal() {
 uninstall_signal() {
     info "Uninstalling Signal Desktop..."
     if flatpak_is_installed "org.signal.Signal"; then
-        flatpak uninstall -y org.signal.Signal
+        flatpak uninstall -y --user org.signal.Signal 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.signal.Signal
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -56,7 +57,8 @@ uninstall_signal() {
 update_signal() {
     info "Updating Signal Desktop..."
     if flatpak_is_installed "org.signal.Signal"; then
-        flatpak update -y org.signal.Signal
+        flatpak update -y --user org.signal.Signal 2>/dev/null || \
+            sudo flatpak update -y --system org.signal.Signal
     else
         case "$DISTRO_FAMILY" in
             debian)   sudo apt-get install -y --only-upgrade signal-desktop ;;

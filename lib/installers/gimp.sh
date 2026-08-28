@@ -23,7 +23,8 @@ install_gimp() {
 uninstall_gimp() {
     info "Uninstalling GIMP..."
     if flatpak_is_installed "org.gimp.GIMP"; then
-        flatpak uninstall -y org.gimp.GIMP
+        flatpak uninstall -y --user org.gimp.GIMP 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.gimp.GIMP
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt purge --autoremove -y gimp ;;
@@ -38,7 +39,8 @@ uninstall_gimp() {
 update_gimp() {
     info "Updating GIMP..."
     if flatpak_is_installed "org.gimp.GIMP"; then
-        flatpak update -y org.gimp.GIMP
+        flatpak update -y --user org.gimp.GIMP 2>/dev/null || \
+            sudo flatpak update -y --system org.gimp.GIMP
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt-get install -y --only-upgrade gimp ;;

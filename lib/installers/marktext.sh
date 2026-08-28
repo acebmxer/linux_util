@@ -149,7 +149,8 @@ install_marktext() {
 uninstall_marktext() {
     info "Uninstalling Mark Text..."
     if flatpak_is_installed "com.github.marktext.marktext"; then
-        flatpak uninstall -y com.github.marktext.marktext
+        flatpak uninstall -y --user com.github.marktext.marktext 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.github.marktext.marktext
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y marktext ;;
@@ -172,7 +173,8 @@ uninstall_marktext() {
 update_marktext() {
     info "Updating Mark Text..."
     if flatpak_is_installed "com.github.marktext.marktext"; then
-        flatpak update -y com.github.marktext.marktext
+        flatpak update -y --user com.github.marktext.marktext 2>/dev/null || \
+            sudo flatpak update -y --system com.github.marktext.marktext
     else
         case "$DISTRO_FAMILY" in
             debian)      install_marktext ;;

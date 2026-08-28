@@ -41,7 +41,8 @@ install_flameshot() {
 uninstall_flameshot() {
     info "Uninstalling Flameshot..."
     if flatpak_is_installed "org.flameshot.Flameshot"; then
-        flatpak uninstall -y org.flameshot.Flameshot
+        flatpak uninstall -y --user org.flameshot.Flameshot 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.flameshot.Flameshot
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y flameshot ;;
@@ -56,7 +57,8 @@ uninstall_flameshot() {
 update_flameshot() {
     info "Updating Flameshot..."
     if flatpak_is_installed "org.flameshot.Flameshot"; then
-        flatpak update -y org.flameshot.Flameshot
+        flatpak update -y --user org.flameshot.Flameshot 2>/dev/null || \
+            sudo flatpak update -y --system org.flameshot.Flameshot
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade flameshot ;;

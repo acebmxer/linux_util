@@ -49,7 +49,8 @@ install_tor_browser() {
 uninstall_tor_browser() {
     info "Uninstalling Tor Browser..."
     if flatpak_is_installed "com.github.micahflee.torbrowser-launcher"; then
-        flatpak uninstall -y com.github.micahflee.torbrowser-launcher
+        flatpak uninstall -y --user com.github.micahflee.torbrowser-launcher 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.github.micahflee.torbrowser-launcher
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y torbrowser-launcher ;;
@@ -67,7 +68,8 @@ uninstall_tor_browser() {
 update_tor_browser() {
     info "Updating Tor Browser..."
     if flatpak_is_installed "com.github.micahflee.torbrowser-launcher"; then
-        flatpak update -y com.github.micahflee.torbrowser-launcher
+        flatpak update -y --user com.github.micahflee.torbrowser-launcher 2>/dev/null || \
+            sudo flatpak update -y --system com.github.micahflee.torbrowser-launcher
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade torbrowser-launcher ;;

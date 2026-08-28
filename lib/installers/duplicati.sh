@@ -17,14 +17,16 @@ install_duplicati() {
 uninstall_duplicati() {
     info "Uninstalling Duplicati..."
     if flatpak_is_installed "com.duplicati.Duplicati"; then
-        flatpak uninstall -y com.duplicati.Duplicati
+        flatpak uninstall -y --user com.duplicati.Duplicati 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.duplicati.Duplicati
     fi
 }
 
 update_duplicati() {
     info "Updating Duplicati..."
     if flatpak_is_installed "com.duplicati.Duplicati"; then
-        flatpak update -y com.duplicati.Duplicati
+        flatpak update -y --user com.duplicati.Duplicati 2>/dev/null || \
+            sudo flatpak update -y --system com.duplicati.Duplicati
     fi
 }
 

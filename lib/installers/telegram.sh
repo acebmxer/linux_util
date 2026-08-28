@@ -58,7 +58,8 @@ install_telegram() {
 uninstall_telegram() {
     info "Uninstalling Telegram Desktop..."
     if flatpak_is_installed "org.telegram.desktop"; then
-        flatpak uninstall -y org.telegram.desktop
+        flatpak uninstall -y --user org.telegram.desktop 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.telegram.desktop
     elif has_snap && snap list telegram-desktop &>/dev/null 2>&1; then
         sudo snap remove telegram-desktop
     else
@@ -75,7 +76,8 @@ uninstall_telegram() {
 update_telegram() {
     info "Updating Telegram Desktop..."
     if flatpak_is_installed "org.telegram.desktop"; then
-        flatpak update -y org.telegram.desktop
+        flatpak update -y --user org.telegram.desktop 2>/dev/null || \
+            sudo flatpak update -y --system org.telegram.desktop
     elif has_snap && snap list telegram-desktop &>/dev/null 2>&1; then
         sudo snap refresh telegram-desktop
     else

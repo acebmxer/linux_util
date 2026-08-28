@@ -26,7 +26,8 @@ install_boxflat() {
 uninstall_boxflat() {
     info "Uninstalling Boxflat..."
     if flatpak_is_installed "io.github.lawstorant.boxflat"; then
-        flatpak uninstall -y io.github.lawstorant.boxflat
+        flatpak uninstall -y --user io.github.lawstorant.boxflat 2>/dev/null || \
+            sudo flatpak uninstall -y --system io.github.lawstorant.boxflat
     elif [[ "$DISTRO_FAMILY" == "arch" ]]; then
         aur_remove boxflat-git 2>/dev/null || \
             sudo pacman -Rs --noconfirm boxflat-git 2>/dev/null || true
@@ -36,7 +37,8 @@ uninstall_boxflat() {
 update_boxflat() {
     info "Updating Boxflat..."
     if flatpak_is_installed "io.github.lawstorant.boxflat"; then
-        flatpak update -y io.github.lawstorant.boxflat
+        flatpak update -y --user io.github.lawstorant.boxflat 2>/dev/null || \
+            sudo flatpak update -y --system io.github.lawstorant.boxflat
     elif [[ "$DISTRO_FAMILY" == "arch" ]]; then
         repo_or_aur boxflat-git
     fi

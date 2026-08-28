@@ -108,7 +108,8 @@ uninstall_pia_vpn() {
             sudo pacman -Rs --noconfirm privateinternetaccess 2>/dev/null || true
             ;;
         suse)
-            flatpak uninstall -y com.privateinternetaccess.PIA 2>/dev/null || true
+            flatpak uninstall -y --user com.privateinternetaccess.PIA 2>/dev/null || \
+                sudo flatpak uninstall -y --system com.privateinternetaccess.PIA 2>/dev/null || true
             ;;
     esac
     rm -rf ~/.config/privateinternetaccess
@@ -123,7 +124,8 @@ update_pia_vpn() {
             _pia_install_via_run || return 1
             ;;
         suse)
-            flatpak update -y com.privateinternetaccess.PIA 2>/dev/null || true
+            flatpak update -y --user com.privateinternetaccess.PIA 2>/dev/null || \
+                sudo flatpak update -y --system com.privateinternetaccess.PIA 2>/dev/null || true
             ;;
     esac
 }

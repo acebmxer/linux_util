@@ -102,7 +102,8 @@ EOF
 uninstall_standard_notes() {
     info "Uninstalling Standard Notes..."
     if flatpak_is_installed "org.standardnotes.standardnotes"; then
-        flatpak uninstall -y org.standardnotes.standardnotes
+        flatpak uninstall -y --user org.standardnotes.standardnotes 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.standardnotes.standardnotes
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt purge --autoremove -y standard-notes 2>/dev/null || true ;;
@@ -122,7 +123,8 @@ uninstall_standard_notes() {
 update_standard_notes() {
     info "Updating Standard Notes..."
     if flatpak_is_installed "org.standardnotes.standardnotes"; then
-        flatpak update -y org.standardnotes.standardnotes
+        flatpak update -y --user org.standardnotes.standardnotes 2>/dev/null || \
+            sudo flatpak update -y --system org.standardnotes.standardnotes
     elif [[ -f "$_SN_APPIMAGE" ]]; then
         _sn_install_appimage
     else

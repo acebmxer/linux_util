@@ -45,7 +45,8 @@ install_element() {
 uninstall_element() {
     info "Uninstalling Element..."
     if flatpak_is_installed "im.riot.Riot"; then
-        flatpak uninstall -y im.riot.Riot
+        flatpak uninstall -y --user im.riot.Riot 2>/dev/null || \
+            sudo flatpak uninstall -y --system im.riot.Riot
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -66,7 +67,8 @@ uninstall_element() {
 update_element() {
     info "Updating Element..."
     if flatpak_is_installed "im.riot.Riot"; then
-        flatpak update -y im.riot.Riot
+        flatpak update -y --user im.riot.Riot 2>/dev/null || \
+            sudo flatpak update -y --system im.riot.Riot
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade element-desktop ;;

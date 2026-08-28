@@ -71,7 +71,14 @@ setup_system_updates() {
     # never touches, so update them here too (Arch defers this to *-update above).
     if check_flatpak_setup; then
         info "Updating Flatpak applications and runtimes..."
-        flatpak update -y
+        # Flathub is added as a *system* remote (flatpak_setup.sh) and every
+        # installer in this project deploys system-wide, so an unprivileged
+        # "flatpak update" is refused by polkit for every ref ("Flatpak system
+        # operation Deploy not allowed for user"). Run the --user installation
+        # unprivileged first (silently a no-op if nothing is user-scoped), then
+        # the --system one under sudo, matching the install-side fix.
+        flatpak update -y --user 2>/dev/null || true
+        sudo flatpak update -y --system
     fi
     # Device firmware is yet another separate subsystem the package manager and
     # Flatpak never touch (this is what fwupdmgr's MOTD notice refers to).

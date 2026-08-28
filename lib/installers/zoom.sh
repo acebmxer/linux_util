@@ -54,7 +54,8 @@ install_zoom() {
 uninstall_zoom() {
     info "Uninstalling Zoom..."
     if flatpak_is_installed "us.zoom.Zoom"; then
-        flatpak uninstall -y us.zoom.Zoom
+        flatpak uninstall -y --user us.zoom.Zoom 2>/dev/null || \
+            sudo flatpak uninstall -y --system us.zoom.Zoom
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y zoom ;;
@@ -72,7 +73,8 @@ uninstall_zoom() {
 update_zoom() {
     info "Updating Zoom..."
     if flatpak_is_installed "us.zoom.Zoom"; then
-        flatpak update -y us.zoom.Zoom
+        flatpak update -y --user us.zoom.Zoom 2>/dev/null || \
+            sudo flatpak update -y --system us.zoom.Zoom
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_zoom ;;

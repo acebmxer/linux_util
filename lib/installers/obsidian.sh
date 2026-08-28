@@ -70,13 +70,15 @@ install_obsidian() {
 uninstall_obsidian() {
     info "Uninstalling Obsidian..."
     if flatpak_is_installed "md.obsidian.Obsidian"; then
-        flatpak uninstall -y md.obsidian.Obsidian
+        flatpak uninstall -y --user md.obsidian.Obsidian 2>/dev/null || \
+            sudo flatpak uninstall -y --system md.obsidian.Obsidian
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt purge --autoremove -y obsidian ;;
             fedora|rhel) sudo "$PKG_MGR" remove -y obsidian ;;
             arch)    aur_remove obsidian 2>/dev/null || sudo pacman -Rs --noconfirm obsidian 2>/dev/null || true ;;
-            suse)    flatpak uninstall -y md.obsidian.Obsidian 2>/dev/null || true ;;
+            suse)    flatpak uninstall -y --user md.obsidian.Obsidian 2>/dev/null || \
+                         sudo flatpak uninstall -y --system md.obsidian.Obsidian 2>/dev/null || true ;;
         esac
     fi
     rm -rf "$HOME/.config/obsidian"
@@ -85,7 +87,8 @@ uninstall_obsidian() {
 update_obsidian() {
     info "Updating Obsidian..."
     if flatpak_is_installed "md.obsidian.Obsidian"; then
-        flatpak update -y md.obsidian.Obsidian
+        flatpak update -y --user md.obsidian.Obsidian 2>/dev/null || \
+            sudo flatpak update -y --system md.obsidian.Obsidian
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_obsidian ;;

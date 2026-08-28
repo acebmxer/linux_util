@@ -47,7 +47,8 @@ install_audacity() {
 uninstall_audacity() {
     info "Uninstalling Audacity..."
     if flatpak_is_installed "org.audacityteam.Audacity"; then
-        flatpak uninstall -y org.audacityteam.Audacity
+        flatpak uninstall -y --user org.audacityteam.Audacity 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.audacityteam.Audacity
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y audacity ;;
@@ -62,7 +63,8 @@ uninstall_audacity() {
 update_audacity() {
     info "Updating Audacity..."
     if flatpak_is_installed "org.audacityteam.Audacity"; then
-        flatpak update -y org.audacityteam.Audacity
+        flatpak update -y --user org.audacityteam.Audacity 2>/dev/null || \
+            sudo flatpak update -y --system org.audacityteam.Audacity
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade audacity ;;

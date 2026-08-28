@@ -37,7 +37,8 @@ install_betterbird() {
 uninstall_betterbird() {
     info "Uninstalling Betterbird..."
     if flatpak_is_installed "$_BETTERBIRD_FLATPAK"; then
-        flatpak uninstall -y --delete-data "$_BETTERBIRD_FLATPAK" || true
+        flatpak uninstall -y --user --delete-data "$_BETTERBIRD_FLATPAK" 2>/dev/null || \
+            sudo flatpak uninstall -y --system --delete-data "$_BETTERBIRD_FLATPAK" 2>/dev/null || true
     fi
     if [[ "$DISTRO_FAMILY" == "arch" ]] && pkg_check_installed "$_BETTERBIRD_AUR"; then
         aur_remove "$_BETTERBIRD_AUR" || true
@@ -50,7 +51,8 @@ uninstall_betterbird() {
 update_betterbird() {
     info "Updating Betterbird..."
     if flatpak_is_installed "$_BETTERBIRD_FLATPAK"; then
-        flatpak update -y "$_BETTERBIRD_FLATPAK"
+        flatpak update -y --user "$_BETTERBIRD_FLATPAK" 2>/dev/null || \
+            sudo flatpak update -y --system "$_BETTERBIRD_FLATPAK"
     elif [[ "$DISTRO_FAMILY" == "arch" ]]; then
         repo_or_aur "$_BETTERBIRD_AUR"
     else

@@ -65,7 +65,8 @@ install_heroic() {
 uninstall_heroic() {
     info "Uninstalling Heroic Games Launcher..."
     if flatpak_is_installed "com.heroicgameslauncher.hgl"; then
-        flatpak uninstall -y com.heroicgameslauncher.hgl
+        flatpak uninstall -y --user com.heroicgameslauncher.hgl 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.heroicgameslauncher.hgl
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -79,7 +80,8 @@ uninstall_heroic() {
                     sudo pacman -Rs --noconfirm heroic 2>/dev/null || true
                 ;;
             suse)
-                flatpak uninstall -y com.heroicgameslauncher.hgl 2>/dev/null || true
+                flatpak uninstall -y --user com.heroicgameslauncher.hgl 2>/dev/null || \
+                    sudo flatpak uninstall -y --system com.heroicgameslauncher.hgl 2>/dev/null || true
                 ;;
         esac
     fi
@@ -89,7 +91,8 @@ uninstall_heroic() {
 update_heroic() {
     info "Updating Heroic Games Launcher..."
     if flatpak_is_installed "com.heroicgameslauncher.hgl"; then
-        flatpak update -y com.heroicgameslauncher.hgl
+        flatpak update -y --user com.heroicgameslauncher.hgl 2>/dev/null || \
+            sudo flatpak update -y --system com.heroicgameslauncher.hgl
     else
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_heroic ;;
