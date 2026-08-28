@@ -51,7 +51,8 @@ install_nextcloud_desktop() {
 uninstall_nextcloud_desktop() {
     info "Uninstalling Nextcloud Desktop Client..."
     if flatpak_is_installed "com.nextcloud.desktopclient.nextcloud"; then
-        flatpak uninstall -y com.nextcloud.desktopclient.nextcloud
+        flatpak uninstall -y --user com.nextcloud.desktopclient.nextcloud 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.nextcloud.desktopclient.nextcloud
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt purge --autoremove -y nextcloud-desktop ;;
@@ -67,7 +68,8 @@ uninstall_nextcloud_desktop() {
 update_nextcloud_desktop() {
     info "Updating Nextcloud Desktop Client..."
     if flatpak_is_installed "com.nextcloud.desktopclient.nextcloud"; then
-        flatpak update -y com.nextcloud.desktopclient.nextcloud
+        flatpak update -y --user com.nextcloud.desktopclient.nextcloud 2>/dev/null || \
+            sudo flatpak update -y --system com.nextcloud.desktopclient.nextcloud
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt-get install -y --only-upgrade nextcloud-desktop ;;

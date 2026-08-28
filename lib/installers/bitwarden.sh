@@ -74,7 +74,8 @@ uninstall_bitwarden() {
     if has_snap && snap list bitwarden &>/dev/null; then
         sudo snap remove bitwarden
     elif flatpak_is_installed bitwarden; then
-        flatpak uninstall -y com.bitwarden.desktop
+        flatpak uninstall -y --user com.bitwarden.desktop 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.bitwarden.desktop
     elif pkg_check_installed bitwarden-bin; then
         pkg_remove bitwarden-bin
     elif pkg_check_installed bitwarden; then
@@ -90,7 +91,8 @@ update_bitwarden() {
     if has_snap && snap list bitwarden &>/dev/null; then
         sudo snap refresh bitwarden
     elif flatpak_is_installed bitwarden; then
-        flatpak update -y com.bitwarden.desktop
+        flatpak update -y --user com.bitwarden.desktop 2>/dev/null || \
+            sudo flatpak update -y --system com.bitwarden.desktop
     elif [[ "$DISTRO_FAMILY" == "debian" ]]; then
         install_bitwarden
     elif [[ "$DISTRO_FAMILY" == "fedora" || "$DISTRO_FAMILY" == "rhel" ]]; then

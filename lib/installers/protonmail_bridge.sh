@@ -37,7 +37,8 @@ uninstall_protonmail_bridge() {
     if flatpak_is_installed "$_PROTONMAIL_BRIDGE_FLATPAK"; then
         # --delete-data also clears ~/.var/app/<id>, where the Flatpak keeps the
         # bridge database and account credentials.
-        flatpak uninstall -y --delete-data "$_PROTONMAIL_BRIDGE_FLATPAK" || true
+        flatpak uninstall -y --user --delete-data "$_PROTONMAIL_BRIDGE_FLATPAK" 2>/dev/null || \
+            sudo flatpak uninstall -y --system --delete-data "$_PROTONMAIL_BRIDGE_FLATPAK" 2>/dev/null || true
     fi
     # Only present if a native package was installed outside this script.
     rm -rf "$HOME/.config/protonmail"
@@ -47,7 +48,8 @@ uninstall_protonmail_bridge() {
 update_protonmail_bridge() {
     info "Updating Proton Mail Bridge..."
     if flatpak_is_installed "$_PROTONMAIL_BRIDGE_FLATPAK"; then
-        flatpak update -y "$_PROTONMAIL_BRIDGE_FLATPAK"
+        flatpak update -y --user "$_PROTONMAIL_BRIDGE_FLATPAK" 2>/dev/null || \
+            sudo flatpak update -y --system "$_PROTONMAIL_BRIDGE_FLATPAK"
     else
         warn "Proton Mail Bridge Flatpak not found; nothing to update."
         return 1

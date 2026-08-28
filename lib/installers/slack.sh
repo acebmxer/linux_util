@@ -53,7 +53,8 @@ install_slack() {
 uninstall_slack() {
     info "Uninstalling Slack..."
     if flatpak_is_installed "com.slack.Slack"; then
-        flatpak uninstall -y com.slack.Slack
+        flatpak uninstall -y --user com.slack.Slack 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.slack.Slack
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y slack-desktop ;;
@@ -70,7 +71,8 @@ uninstall_slack() {
 update_slack() {
     info "Updating Slack..."
     if flatpak_is_installed "com.slack.Slack"; then
-        flatpak update -y com.slack.Slack
+        flatpak update -y --user com.slack.Slack 2>/dev/null || \
+            sudo flatpak update -y --system com.slack.Slack
     else
         case "$DISTRO_FAMILY" in
             debian)       install_slack ;;

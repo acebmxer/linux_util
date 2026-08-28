@@ -40,7 +40,8 @@ install_inkscape() {
 uninstall_inkscape() {
     info "Uninstalling Inkscape..."
     if flatpak_is_installed "org.inkscape.Inkscape"; then
-        flatpak uninstall -y org.inkscape.Inkscape
+        flatpak uninstall -y --user org.inkscape.Inkscape 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.inkscape.Inkscape
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y inkscape ;;
@@ -55,7 +56,8 @@ uninstall_inkscape() {
 update_inkscape() {
     info "Updating Inkscape..."
     if flatpak_is_installed "org.inkscape.Inkscape"; then
-        flatpak update -y org.inkscape.Inkscape
+        flatpak update -y --user org.inkscape.Inkscape 2>/dev/null || \
+            sudo flatpak update -y --system org.inkscape.Inkscape
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade inkscape ;;

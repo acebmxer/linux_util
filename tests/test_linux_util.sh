@@ -2943,6 +2943,96 @@ test_vscode_version_reads_the_install_tree
 test_vscode_remove_tarball_reports_nothing_to_do
 
 # ============================================================================
+# VSCodium Tests
+# ============================================================================
+echo ""
+echo "=== VSCodium Tests ==="
+
+source "${SCRIPT_DIR}/lib/installers/vscodium.sh"
+
+# vscodium-bin is AUR-only on upstream Arch, so the project's own release
+# tarball IS the non-AUR path -- same reasoning as the VS Code tier above.
+test_vscodium_arch_wires_the_upstream_tarball() {
+    local out
+    out=$(
+        DISTRO_FAMILY=arch
+        ensure_tools() { :; }
+        arch_install_ordered() { echo "TIERS: $*"; }
+        install_vscodium 2>&1
+    )
+    assert_contains "$out" "TIERS: vscodium-bin com.vscodium.codium _vscodium_install_tarball vscodium-bin" \
+        "install_vscodium passes the upstream tarball as the upstream-binary tier on Arch"
+}
+
+test_vscodium_update_wires_the_upstream_tarball() {
+    local out
+    out=$(
+        DISTRO_FAMILY=arch
+        arch_install_ordered() { echo "TIERS: $*"; }
+        update_vscodium 2>&1
+    )
+    assert_contains "$out" "_vscodium_install_tarball" \
+        "update_vscodium also routes through the upstream tarball tier on Arch"
+}
+
+_vscodium_tarball_fn_exists() { declare -F _vscodium_install_tarball >/dev/null; }
+test_vscodium_tarball_installer_is_defined() {
+    assert_true "_vscodium_install_tarball is defined" _vscodium_tarball_fn_exists
+}
+
+# ~/.local/bin is not always on PATH, so the version must come from the install
+# tree rather than from running the binary.
+test_vscodium_version_reads_the_install_tree() {
+    local tmp
+    tmp=$(mktemp -d)
+    mkdir -p "$tmp/resources/app"
+    echo "{\"name\":\"Code - OSS\",\"version\":\"1.99.3\",\"distro\":\"x\"}" > "$tmp/resources/app/package.json"
+    local out
+    out=$(
+        _VSCODIUM_DIR="$tmp"
+        _run_native() { echo "SHOULD_NOT_RUN"; }
+        get_version_vscodium
+    )
+    assert_eq "1.99.3" "$out" "get_version_vscodium reads the version from the installed package.json"
+    rm -rf "$tmp"
+}
+
+test_vscodium_remove_tarball_reports_nothing_to_do() {
+    local out
+    out=$(
+        _VSCODIUM_DIR="/nonexistent/vscodium/path"
+        _vscodium_remove_tarball && echo "REMOVED"
+    )
+    assert_eq "" "$out" "_vscodium_remove_tarball returns non-zero when no tarball install is present"
+}
+
+# The rpm-md definition is shared by dnf and zypper; only zypper needs type=.
+# repo_gpgcheck matters as much as gpgcheck here -- the repo publishes a
+# detached repomd signature, and dropping it would leave the metadata unchecked.
+test_vscodium_rpm_repo_is_signed_and_typed() {
+    local out
+    out=$(
+        # Strip "sudo tee <dest>" and echo the body. It goes to stderr because
+        # the real call redirects tee's stdout to /dev/null.
+        sudo() { shift 2; cat >&2; }
+        _vscodium_write_rpm_repo /dev/null $'type=rpm-md\n' 2>&1
+    )
+    assert_contains "$out" "type=rpm-md" \
+        "_vscodium_write_rpm_repo emits type=rpm-md when asked (zypper)"
+    assert_contains "$out" "repo_gpgcheck=1" \
+        "_vscodium_write_rpm_repo enables repo_gpgcheck for the signed metadata"
+    assert_contains "$out" "baseurl=https://download.vscodium.com/rpms/" \
+        "_vscodium_write_rpm_repo points at the VSCodium rpm repo"
+}
+
+test_vscodium_arch_wires_the_upstream_tarball
+test_vscodium_update_wires_the_upstream_tarball
+test_vscodium_tarball_installer_is_defined
+test_vscodium_version_reads_the_install_tree
+test_vscodium_remove_tarball_reports_nothing_to_do
+test_vscodium_rpm_repo_is_signed_and_typed
+
+# ============================================================================
 # Local Time Zone / Locale Tests
 # ============================================================================
 echo ""

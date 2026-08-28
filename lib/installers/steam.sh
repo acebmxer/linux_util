@@ -298,7 +298,8 @@ install_steam() {
 uninstall_steam() {
     echo "Uninstalling Steam..."
     if flatpak_is_installed "com.valvesoftware.Steam"; then
-        flatpak uninstall -y com.valvesoftware.Steam
+        flatpak uninstall -y --user com.valvesoftware.Steam 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.valvesoftware.Steam
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -314,7 +315,8 @@ uninstall_steam() {
 update_steam() {
     echo "Updating Steam..."
     if flatpak_is_installed "com.valvesoftware.Steam"; then
-        flatpak update -y com.valvesoftware.Steam
+        flatpak update -y --user com.valvesoftware.Steam 2>/dev/null || \
+            sudo flatpak update -y --system com.valvesoftware.Steam
     else
         case "$DISTRO_FAMILY" in
             debian)

@@ -110,7 +110,8 @@ uninstall_libreoffice() {
             ;;
         *)
             if flatpak_is_installed libreoffice; then
-                flatpak uninstall -y org.libreoffice.LibreOffice
+                flatpak uninstall -y --user org.libreoffice.LibreOffice 2>/dev/null || \
+                    sudo flatpak uninstall -y --system org.libreoffice.LibreOffice
             fi
             ;;
     esac
@@ -140,7 +141,8 @@ update_libreoffice() {
             ;;
         *)
             if flatpak_is_installed libreoffice; then
-                flatpak update -y org.libreoffice.LibreOffice
+                flatpak update -y --user org.libreoffice.LibreOffice 2>/dev/null || \
+                    sudo flatpak update -y --system org.libreoffice.LibreOffice
             fi
             ;;
     esac

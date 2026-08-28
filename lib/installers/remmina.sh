@@ -43,7 +43,8 @@ install_remmina() {
 uninstall_remmina() {
     info "Uninstalling Remmina..."
     if flatpak_is_installed "org.remmina.Remmina"; then
-        flatpak uninstall -y org.remmina.Remmina
+        flatpak uninstall -y --user org.remmina.Remmina 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.remmina.Remmina
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -69,7 +70,8 @@ uninstall_remmina() {
 update_remmina() {
     info "Updating Remmina..."
     if flatpak_is_installed "org.remmina.Remmina"; then
-        flatpak update -y org.remmina.Remmina
+        flatpak update -y --user org.remmina.Remmina 2>/dev/null || \
+            sudo flatpak update -y --system org.remmina.Remmina
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt-get install -y --only-upgrade remmina ;;

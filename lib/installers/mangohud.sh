@@ -96,7 +96,8 @@ uninstall_mangohud() {
             ;;
     esac
     # Remove Flatpak layer if installed
-    has_flatpak && flatpak uninstall -y org.freedesktop.Platform.VulkanLayer.MangoHud 2>/dev/null || true
+    has_flatpak && flatpak uninstall -y --user org.freedesktop.Platform.VulkanLayer.MangoHud 2>/dev/null || \
+        sudo flatpak uninstall -y --system org.freedesktop.Platform.VulkanLayer.MangoHud 2>/dev/null || true
     rm -rf "$HOME/.config/MangoHud"
 }
 

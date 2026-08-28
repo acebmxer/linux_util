@@ -57,7 +57,8 @@ install_handbrake() {
 uninstall_handbrake() {
     info "Uninstalling HandBrake..."
     if flatpak_is_installed "fr.handbrake.ghb"; then
-        flatpak uninstall -y fr.handbrake.ghb
+        flatpak uninstall -y --user fr.handbrake.ghb 2>/dev/null || \
+            sudo flatpak uninstall -y --system fr.handbrake.ghb
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -81,7 +82,8 @@ uninstall_handbrake() {
 update_handbrake() {
     info "Updating HandBrake..."
     if flatpak_is_installed "fr.handbrake.ghb"; then
-        flatpak update -y fr.handbrake.ghb
+        flatpak update -y --user fr.handbrake.ghb 2>/dev/null || \
+            sudo flatpak update -y --system fr.handbrake.ghb
     else
         case "$DISTRO_FAMILY" in
             debian)

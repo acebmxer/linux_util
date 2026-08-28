@@ -58,7 +58,8 @@ install_obs_studio() {
 uninstall_obs_studio() {
     info "Uninstalling OBS Studio..."
     if flatpak_is_installed "com.obsproject.Studio"; then
-        flatpak uninstall -y com.obsproject.Studio
+        flatpak uninstall -y --user com.obsproject.Studio 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.obsproject.Studio
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -76,7 +77,8 @@ uninstall_obs_studio() {
 update_obs_studio() {
     info "Updating OBS Studio..."
     if flatpak_is_installed "com.obsproject.Studio"; then
-        flatpak update -y com.obsproject.Studio
+        flatpak update -y --user com.obsproject.Studio 2>/dev/null || \
+            sudo flatpak update -y --system com.obsproject.Studio
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt-get install -y --only-upgrade obs-studio ;;

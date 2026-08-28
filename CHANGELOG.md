@@ -89,6 +89,95 @@ when a release is cut.
 
 ### Fixed
 
+- **Every Flatpak update/uninstall failed the same way the Aug 22 install
+  sweep fixed for installs**: `"Flatpak system operation Deploy not allowed
+  for user"` (or `Uninstall`/`Undeploy`). That sweep put `sudo` on all 76
+  `flatpak install` sites but never touched `update`/`uninstall`, which hit
+  the identical polkit refusal for the same reason — Flathub is a *system*
+  remote and every app in this project deploys system-wide, so an
+  unprivileged `flatpak update`/`uninstall` can't get the system-helper to
+  act on it. This showed up most visibly in **System Updates**, where the
+  blanket `flatpak update -y` step failed outright on every runtime
+  (`org.freedesktop.Platform.GL.default`, `.Locale`, etc.) with `Error: There
+  were one or more errors`. All `update_x`/`uninstall_x` call sites across
+  every Flatpak-based installer (~45 files) now try the unprivileged `--user`
+  installation first (a silent no-op if nothing is user-scoped) and fall back
+  to `sudo … --system`, matching the pattern already used by the Termius
+  installer. The blanket calls in **System Updates** and **Flatpak Setup**'s
+  own `update` action got the same two-step treatment. ClamAV, qBittorrent,
+  and Termius already had a working sudo fallback and were left alone.
+
+- **Installing VSCodium no longer leaves the menu hanging forever on
+  "Checking installed utilities...".** The repo it writes sets
+  `repo_gpgcheck=1`, so dnf verifies the repository metadata signature on every
+  metadata refresh. The key was only ever imported with `rpm --import`, which
+  populates **root's** rpm keyring — fine for `sudo dnf install`, but the menu's
+  pending-update count runs **unprivileged**, against its own trust store in
+  `~/.cache/libdnf5`, where the key was absent. dnf therefore stopped to ask
+  `Importing OpenPGP key 0x5A278D9C ... Is this ok [y/N]:` and waited for an
+  answer. That call is `_out=$("${PKG_MGR}" check-update 2>/dev/null)` — stdout
+  captured by the command substitution, stderr discarded — so the question was
+  never displayed and the script sat on a prompt nobody could see. It only
+  reproduced with a terminal attached; with stdin closed dnf cannot prompt and
+  fails in about a second, which is why it went unnoticed. `install_vscodium`
+  now also accepts the key once for the installing user, non-interactively, so
+  the prompt never arises. `metadata_expire=1h` is gone from the repo as well:
+  expiry is not repo-local — any `check-update` refreshes every configured repo
+  — so an hourly expiry forced a refresh on practically every invocation and
+  turned a rare prompt into one on every startup. `repo_gpgcheck=1` is
+  deliberately kept; the metadata signature is still verified.
+- **JetBrains Toolbox now installs a working application instead of a launcher
+  that dies on start.** The installer pulled the ~150 MB upstream tarball and
+  then `find`-ed a single file out of it — `jetbrains-toolbox` — copying only
+  that 1.2 MB stub into place and deleting the other 900-odd extracted files.
+  But the archive is a self-contained bundle: `jetbrains-toolbox-<version>/bin/`
+  holds the stub *plus* the JRE it runs on (`jre/`), its jars (`lib/`) and its
+  native libraries. The stub is only a native loader that `dlopen()`s
+  `bin/jre/lib/server/libjvm.so` relative to its own directory, so with the JRE
+  discarded every launch aborted instantly with `Failed to start JVM` — visible
+  only in `~/.local/share/JetBrains/Toolbox/logs/toolbox-native.log`, since the
+  install ran in the background and reported success either way. The whole
+  `bin/` tree is now copied with `cp -a`, and an unexpected archive layout is a
+  hard error rather than a silent partial install. Only `bin/` is replaced on
+  update; installed IDEs under `apps/` are untouched.
+- **JetBrains Toolbox appears in the application menu right after install.**
+  Toolbox writes its own `.desktop` entry, but only once it has started
+  successfully — which, given the above, never happened, leaving no menu entry
+  and no obvious way to launch it. The installer now writes the entry and
+  installs the bundled `toolbox.svg` icon itself, then calls
+  `refresh_desktop_caches`. `Exec=` is the absolute path to the binary rather
+  than the `~/.local/bin` symlink, which desktop sessions do not reliably have
+  on `PATH`. Uninstall removes the icon and the full Toolbox directory.
+- **A half-installed JetBrains Toolbox is no longer reported as installed.**
+  `check_jetbrains_toolbox` tested only for the stub's existence, so the broken
+  tree above satisfied it — the TUI showed Toolbox as present and `--check`
+  exited 0. It now requires the bundled `libjvm.so` as well, while still
+  recognising a copy installed by other means elsewhere on `PATH`. The launch
+  after install is also skipped when neither `DISPLAY` nor `WAYLAND_DISPLAY` is
+  set, since starting a tray app over SSH just exits silently; the message then
+  says how to start it later instead of claiming it is about to appear.
+- **ClamAV's clamd daemon now actually starts on Fedora and RHEL.** Fedora ships
+  `/etc/clamd.d/scan.conf` with every socket line commented out — the only active
+  settings in the stock file are `LogSyslog` and `User` — so `clamd` exited
+  immediately with "ERROR: Please define server type (local and/or TCP)" on every
+  start, and systemd gave up after five restarts. `systemctl enable --now
+  clamd@scan` was wrapped in `2>/dev/null || true`, so the enable "succeeded",
+  the daemon was dead, and the install reported success. On-access scanning was
+  silently unavailable, and front-ends reported the service as N/A. The installer
+  now uncomments the `LocalSocket` line the packaged unit and its tmpfiles entry
+  (`/run/clamd.scan`, 0710 clamscan:virusgroup) already expect, touching only the
+  first of the two commented copies the stock file carries, and leaving any
+  socket an admin has already defined alone.
+  - **A daemon that fails to start is now reported instead of swallowed.** The
+    enable is checked with `systemctl is-active`, and a dead unit prints the last
+    error from the journal plus the `systemctl status` command to investigate,
+    while making clear that on-demand `clamscan` is unaffected.
+
+- **ClamAV no longer fails to install on Arch.** `clamtk` is AUR-only, so naming
+  it in the same `pacman -S` call as `clamav` made the call fail as a unit and
+  left the machine with no antivirus at all — the same in `update_clamav`, and
+  `pacman -Rs` on uninstall. Arch installs the engine alone now and gets ClamUI
+  as its GUI.
 - **WPS Office installs again.** Every direct install had been failing with
   "Could not determine WPS Office download URL from linux.wps.com": that host
   now 301s to `www.wps.com/office/linux/`, a Nuxt single-page app whose HTML
@@ -468,6 +557,47 @@ when a release is cut.
 
 ### Added
 
+- **VSCodium** (Development → IDEs & Editors), the community build of the VS
+  Code source with Microsoft's telemetry, branding, and proprietary marketplace
+  stripped out (extensions resolve against Open VSX). It coexists with
+  **Visual Studio Code** rather than replacing it — different binary (`codium`),
+  config (`~/.config/VSCodium`), and extension directory (`~/.vscode-oss`), so
+  both can be installed at once and the uninstall only clears its own state.
+  Debian and the rpm distros use the signed repos vscodium.com points at
+  (`download.vscodium.com`, keyed from the paulcarroty repo project);
+  `repo_gpgcheck` is on for the rpm side because that repo publishes a detached
+  `repomd.xml.asc`. Arch has no repository package — `vscodium-bin` is AUR-only,
+  and this tool keeps the AUR disabled — so it follows the same tiering as the
+  VS Code installer: repos → Flathub → the project's own GitHub release tarball
+  → AUR. That tarball is what `vscodium-bin` repackages, it ships `.sha256`
+  sidecars so the download is checksum-verified, and unlike Microsoft's it
+  unpacks flat, so it is extracted straight into `~/.local/share/vscodium`
+  with no root needed.
+- **ClamAV now offers the ClamUI desktop front-end** (`io.github.linx_systems.ClamUI`,
+  MIT) from Flathub. ClamUI is a GTK4/libadwaita app — graphical scanning,
+  quarantine management, scheduled scans and file-manager integration — and its
+  Flathub build is publisher-verified. It bundles no scanner of its own: the
+  Flatpak reaches the host's `clamscan`/`freshclam` through `flatpak-spawn
+  --host`, so the engine packages this installer lays down are what it drives.
+  Being a Flatpak on the GNOME runtime, it pulls no GNOME packages onto the
+  system and runs anywhere — its tray registers with the KDE/XFCE/Cinnamon/MATE
+  StatusNotifierItem watchers, and upstream integrates with Dolphin and Nemo as
+  well as Nautilus.
+  - **The installer now asks which front-end to install**, defaulting to ClamUI:
+    ClamUI, ClamTk, or both. The prompt comes first, before any package work, so
+    the rest of the install runs unattended instead of stopping for input
+    part-way through. Arch is not asked (ClamTk is AUR-only there), and neither
+    is a run with no controlling terminal — profile-driven installs take the
+    default rather than hanging on `/dev/tty`.
+  - **ClamTk remains available** wherever the distro packages it (Debian,
+    Fedora/RHEL, openSUSE). Its preference seeding is now guarded on the binary
+    actually being present rather than assumed, and a failed ClamTk install
+    falls back to ClamUI rather than leaving no GUI at all.
+  - **The engine is installed on its own**, separately from the front-end, so a
+    GUI that is declined or unavailable can no longer take the scanner down with
+    it. `update_clamav` updates whichever front-end is actually present and no
+    longer force-installs ClamTk; an install with no GUI at all — one predating
+    this change, or one whose front-end was removed by hand — gets ClamUI.
 - **Package Managers section in the README's "Utilities by Category"**, which
   had never been written — Flatpak Setup, Homebrew, Nix, Snap (snapd),
   deb-get, Pacstall, yay and paru are now documented there.

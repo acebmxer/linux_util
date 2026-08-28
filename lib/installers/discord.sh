@@ -57,7 +57,8 @@ install_discord() {
 uninstall_discord() {
     info "Uninstalling Discord..."
     if flatpak_is_installed "com.discordapp.Discord"; then
-        flatpak uninstall -y com.discordapp.Discord
+        flatpak uninstall -y --user com.discordapp.Discord 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.discordapp.Discord
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -79,7 +80,8 @@ uninstall_discord() {
 update_discord() {
     info "Updating Discord..."
     if flatpak_is_installed "com.discordapp.Discord"; then
-        flatpak update -y com.discordapp.Discord
+        flatpak update -y --user com.discordapp.Discord 2>/dev/null || \
+            sudo flatpak update -y --system com.discordapp.Discord
     else
         case "$DISTRO_FAMILY" in
             debian)       install_discord ;;

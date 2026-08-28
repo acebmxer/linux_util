@@ -59,7 +59,8 @@ DESKTOP
 uninstall_logseq() {
     info "Uninstalling Logseq..."
     if flatpak_is_installed "com.logseq.Logseq"; then
-        flatpak uninstall -y com.logseq.Logseq
+        flatpak uninstall -y --user com.logseq.Logseq 2>/dev/null || \
+            sudo flatpak uninstall -y --system com.logseq.Logseq
     elif [[ -f /opt/logseq/logseq ]]; then
         sudo rm -rf /opt/logseq
         sudo rm -f /usr/local/bin/logseq
@@ -78,7 +79,8 @@ uninstall_logseq() {
 update_logseq() {
     info "Updating Logseq..."
     if flatpak_is_installed "com.logseq.Logseq"; then
-        flatpak update -y com.logseq.Logseq
+        flatpak update -y --user com.logseq.Logseq 2>/dev/null || \
+            sudo flatpak update -y --system com.logseq.Logseq
     elif [[ -f /opt/logseq/logseq ]]; then
         _install_logseq_appimage
     else

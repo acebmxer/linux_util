@@ -214,28 +214,32 @@ uninstall_wps_office() {
             # Now that Fedora installs the Flatpak, uninstall has to look there
             # too, or an installed WPS Office survives its own removal.
             if flatpak_is_installed "com.wps.Office"; then
-                flatpak uninstall -y com.wps.Office
+                flatpak uninstall -y --user com.wps.Office 2>/dev/null || \
+                    sudo flatpak uninstall -y --system com.wps.Office
             else
                 sudo "$PKG_MGR" remove -y wps-office
             fi
             ;;
         arch)
             if flatpak_is_installed "com.wps.Office"; then
-                flatpak uninstall -y com.wps.Office
+                flatpak uninstall -y --user com.wps.Office 2>/dev/null || \
+                    sudo flatpak uninstall -y --system com.wps.Office
             else
                 aur_remove wps-office 2>/dev/null || pkg_remove wps-office 2>/dev/null || true
             fi
             ;;
         suse)
             if flatpak_is_installed "com.wps.Office"; then
-                flatpak uninstall -y com.wps.Office
+                flatpak uninstall -y --user com.wps.Office 2>/dev/null || \
+                    sudo flatpak uninstall -y --system com.wps.Office
             else
                 sudo zypper remove -y wps-office 2>/dev/null || true
             fi
             ;;
         *)
             if flatpak_is_installed "com.wps.Office"; then
-                flatpak uninstall -y com.wps.Office
+                flatpak uninstall -y --user com.wps.Office 2>/dev/null || \
+                    sudo flatpak uninstall -y --system com.wps.Office
             fi
             ;;
     esac
@@ -253,21 +257,24 @@ update_wps_office() {
             ;;
         fedora|rhel)
             if flatpak_is_installed "com.wps.Office"; then
-                flatpak update -y com.wps.Office
+                flatpak update -y --user com.wps.Office 2>/dev/null || \
+                    sudo flatpak update -y --system com.wps.Office
             else
                 _wps_install_rpm_family
             fi
             ;;
         arch)
             if flatpak_is_installed "com.wps.Office"; then
-                flatpak update -y com.wps.Office
+                flatpak update -y --user com.wps.Office 2>/dev/null || \
+                    sudo flatpak update -y --system com.wps.Office
             else
                 repo_or_aur wps-office
             fi
             ;;
         *)
             if flatpak_is_installed "com.wps.Office"; then
-                flatpak update -y com.wps.Office
+                flatpak update -y --user com.wps.Office 2>/dev/null || \
+                    sudo flatpak update -y --system com.wps.Office
             fi
             ;;
     esac

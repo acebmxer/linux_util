@@ -20,14 +20,16 @@ install_boxbuddy() {
 uninstall_boxbuddy() {
     info "Uninstalling BoxBuddy..."
     if flatpak_is_installed "io.github.dvlv.boxbuddyrs"; then
-        flatpak uninstall -y io.github.dvlv.boxbuddyrs
+        flatpak uninstall -y --user io.github.dvlv.boxbuddyrs 2>/dev/null || \
+            sudo flatpak uninstall -y --system io.github.dvlv.boxbuddyrs
     fi
 }
 
 update_boxbuddy() {
     info "Updating BoxBuddy..."
     if flatpak_is_installed "io.github.dvlv.boxbuddyrs"; then
-        flatpak update -y io.github.dvlv.boxbuddyrs
+        flatpak update -y --user io.github.dvlv.boxbuddyrs 2>/dev/null || \
+            sudo flatpak update -y --system io.github.dvlv.boxbuddyrs
     fi
 }
 

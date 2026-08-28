@@ -177,7 +177,8 @@ uninstall_localsend() {
     info "Uninstalling LocalSend..."
 
     if flatpak_is_installed "org.localsend.localsend_app"; then
-        flatpak uninstall -y org.localsend.localsend_app
+        flatpak uninstall -y --user org.localsend.localsend_app 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.localsend.localsend_app
     fi
 
     case "$DISTRO_FAMILY" in
@@ -203,7 +204,8 @@ uninstall_localsend() {
 update_localsend() {
     info "Updating LocalSend..."
     if flatpak_is_installed "org.localsend.localsend_app"; then
-        flatpak update -y org.localsend.localsend_app
+        flatpak update -y --user org.localsend.localsend_app 2>/dev/null || \
+            sudo flatpak update -y --system org.localsend.localsend_app
         return
     fi
     case "$DISTRO_FAMILY" in

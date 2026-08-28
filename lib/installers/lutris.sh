@@ -53,7 +53,8 @@ install_lutris() {
 uninstall_lutris() {
     info "Uninstalling Lutris..."
     if flatpak_is_installed "net.lutris.Lutris"; then
-        flatpak uninstall -y net.lutris.Lutris
+        flatpak uninstall -y --user net.lutris.Lutris 2>/dev/null || \
+            sudo flatpak uninstall -y --system net.lutris.Lutris
     else
         case "$DISTRO_FAMILY" in
             debian)
@@ -80,7 +81,8 @@ uninstall_lutris() {
 update_lutris() {
     info "Updating Lutris..."
     if flatpak_is_installed "net.lutris.Lutris"; then
-        flatpak update -y net.lutris.Lutris
+        flatpak update -y --user net.lutris.Lutris 2>/dev/null || \
+            sudo flatpak update -y --system net.lutris.Lutris
     else
         case "$DISTRO_FAMILY" in
             debian)   sudo apt-get install -y --only-upgrade lutris ;;

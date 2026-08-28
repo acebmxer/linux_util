@@ -36,7 +36,8 @@ install_krita() {
 uninstall_krita() {
     info "Uninstalling Krita..."
     if flatpak_is_installed "org.kde.krita"; then
-        flatpak uninstall -y org.kde.krita
+        flatpak uninstall -y --user org.kde.krita 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.kde.krita
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y krita ;;
@@ -51,7 +52,8 @@ uninstall_krita() {
 update_krita() {
     info "Updating Krita..."
     if flatpak_is_installed "org.kde.krita"; then
-        flatpak update -y org.kde.krita
+        flatpak update -y --user org.kde.krita 2>/dev/null || \
+            sudo flatpak update -y --system org.kde.krita
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade krita ;;

@@ -56,7 +56,8 @@ install_vlc() {
 uninstall_vlc() {
     info "Uninstalling VLC..."
     if flatpak_is_installed "org.videolan.VLC"; then
-        flatpak uninstall -y org.videolan.VLC
+        flatpak uninstall -y --user org.videolan.VLC 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.videolan.VLC
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y vlc ;;
@@ -71,7 +72,8 @@ uninstall_vlc() {
 update_vlc() {
     info "Updating VLC..."
     if flatpak_is_installed "org.videolan.VLC"; then
-        flatpak update -y org.videolan.VLC
+        flatpak update -y --user org.videolan.VLC 2>/dev/null || \
+            sudo flatpak update -y --system org.videolan.VLC
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade vlc ;;

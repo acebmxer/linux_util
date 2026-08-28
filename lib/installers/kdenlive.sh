@@ -43,7 +43,8 @@ install_kdenlive() {
 uninstall_kdenlive() {
     info "Uninstalling Kdenlive..."
     if flatpak_is_installed "org.kde.kdenlive"; then
-        flatpak uninstall -y org.kde.kdenlive
+        flatpak uninstall -y --user org.kde.kdenlive 2>/dev/null || \
+            sudo flatpak uninstall -y --system org.kde.kdenlive
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt purge --autoremove -y kdenlive ;;
@@ -58,7 +59,8 @@ uninstall_kdenlive() {
 update_kdenlive() {
     info "Updating Kdenlive..."
     if flatpak_is_installed "org.kde.kdenlive"; then
-        flatpak update -y org.kde.kdenlive
+        flatpak update -y --user org.kde.kdenlive 2>/dev/null || \
+            sudo flatpak update -y --system org.kde.kdenlive
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade kdenlive ;;

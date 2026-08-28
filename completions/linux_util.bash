@@ -94,6 +94,7 @@ Trojita
 Num Lock at Boot
 UFW Firewall
 Visual Studio Code
+VSCodium
 Vivaldi Browser
 WinApps
 Wine
