@@ -28,9 +28,31 @@ _LIBATION_PREFIX="/usr/lib/libation"
 _LIBATION_LINK="/usr/local/bin/libation"
 _LIBATION_CLI_LINK="/usr/local/bin/libationcli"
 _LIBATION_DESKTOP="/usr/share/applications/libation.desktop"
+# The unpacked payload is not a package, so no package manager records its
+# version. Stamp it at install time and read it back from here.
+_LIBATION_VERSION_FILE="/usr/lib/libation/.linux_util_version"
+
+# Latest release version upstream publishes, from the tag (e.g. "v14.0.1" →
+# "14.0.1"). One API request, no download.
+_libation_latest_version() {
+    curl -fsSL --max-time 15 "$_LIBATION_GH_API" 2>/dev/null \
+        | grep -oP '"tag_name"\s*:\s*"v?\K[^"]+' | head -1
+}
 
 _libation_install_deb_payload() {
     local machine pattern url tmpdir deb member
+    # Already the published release? Then there is nothing to fetch. As with the
+    # VS Code tarball, an unknown version falls through and installs rather than
+    # risk skipping a real update.
+    if [[ "${LIBATION_FORCE_REINSTALL:-0}" != "1" && -d "$_LIBATION_PREFIX" ]]; then
+        local _cmp=0
+        upstream_update_available "Libation" || _cmp=$?
+        if (( _cmp == 1 )); then
+            info "Libation is already at the latest version ($(get_version_libation)); nothing to download."
+            return 0
+        fi
+    fi
+
     machine=$(uname -m)
     case "$machine" in
         x86_64)        pattern='linux-chardonnay-amd64\.deb$' ;;
@@ -88,6 +110,24 @@ _libation_install_deb_payload() {
     local d
     d=$(find "$tmpdir/payload/usr/share/applications" -name '*.desktop' 2>/dev/null | head -1)
     [[ -f "$d" ]] && sudo install -Dm644 "$d" "$_LIBATION_DESKTOP"
+
+    # Record what was installed, taken from the .deb's own control member so the
+    # stamp is upstream's version string rather than anything inferred here.
+    local ctl_member ctl_ver
+    ctl_member=$(ar t "$deb" 2>/dev/null | grep '^control\.tar' | head -1)
+    if [[ -n "$ctl_member" ]]; then
+        case "$ctl_member" in
+            *.xz)  ctl_ver=$(ar p "$deb" "$ctl_member" | tar xJO ./control 2>/dev/null) ;;
+            *.zst) ctl_ver=$(ar p "$deb" "$ctl_member" | zstd -dc | tar xO ./control 2>/dev/null) ;;
+            *.gz)  ctl_ver=$(ar p "$deb" "$ctl_member" | tar xzO ./control 2>/dev/null) ;;
+        esac
+        ctl_ver=$(printf '%s\n' "$ctl_ver" | grep -oP '^Version:\s*\K.+' | head -1)
+    fi
+    [[ -z "$ctl_ver" ]] && ctl_ver=$(_libation_latest_version)
+    if [[ -n "$ctl_ver" ]]; then
+        printf '%s\n' "$ctl_ver" | sudo tee "$_LIBATION_VERSION_FILE" >/dev/null
+    fi
+
     refresh_desktop_caches
     return 0
 }
@@ -175,5 +215,23 @@ update_libation() {
 
 get_version_libation() {
     # Do NOT call libation --version — it launches the full GUI window.
+    # The unpacked payload belongs to no package manager, so the stamp written
+    # by _libation_install_deb_payload is the only version record for it; try it
+    # before falling back to the package query used by the .deb/.rpm installs.
+    if [[ -r "$_LIBATION_VERSION_FILE" ]]; then
+        local v
+        v=$(head -1 "$_LIBATION_VERSION_FILE" 2>/dev/null | tr -d '[:space:]')
+        [[ -n "$v" ]] && { printf '%s\n' "$v"; return 0; }
+    fi
+    # No stamp: either a package install, or a payload put down before this
+    # project started stamping. Read the version out of the shipped assembly so
+    # an existing install reports correctly instead of looking unknown (which
+    # would force one needless re-download).
+    if [[ -f "$_LIBATION_PREFIX/AppScaffolding.dll" ]] && _have_cmd strings; then
+        local a
+        a=$(strings -a "$_LIBATION_PREFIX/AppScaffolding.dll" 2>/dev/null \
+            | grep -oP '^\d+\.\d+\.\d+\.0$' | head -1)
+        [[ -n "$a" ]] && { printf '%s\n' "${a%.0}"; return 0; }
+    fi
     _ver_from_pkg libation || echo ""
 }

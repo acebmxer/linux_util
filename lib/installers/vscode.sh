@@ -29,8 +29,29 @@ check_vscode() {
 # Install the official Microsoft tarball per-user. Used as the upstream-binary
 # tier of arch_install_ordered, so it runs only after the repos and Flathub have
 # been tried and before the (disabled) AUR tier.
+# Latest stable version Microsoft publishes for linux-x64. The update API returns
+# JSON carrying productVersion; one small request, no download.
+_vscode_latest_version() {
+    curl -fsSL --max-time 15 \
+        "https://update.code.visualstudio.com/api/update/linux-x64/stable/latest" 2>/dev/null \
+        | grep -oP '"productVersion"\s*:\s*"\K[^"]+' | head -1
+}
+
 _vscode_install_tarball() {
     local tmpdir tmptar
+    # Nothing to do when the installed tree is already the published build.
+    # The tarball is ~330 MB, so re-fetching an identical build on every update
+    # run is the whole cost of the operation for no result. An unknown version
+    # (offline, API changed) falls through and installs, so a genuine update is
+    # never skipped on the strength of a failed lookup.
+    if [[ "${VSCODE_FORCE_REINSTALL:-0}" != "1" && -d "$_VSCODE_DIR" ]]; then
+        local _cmp=0
+        upstream_update_available "Visual Studio Code" || _cmp=$?
+        if (( _cmp == 1 )); then
+            info "Visual Studio Code is already at the latest version ($(get_version_vscode)); nothing to download."
+            return 0
+        fi
+    fi
     tmpdir=$(mktemp -d /tmp/vscode-XXXXXX) || return 1
     CLEANUP_FILES+=("$tmpdir")
     tmptar="$tmpdir/vscode.tar.gz"

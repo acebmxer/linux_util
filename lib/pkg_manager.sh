@@ -1954,5 +1954,21 @@ pkg_snapshot() {
     if command -v flatpak &>/dev/null; then
         _flatpak=$(flatpak list --columns=application,active 2>/dev/null | sort | md5sum | awk '{print $1}')
     fi
-    echo "${_native}:${_flatpak}"
+    # Same for apps installed from an upstream tarball/AppImage/.deb payload:
+    # they belong to no package manager, so without their versions here a run
+    # that updated only those would still be reported as "no package changes".
+    local _upstream=""
+    if [[ -n "${!UTILITY_UPSTREAM_BINARY[*]}" ]]; then
+        local _util _ver_fn
+        _upstream=$(
+            for _util in "${!UTILITY_UPSTREAM_BINARY[@]}"; do
+                utility_is_upstream_binary "$_util" || continue
+                _ver_fn="${VERSION_FUNCS[$_util]:-}"
+                if [[ -n "$_ver_fn" ]] && declare -F "$_ver_fn" >/dev/null; then
+                    printf '%s=%s\n' "$_util" "$("$_ver_fn" 2>/dev/null | head -1)"
+                fi
+            done | sort | md5sum | awk '{print $1}'
+        )
+    fi
+    echo "${_native}:${_flatpak}:${_upstream}"
 }

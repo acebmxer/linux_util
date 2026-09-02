@@ -12,7 +12,117 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Fixed
+
+- **"System Updates" now updates applications installed from an upstream binary,
+  which every package-manager run had been silently skipping.** When no package
+  source carries an application, `arch_install_ordered` falls through to its
+  upstream-binary tier and unpacks the vendor's own tarball, AppImage or `.deb`
+  payload into place — on Arch this is the normal path, because the AUR tier
+  stays disabled by default. Such a copy belongs to no package manager, so
+  nothing in an update run ever touched it: on Arch, "System Updates" hands the
+  whole job to `cachy-update`/`arch-update`, which covers pacman, the AUR and
+  Flatpak and then reports "No update available" — true for what it manages, and
+  misleading for everything it does not. The application's own updater kept
+  advertising the new release, and **Visual Studio Code**'s tarball build has no
+  self-update mechanism at all, so its Update button could only open the download
+  page. The net effect was an app frozen at its install-time version while both
+  the system updater and the app itself appeared to be working.
+  - `mark_upstream_binary` (`lib/utilities.sh`) records each such utility against
+    the path that exists *only* for that install route, so the check is a fact
+    about the machine rather than an assumption about which install tier ran; a
+    packaged copy replacing it removes the path and the entry stops matching.
+    Registered for **Visual Studio Code**, **VSCodium**, **Mark Text**,
+    **Standard Notes**, **PowerShell** and **Libation**.
+  - `setup_system_updates` now calls `_system_updates_upstream_binaries` on both
+    the Arch handoff path and the generic path, invoking each utility's already
+    registered update function — the same route as updating it from the menu. A
+    vendor that is unreachable produces a warning, not a failed run.
+  - `pkg_snapshot` folds these versions into its hash alongside the Flatpak
+    commit state. Without this a run that updated only an upstream binary still
+    compared equal and reported "No package changes were made".
+  - The pending-update count beside **System Updates** in the menu now includes
+    these applications (shown as "N apps"). It was built from `checkupdates`/
+    `pacman -Qu` and `fwupdmgr` alone, so it read zero while an upstream update
+    was genuinely waiting — the same blind spot as the update run itself.
+    `mark_upstream_latest` registers a per-utility lookup for the current
+    published version (**Visual Studio Code** via the update API's
+    `productVersion`, **Libation** via its GitHub release tag); results are
+    cached under `${XDG_CACHE_HOME:-~/.cache}/linux_util/upstream-versions` for
+    `PKG_CACHE_MAX_AGE_SECS` (default one hour), so the menu makes no vendor
+    request per repaint. A failed lookup is never cached, so a brief outage
+    cannot pin the count at zero.
+  - **Visual Studio Code and Libation no longer re-download when already
+    current.** Both installers unpacked the vendor's latest release
+    unconditionally, so every update run refetched the build already on disk —
+    roughly 330 MB for VS Code — and reported it as an update. Each now compares
+    the installed version against the published one first and skips when they
+    match. A version that cannot be determined still installs, so a failed
+    lookup never suppresses a real update; `VSCODE_FORCE_REINSTALL=1` and
+    `LIBATION_FORCE_REINSTALL=1` force the download.
+  - **Libation now reports its version when installed from the upstream `.deb`
+    payload.** `get_version_libation` only queried the package manager, which
+    owns nothing on the unpacked-payload path, so the version showed as unknown
+    — leaving it out of the snapshot hash and the update comparison. The
+    installer now stamps the version from the `.deb`'s own control member, and
+    an install predating that stamp is read from the shipped
+    `AppScaffolding.dll` assembly version rather than forcing one needless
+    re-download.
+
 ### Changed
+
+- **`README.md` trimmed from 694 lines to a lean front page, with the deep-dive
+  material moved into `docs/`.** The README had grown to carry the entire
+  utility catalogue — every category's per-item table, roughly 260 lines of it —
+  alongside the config reference, logging, shell completions, WSL behaviour,
+  project structure, module responsibilities, the how-to-add-a-utility walkthrough
+  and the full troubleshooting section. The result was a front page nobody could
+  skim: the answer to "what is this and how do I run it" sat above ten screens of
+  reference tables, and the developer material duplicated `CONTRIBUTING.md`
+  rather than deferring to it.
+  - The README now opens with what the tool is, the clone-and-run block, and a
+    **Read next** table pointing at each docs page. What survives inline is what
+    a first-time reader needs: requirements, an annotated menu screenshot, a
+    thirteen-row summary of what each category covers, the CLI flag list, the
+    supported-distribution table, snapshots, and a short logging/config section.
+  - New `docs/utilities.md` holds the complete catalogue, every per-utility
+    description carried over verbatim, with a category index at the top.
+  - New `docs/menu.md` (controls, selection logic, profiles), `docs/configuration.md`
+    (config settings, logging, `manage_logs.sh`, bash/zsh completions),
+    `docs/wsl.md` (WSL detection and the restart-the-distro reboot behaviour) and
+    `docs/troubleshooting.md` (including the xrdp polkit and KDE Wallet PAM
+    material).
+  - The README's developer sections were dropped in favour of `CONTRIBUTING.md`,
+    which already covered adding an installer, code style and the test suite.
+    The two things it lacked were folded in: the **module responsibilities table**
+    (which file to edit for a given kind of change) and the **helper function
+    reference** (`pkg_install`, `repo_or_aur`, `download_file`, and the rest).
+    A missing step was also added — assigning `UTILITY_CATEGORY` in
+    `lib/installers.sh`, without which a newly registered utility never appears
+    under a menu tab.
+  - All 195 utility and system-task table rows from the old README are present in
+    the new files; every internal link and heading anchor across `README.md`,
+    `CONTRIBUTING.md` and `docs/*.md` was checked to resolve.
+
+- **The README's menu diagram is now a real capture instead of a hand-drawn
+  sketch.** The ASCII mock-up had been drawn by hand when the TUI was overhauled
+  (`3c52569`, April 2026) and hand-patched once since, so it had drifted from
+  what the code renders: it showed a `SYSTEM Details` header (the code emits
+  `SYSTEM DETAILS`), seven sysinfo rows where the panel now has up to thirteen —
+  `GPU`, `OS Age`, `Packages`, `WM` and `DE` were all missing — six of the
+  sixteen registered categories, an abbreviated `Default Phys. PC` profile name,
+  and a `[^v] Navigate … [Enter] Confirm` key hint that omitted the `[Tab] Focus`
+  and `[Q] Quit` entries the footer actually prints. It also carried a
+  hand-typing artefact from the original: the `Host:` row had one space too many,
+  so its right border sat a column out from every other row.
+
+  The block is now the actual frame `_compose_frame` draws, captured from a real
+  render in a 100x46 pty with the sysinfo values replaced by representative ones
+  (`linux-pc` / Arch Linux, rather than the capturing machine's hostname and
+  hardware). All 45 lines are exactly 100 columns wide, so the border aligns.
+  The **What it installs** summary in the README gained the four categories the
+  capture exposed as missing — **File Managers**, **Firewalls**, **Login
+  Screens** and **Window Managers**.
 
 - **Stacer now tracks the maintained `QuentiumYT/Stacer` fork** instead of
   `oguzhaninan/Stacer`, which is dormant — last release v1.1.0 in **2019**, last
@@ -88,6 +198,54 @@ when a release is cut.
   'Flatpak Setup' system task" now point at the Package Managers category.
 
 ### Fixed
+
+- **Documented category list now matches the code.** `CONTRIBUTING.md` now names
+  all sixteen real category strings rather than the twelve the old README
+  implied. `docs/utilities.md` carries a note recording that the catalogue is
+  incomplete: 226 utilities and system tasks are registered in
+  `lib/installers.sh` against 188 documented. Four whole categories — **File
+  Managers**, **Firewalls**, **Login Screens**, **Window Managers** — have no
+  table, and eight entries are missing from categories that do (Angry IP
+  Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
+  Unattended Upgrades, GTK Window Fix). None of these were in the old README
+  either; the gap was found by diffing the registry against the docs.
+
+- **Claude Code installed but would not run — `claude` reported "claude native
+  binary not installed".** npm 12 blocks package lifecycle scripts by default as
+  a supply-chain hardening measure, so the `@anthropic-ai/claude-code`
+  postinstall (`install.cjs`) never ran. That postinstall is what replaces the
+  500-byte `bin/claude.exe` placeholder with the real ~215 MB native binary, so
+  the package landed on disk complete — platform binary and all — but the only
+  thing on `PATH` was the placeholder stub, whose entire job is to print that
+  error. npm still exited 0 and the installer reported success, so the breakage
+  was silent. Both `install_claude_code` and `update_claude_code` now run
+  `install.cjs` directly after npm and then verify `claude --version` actually
+  works, failing loudly with the repair command instead of trusting npm's exit
+  code. The extra step is a no-op on npm versions that already ran the
+  postinstall, so it is deliberately not gated on npm version or distro —
+  distros adopt npm 12 at different times, and the same failure appears on any
+  of them once they do.
+- **Claude Code no longer reports a version number in the menu**, showing
+  `(installed)` instead. `get_version_claude_code` shelled out to
+  `claude --version`, which is exactly the call that fails when the native
+  binary is missing, and the version string carried no information worth the
+  extra process on every menu draw.
+
+- **Installing Virt-Manager on Arch failed outright and then falsely reported
+  success.** `bridge-utils` was dropped from the Arch repos, so the single
+  `pacman -S` call aborted the whole transaction with `target not found:
+  bridge-utils` and *nothing* — `virt-manager`, `libvirt`, `qemu-full` —
+  installed. The installer ignored pacman's exit code and pressed on, so the
+  next step (`usermod -aG libvirt`) failed with `group 'libvirt' does not
+  exist`, and the run was still reported as "Successfully installed" before the
+  health check caught the missing binary. Three changes: `bridge-utils` is
+  removed from the Arch package list (`iproute2`, already a base dependency,
+  provides the bridge tooling libvirt uses); every distro family's package-
+  install step now returns non-zero on failure instead of continuing; and the
+  `usermod` call is gated on the `libvirt` group actually existing — if it is
+  missing the installer runs `systemd-sysusers` to apply the package's
+  sysusers.d entry, and warns and skips rather than erroring if the group still
+  is not there.
 
 - **Every Flatpak update/uninstall failed the same way the Aug 22 install
   sweep fixed for installs**: `"Flatpak system operation Deploy not allowed
