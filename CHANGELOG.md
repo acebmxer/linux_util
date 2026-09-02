@@ -89,6 +89,27 @@ when a release is cut.
 
 ### Fixed
 
+- **Claude Code installed but would not run — `claude` reported "claude native
+  binary not installed".** npm 12 blocks package lifecycle scripts by default as
+  a supply-chain hardening measure, so the `@anthropic-ai/claude-code`
+  postinstall (`install.cjs`) never ran. That postinstall is what replaces the
+  500-byte `bin/claude.exe` placeholder with the real ~215 MB native binary, so
+  the package landed on disk complete — platform binary and all — but the only
+  thing on `PATH` was the placeholder stub, whose entire job is to print that
+  error. npm still exited 0 and the installer reported success, so the breakage
+  was silent. Both `install_claude_code` and `update_claude_code` now run
+  `install.cjs` directly after npm and then verify `claude --version` actually
+  works, failing loudly with the repair command instead of trusting npm's exit
+  code. The extra step is a no-op on npm versions that already ran the
+  postinstall, so it is deliberately not gated on npm version or distro —
+  distros adopt npm 12 at different times, and the same failure appears on any
+  of them once they do.
+- **Claude Code no longer reports a version number in the menu**, showing
+  `(installed)` instead. `get_version_claude_code` shelled out to
+  `claude --version`, which is exactly the call that fails when the native
+  binary is missing, and the version string carried no information worth the
+  extra process on every menu draw.
+
 - **Installing Virt-Manager on Arch failed outright and then falsely reported
   success.** `bridge-utils` was dropped from the Arch repos, so the single
   `pacman -S` call aborted the whole transaction with `target not found:
