@@ -44,6 +44,46 @@ _system_updates_apply_firmware() {
         warn "Firmware update did not complete for all devices (see output above)."
 }
 
+# Refresh every utility installed from upstream's own binary rather than from a
+# package. These live outside pacman/apt/Flatpak entirely, so no package-manager
+# run -- including the cachy-update/arch-update handoff below, which reports "No
+# update available" while meaning only "none that I manage" -- ever touches them.
+# Left alone they stay pinned at their install-time version while the app's own
+# updater advertises a release it cannot apply (VS Code's tarball build has no
+# self-update path and only opens the download page).
+#
+# Each utility's registered update function is the one already used by the menu,
+# so the update route is identical to updating that utility by hand. Failures are
+# warnings, never fatal: one unreachable vendor must not fail the whole run.
+_system_updates_upstream_binaries() {
+    local -a names=()
+    local util
+    for util in "${!UTILITY_UPSTREAM_BINARY[@]}"; do
+        utility_is_upstream_binary "$util" && names+=("$util")
+    done
+    (( ${#names[@]} )) || return 0
+
+    # Stable order: the map is a hash, and an update run should read the same way
+    # twice in a row.
+    mapfile -t names < <(printf '%s\n' "${names[@]}" | sort)
+
+    info "Checking applications installed from upstream binaries (outside the package manager)..."
+    local fn rc=0
+    for util in "${names[@]}"; do
+        fn="${UPDATE_FUNCS[$util]:-}"
+        if [[ -z "$fn" ]] || ! declare -F "$fn" >/dev/null; then
+            warn "${util}: no update function registered; skipping."
+            continue
+        fi
+        info "Updating ${util}..."
+        if ! "$fn"; then
+            warn "${util} could not be updated (see output above)."
+            rc=1
+        fi
+    done
+    return $rc
+}
+
 # --- System Updates ---
 setup_system_updates() {
     if _system_updates_has_arch_update; then
@@ -57,6 +97,10 @@ setup_system_updates() {
         "$_cmd"
         local _rc=$?
         _snap_after=$(pkg_snapshot)
+        # cachy-update covers pacman, the AUR and Flatpak -- but nothing that was
+        # unpacked straight from a vendor tarball, so those are updated here.
+        echo ""
+        _system_updates_upstream_binaries || true
         [[ "$_snap_before" == "$_snap_after" ]] && return 3
         return $_rc
     fi
@@ -83,6 +127,9 @@ setup_system_updates() {
     # Device firmware is yet another separate subsystem the package manager and
     # Flatpak never touch (this is what fwupdmgr's MOTD notice refers to).
     _system_updates_apply_firmware
+    # Anything installed from an upstream tarball/AppImage/.deb payload is
+    # invisible to every package manager above; refresh those too.
+    _system_updates_upstream_binaries || true
     pkg_cleanup_thorough_interactive
     info "System updates completed."
     local _snap_after
@@ -148,8 +195,18 @@ get_version_system_updates() {
         [[ -n "$_fw" ]] && firmware=$(echo "$_fw" | grep -cE '^[[:space:]]*New version:' || true)
     fi
 
+    # Count apps installed from an upstream binary that have a newer release.
+    # These belong to no package manager, so nothing above sees them -- without
+    # this the badge read 0 while an update genuinely was pending, which is what
+    # the update run itself used to do. Cached (see upstream_latest_version), so
+    # the menu does not make a vendor request per repaint.
+    local upstream=0
+    if [[ -n "${!UTILITY_UPSTREAM_BINARY[*]}" ]]; then
+        upstream=$(upstream_binaries_with_updates 2>/dev/null | grep -c '.' || true)
+    fi
+
     # Return empty if nothing pending at all (menu shows no status tag)
-    [[ "$total" -le 0 && "$firmware" -le 0 ]] && return 0
+    [[ "$total" -le 0 && "$firmware" -le 0 && "$upstream" -le 0 ]] && return 0
 
     # Build display string
     local _out=""
@@ -161,6 +218,11 @@ get_version_system_updates() {
     if [[ "$firmware" -gt 0 ]]; then
         [[ -n "$_out" ]] && _out+=", "
         _out+="${firmware} firmware"
+    fi
+    if [[ "$upstream" -gt 0 ]]; then
+        [[ -n "$_out" ]] && _out+=", "
+        _out+="${upstream} app"
+        (( upstream > 1 )) && _out+="s"
     fi
     echo "$_out"
 }

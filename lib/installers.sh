@@ -1094,3 +1094,31 @@ mark_aur_only_arch \
     "Euro-Office=euro-office-desktopeditors-git" \
     "Snap (snapd)=snapd" "Snapper GUI=snapper-gui-git" \
     "Trojita=trojita" "Zotero=zotero"
+
+# Utilities that can install from upstream's own binary when no package source
+# carries them (the third tier of arch_install_ordered, reached on Arch because
+# the AUR stays disabled). Each is paired with the path that exists ONLY for
+# that install route, so the check is a fact about this machine rather than an
+# assumption about which tier ran.
+#
+# These copies belong to no package manager: pacman, Flatpak and cachy-update
+# cannot see them, so "System Updates" left them frozen while the apps' own
+# updaters kept advertising new versions. setup_system_updates now refreshes
+# them explicitly -- see _system_updates_upstream_binaries.
+mark_upstream_binary \
+    "Visual Studio Code=$HOME/.local/share/vscode" \
+    "VSCodium=$HOME/.local/share/vscodium" \
+    "Mark Text=$HOME/.local/share/marktext" \
+    "Standard Notes=$HOME/.local/share/standard-notes/standard-notes.AppImage" \
+    "PowerShell=/opt/microsoft/powershell" \
+    "Libation=/usr/lib/libation"
+
+# Where the current upstream version can be read for those installs. Registered
+# only for the ones with a cheap, stable version endpoint: these lookups gate
+# both the "already current, skip the download" check in the installers and the
+# pending-update count shown beside System Updates in the menu. A utility with
+# no entry here is still updated by a System Updates run -- it just cannot
+# report in advance that an update is waiting.
+mark_upstream_latest \
+    "Visual Studio Code=_vscode_latest_version" \
+    "Libation=_libation_latest_version"

@@ -12,6 +12,63 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Fixed
+
+- **"System Updates" now updates applications installed from an upstream binary,
+  which every package-manager run had been silently skipping.** When no package
+  source carries an application, `arch_install_ordered` falls through to its
+  upstream-binary tier and unpacks the vendor's own tarball, AppImage or `.deb`
+  payload into place — on Arch this is the normal path, because the AUR tier
+  stays disabled by default. Such a copy belongs to no package manager, so
+  nothing in an update run ever touched it: on Arch, "System Updates" hands the
+  whole job to `cachy-update`/`arch-update`, which covers pacman, the AUR and
+  Flatpak and then reports "No update available" — true for what it manages, and
+  misleading for everything it does not. The application's own updater kept
+  advertising the new release, and **Visual Studio Code**'s tarball build has no
+  self-update mechanism at all, so its Update button could only open the download
+  page. The net effect was an app frozen at its install-time version while both
+  the system updater and the app itself appeared to be working.
+  - `mark_upstream_binary` (`lib/utilities.sh`) records each such utility against
+    the path that exists *only* for that install route, so the check is a fact
+    about the machine rather than an assumption about which install tier ran; a
+    packaged copy replacing it removes the path and the entry stops matching.
+    Registered for **Visual Studio Code**, **VSCodium**, **Mark Text**,
+    **Standard Notes**, **PowerShell** and **Libation**.
+  - `setup_system_updates` now calls `_system_updates_upstream_binaries` on both
+    the Arch handoff path and the generic path, invoking each utility's already
+    registered update function — the same route as updating it from the menu. A
+    vendor that is unreachable produces a warning, not a failed run.
+  - `pkg_snapshot` folds these versions into its hash alongside the Flatpak
+    commit state. Without this a run that updated only an upstream binary still
+    compared equal and reported "No package changes were made".
+  - The pending-update count beside **System Updates** in the menu now includes
+    these applications (shown as "N apps"). It was built from `checkupdates`/
+    `pacman -Qu` and `fwupdmgr` alone, so it read zero while an upstream update
+    was genuinely waiting — the same blind spot as the update run itself.
+    `mark_upstream_latest` registers a per-utility lookup for the current
+    published version (**Visual Studio Code** via the update API's
+    `productVersion`, **Libation** via its GitHub release tag); results are
+    cached under `${XDG_CACHE_HOME:-~/.cache}/linux_util/upstream-versions` for
+    `PKG_CACHE_MAX_AGE_SECS` (default one hour), so the menu makes no vendor
+    request per repaint. A failed lookup is never cached, so a brief outage
+    cannot pin the count at zero.
+  - **Visual Studio Code and Libation no longer re-download when already
+    current.** Both installers unpacked the vendor's latest release
+    unconditionally, so every update run refetched the build already on disk —
+    roughly 330 MB for VS Code — and reported it as an update. Each now compares
+    the installed version against the published one first and skips when they
+    match. A version that cannot be determined still installs, so a failed
+    lookup never suppresses a real update; `VSCODE_FORCE_REINSTALL=1` and
+    `LIBATION_FORCE_REINSTALL=1` force the download.
+  - **Libation now reports its version when installed from the upstream `.deb`
+    payload.** `get_version_libation` only queried the package manager, which
+    owns nothing on the unpacked-payload path, so the version showed as unknown
+    — leaving it out of the snapshot hash and the update comparison. The
+    installer now stamps the version from the `.deb`'s own control member, and
+    an install predating that stamp is read from the shipped
+    `AppScaffolding.dll` assembly version rather than forcing one needless
+    re-download.
+
 ### Changed
 
 - **`README.md` trimmed from 694 lines to a lean front page, with the deep-dive

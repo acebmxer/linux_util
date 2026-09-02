@@ -23,6 +23,7 @@ declare -A SUBCATEGORY_ORDER    # maps category name → pipe-separated ordered 
 declare -A SUBCATEGORY_INTERLEAVED  # if set for a category, subcategory folders are emitted in registration order (interleaved with plain items)
 declare -A UTILITY_AUR_ONLY_ARCH    # utility name → 1 if its only Arch install path is the AUR (no repo/Flatpak fallback)
 declare -A UTILITY_ARCH_PKG         # utility name → Arch package name, probed against the configured repos
+declare -A UTILITY_UPSTREAM_BINARY   # utility name → path that exists only when installed from upstream's own binary
 
 # Mark one or more utilities whose only Arch install path is the AUR (no
 # official-repo or Flatpak fallback in their installer). Used to hide them
@@ -40,6 +41,110 @@ mark_aur_only_arch() {
         UTILITY_AUR_ONLY_ARCH["$name"]=1
         [[ "$entry" == *=* ]] && UTILITY_ARCH_PKG["$name"]="${entry#*=}"
     done
+}
+
+# Register a utility that can land outside every package manager, together with
+# the path that exists only in that case (a tarball tree, an AppImage, a payload
+# unpacked from a .deb). Such a copy is invisible to pacman, apt, Flatpak and to
+# Arch's cachy-update/arch-update, so nothing in a normal system update refreshes
+# it -- the app's own updater then advertises a version the system update run
+# reports as unavailable. setup_system_updates walks this map and calls each
+# entry's registered update function; see _system_updates_upstream_binaries.
+#
+# Usage: mark_upstream_binary "Name=/path/that/only/exists/upstream" ...
+mark_upstream_binary() {
+    local entry
+    for entry in "$@"; do
+        [[ "$entry" == *=* ]] || continue
+        UTILITY_UPSTREAM_BINARY["${entry%%=*}"]="${entry#*=}"
+    done
+}
+
+# True when the named utility is currently installed from upstream's own binary
+# rather than from a package. The marker path is the whole test: every installer
+# that can take this route removes the path when a packaged copy replaces it.
+utility_is_upstream_binary() {
+    local path="${UTILITY_UPSTREAM_BINARY[$1]:-}"
+    [[ -n "$path" && -e "$path" ]]
+}
+
+# Latest version published upstream for a utility installed from an upstream
+# binary, or "" when it cannot be determined (offline, API rate limit, vendor
+# change). Each installer registers a function here that performs ONE cheap
+# network lookup and prints a bare version string.
+declare -A UPSTREAM_LATEST_FUNCS   # utility name → function printing the latest upstream version
+
+# Usage: mark_upstream_latest "Name=fn_name" ...
+mark_upstream_latest() {
+    local entry
+    for entry in "$@"; do
+        [[ "$entry" == *=* ]] || continue
+        UPSTREAM_LATEST_FUNCS["${entry%%=*}"]="${entry#*=}"
+    done
+}
+
+# Where cached upstream version lookups live, and how long a cached answer is
+# reused. The menu redraws often and these are network calls, so an uncached
+# lookup would put a vendor request behind every repaint. Same default age as
+# the package-manager metadata cache.
+_UPSTREAM_VER_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/linux_util/upstream-versions"
+
+# Print the latest upstream version for $1, or "" if unknown. Cached; set
+# UPSTREAM_VER_REFRESH=1 to bypass the cache for one call.
+upstream_latest_version() {
+    local util="$1"
+    local fn="${UPSTREAM_LATEST_FUNCS[$util]:-}"
+    [[ -n "$fn" ]] && declare -F "$fn" >/dev/null || return 1
+
+    local cache="${_UPSTREAM_VER_CACHE_DIR}/$(printf '%s' "$util" | tr -c '[:alnum:]' '_')"
+    if [[ "${UPSTREAM_VER_REFRESH:-0}" != "1" && -s "$cache" ]]; then
+        local age=$(( $(date +%s) - $(stat -c %Y "$cache" 2>/dev/null || echo 0) ))
+        if (( age < ${PKG_CACHE_MAX_AGE_SECS:-3600} )); then
+            head -1 "$cache"
+            return 0
+        fi
+    fi
+
+    local v
+    v=$("$fn" 2>/dev/null | head -1)
+    # Only a successful lookup is cached: caching "" would pin the unknown state
+    # for the whole cache window and hide a real update after a brief outage.
+    if [[ -n "$v" ]]; then
+        mkdir -p "$_UPSTREAM_VER_CACHE_DIR" 2>/dev/null && printf '%s\n' "$v" > "$cache" 2>/dev/null
+    fi
+    printf '%s\n' "$v"
+}
+
+# Names of upstream-binary utilities that are installed AND have a newer version
+# published, one per line. Used for the pending-update count in the menu and by
+# the System Updates run.
+upstream_binaries_with_updates() {
+    local util
+    for util in "${!UTILITY_UPSTREAM_BINARY[@]}"; do
+        utility_is_upstream_binary "$util" || continue
+        upstream_update_available "$util" && printf '%s\n' "$util"
+    done | sort
+}
+
+# Print the version currently installed for $1, or "" if unknown.
+upstream_installed_version() {
+    local fn="${VERSION_FUNCS[$1]:-}"
+    [[ -n "$fn" ]] && declare -F "$fn" >/dev/null || return 1
+    "$fn" 2>/dev/null | head -1
+}
+
+# Is an upstream-binary utility out of date? Returns 0 only when BOTH versions
+# are known AND they differ -- an unknown version is never treated as "up to
+# date" by callers that skip work, and never counted as a pending update by
+# callers that report one. Deliberately a string comparison: these are vendor
+# build strings, not semver to be ordered, and any difference means the tree on
+# disk is not the one upstream publishes.
+upstream_update_available() {
+    local installed latest
+    installed=$(upstream_installed_version "$1") || return 2
+    latest=$(upstream_latest_version "$1")       || return 2
+    [[ -z "$installed" || -z "$latest" ]] && return 2
+    [[ "$installed" != "$latest" ]]
 }
 
 # Should the utility at index $1 be hidden from the install listing because
