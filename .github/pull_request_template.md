@@ -22,7 +22,7 @@
 - [ ] Downloads are verified with `verify_download` / `_verify_not_empty_or_html` before installing
 - [ ] New utility name is added to `completions/linux_util.bash` and `completions/_linux_util` (if applicable)
 - [ ] `register_utility` / `register_system_task` line added to `lib/installers.sh` in alphabetical order (if applicable)
-- [ ] `CHANGELOG.md` has an entry under `## [Unreleased]` in the right `### Added` / `### Changed` / `### Fixed` block
+- [ ] `CHANGELOG.md` has an entry under `## [Unreleased]` (add it under `### Added` / `### Changed` / `### Fixed`, creating the subsection if needed)
 - [ ] `README.md` utility table and `UTILITY_DESCRIPTION` updated (if a utility was added or renamed)
 - [ ] CONTRIBUTING.md guidelines followed (indentation, quoting, `[[ ]]`, `$()`, `info`/`warn`/`error` for output)
 
