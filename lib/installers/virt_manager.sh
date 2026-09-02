@@ -11,23 +11,30 @@ install_virt_manager() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt install -y virt-manager qemu-kvm libvirt-daemon-system \
-                libvirt-clients bridge-utils virtinst
+                libvirt-clients bridge-utils virtinst \
+                || { error "Package installation failed."; return 1; }
             ;;
         fedora)
             sudo "$PKG_MGR" install -y virt-manager qemu-kvm libvirt \
-                libvirt-daemon libvirt-client virt-install
+                libvirt-daemon libvirt-client virt-install \
+                || { error "Package installation failed."; return 1; }
             ;;
         rhel)
             sudo "$PKG_MGR" install -y virt-manager qemu-kvm libvirt \
-                libvirt-daemon libvirt-client virt-install
+                libvirt-daemon libvirt-client virt-install \
+                || { error "Package installation failed."; return 1; }
             ;;
         arch)
+            # bridge-utils was dropped from the Arch repos; iproute2 (a base
+            # dependency) provides the bridge tooling libvirt needs.
             sudo pacman -S --noconfirm virt-manager qemu-full libvirt \
-                iptables-nft dnsmasq bridge-utils virt-viewer
+                iptables-nft dnsmasq virt-viewer \
+                || { error "Package installation failed."; return 1; }
             ;;
         suse)
             sudo zypper install -y virt-manager kvm libvirt libvirt-daemon \
-                libvirt-daemon-driver-qemu
+                libvirt-daemon-driver-qemu \
+                || { error "Package installation failed."; return 1; }
             ;;
     esac
 
@@ -35,11 +42,20 @@ install_virt_manager() {
     sudo systemctl enable --now libvirtd 2>/dev/null || \
         sudo systemctl enable --now libvirt-daemon 2>/dev/null || true
 
-    # Add the current user to the libvirt group for passwordless VM management
+    # Add the current user to the libvirt group for passwordless VM management.
+    # The libvirt package creates the group via sysusers.d; apply it now in case
+    # the entry has not been processed yet.
+    if ! getent group libvirt >/dev/null 2>&1; then
+        sudo systemd-sysusers 2>/dev/null || true
+    fi
     local current_user="${SUDO_USER:-$USER}"
-    if ! groups "$current_user" 2>/dev/null | grep -qw libvirt; then
-        sudo usermod -aG libvirt "$current_user"
-        warn "Added $current_user to the 'libvirt' group. Log out and back in for group membership to take effect."
+    if getent group libvirt >/dev/null 2>&1; then
+        if ! id -nG "$current_user" 2>/dev/null | grep -qw libvirt; then
+            sudo usermod -aG libvirt "$current_user"
+            warn "Added $current_user to the 'libvirt' group. Log out and back in for group membership to take effect."
+        fi
+    else
+        warn "The 'libvirt' group does not exist; skipped adding $current_user to it."
     fi
 
     info "Virt-Manager installed."

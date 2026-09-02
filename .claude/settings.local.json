@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/nick/.local/share/winapps/**)",
+      "Bash(journalctl --user -b -u akonadi_control.service -o short-precise --no-pager)",
+      "Bash(systemctl --user is-active akonadi_control.service)"
+    ]
+  }
+}

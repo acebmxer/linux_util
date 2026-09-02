@@ -89,6 +89,22 @@ when a release is cut.
 
 ### Fixed
 
+- **Installing Virt-Manager on Arch failed outright and then falsely reported
+  success.** `bridge-utils` was dropped from the Arch repos, so the single
+  `pacman -S` call aborted the whole transaction with `target not found:
+  bridge-utils` and *nothing* — `virt-manager`, `libvirt`, `qemu-full` —
+  installed. The installer ignored pacman's exit code and pressed on, so the
+  next step (`usermod -aG libvirt`) failed with `group 'libvirt' does not
+  exist`, and the run was still reported as "Successfully installed" before the
+  health check caught the missing binary. Three changes: `bridge-utils` is
+  removed from the Arch package list (`iproute2`, already a base dependency,
+  provides the bridge tooling libvirt uses); every distro family's package-
+  install step now returns non-zero on failure instead of continuing; and the
+  `usermod` call is gated on the `libvirt` group actually existing — if it is
+  missing the installer runs `systemd-sysusers` to apply the package's
+  sysusers.d entry, and warns and skips rather than erroring if the group still
+  is not there.
+
 - **Every Flatpak update/uninstall failed the same way the Aug 22 install
   sweep fixed for installs**: `"Flatpak system operation Deploy not allowed
   for user"` (or `Uninstall`/`Undeploy`). That sweep put `sudo` on all 76
