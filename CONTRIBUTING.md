@@ -8,10 +8,11 @@ Thank you for taking the time to contribute! This document explains how the code
 
 1. [Project layout](#project-layout)
 2. [Adding a new utility installer](#adding-a-new-utility-installer)
-3. [Code style](#code-style)
-4. [Running the tests](#running-the-tests)
-5. [Writing tests](#writing-tests)
-6. [Submitting a pull request](#submitting-a-pull-request)
+3. [Helper function reference](#helper-function-reference)
+4. [Code style](#code-style)
+5. [Running the tests](#running-the-tests)
+6. [Writing tests](#writing-tests)
+7. [Submitting a pull request](#submitting-a-pull-request)
 
 ---
 
@@ -35,6 +36,24 @@ completions/               # Shell tab-completion scripts
 tests/
   test_linux_util.sh       # Unit + integration test suite
 ```
+
+### Which module to edit
+
+| Module | Purpose | Edit when... |
+|--------|---------|--------------|
+| `linux_util.sh` | Main script, CLI argument parsing, initialization | Changing argument parsing or main flow |
+| `lib/config.sh` | Configuration file parsing, verbose/debug output helpers | Adding new config options |
+| `lib/logging.sh` | Logging functions, error handling, cleanup | Changing log format or adding log functions |
+| `lib/pkg_manager.sh` | Package manager abstraction, distro detection | Adding new distros or package managers |
+| `lib/aur.sh` | AUR/pacman-specific functions | Modifying AUR installation logic |
+| `lib/system.sh` | Pre-flight checks, logrotate setup, system helpers | Adding pre-flight checks |
+| `lib/snapshot.sh` | Automatic snapshots via Timeshift or Snapper | Adding snapshot backends |
+| `lib/menu.sh` | TUI rendering, keyboard navigation, categories | Changing menu appearance or navigation |
+| `lib/profiles.sh` | Curated selection presets | Adding, removing, or customizing a profile |
+| `lib/utilities.sh` | Utility registry, name resolution, health checks | Modifying how utilities are registered |
+| `lib/verify.sh` | Download integrity helpers | Changing how downloaded files are validated |
+| `lib/installers.sh` | Sources `lib/installers/*.sh`, registers all entries | **Adding a registration line for a new utility** |
+| `lib/installers/*.sh` | Per-utility install/uninstall/update/check functions | **Adding or modifying a specific utility** |
 
 ---
 
@@ -125,6 +144,19 @@ register_utility "My Utility" \
 
 Use `register_system_task` instead if the item is a system-level task (drivers, firewall, etc.) that should appear under System Tasks in the menu.
 
+Then assign it a category in the category section further down the same file, so
+the menu knows which tab to show it under:
+
+```bash
+UTILITY_CATEGORY["My Utility"]="Development"
+```
+
+Use one of the existing category names — `Backup`, `Bootloaders`, `Desktop
+Environments`, `Development`, `Disk Utilities`, `Drivers`, `File Managers`,
+`Firewalls`, `Gaming`, `Internet`, `Login Screens`, `Package Managers`,
+`Productivity`, `Remote Admin Tools`, `System Tools`, `Window Managers` — unless
+you are deliberately adding a new one.
+
 ### Step 3 — Add it to shell completions (optional but appreciated)
 
 Add the display name to both `completions/linux_util.bash` (the `_linux_util_utilities` function) and `completions/_linux_util` (the `_linux_util_utilities` array) in alphabetical order.
@@ -132,6 +164,36 @@ Add the display name to both `completions/linux_util.bash` (the `_linux_util_uti
 ### Step 4 — Update profiles if relevant
 
 If the utility is a natural fit for the Developer Workstation or Home Desktop profile, add it to the appropriate `_profile_custom_*` function in `lib/profiles.sh`.
+
+---
+
+## Helper function reference
+
+These are available to every installer. Prefer them over raw package manager
+commands — they handle distro differences, retries, and dry-run mode for you.
+
+| Function | Description |
+|----------|-------------|
+| `pkg_install <pkg>` | Install a package |
+| `pkg_remove <pkg>` | Remove a package |
+| `pkg_upgrade <pkg>` | Upgrade a package |
+| `pkg_check_installed <pkg>` | Returns 0 if installed |
+| `pkg_install_local <file>` | Install from a local `.deb`/`.rpm` |
+| `pkg_refresh` | Refresh package lists |
+| `pkg_full_upgrade` | Full system upgrade |
+| `pkg_autoremove` | Remove orphaned packages |
+| `pkg_clean` | Clean package cache |
+| `has_snap` / `has_flatpak` / `has_aur_helper` | Availability checks |
+| `aur_install <pkg>` | Install from AUR |
+| `repo_or_aur <pkg>` | Install from the official Arch repos, falling back to the AUR |
+| `flatpak_or_aur <flathub-id> <pkg>` | Install from Flathub when Flatpak is set up, else the AUR |
+| `ensure_tools` | Ensure curl/wget/gpg are present |
+| `check_internet` | Connectivity check (warns, does not abort) |
+| `download_file <url> <dest> [retries]` | Retry-aware downloader |
+
+Use `$DISTRO_FAMILY` (`debian`, `fedora`, `rhel`, `arch`, `suse`) for
+distro-specific logic, and `$PKG_MGR` (`apt`, `dnf`, `yum`, `pacman`, `zypper`)
+where the command itself differs.
 
 ---
 

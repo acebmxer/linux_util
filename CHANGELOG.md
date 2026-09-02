@@ -14,6 +14,39 @@ when a release is cut.
 
 ### Changed
 
+- **`README.md` trimmed from 694 lines to a lean front page, with the deep-dive
+  material moved into `docs/`.** The README had grown to carry the entire
+  utility catalogue — every category's per-item table, roughly 260 lines of it —
+  alongside the config reference, logging, shell completions, WSL behaviour,
+  project structure, module responsibilities, the how-to-add-a-utility walkthrough
+  and the full troubleshooting section. The result was a front page nobody could
+  skim: the answer to "what is this and how do I run it" sat above ten screens of
+  reference tables, and the developer material duplicated `CONTRIBUTING.md`
+  rather than deferring to it.
+  - The README now opens with what the tool is, the clone-and-run block, and a
+    **Read next** table pointing at each docs page. What survives inline is what
+    a first-time reader needs: requirements, an annotated menu screenshot, a
+    thirteen-row summary of what each category covers, the CLI flag list, the
+    supported-distribution table, snapshots, and a short logging/config section.
+  - New `docs/utilities.md` holds the complete catalogue, every per-utility
+    description carried over verbatim, with a category index at the top.
+  - New `docs/menu.md` (controls, selection logic, profiles), `docs/configuration.md`
+    (config settings, logging, `manage_logs.sh`, bash/zsh completions),
+    `docs/wsl.md` (WSL detection and the restart-the-distro reboot behaviour) and
+    `docs/troubleshooting.md` (including the xrdp polkit and KDE Wallet PAM
+    material).
+  - The README's developer sections were dropped in favour of `CONTRIBUTING.md`,
+    which already covered adding an installer, code style and the test suite.
+    The two things it lacked were folded in: the **module responsibilities table**
+    (which file to edit for a given kind of change) and the **helper function
+    reference** (`pkg_install`, `repo_or_aur`, `download_file`, and the rest).
+    A missing step was also added — assigning `UTILITY_CATEGORY` in
+    `lib/installers.sh`, without which a newly registered utility never appears
+    under a menu tab.
+  - All 195 utility and system-task table rows from the old README are present in
+    the new files; every internal link and heading anchor across `README.md`,
+    `CONTRIBUTING.md` and `docs/*.md` was checked to resolve.
+
 - **Stacer now tracks the maintained `QuentiumYT/Stacer` fork** instead of
   `oguzhaninan/Stacer`, which is dormant — last release v1.1.0 in **2019**, last
   push February 2024 — and whose age was the sole cause of every workaround this
@@ -88,6 +121,13 @@ when a release is cut.
   'Flatpak Setup' system task" now point at the Package Managers category.
 
 ### Fixed
+
+- **Documented category list now matches the code.** `docs/utilities.md` notes
+  that **File Managers**, **Firewalls**, **Login Screens** and **Window Managers**
+  have no table yet — those four categories are registered in
+  `lib/installers.sh` and appear in the menu, but were never listed in the old
+  README either. `CONTRIBUTING.md` now names all sixteen real category strings
+  rather than the twelve the README implied.
 
 - **Claude Code installed but would not run — `claude` reported "claude native
   binary not installed".** npm 12 blocks package lifecycle scripts by default as
