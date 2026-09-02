@@ -16,9 +16,13 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Not yet listed here:** the **File Managers**, **Firewalls**, **Login Screens**
-> and **Window Managers** categories are present in the menu but have no table on
-> this page yet. Run `./linux_util.sh --list` to see their entries.
+> **Incomplete:** 226 utilities and system tasks are registered in
+> `lib/installers.sh`; 188 are listed below. The **File Managers**, **Firewalls**,
+> **Login Screens** and **Window Managers** categories have no table here at all,
+> and a handful of entries in the documented categories are missing too (Angry IP
+> Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
+> Unattended Upgrades, GTK Window Fix). Run `./linux_util.sh --list` for the
+> authoritative list.
 
 ## System Tasks
 

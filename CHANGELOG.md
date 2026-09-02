@@ -47,6 +47,26 @@ when a release is cut.
     the new files; every internal link and heading anchor across `README.md`,
     `CONTRIBUTING.md` and `docs/*.md` was checked to resolve.
 
+- **The README's menu diagram is now a real capture instead of a hand-drawn
+  sketch.** The ASCII mock-up had been drawn by hand when the TUI was overhauled
+  (`3c52569`, April 2026) and hand-patched once since, so it had drifted from
+  what the code renders: it showed a `SYSTEM Details` header (the code emits
+  `SYSTEM DETAILS`), seven sysinfo rows where the panel now has up to thirteen —
+  `GPU`, `OS Age`, `Packages`, `WM` and `DE` were all missing — six of the
+  sixteen registered categories, an abbreviated `Default Phys. PC` profile name,
+  and a `[^v] Navigate … [Enter] Confirm` key hint that omitted the `[Tab] Focus`
+  and `[Q] Quit` entries the footer actually prints. It also carried a
+  hand-typing artefact from the original: the `Host:` row had one space too many,
+  so its right border sat a column out from every other row.
+
+  The block is now the actual frame `_compose_frame` draws, captured from a real
+  render in a 100x46 pty with the sysinfo values replaced by representative ones
+  (`linux-pc` / Arch Linux, rather than the capturing machine's hostname and
+  hardware). All 45 lines are exactly 100 columns wide, so the border aligns.
+  The **What it installs** summary in the README gained the four categories the
+  capture exposed as missing — **File Managers**, **Firewalls**, **Login
+  Screens** and **Window Managers**.
+
 - **Stacer now tracks the maintained `QuentiumYT/Stacer` fork** instead of
   `oguzhaninan/Stacer`, which is dormant — last release v1.1.0 in **2019**, last
   push February 2024 — and whose age was the sole cause of every workaround this
@@ -122,12 +142,16 @@ when a release is cut.
 
 ### Fixed
 
-- **Documented category list now matches the code.** `docs/utilities.md` notes
-  that **File Managers**, **Firewalls**, **Login Screens** and **Window Managers**
-  have no table yet — those four categories are registered in
-  `lib/installers.sh` and appear in the menu, but were never listed in the old
-  README either. `CONTRIBUTING.md` now names all sixteen real category strings
-  rather than the twelve the README implied.
+- **Documented category list now matches the code.** `CONTRIBUTING.md` now names
+  all sixteen real category strings rather than the twelve the old README
+  implied. `docs/utilities.md` carries a note recording that the catalogue is
+  incomplete: 226 utilities and system tasks are registered in
+  `lib/installers.sh` against 188 documented. Four whole categories — **File
+  Managers**, **Firewalls**, **Login Screens**, **Window Managers** — have no
+  table, and eight entries are missing from categories that do (Angry IP
+  Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
+  Unattended Upgrades, GTK Window Fix). None of these were in the old README
+  either; the gap was found by diffing the registry against the docs.
 
 - **Claude Code installed but would not run — `claude` reported "claude native
   binary not installed".** npm 12 blocks package lifecycle scripts by default as

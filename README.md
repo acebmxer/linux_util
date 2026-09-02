@@ -44,39 +44,52 @@ scripting and automation.
 ## The menu
 
 ```
-┌──────────────────────┬──────────────────────────────────────────────────┐
-│ linux_util (main: a1b2c3)                                   / search    │
-├──────────────────────┼──────────────────────────────────────────────────┤
-│ CATEGORIES           │ Internet ─────────────────────────────────────── │
-├──────────────────────┤   [D]  Email Clients                             │
-│ > System Tasks       │   [D]  Messaging                                 │
-│   Development        │   [D]  Remote Access                             │
-│   Gaming             │   [D]  VPN                                       │
-│   Internet           │   [D]  Web Browsers                              │
-│   Productivity       │   [x]  QBittorrent             (v4.6.4)          │
-│   System Tools       │   [ ]  Syncthing               (v1.27.6)         │
-├──────────────────────┤                                                  │
-│ PROFILES             │                                                  │
-├──────────────────────┤                                                  │
-│   Run Me First       │                                                  │
-│   Default VM Server  │                                                  │
-│   Default Phys. PC   │                                                  │
-│  Developer Workstat. │                                                  │
-│    Home Desktop      │                                                  │
-├──────────────────────┤                                                  │
-│ SYSTEM Details       │                                                  │
-├──────────────────────┤                                                  │
-│     Host: linux-pc   │                                                  │
-│       OS: Arch Linux │                                                  │
-│   Kernel: 6.12.8-1   │                                                  │
-│      CPU: i9-14900K  │──────────────────────────────────────────────────│
-│      Mem: 8.2G/32G   │  Open-source BitTorrent client with a clean      │
-│     Disk: 245G/500G  │  interface and no ads.                           │
-│   Uptime: 3d 12h     │                                                  │
-├──────────────────────┴──────────────────────────────────────────────────┤
-│ Actions: Install: 0 | Uninstall: 1 | Update: 0                          │
-│ [^v] Navigate  [Space] Select  [U] Update  [/] Search  [Enter] Confirm  │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────┬────────────────────────────────────────────────────────────────┐
+│ linux_util (main: a1b2c3)       │ SEARCH  Type to search (/)                                     │
+│ By: PozzaTech                   │                                                                │
+├─────────────────────────────────┼────────────────────────────────────────────────────────────────┤
+│ CATEGORIES                      │  Internet ─────────────────────────────────────────────────────┤
+├─────────────────────────────────┤ > [D]  Web Browsers                                            │
+│   System Tasks                  │   [D]  Web Browser Tweaks                                      │
+│   Backup                        │   [D]  Web Browser Extensions                                  │
+│   Bootloaders                   │   [D]  Messaging                                               │
+│   Desktop Environments          │   [D]  Email Clients                                           │
+│   Development                   │   [D]  File Transfer                                           │
+│   Disk Utilities                │   [D]  VPN                                                     │
+│   Drivers                       │   [ ] Angry IP Scanner                                         │
+│   File Managers                 │   [ ] QBittorrent                                              │
+│   Firewalls                     │   [ ] Syncthing                                       (v2.1.3) │
+│   Gaming                        │                                                                │
+│ > Internet                      │                                                                │
+│   Login Screens                 │                                                                │
+│   Package Managers              │                                                                │
+│   Productivity                  │                                                                │
+│   Remote Admin Tools            │                                                                │
+│   System Tools                  │                                                                │
+│   Window Managers               │                                                                │
+├─────────────────────────────────┤                                                                │
+│ PROFILES                        │                                                                │
+├─────────────────────────────────┤                                                                │
+│ > Run Me First                  │                                                                │
+│   Default VM Server Profile     │                                                                │
+│   Default Physical PC           │                                                                │
+│   Developer Workstation         │                                                                │
+│   Home Desktop                  │                                                                │
+├─────────────────────────────────┤                                                                │
+│ SYSTEM DETAILS                  │────────────────────────────────────────────────────────────────┤
+├─────────────────────────────────┤  Browse 10 item(s) in the Web Browsers subcategory.            │
+│    Host: linux-pc               │                                                                │
+│      OS: Arch Linux             │                                                                │
+│  Kernel: 6.12.8-1               │                                                                │
+│     CPU: Intel Core i9-14900K   │                                                                │
+│     GPU: NVIDIA GeForce RTX 4070│                                                                │
+│     Mem: 8.2G / 32G             │                                                                │
+│    Disk: 245G / 500G (49%)      │                                                                │
+│  Uptime: 3d 12h                 │                                                                │
+├─────────────────────────────────┴────────────────────────────────────────────────────────────────┤
+│ Actions: Install: 0 | Uninstall: 0 | Update: 0                                                   │
+│ [↑↓] Navigate  [Space] Select  [U] Update  [/] Search  [Enter] Confirm  [Tab] Focus  [Q] Quit    │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Arrow keys move, **Space** ticks an item, **U** queues an installed item for
@@ -106,6 +119,10 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
 | **Productivity** | LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Obsidian, Joplin, Logseq, Bitwarden, Nextcloud, WinApps |
 | **Remote Admin** | Cockpit, XRDP, OpenSSH, Remmina, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
+| **File Managers** | Nautilus, Dolphin, Thunar, Nemo, Caja, PCManFM-Qt, Krusader, and the terminal managers (Midnight Commander, Ranger, nnn) |
+| **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
+| **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |
+| **Window Managers** | Hyprland, Sway, i3, bspwm, awesome, dwm, Openbox |
 | **System Tools** | Btop, Fastfetch, ClamAV, Stacer, Filelight, Input Leap, OCCT, Pay Respects, Zsh + Oh My Zsh, and a Kernel Managers folder |
 
 Every entry, with its per-utility description and any distro limits, is in
