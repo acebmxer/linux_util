@@ -131,6 +131,7 @@ test_config_defaults() {
     assert_eq "30" "$CFG_LOG_RETENTION_DAYS" "Default log_retention_days is 30"
     assert_eq "1024" "$CFG_DISK_MIN_MB" "Default disk_min_mb is 1024"
     assert_eq "INFO" "$CFG_LOG_LEVEL" "Default log_level is INFO"
+    assert_eq "main" "$CFG_UPDATE_CHANNEL" "Default update_channel is main"
 }
 
 test_config_load_missing_file() {
@@ -186,10 +187,42 @@ test_config_crlf_file() {
     rm -f "$tmp_conf"
 }
 
+test_config_update_channel() {
+    # update_channel accepts the two tracked branches and a release tag; any
+    # other value must be rejected and leave the previous value in place.
+    local tmp_conf
+    tmp_conf=$(mktemp /tmp/test_config_channel_XXXXXX.conf)
+
+    printf 'update_channel=dev\n' > "$tmp_conf"
+    load_config "$tmp_conf"
+    assert_eq "dev" "$CFG_UPDATE_CHANNEL" "update_channel accepts dev"
+
+    printf 'update_channel=v1.3.1\n' > "$tmp_conf"
+    load_config "$tmp_conf"
+    assert_eq "v1.3.1" "$CFG_UPDATE_CHANNEL" "update_channel accepts a release tag"
+
+    printf 'update_channel=main\n' > "$tmp_conf"
+    load_config "$tmp_conf"
+    assert_eq "main" "$CFG_UPDATE_CHANNEL" "update_channel accepts main"
+
+    # Invalid values keep the previous value (main, from the line above)
+    printf 'update_channel=nonsense\n' > "$tmp_conf"
+    load_config "$tmp_conf" 2>/dev/null
+    assert_eq "main" "$CFG_UPDATE_CHANNEL" "update_channel rejects an unknown branch name"
+
+    printf 'update_channel=1.3.1\n' > "$tmp_conf"
+    load_config "$tmp_conf" 2>/dev/null
+    assert_eq "main" "$CFG_UPDATE_CHANNEL" "update_channel rejects a tag without the v prefix"
+
+    CFG_UPDATE_CHANNEL=main
+    rm -f "$tmp_conf"
+}
+
 test_config_defaults
 test_config_load_missing_file
 test_config_load_from_file
 test_config_crlf_file
+test_config_update_channel
 
 # ============================================================================
 # Test: Logging Module

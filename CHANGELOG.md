@@ -12,6 +12,41 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- The TUI header now shows the current release version on the byline row, as
+  `Version: v1.3.1   By: PozzaTech`. The number is read from the tag list by
+  version sort (`git tag --sort=-v:refname`) rather than `git describe`, which
+  walks HEAD's ancestry: release tags are created on `main` after a pull request
+  merges, so the merge commit they point at never exists on `dev` and `describe`
+  from a development branch reports the *previous* release. Sorting the tag list
+  ignores ancestry and reports the newest release from any branch. Tags are
+  refreshed once at startup so a release cut since the last pull is picked up.
+- **Self Update** honours a new `update_channel` config key, letting a user
+  choose what the updater follows instead of always tracking whichever branch
+  happened to be checked out: `main` for released versions only (the default),
+  `dev` for continuous updates, or a release tag such as `v1.3.1` to pin. A
+  pinned install checks that tag out and then makes no further changes, and the
+  header appends `(v1.4.0 available)` when a newer release exists so that a pin
+  never silently strands a user on a stale version. A manual `git checkout`
+  still takes precedence over the configured channel — self-update reports the
+  detached HEAD and leaves it alone rather than dragging the user back onto a
+  branch, since discarding a deliberate checkout would be destructive.
+- Added `docs/configuration.md` coverage for the new `update_channel` setting.
+
+### Removed
+
+- The `create_backups` and `backup_dir` config settings, which were parsed and
+  documented but never read by any code — setting them had no effect. The
+  backups that do happen (package-manager repo config saved before a reset) are
+  written by the installers themselves to `/var/backups/linux_util/`, and never
+  consulted these keys.
+
+### Fixed
+
+- Added the missing `dns_check_host` row to the settings table in
+  `docs/configuration.md`.
+
 ## [1.3.1] - 2026-09-02
 
 ### Fixed

@@ -20,11 +20,27 @@ cp linux_util.conf.example linux_util.conf
 | `retry_attempts` | `3` | Number of retry attempts |
 | `dns_check_enabled` | `true` | Check DNS connectivity at startup |
 | `dns_timeout_seconds` | `10` | DNS check timeout |
+| `dns_check_host` | `1.1.1.1` | Host used for the connectivity check. Override if Cloudflare is blocked on your network; a fallback to `9.9.9.9` is always tried |
 | `disk_min_mb` | `1024` | Minimum free disk space (MB) before allowing installs |
+| `update_channel` | `main` | Which stream self-update follows: `main` (releases only), `dev` (continuous), or a release tag such as `v1.3.1` to pin |
 | `auto_cleanup` | `true` | Automatic cleanup of temp files |
-| `create_backups` | `true` | Create backups before changes |
 | `verbose` | `false` | Enable verbose output |
 | `debug` | `false` | Enable debug output |
+
+### Update channel
+
+`update_channel` controls what the **Self Update** utility does:
+
+- `main` — follow released versions only. This is the default.
+- `dev` — follow the development branch. Newer, may be unstable.
+- a release tag, e.g. `v1.3.1` — pin to that exact release. Self-update checks
+  the tag out and then makes no further changes. The header still shows when a
+  newer release exists, so a pin is never silent.
+
+Switching between `main` and `dev` moves you onto that branch on the next
+self-update run. A manual `git checkout` always takes precedence: if you have
+checked out a tag or commit by hand, self-update leaves you there and says so,
+rather than dragging you back onto the configured channel.
 
 ## Logging
 

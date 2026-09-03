@@ -213,6 +213,8 @@ CURSOR=0
 CACHED_LOCAL_COMMIT="unknown"
 CACHED_REMOTE_COMMIT="unknown"
 CACHED_LOCAL_BRANCH="unknown"
+CACHED_LATEST_VERSION="unknown"
+CACHED_PINNED_VERSION=""
 
 # ============================================================================
 # PROCESS SELECTED UTILITIES & SYSTEM TASKS

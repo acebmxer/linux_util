@@ -22,9 +22,9 @@ CFG_DNS_TIMEOUT_SECONDS=10
 CFG_DNS_CHECK_HOST="1.1.1.1"  # Host used for connectivity check; override for corporate/restricted networks
 CFG_DISK_MIN_MB=1024       # Minimum free disk space in MB
 
+CFG_UPDATE_CHANNEL="main"  # main | dev | a release tag (e.g. v1.3.1) to pin
+
 CFG_AUTO_CLEANUP=true
-CFG_CREATE_BACKUPS=true
-CFG_BACKUP_DIR="${SCRIPT_DIR}/backups"
 
 # --- Verbose / Debug Mode ---
 VERBOSE=false
@@ -63,6 +63,21 @@ _cfg_require_bool() {
         return 1
     fi
     return 0
+}
+
+# Verify that update_channel is a branch name we track or a release tag to pin
+# to. Tags are validated by shape only (v1.2.3), not by existence -- the tag may
+# legitimately not be fetched yet, and self_update reports that at update time.
+_cfg_require_channel() {
+    local key="$1" value="$2"
+    if [[ "$value" == "main" || "$value" == "dev" ]]; then
+        return 0
+    fi
+    if [[ "$value" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        return 0
+    fi
+    echo "[WARN] Invalid value for ${key}: '${value}' (expected 'main', 'dev', or a release tag like v1.3.1, keeping default)" >&2
+    return 1
 }
 
 # --- Configuration File Parser ---
@@ -120,9 +135,8 @@ load_config() {
             dns_timeout_seconds)    _cfg_require_int "$key" "$value" && CFG_DNS_TIMEOUT_SECONDS="$value" ;;
             dns_check_host)         CFG_DNS_CHECK_HOST="$value" ;;
             disk_min_mb)            _cfg_require_int "$key" "$value" && CFG_DISK_MIN_MB="$value" ;;
+            update_channel)         _cfg_require_channel "$key" "$value" && CFG_UPDATE_CHANNEL="$value" ;;
             auto_cleanup)           _cfg_require_bool "$key" "$value" && CFG_AUTO_CLEANUP="$value" ;;
-            create_backups)         _cfg_require_bool "$key" "$value" && CFG_CREATE_BACKUPS="$value" ;;
-            backup_dir)             CFG_BACKUP_DIR="$value" ;;
             verbose)                _cfg_require_bool "$key" "$value" && VERBOSE="$value" ;;
             debug)                  _cfg_require_bool "$key" "$value" && DEBUG="$value" ;;
             *)

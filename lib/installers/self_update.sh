@@ -11,6 +11,39 @@ self_update_script() {
         warn "Script directory is not a git repository; cannot self-update."
         return 1
     fi
+    local channel="${CFG_UPDATE_CHANNEL:-main}"
+
+    # A release tag in update_channel means "pin here". Check the tag out if we
+    # are not already on it, then stop -- a pin gets no further updates until
+    # the user changes the channel.
+    if [[ "$channel" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        git -C "$SCRIPT_DIR" fetch --tags --quiet origin 2>/dev/null || true
+        if ! git -C "$SCRIPT_DIR" rev-parse --verify --quiet "refs/tags/${channel}" >/dev/null; then
+            warn "update_channel is pinned to ${channel}, but no such tag exists."
+            warn "Check the tag name, or set update_channel to main or dev in linux_util.conf."
+            return 1
+        fi
+        local _on_tag
+        _on_tag=$(git -C "$SCRIPT_DIR" describe --tags --exact-match HEAD 2>/dev/null || echo "")
+        if [[ "$_on_tag" == "$channel" ]]; then
+            info "Pinned to ${channel} (update_channel); already there, skipping self-update."
+        else
+            info "Pinned to ${channel} (update_channel); checking out that release..."
+            if ! git -C "$SCRIPT_DIR" checkout --quiet "$channel" 2>/dev/null; then
+                warn "Could not check out ${channel}. Commit or stash local changes first."
+                return 1
+            fi
+            info "Now pinned to ${channel}."
+        fi
+        local _newest
+        _newest=$(git -C "$SCRIPT_DIR" tag --sort=-v:refname 2>/dev/null | head -1)
+        if [[ -n "$_newest" && "$_newest" != "$channel" ]]; then
+            info "A newer release is available: ${_newest}"
+            info "To move up, set update_channel in linux_util.conf to ${_newest} (or to main)."
+        fi
+        return 0
+    fi
+
     # Detect the current branch so updates track whichever branch was checked out
     local current_branch
     current_branch=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null)
@@ -23,9 +56,22 @@ self_update_script() {
         pinned_ref=$(git -C "$SCRIPT_DIR" describe --tags --exact-match HEAD 2>/dev/null \
             || git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
         info "Pinned to ${pinned_ref} (detached HEAD); skipping self-update."
-        info "To resume rolling updates: git -C \"${SCRIPT_DIR}\" checkout main"
+        info "To resume rolling updates: git -C \"${SCRIPT_DIR}\" checkout ${channel}"
+        info "(update_channel is '${channel}', but a manual checkout takes precedence.)"
         return 0
     fi
+    # Channel names a branch: move onto it if the user is somewhere else.
+    if [[ "$current_branch" != "$channel" ]]; then
+        info "update_channel is '${channel}'; switching from '${current_branch}'..."
+        git -C "$SCRIPT_DIR" fetch --quiet origin "$channel" 2>/dev/null || true
+        if git -C "$SCRIPT_DIR" checkout --quiet "$channel" 2>/dev/null; then
+            current_branch="$channel"
+        else
+            warn "Could not switch to '${channel}'. Staying on '${current_branch}'."
+            warn "Commit or stash local changes, or set update_channel to '${current_branch}'."
+        fi
+    fi
+
     info "Current branch: $current_branch"
     git -C "$SCRIPT_DIR" fetch origin "$current_branch" 2>/dev/null || {
         warn "git fetch failed. Ensure you have network access."
