@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-09-02
+
 ### Fixed
 
 - **System Updates** printed every upstream-binary app's name twice — the run
