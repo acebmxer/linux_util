@@ -355,9 +355,16 @@ process_selected() {
         done
     fi
 
-    # Update package lists first
+    # Update package lists first. When every selected item performs its own full
+    # system upgrade (System Updates), the pre-flight must not upgrade as well:
+    # on Arch it otherwise applied the entire update here, leaving the run the
+    # user actually chose to report "No update available".
+    local _pf_sync_only=true _pf_item
+    for _pf_item in "${to_install[@]}" "${to_uninstall[@]}" "${to_update[@]}"; do
+        utility_performs_full_upgrade "$_pf_item" || { _pf_sync_only=false; break; }
+    done
     echo "${CYAN}Updating package lists...${RESET}"
-    pkg_refresh
+    PKG_REFRESH_SYNC_ONLY="$_pf_sync_only" pkg_refresh
     echo ""
 
     # Track results
@@ -587,18 +594,29 @@ process_selected() {
         echo ""
     fi
 
-    # Debian/Ubuntu flag a pending reboot via /var/run/reboot-required (e.g. a
-    # kernel or shared-library update pulled in by apt during this run). Honour it
-    # even when none of the selected tasks individually require a reboot, so we
-    # never claim "No reboot needed" while the OS has one queued — that mismatch
-    # is what lets unattended-upgrades reboot out from under the user.
-    if [[ "$needs_reboot" != "true" && -f /var/run/reboot-required ]]; then
+    # Honour a restart the OS itself has queued, even when none of the selected
+    # tasks individually require a reboot, so we never claim "No reboot needed"
+    # while the system has one pending — that mismatch is what lets
+    # unattended-upgrades reboot out from under the user. _reboot_required covers
+    # the Debian marker file, RHEL/Fedora's needs-restarting, and (since neither
+    # exists there) a live check of the running kernel and stale mapped libraries
+    # on Arch, where this check previously could never fire at all.
+    if [[ "$needs_reboot" != "true" ]] && _reboot_required; then
         needs_reboot=true
-        warn "The system has flagged a pending reboot (/var/run/reboot-required)."
-        if [[ -r /var/run/reboot-required.pkgs ]]; then
-            local _rb_pkgs
-            _rb_pkgs="$(sort -u /var/run/reboot-required.pkgs | paste -sd', ' -)"
-            [[ -n "$_rb_pkgs" ]] && info "Triggered by: ${_rb_pkgs}"
+        if [[ -f /var/run/reboot-required ]]; then
+            warn "The system has flagged a pending reboot (/var/run/reboot-required)."
+            if [[ -r /var/run/reboot-required.pkgs ]]; then
+                local _rb_pkgs
+                _rb_pkgs="$(sort -u /var/run/reboot-required.pkgs | paste -sd, - | sed 's/,/, /g')"
+                [[ -n "$_rb_pkgs" ]] && info "Triggered by: ${_rb_pkgs}"
+            fi
+        else
+            warn "A restart is pending: updated files are still in use by running processes."
+            # Name the packages rather than the 30-odd individual .so paths --
+            # "libwireplumber-module-*.so" twenty times over tells the user nothing.
+            local _rb_stale
+            _rb_stale="$(_reboot_stale_packages)"
+            [[ -n "$_rb_stale" ]] && info "Triggered by: ${_rb_stale}"
         fi
     fi
 
@@ -689,7 +707,11 @@ process_selected() {
 #   func — resolved function name (already validated by caller)
 _cli_op() {
     local _op="$1" _util="$2" _func="$3"
-    [[ "$_op" == "install" || "$_op" == "update" ]] && pkg_refresh
+    if [[ "$_op" == "install" || "$_op" == "update" ]]; then
+        local _sync_only=false
+        utility_performs_full_upgrade "$_util" && _sync_only=true
+        PKG_REFRESH_SYNC_ONLY="$_sync_only" pkg_refresh
+    fi
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[DRY RUN] Would ${_op}: ${_util}"; exit 0
     fi
@@ -856,7 +878,8 @@ EOF
             --update-all)
                 shift
                 echo "Updating all installed utilities..."
-                pkg_refresh
+                # System Updates is in this loop and does the full upgrade itself.
+                PKG_REFRESH_SYNC_ONLY=true pkg_refresh
                 timeshift_prompt_create_snapshot "linux_util: Before updating all installed utilities"
                 local _updated=0 _failed=0
                 for _util in "${UTILITIES[@]}"; do

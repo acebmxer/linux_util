@@ -3223,6 +3223,239 @@ test_apply_locale_setting_reports_no_tool
 # ============================================================================
 # Results Summary
 # ============================================================================
+
+echo ""
+echo "=== Reboot Detection Tests ==="
+
+source "${SCRIPT_DIR}/lib/installers/_shared.sh" 2>/dev/null
+
+# linux_util.sh runs under `set -o pipefail`, and the reboot check is a pipeline.
+# Without this the suite passed while the real script silently inverted the
+# result: grep -q exits on the first match, SIGPIPEs the sort feeding it, and
+# pipefail turns that into a failed pipeline -- so "files found" read as "none".
+# Every test below runs with pipefail on, matching the script it is testing.
+_reboot_test_pipefail_on() { set -o pipefail; }
+
+# Arch has no /var/run/reboot-required and ships no needs-restarting, so before
+# _reboot_required_arch existed the pending-reboot check could never fire there:
+# the script printed "No reboot needed" while the desktop showed a reboot
+# notification for the same upgrade.
+
+test_reboot_arch_check_is_family_gated() {
+    local f
+    for f in debian fedora rhel suse ""; do
+        assert_false "_reboot_required_arch stays inert on family '${f:-unset}'" \
+            env DISTRO_FAMILY="$f" bash -c \
+                'source "'"${SCRIPT_DIR}"'/lib/installers/_shared.sh"; _reboot_required_arch'
+    done
+}
+
+test_reboot_arch_fires_on_replaced_kernel() {
+    # pacman deletes /usr/lib/modules/<release> when it upgrades the kernel, so a
+    # running release with no module tree means the running kernel is stale.
+    local out
+    out=$(
+        DISTRO_FAMILY=arch
+        uname() { [[ "$1" == "-r" ]] && echo "99.9.9-nonexistent" || command uname "$@"; }
+        _reboot_stale_files() { :; }
+        _reboot_required_arch && echo FIRED
+    )
+    assert_contains "$out" "FIRED" \
+        "_reboot_required_arch fires when the running kernel's module tree is gone"
+}
+
+test_reboot_arch_fires_on_stale_libraries() {
+    # The ordinary case: a library replaced under a running process. No kernel
+    # change, so only the stale-mapping signal can catch it.
+    local out
+    out=$(
+        _reboot_test_pipefail_on
+        DISTRO_FAMILY=arch
+        _reboot_stale_files() { echo "/usr/lib/libcurl.so.4.8.0"; }
+        _reboot_required_arch && echo FIRED
+    )
+    assert_contains "$out" "FIRED" \
+        "_reboot_required_arch fires when a running process maps a replaced library"
+}
+
+# Regression: the whole check ran inside `set -o pipefail`, where a pipeline
+# ending in `grep -q` reports failure precisely BECAUSE it matched -- grep exits
+# early and SIGPIPEs its upstream. The result inverted only inside the real
+# script, so a run printed "No reboot needed" with thirty stale libraries mapped.
+test_reboot_arch_fires_under_pipefail() {
+    local out
+    out=$(
+        set -o pipefail
+        DISTRO_FAMILY=arch
+        _reboot_stale_files() { printf '%s\n' /usr/lib/liba.so.1 /usr/lib/libb.so.2; }
+        _reboot_required_arch && echo FIRED
+    )
+    assert_contains "$out" "FIRED" \
+        "_reboot_required_arch still fires when the caller sets pipefail"
+}
+
+# _reboot_stale_files must report its own status honestly under pipefail too:
+# the per-process grep fails for nearly every process, and those failures must
+# not surface as the function's exit status.
+test_reboot_stale_files_status_under_pipefail() {
+    local rc
+    (
+        set -o pipefail
+        _reboot_stale_files >/dev/null 2>&1
+    )
+    rc=$?
+    assert_true "_reboot_stale_files returns a status matching its output under pipefail" \
+        test "$rc" -eq 0 -o "$rc" -eq 1
+}
+
+test_reboot_arch_quiet_on_clean_system() {
+    local out
+    out=$(
+        DISTRO_FAMILY=arch
+        _reboot_stale_files() { :; }
+        _reboot_required_arch && echo FIRED
+        echo DONE
+    )
+    assert_false "_reboot_required_arch stays quiet with a current kernel and no stale files" \
+        grep -q "FIRED" <<< "$out"
+}
+
+# Only /usr system paths count. A browser's deleted shm segment or a deleted
+# temp file is not an upgrade and must never raise a reboot prompt.
+test_reboot_stale_files_ignores_non_system_paths() {
+    local _fake_proc="${LOG_DIR}/fakeproc"
+    mkdir -p "$_fake_proc/1234"
+    cat > "$_fake_proc/1234/maps" <<'MAPS'
+7f0000000000-7f0000001000 r--p 00000000 00:1b 12345 /dev/shm/.org.chromium.Chromium.AbCdEf (deleted)
+7f0000002000-7f0000003000 r--p 00000000 00:1b 12346 /tmp/somescratchfile (deleted)
+7f0000004000-7f0000005000 r--p 00000000 00:1b 12347 /home/user/.cache/thing.bin (deleted)
+MAPS
+    local out
+    out=$(
+        _reboot_stale_files() {
+            grep -hE '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [0-9]+ +/usr/(lib|lib32|bin|sbin)/.*\(deleted\)$' \
+                "'"$_fake_proc"'"/*/maps 2>/dev/null \
+                | sed -E 's/^([^ ]+ ){5} *//; s/ \(deleted\)$//' | sort -u
+        }
+        _reboot_stale_files
+    )
+    assert_false "stale-file scan ignores shm, tmp and cache mappings" \
+        grep -q . <<< "$out"
+    rm -rf "$_fake_proc"
+}
+
+test_reboot_stale_files_matches_system_libraries() {
+    local _fake_proc="${LOG_DIR}/fakeproc2"
+    mkdir -p "$_fake_proc/1234"
+    cat > "$_fake_proc/1234/maps" <<'MAPS'
+7f0000000000-7f0000001000 r--p 00000000 00:1b 12345 /dev/shm/.org.chromium.Chromium.AbCdEf (deleted)
+7f0000006000-7f0000007000 r-xp 00000000 08:02 22222 /usr/lib/libcurl.so.4.8.0 (deleted)
+7f0000008000-7f0000009000 r-xp 00000000 08:02 22223 /usr/bin/wireplumber (deleted)
+7f000000a000-7f000000b000 r-xp 00000000 08:02 22224 /usr/lib/libnotstale.so.1 
+MAPS
+    local out
+    out=$(grep -hE '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [0-9]+ +/usr/(lib|lib32|bin|sbin)/.*\(deleted\)$' \
+            "$_fake_proc"/*/maps 2>/dev/null \
+            | sed -E 's/^([^ ]+ ){5} *//; s/ \(deleted\)$//' | sort -u)
+    assert_contains "$out" "/usr/lib/libcurl.so.4.8.0" "stale-file scan catches a replaced library"
+    assert_contains "$out" "/usr/bin/wireplumber"      "stale-file scan catches a replaced binary"
+    assert_false "stale-file scan ignores a mapping that is not deleted" \
+        grep -q "libnotstale" <<< "$out"
+    rm -rf "$_fake_proc"
+}
+
+# The "Triggered by:" line must read as a package list, not as pairs: paste's -d
+# takes a delimiter LIST used cyclically, so "-sd', '" alternates comma and space.
+test_reboot_stale_packages_separator() {
+    local out
+    out=$(printf 'curl\ngpgme\nmesa\nwireplumber\n' | sort -u | paste -sd, - | sed 's/,/, /g')
+    assert_eq "curl, gpgme, mesa, wireplumber" "$out" \
+        "package list is comma-separated, not alternating comma and space"
+}
+
+test_reboot_arch_check_is_family_gated
+test_reboot_arch_fires_on_replaced_kernel
+test_reboot_arch_fires_on_stale_libraries
+test_reboot_arch_fires_under_pipefail
+test_reboot_stale_files_status_under_pipefail
+test_reboot_arch_quiet_on_clean_system
+test_reboot_stale_files_ignores_non_system_paths
+test_reboot_stale_files_matches_system_libraries
+test_reboot_stale_packages_separator
+
+echo ""
+echo "=== Pre-flight Refresh Scope Tests ==="
+
+source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+source "${SCRIPT_DIR}/lib/installers.sh" >/dev/null 2>&1
+
+# On Arch there is no safe metadata-only refresh in general (-Sy alone risks a
+# partial upgrade), so pkg_refresh runs -Syu. For a utility that performs the
+# full upgrade itself that stole the operation: the pre-flight applied every
+# pending package, then the run the user actually selected reported "No update
+# available". These pin the sync-only carve-out that fixes it.
+
+_pkg_refresh_probe() {
+    # Echo the pacman command pkg_refresh would run, without running it.
+    (
+        PKG_MGR=pacman
+        _PKG_REFRESHED=""
+        run_with_spinner() { shift; echo "$*"; }
+        run_direct()       { shift; echo "$*"; }
+        pkg_refresh 2>&1
+    )
+}
+
+test_preflight_upgrades_by_default() {
+    local out; out=$(PKG_REFRESH_SYNC_ONLY=false _pkg_refresh_probe)
+    assert_contains "$out" "pacman -Syu" \
+        "pkg_refresh still runs -Syu for ordinary installs (no partial-upgrade window)"
+}
+
+test_preflight_sync_only_does_not_upgrade() {
+    local out; out=$(PKG_REFRESH_SYNC_ONLY=true _pkg_refresh_probe)
+    assert_contains "$out" "pacman -Sy" \
+        "pkg_refresh syncs the database when the caller upgrades itself"
+    assert_false "pkg_refresh does not upgrade ahead of a full-upgrade utility" \
+        grep -q -- "-Syu" <<< "$out"
+}
+
+test_system_updates_marked_full_upgrade() {
+    assert_true "System Updates is registered as performing its own full upgrade" \
+        utility_performs_full_upgrade "System Updates"
+}
+
+test_ordinary_utility_not_marked_full_upgrade() {
+    assert_false "an ordinary utility is not marked as a full-upgrade run" \
+        utility_performs_full_upgrade "Visual Studio Code"
+}
+
+# A batch mixing System Updates with an ordinary install must NOT go sync-only:
+# that install needs a fully upgraded system underneath it.
+_preflight_scope_for() {
+    local -a items=("$@")
+    local _sync=true _item
+    for _item in "${items[@]}"; do
+        utility_performs_full_upgrade "$_item" || { _sync=false; break; }
+    done
+    echo "$_sync"
+}
+
+test_preflight_scope_mixed_batch_upgrades() {
+    assert_eq "true"  "$(_preflight_scope_for "System Updates")" \
+        "a System Updates-only batch skips the pre-flight upgrade"
+    assert_eq "false" "$(_preflight_scope_for "System Updates" "Visual Studio Code")" \
+        "a mixed batch keeps the pre-flight upgrade for the ordinary install"
+    assert_eq "false" "$(_preflight_scope_for "Visual Studio Code")" \
+        "an ordinary batch keeps the pre-flight upgrade"
+}
+
+test_preflight_upgrades_by_default
+test_preflight_sync_only_does_not_upgrade
+test_system_updates_marked_full_upgrade
+test_ordinary_utility_not_marked_full_upgrade
+test_preflight_scope_mixed_batch_upgrades
+
 echo ""
 echo "════════════════════════════════════════════════════════════════"
 echo "Test Results: ${_TESTS_PASSED} passed, ${_TESTS_FAILED} failed, ${_TESTS_SKIPPED} skipped"

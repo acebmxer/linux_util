@@ -24,6 +24,7 @@ declare -A SUBCATEGORY_INTERLEAVED  # if set for a category, subcategory folders
 declare -A UTILITY_AUR_ONLY_ARCH    # utility name → 1 if its only Arch install path is the AUR (no repo/Flatpak fallback)
 declare -A UTILITY_ARCH_PKG         # utility name → Arch package name, probed against the configured repos
 declare -A UTILITY_UPSTREAM_BINARY   # utility name → path that exists only when installed from upstream's own binary
+declare -A UTILITY_FULL_UPGRADE      # utility name → 1 if its own run performs a full system upgrade
 
 # Mark one or more utilities whose only Arch install path is the AUR (no
 # official-repo or Flatpak fallback in their installer). Used to hide them
@@ -58,6 +59,26 @@ mark_upstream_binary() {
         [[ "$entry" == *=* ]] || continue
         UTILITY_UPSTREAM_BINARY["${entry%%=*}"]="${entry#*=}"
     done
+}
+
+# Mark a utility whose own run performs a complete system upgrade (System
+# Updates, and anything else that ends up calling a full -Syu / full-upgrade).
+# The pre-flight package refresh consults this: on Arch it has no metadata-only
+# sync it can safely do in general, so it runs -Syu -- which for these utilities
+# applied the whole update before the selected run even started, leaving that run
+# to report "No update available" while 24 packages had just been upgraded a few
+# lines above. Marked utilities get a bare -Sy instead, so the upgrade happens
+# inside the run the user selected, as it already did on apt and dnf.
+mark_full_upgrade() {
+    local name
+    for name in "$@"; do
+        UTILITY_FULL_UPGRADE["$name"]=1
+    done
+}
+
+# True when the named utility performs its own full system upgrade.
+utility_performs_full_upgrade() {
+    [[ -n "${UTILITY_FULL_UPGRADE[$1]:-}" ]]
 }
 
 # True when the named utility is currently installed from upstream's own binary
