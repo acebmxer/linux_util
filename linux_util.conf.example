@@ -30,10 +30,16 @@ dns_timeout_seconds=10
 # Minimum free disk space in MB before allowing installs
 disk_min_mb=1024
 
+# --- Updates ---
+# Which stream self-update follows:
+#   main     - released versions only (default, recommended)
+#   dev      - continuous updates, may be unstable
+#   v1.3.1   - pin to that exact release; no updates until you change this
+# A manual `git checkout` takes precedence over this setting.
+update_channel=main
+
 # --- Behavior ---
 auto_cleanup=true
-create_backups=true
-backup_dir=./backups
 
 # --- Output ---
 # Enable verbose output (extra status messages)

@@ -131,14 +131,24 @@ _pkg_cache_is_fresh() {
     (( age < PKG_CACHE_MAX_AGE_SECS ))
 }
 
+# Set by callers whose own operation performs the full system upgrade itself
+# (System Updates, --update-all). On Arch this suppresses the -u in pkg_refresh's
+# -Syu, so the pre-flight step syncs the database and nothing else and the upgrade
+# happens inside the update run where the user asked for it -- matching how apt and
+# dnf already behave, where pre-flight only ever refreshes metadata.
+PKG_REFRESH_SYNC_ONLY="${PKG_REFRESH_SYNC_ONLY:-false}"
+
 pkg_refresh() {
     local mode="${1:-spinner}"
     local _run; [[ "$mode" == "direct" ]] && _run=run_direct || _run=run_with_spinner
     local _nc;  [[ "$mode" != "direct" ]] && _nc="--noconfirm" || _nc=""
     [[ "${_PKG_REFRESHED:-}" == "true" ]] && return 0
 
-    # NOTE: On Arch, -Sy without -u risks partial upgrades. We use -Syu
-    # here so that any subsequent pkg_install calls have a consistent DB+system.
+    # NOTE: On Arch, -Sy without -u risks partial upgrades, so the default is -Syu
+    # to leave any subsequent pkg_install call with a consistent DB+system. The one
+    # exception is PKG_REFRESH_SYNC_ONLY (above): there the caller upgrades in full
+    # immediately afterwards, so the window for a partial upgrade never opens and
+    # doing it here only steals the operation the user actually selected.
     # $_nc is intentionally unquoted so an empty value passes no extra argument.
     # shellcheck disable=SC2086
     case "$PKG_MGR" in
@@ -163,8 +173,13 @@ pkg_refresh() {
             fi
             ;;
         pacman)
-            # pacman -Syu always runs — skipping a partial sync risks DB mismatch.
-            "$_run" "Refreshing package cache & upgrading" sudo pacman -Syu $_nc ;;
+            # pacman -Syu always runs — skipping a partial sync risks DB mismatch —
+            # unless the caller's own operation does the full upgrade itself.
+            if [[ "${PKG_REFRESH_SYNC_ONLY:-false}" == "true" ]]; then
+                "$_run" "Refreshing package cache" sudo pacman -Sy $_nc
+            else
+                "$_run" "Refreshing package cache & upgrading" sudo pacman -Syu $_nc
+            fi ;;
         zypper)
             "$_run" "Refreshing package cache" \
                 timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo zypper refresh ;;

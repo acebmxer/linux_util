@@ -12,6 +12,99 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- The TUI header now shows the current release version on the byline row, as
+  `Version: v1.3.1   By: PozzaTech`. The number is read from the tag list by
+  version sort (`git tag --sort=-v:refname`) rather than `git describe`, which
+  walks HEAD's ancestry: release tags are created on `main` after a pull request
+  merges, so the merge commit they point at never exists on `dev` and `describe`
+  from a development branch reports the *previous* release. Sorting the tag list
+  ignores ancestry and reports the newest release from any branch. Tags are
+  refreshed once at startup so a release cut since the last pull is picked up.
+- **Self Update** honours a new `update_channel` config key, letting a user
+  choose what the updater follows instead of always tracking whichever branch
+  happened to be checked out: `main` for released versions only (the default),
+  `dev` for continuous updates, or a release tag such as `v1.3.1` to pin. A
+  pinned install checks that tag out and then makes no further changes, and the
+  header appends `(v1.4.0 available)` when a newer release exists so that a pin
+  never silently strands a user on a stale version. A manual `git checkout`
+  still takes precedence over the configured channel — self-update reports the
+  detached HEAD and leaves it alone rather than dragging the user back onto a
+  branch, since discarding a deliberate checkout would be destructive.
+- Added `docs/configuration.md` coverage for the new `update_channel` setting.
+
+### Removed
+
+- The `create_backups` and `backup_dir` config settings, which were parsed and
+  documented but never read by any code — setting them had no effect. The
+  backups that do happen (package-manager repo config saved before a reset) are
+  written by the installers themselves to `/var/backups/linux_util/`, and never
+  consulted these keys.
+
+### Fixed
+
+- **System Updates** on Arch-family systems applied the entire system upgrade
+  during the pre-flight step, before the run the user had actually selected
+  began — so the run itself then reported `No update available` and looked like
+  it had done nothing, moments after 24 packages had been upgraded a few lines
+  higher under the single line `Refreshing package cache & upgrading`. The cause
+  was `pkg_refresh`, the generic step that runs before any install: on apt and
+  dnf it only refreshes metadata (`apt update`, `dnf makecache`), but pacman has
+  no safe metadata-only refresh in general — `pacman -Sy` without `-u` leaves a
+  partial-upgrade window — so it ran a full `pacman -Syu` and swallowed the
+  update. A utility is now marked when its own run performs a complete system
+  upgrade (`mark_full_upgrade`, currently **System Updates**), and for such a run
+  the pre-flight syncs the database only, leaving the upgrade to happen inside
+  the selected run where the user asked for it and where its package list is
+  printed — matching how apt and dnf already behaved. Ordinary installs are
+  unaffected and still get the full `-Syu`, since the partial-upgrade window is
+  real for them; a batch that mixes **System Updates** with any other utility
+  also keeps the full upgrade, because that other install needs an already
+  upgraded system underneath it.
+- The end-of-run pending-reboot check never fired on Arch-family systems, so a
+  run could report `No reboot needed` while the desktop was showing a reboot
+  notification for the very same upgrade. The check tested only
+  `/var/run/reboot-required` (a Debian/Ubuntu marker file) and `needs-restarting`
+  (RHEL/Fedora); Arch has neither, so on CachyOS the safety net was dead code.
+  `_reboot_required` now also reads the pending restart off the live system on
+  Arch, from two independent signals: the running kernel's module tree being gone
+  from `/usr/lib/modules` (pacman removes it when the kernel package is upgraded,
+  so its absence means the running kernel is no longer the installed one), and
+  running processes still mapping `/usr` files that have been replaced on disk —
+  the `(deleted)` mappings in `/proc/<pid>/maps` that a library upgrade leaves
+  behind, which is the case an ordinary `openssl`/`curl`/`mesa` update hits with
+  no kernel change at all. Both read only `/proc` and the filesystem, needing no
+  sudo and no package-manager call, and only `/usr` paths count so a browser's
+  deleted shm segment or a temp file never raises a prompt. The warning names the
+  owning packages (`Triggered by: curl, gpgme, mesa, wireplumber`) rather than
+  the thirty-odd individual `.so` paths behind them, resolving a replaced
+  versioned soname back to its package via the unversioned name when pacman no
+  longer owns the old path. Note that CachyOS's own reboot notification is
+  transient — its pacman hook fires once during the transaction and writes no
+  marker — so unlike Debian's `/var/run/reboot-required` there is no file to
+  consult afterwards; recomputing from `/proc` is what lets a second run without
+  an intervening reboot still report the restart as pending, matching how
+  `needs-restarting` behaves on Fedora.
+- The Arch pending-reboot check inverted its own result inside the running
+  script, reporting `No reboot needed` with thirty replaced libraries still
+  mapped. `linux_util.sh` runs under `set -o pipefail` and the check ended in
+  `… | grep -q .`; `grep -q` exits on its first match, which SIGPIPEs the `sort`
+  feeding it, and `pipefail` then takes that as the pipeline's status — so the
+  check reported "nothing stale" precisely *because* it had found something. The
+  result is now assigned and tested with `[[ -n ]]` rather than piped into
+  `grep -q`, and `_reboot_stale_files` no longer leaks the per-process `grep`
+  failures (one for nearly every process, since most map nothing stale) as its
+  own exit status. The regression tests for this run under `pipefail`, which the
+  suite did not previously set — the reason the fault passed tests while failing
+  in the real script.
+- The `Triggered by:` package list printed pairs separated by alternating comma
+  and space (`curl,gpgme mesa,wireplumber`) because `paste -sd', '` treats its
+  argument as a delimiter *list* applied cyclically rather than as one two-
+  character separator.
+- Added the missing `dns_check_host` row to the settings table in
+  `docs/configuration.md`.
+
 ## [1.3.1] - 2026-09-02
 
 ### Fixed

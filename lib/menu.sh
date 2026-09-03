@@ -803,8 +803,22 @@ _render_title() {
 
     _TITLE_LINES+=("${CYAN}${_BD_V}${left_cell}${sbc}${_BD_V}${RESET}${right_cell}${CYAN}${_BD_V}${RESET}${eol}")
 
-    # --- Line 3: By: PozzaTech (left) | empty (right) ---
-    local by_text=" ${DIM}By: ${RESET}${BOLD}${BLUE}PozzaTech${RESET}"
+    # --- Line 3: Version + By: PozzaTech (left) | empty (right) ---
+    local ver_text=""
+    if [[ -n "$CACHED_PINNED_VERSION" ]]; then
+        # Pinned to a tag: show it, and flag when a newer release exists so the
+        # pin does not quietly leave the user on a stale version indefinitely.
+        ver_text="${DIM}Version: ${RESET}${BOLD}${GREEN}${CACHED_PINNED_VERSION}${RESET}"
+        if [[ "$CACHED_LATEST_VERSION" != "unknown" && \
+              "$CACHED_LATEST_VERSION" != "$CACHED_PINNED_VERSION" ]]; then
+            ver_text+=" ${YELLOW}(${CACHED_LATEST_VERSION} available)${RESET}"
+        fi
+    elif [[ "$CACHED_LATEST_VERSION" != "unknown" ]]; then
+        ver_text="${DIM}Version: ${RESET}${BOLD}${GREEN}${CACHED_LATEST_VERSION}${RESET}"
+    fi
+    local by_text=" "
+    [[ -n "$ver_text" ]] && by_text+="${ver_text}   "
+    by_text+="${DIM}By: ${RESET}${BOLD}${BLUE}PozzaTech${RESET}"
     _pad_or_truncate "$by_text" "$left_inner"
     local by_cell="${_POT_RESULT}"
     _pad_or_truncate "" "$right_inner"
@@ -1494,6 +1508,22 @@ run_selection_menu() {
     # Fetch commit info once
     CACHED_LOCAL_COMMIT=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
     CACHED_LOCAL_BRANCH=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+
+    # Refresh tags so the header version reflects releases cut since the last
+    # pull. Release tags are created on main after a PR merges, so a dev branch
+    # never has the newest tag in its own ancestry -- only a fetch brings it in.
+    # Best-effort: a failure here just leaves the previously fetched tag list.
+    git -C "$SCRIPT_DIR" fetch --tags --quiet origin 2>/dev/null || true
+
+    # Latest released version. Read from the tag list by version sort rather
+    # than `git describe`, which walks HEAD's ancestry and would report the
+    # previous release while working on dev.
+    CACHED_LATEST_VERSION=$(git -C "$SCRIPT_DIR" tag --sort=-v:refname 2>/dev/null | head -1)
+    [[ -z "$CACHED_LATEST_VERSION" ]] && CACHED_LATEST_VERSION="unknown"
+
+    # When HEAD is a tag (a pinned install), that tag is the running version and
+    # the newest tag may be ahead of it -- surface both so a pin is never silent.
+    CACHED_PINNED_VERSION=$(git -C "$SCRIPT_DIR" describe --tags --exact-match HEAD 2>/dev/null || echo "")
     local _remote_full
     _remote_full=$(git -C "$SCRIPT_DIR" ls-remote origin "refs/heads/${CACHED_LOCAL_BRANCH}" 2>/dev/null | awk '{print $1}')
     if [[ -z "$_remote_full" ]]; then

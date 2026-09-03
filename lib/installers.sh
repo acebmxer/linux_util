@@ -1122,3 +1122,7 @@ mark_upstream_binary \
 mark_upstream_latest \
     "Visual Studio Code=_vscode_latest_version" \
     "Libation=_libation_latest_version"
+
+# Utilities whose own run is a complete system upgrade, so the pre-flight package
+# refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.
+mark_full_upgrade "System Updates"
