@@ -233,7 +233,7 @@ uninstall_vscodium() {
 }
 
 update_vscodium() {
-    echo "Updating VSCodium..."
+    info "Updating VSCodium..."
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update

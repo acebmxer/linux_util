@@ -12,6 +12,23 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Fixed
+
+- **System Updates** printed every upstream-binary app's name twice — the run
+  showed `Updating Libation...` on two consecutive lines, and the same for
+  **Visual Studio Code**. `_system_updates_upstream_binaries` announced each
+  utility before calling it, but the functions it calls are the same
+  `update_*` functions the menu invokes directly, and each of those already
+  announces itself as its first action. The caller's line was the redundant
+  one and has been removed: all six utilities registered as upstream binaries
+  (**Visual Studio Code**, **VSCodium**, **Mark Text**, **Standard Notes**,
+  **PowerShell**, **Libation**) print their own heading, so nothing is left
+  unlabelled.
+- **Visual Studio Code** and **VSCodium** announced their update with a bare
+  `echo` rather than `info`, so the line printed without the `[INFO]` prefix
+  and colour every other step of an update run uses — visible in a System
+  Updates run as one unprefixed line among prefixed ones. Both now use `info`.
+
 ## [1.3.0] - 2026-09-02
 
 ### Added

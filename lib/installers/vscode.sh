@@ -193,7 +193,7 @@ uninstall_vscode() {
     rm -rf ~/.vscode
 }
 update_vscode() {
-    echo "Updating Visual Studio Code..."
+    info "Updating Visual Studio Code..."
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update

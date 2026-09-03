@@ -75,7 +75,9 @@ _system_updates_upstream_binaries() {
             warn "${util}: no update function registered; skipping."
             continue
         fi
-        info "Updating ${util}..."
+        # No "Updating <util>..." line here: every registered update function
+        # announces itself (they are the same functions the menu calls directly),
+        # so printing one first showed the name twice per app.
         if ! "$fn"; then
             warn "${util} could not be updated (see output above)."
             rc=1
