@@ -3856,6 +3856,61 @@ HOME="$_rc_dir" SHELL=/bin/bash bash -c "
 assert_eq "$_before" "$(cat "$_rc_dir/.bashrc")" \
     "writing the auto-attach block twice converges instead of rewriting"
 rm -rf "$_rc_dir"
+
+# The fastfetch auto-run line stands down via _LU_TMUX_AUTOATTACH, which the
+# auto-attach block sets -- so the block MUST be written above that line. Below
+# it, the flag is read before it is assigned and the banner prints twice on a
+# session-creating login.
+_rc_dir=$(mktemp -d)
+{
+    printf '# linux_util:fastfetch\n'
+    printf '[[ $- == *i* && -z $TMUX ]] && fastfetch\n'
+} > "$_rc_dir/.bashrc"
+HOME="$_rc_dir" bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/fastfetch.sh'
+    _fastfetch_configure_shells >/dev/null 2>&1
+" 2>/dev/null
+HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+_flag_line=$(grep -n '_LU_TMUX_AUTOATTACH=1' "$_rc_dir/.bashrc" | head -1 | cut -d: -f1)
+_ffrun_line=$(grep -n -- '-z $_LU_TMUX_AUTOATTACH' "$_rc_dir/.bashrc" | head -1 | cut -d: -f1)
+assert_not_empty "$_flag_line" "the auto-attach block sets _LU_TMUX_AUTOATTACH"
+assert_not_empty "$_ffrun_line" "the fastfetch line checks _LU_TMUX_AUTOATTACH"
+assert_true "the auto-attach block is written above the fastfetch auto-run line" \
+    [ "$_flag_line" -lt "$_ffrun_line" ]
+
+# The flag must be conditional: with tmux absent the fastfetch line has to run,
+# or uninstalling tmux would silence the banner entirely.
+assert_true "_LU_TMUX_AUTOATTACH is only set when tmux is actually present" \
+    grep -qF 'command -v tmux' <<<"$(sed -n "1,${_flag_line}p" "$_rc_dir/.bashrc")"
+rm -rf "$_rc_dir"
+
+# A block already sitting below the fastfetch line is detected and moved above it.
+_rc_dir=$(mktemp -d)
+{
+    printf '# linux_util:fastfetch\n'
+    printf '[[ $- == *i* && -z $TMUX && -z $_LU_TMUX_AUTOATTACH ]] && fastfetch\n'
+    printf '# >>> linux_util tmux auto-attach >>>\n'
+    printf 'if [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then\n'
+    printf '    case $- in\n        *i*) tmux attach -t work ;;\n    esac\nfi\n'
+    printf '# <<< linux_util tmux auto-attach <<<\n'
+} > "$_rc_dir/.bashrc"
+HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+_blk_line=$(grep -n '>>> linux_util tmux auto-attach >>>' "$_rc_dir/.bashrc" | head -1 | cut -d: -f1)
+_ff_line=$(grep -n '# linux_util:fastfetch' "$_rc_dir/.bashrc" | head -1 | cut -d: -f1)
+assert_true "a block stranded below the fastfetch line is moved above it" \
+    [ "$_blk_line" -lt "$_ff_line" ]
+assert_eq "1" "$(grep -c '>>> linux_util tmux auto-attach >>>' "$_rc_dir/.bashrc")" \
+    "reordering past the fastfetch line leaves exactly one block"
+rm -rf "$_rc_dir"
 rm -rf "$_rc_dir"
 
 

@@ -12,13 +12,19 @@ _fastfetch_latest_url() {
 }
 
 # Bring an existing auto-run line up to date. Earlier versions wrote it without
-# the -z $TMUX guard, so it also fired inside tmux -- where the tmux auto-attach
-# snippet already shows fastfetch when it creates a session, giving two banners.
-# Rewrites only the line directly following our own marker.
+# the guards below, so it fired twice on a connect that creates a tmux session:
+# once here on the login shell, then again from the auto-attach block. Rewrites
+# only the line directly following our own marker, and is a no-op once the line
+# already matches, so a re-run does not churn the file.
+#
+# Two separate conditions are needed. -z $TMUX suppresses it for shells started
+# *inside* tmux (new windows and panes). _LU_TMUX_AUTOATTACH suppresses it on the
+# login shell that is about to hand off to tmux -- there $TMUX is still empty, so
+# that check alone does not catch it.
 _fastfetch_refresh_rc_line() {
     local rc="$1" marker="$2" line="$3"
     grep -qF "$marker" "$rc" 2>/dev/null || return 1
-    grep -qF 'TMUX' <(grep -A1 -F "$marker" "$rc") && return 1
+    grep -qF "$line" <(grep -A1 -F "$marker" "$rc") && return 1
     local tmp
     tmp=$(mktemp) || return 1
     awk -v m="$marker" -v repl="$line" '
@@ -37,9 +43,9 @@ _fastfetch_configure_shells() {
         if [[ -f "$HOME/.bashrc" ]]; then
             local rc="$HOME/.bashrc"
             if ! grep -qF "$marker" "$rc" 2>/dev/null; then
-                printf '\n%s\n[[ $- == *i* && -z $TMUX ]] && fastfetch\n' "$marker" >> "$rc"
+                printf '\n%s\n[[ $- == *i* && -z $TMUX && -z $_LU_TMUX_AUTOATTACH ]] && fastfetch\n' "$marker" >> "$rc"
                 info "Added fastfetch auto-run to $rc"
-            elif _fastfetch_refresh_rc_line "$rc" "$marker" '[[ $- == *i* && -z $TMUX ]] && fastfetch'; then
+            elif _fastfetch_refresh_rc_line "$rc" "$marker" '[[ $- == *i* && -z $TMUX && -z $_LU_TMUX_AUTOATTACH ]] && fastfetch'; then
                 info "Updated fastfetch auto-run in $rc so it does not double up inside tmux"
             else
                 info "Fastfetch auto-run already configured in $rc"
@@ -59,12 +65,12 @@ _fastfetch_configure_shells() {
             if grep -qF "$p10k_prompt" "$rc" 2>/dev/null; then
                 # Insert before p10k instant prompt block so fastfetch output
                 # isn't captured by p10k's terminal takeover
-                sed -i "/${p10k_prompt}/i ${marker}\n[[ \$- == *i* \&\& -z \$TMUX ]] \&\& fastfetch\n" "$rc"
+                sed -i "/${p10k_prompt}/i ${marker}\n[[ \$- == *i* \&\& -z \$TMUX \&\& -z \$_LU_TMUX_AUTOATTACH ]] \&\& fastfetch\n" "$rc"
             else
-                printf '\n%s\n[[ $- == *i* && -z $TMUX ]] && fastfetch\n' "$marker" >> "$rc"
+                printf '\n%s\n[[ $- == *i* && -z $TMUX && -z $_LU_TMUX_AUTOATTACH ]] && fastfetch\n' "$marker" >> "$rc"
             fi
             info "Added fastfetch auto-run to $rc"
-        elif _fastfetch_refresh_rc_line "$rc" "$marker" '[[ $- == *i* && -z $TMUX ]] && fastfetch'; then
+        elif _fastfetch_refresh_rc_line "$rc" "$marker" '[[ $- == *i* && -z $TMUX && -z $_LU_TMUX_AUTOATTACH ]] && fastfetch'; then
             info "Updated fastfetch auto-run in $rc so it does not double up inside tmux"
         else
             info "Fastfetch auto-run already configured in $rc"

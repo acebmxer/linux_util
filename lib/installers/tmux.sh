@@ -87,6 +87,19 @@ ${_TMUX_AUTOATTACH_MARKER}
 # Reattach to a persistent tmux session on interactive login, so a dropped
 # connection can be resumed. Skipped when already inside tmux and when the
 # shell is not interactive (scp, rsync, git).
+#
+# This block owns the fastfetch banner on any login it handles, so the separate
+# fastfetch auto-run line stands down via _LU_TMUX_AUTOATTACH. That flag cannot
+# be \$TMUX: on the login shell about to start tmux, \$TMUX is still empty. The
+# installer places this block above the fastfetch line so the flag is already
+# set by the time that line is evaluated.
+# Set only when this block will actually run, so removing tmux hands the banner
+# back to the fastfetch line instead of silencing it everywhere.
+if [ -z "\$TMUX" ] && command -v tmux >/dev/null 2>&1; then
+    case \$- in
+        *i*) _LU_TMUX_AUTOATTACH=1 ;;
+    esac
+fi
 if [ -z "\$TMUX" ] && command -v tmux >/dev/null 2>&1; then
     case \$- in
         *i*)
@@ -125,10 +138,16 @@ _tmux_write_autoattach() {
         current=$(sed -n "\|${_TMUX_AUTOATTACH_MARKER}|,\|${_TMUX_AUTOATTACH_MARKER_END}|p" "$rc")
 
         local misplaced=false
-        local _p10k _blk
+        local _p10k _blk _ff
         _p10k=$(grep -n 'p10k-instant-prompt' "$rc" 2>/dev/null | head -1 | cut -d: -f1)
         _blk=$(grep -n "$_TMUX_AUTOATTACH_MARKER" "$rc" 2>/dev/null | head -1 | cut -d: -f1)
         if [[ -n "$_p10k" && -n "$_blk" ]] && (( _blk > _p10k )); then
+            misplaced=true
+        fi
+        # Below the fastfetch line means _LU_TMUX_AUTOATTACH is read before it is
+        # set, so the banner prints twice. Move the block above it.
+        _ff=$(grep -n '# linux_util:fastfetch' "$rc" 2>/dev/null | head -1 | cut -d: -f1)
+        if [[ -n "$_ff" && -n "$_blk" ]] && (( _blk > _ff )); then
             misplaced=true
         fi
 
@@ -160,6 +179,16 @@ _tmux_write_autoattach() {
     # must run *above* the preamble, so insert there when it is present.
     local p10k_line
     p10k_line=$(grep -n 'p10k-instant-prompt' "$rc" 2>/dev/null | head -1 | cut -d: -f1)
+
+    # The fastfetch auto-run line stands down via _LU_TMUX_AUTOATTACH, which this
+    # block sets -- so this block has to come first or that flag is read before it
+    # is assigned and the banner prints twice on a session-creating login.
+    local ff_line
+    ff_line=$(grep -n '# linux_util:fastfetch' "$rc" 2>/dev/null | head -1 | cut -d: -f1)
+    if [[ -n "$ff_line" ]] && { [[ -z "$p10k_line" ]] || (( ff_line < p10k_line )); }; then
+        p10k_line="$ff_line"
+    fi
+
     if [[ -n "$p10k_line" ]]; then
         # Back up to the comment block p10k puts above its own guard, so the
         # snippet lands before the preamble rather than inside its comments.

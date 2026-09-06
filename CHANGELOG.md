@@ -59,6 +59,19 @@ when a release is cut.
   marker check made a re-run a no-op, an existing line without that guard is
   rewritten in place rather than left stale.
 
+- **fastfetch printed twice on a connect that created a tmux session.** The
+  `-z $TMUX` guard added to the **fastfetch** auto-run line only suppresses it
+  for shells started *inside* tmux. On the login shell that is about to start
+  tmux, `$TMUX` is still empty, so that line ran, and then the auto-attach block
+  ran it again on the create branch — two banners on a first connect, and one on
+  a reattach where there should have been none. The auto-attach block now sets
+  `_LU_TMUX_AUTOATTACH` when it is going to handle the login, the fastfetch line
+  stands down on that flag, and the installer writes the block above that line so
+  the flag is assigned before it is read. The flag is set only when tmux is
+  actually present, so removing tmux hands the banner back to the fastfetch line
+  rather than silencing it everywhere; a block already sitting below the
+  fastfetch line is detected and moved above it.
+
 - **An out-of-date tmux auto-attach block was not refreshed unless it matched a
   known defect.** The installer decided whether to rewrite an existing block by
   testing for specific faults — first a `[ -t 1 ]` guard, later a position below
