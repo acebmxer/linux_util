@@ -14,6 +14,38 @@ when a release is cut.
 
 ### Added
 
+- **Config schema migration.** `linux_util.conf` is created once by copying
+  `linux_util.conf.example` and then maintained by hand, so keys added to the
+  example in later releases never reached it — a config written a few releases
+  ago silently ran on defaults its owner had never seen or chosen. On startup,
+  any key present in the example but absent from the user's config is now
+  appended, carrying the example's own comment block so it arrives documented.
+  **This edits a file the user maintains.** It appends only: existing values,
+  their ordering and the user's own comments are never touched, nothing is
+  removed or rewritten in place, and a timestamped `linux_util.conf.bak.<stamp>`
+  is written beside the file before any change. A notice before the menu lists
+  every key that was added and points at the backup, so new lines in a
+  hand-edited file are never a surprise found later; it waits for ENTER so the
+  TUI does not clear it off the screen, and skips that wait when no terminal is
+  attached. A run that adds nothing is silent, writes nothing and leaves no
+  backup.
+  It runs *after* the self-update step, which is the ordering that makes it
+  work: a `git pull` is the moment a new `linux_util.conf.example` first exists
+  on disk, so migrating beforehand would compare against the old example, find
+  nothing, and leave the user a release behind until their next launch. When
+  self-update applies a new version it re-execs, so the migration runs once in
+  the fresh process against current files.
+  The scan compares directly against the example every run, with no "already at
+  the latest version, skip" shortcut: such a shortcut would make correctness
+  depend on remembering to bump a version constant by hand every time a key was
+  added, and forgetting it would leave every existing config stamped current and
+  silently never receiving the new key — while fresh installs, copied from the
+  example, got it, so the bug would be invisible to whoever shipped it. Adding a
+  key to `linux_util.conf.example` is therefore all that is needed for existing
+  configs to pick it up. `config_version` records what the file has been brought
+  up to and is read from the example itself, so the version travels with the
+  keys it describes instead of living in a constant that can drift out of step.
+
 - **tmux** and **tmux Resurrect** under *Remote Admin Tools > Remote Access*,
   covering SSH sessions that survive a dropped connection. An SSH drop kills the
   client, not the remote shell: with tmux the session and everything running in

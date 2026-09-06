@@ -50,3 +50,9 @@ auto_cleanup=true
 verbose=false
 # Enable debug output (internal state, parsed values)
 debug=false
+
+# --- Config schema ---
+# Records which schema version this file has been brought up to. Written by
+# linux_util when it adds keys introduced in a newer release; do not edit.
+# Delete this line to force a re-scan for missing keys on the next run.
+config_version=1
