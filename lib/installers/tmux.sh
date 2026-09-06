@@ -90,20 +90,36 @@ _tmux_write_autoattach() {
     esac
 
     if grep -q "$_TMUX_AUTOATTACH_MARKER" "$rc" 2>/dev/null; then
-        info "Auto-attach snippet already present in ${rc}."
-        return 0
+        # An earlier version guarded the block with [ -t 1 ], which is false
+        # while an rc file is sourced at startup, so that snippet never fired.
+        # Strip the stale block and fall through to write the corrected one.
+        if grep -q '\[ -t 1 \]' "$rc" 2>/dev/null &&
+           sed -n "/${_TMUX_AUTOATTACH_MARKER}/,/${_TMUX_AUTOATTACH_MARKER_END}/p" "$rc" |
+               grep -q '\[ -t 1 \]'; then
+            info "Replacing an outdated auto-attach snippet in ${rc}."
+            _tmux_remove_autoattach_quiet "$rc" || return 1
+        else
+            info "Auto-attach snippet already present in ${rc}."
+            return 0
+        fi
     fi
 
     # The guards matter: without them tmux would recurse inside its own shells,
     # and scp/rsync/git-over-SSH would break on a non-interactive session that
     # suddenly speaks terminal escapes.
+    #
+    # Interactivity is tested with \$- and NOT with [ -t 1 ]. While an rc file is
+    # being sourced during shell startup, stdout is not yet connected to the
+    # terminal, so [ -t 1 ] is false even in a real interactive SSH login -- the
+    # block would never run. \$- carries 'i' for exactly the interactive shells
+    # we want and is absent for 'ssh host cmd', scp and rsync.
     cat >> "$rc" <<EOF
 
 ${_TMUX_AUTOATTACH_MARKER}
 # Reattach to a persistent tmux session on interactive login, so a dropped
-# connection can be resumed. Skipped when already inside tmux, when the shell
-# is not interactive (scp, rsync, git), and when there is no terminal.
-if [ -z "\$TMUX" ] && [ -t 1 ] && command -v tmux >/dev/null 2>&1; then
+# connection can be resumed. Skipped when already inside tmux and when the
+# shell is not interactive (scp, rsync, git).
+if [ -z "\$TMUX" ] && command -v tmux >/dev/null 2>&1; then
     case \$- in
         *i*) tmux attach -t work 2>/dev/null || tmux new -s work ;;
     esac
@@ -125,6 +141,14 @@ uninstall_tmux() {
     esac
 }
 
+# Delete the marked block from one rc file, without announcing it. Shared with
+# _tmux_remove_autoattach so the deletion pattern exists in exactly one place --
+# do not add a third copy of this sed.
+_tmux_remove_autoattach_quiet() {
+    local rc="$1"
+    sed -i "\|${_TMUX_AUTOATTACH_MARKER}|,\|${_TMUX_AUTOATTACH_MARKER_END}|d" "$rc"
+}
+
 # Strip the marked block from whichever rc files carry it. Only the block this
 # installer wrote is touched; the rest of the user's rc is left alone.
 _tmux_remove_autoattach() {
@@ -132,7 +156,7 @@ _tmux_remove_autoattach() {
     for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
         [[ -f "$rc" ]] || continue
         grep -q "$_TMUX_AUTOATTACH_MARKER" "$rc" 2>/dev/null || continue
-        sed -i "\|${_TMUX_AUTOATTACH_MARKER}|,\|${_TMUX_AUTOATTACH_MARKER_END}|d" "$rc"
+        _tmux_remove_autoattach_quiet "$rc"
         info "Removed the auto-attach snippet from ${rc}."
     done
 }

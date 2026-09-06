@@ -3678,6 +3678,43 @@ assert_contains "$_out" "KEEP_ME" "removing the auto-attach block leaves the use
 assert_false "removing the auto-attach block strips the whole block" grep -q "auto-attach" <<<"$_out"
 rm -rf "$_rc_dir"
 
+# The snippet must not gate on [ -t 1 ]. An rc file is sourced before stdout is
+# connected to the terminal, so that test is false even in a real interactive
+# SSH login and the block would never fire -- the bug this guards against.
+_rc_dir=$(mktemp -d)
+HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    : > '$_rc_dir/.bashrc'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+_out=$(cat "$_rc_dir/.bashrc")
+assert_false "auto-attach snippet does not gate on [ -t 1 ]" grep -q -- '-t 1' <<<"$_out"
+assert_true "auto-attach snippet tests interactivity with \$-" grep -qF 'case $- in' "$_rc_dir/.bashrc"
+rm -rf "$_rc_dir"
+
+# A stale snippet written by an older version is replaced, not left in place.
+_rc_dir=$(mktemp -d)
+{
+    printf 'export KEEP_ME=1\n'
+    printf '# >>> linux_util tmux auto-attach >>>\n'
+    printf 'if [ -z "$TMUX" ] && [ -t 1 ] && command -v tmux >/dev/null 2>&1; then\n'
+    printf '    case $- in\n        *i*) tmux attach -t work ;;\n    esac\nfi\n'
+    printf '# <<< linux_util tmux auto-attach <<<\n'
+} > "$_rc_dir/.bashrc"
+HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+_out=$(cat "$_rc_dir/.bashrc")
+assert_false "a stale [ -t 1 ] auto-attach snippet is replaced" grep -q -- '-t 1' <<<"$_out"
+assert_eq "1" "$(grep -c '>>> linux_util tmux auto-attach >>>' "$_rc_dir/.bashrc")" \
+    "replacing a stale snippet leaves exactly one block"
+assert_contains "$_out" "KEEP_ME" "replacing a stale snippet leaves the user's own rc lines"
+rm -rf "$_rc_dir"
+rm -rf "$_rc_dir"
+
 
 echo "=== Pre-flight Refresh Scope Tests ==="
 

@@ -14,6 +14,21 @@ when a release is cut.
 
 ### Fixed
 
+- **tmux auto-attach never fired on SSH login.** The snippet the **tmux**
+  installer appends to `~/.bashrc` or `~/.zshrc` was guarded by
+  `[ -z "$TMUX" ] && [ -t 1 ]`. The `[ -t 1 ]` test is the problem: an rc file is
+  sourced while the shell is still starting up, before stdout is connected to the
+  terminal, so the test returns false even in a genuine interactive SSH login and
+  the whole block was skipped. Reconnecting after a dropped connection therefore
+  landed in a bare shell instead of the persistent `work` session — the exact
+  scenario the feature exists for. The guard now tests `$-` for the `i` flag
+  alone, which is set for interactive shells and absent for `ssh host cmd`, scp
+  and rsync, preserving the protection that stopped non-interactive transfers
+  from being broken by terminal escapes. Because the marker check made a re-run a
+  no-op, an rc file already carrying the broken snippet would have kept it
+  forever; the installer now detects a stale block containing `[ -t 1 ]`, strips
+  it, and writes the corrected one, leaving the user's own rc lines untouched.
+
 - **Test suite no longer edits the developer's own `linux_util.conf`.** The
   repository is itself a working install — `linux_util.conf` sits in the
   checkout — and the CLI tests run the real `linux_util.sh` from the repo root.
