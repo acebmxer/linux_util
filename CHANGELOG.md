@@ -12,6 +12,21 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-06
+
+### Changed
+
+- **tmux is now a plain package install.** The **tmux** installer previously
+  offered to append an auto-attach block to `~/.bashrc` or `~/.zshrc`, which
+  attached or created a `work` session on interactive login and carried its own
+  fastfetch banner handling. That block edited a file the user maintains and
+  coupled the installer to Powerlevel10k's instant prompt and to the fastfetch
+  auto-run line, both of which it had to detect and order itself. It is gone:
+  install, uninstall, update, check and version are a stock package operation
+  and nothing else, and neither `~/.tmux.conf` nor any shell rc file is touched.
+  tmux configuration is the user's own. **tmux Resurrect** is unaffected and
+  remains a separate utility.
+
 ### Fixed
 
 - **Test suite no longer edits the developer's own `linux_util.conf`.** The

@@ -3644,40 +3644,6 @@ _err=$(setsid bash -c "
 " < /dev/null 2>&1)
 assert_false "no-terminal decline emits no raw shell error" grep -q "No such device" <<<"$_err"
 
-# The tmux auto-attach snippet writes to a file the user maintains, so an
-# unattended run must not add it unless auto_confirm opts in.
-_out=$(setsid bash -c "
-    info(){ echo \"[INFO] \$*\"; }; warn(){ :; }; error(){ :; }
-    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
-    _tmux_write_autoattach(){ echo WROTE; }
-    CFG_AUTO_CONFIRM=false
-    _tmux_offer_autoattach
-" < /dev/null 2>/dev/null)
-assert_false "auto-attach snippet is skipped on a non-interactive run" grep -q "WROTE" <<<"$_out"
-
-_out=$(setsid bash -c "
-    info(){ :; }; warn(){ :; }; error(){ :; }
-    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
-    _tmux_write_autoattach(){ echo WROTE; }
-    CFG_AUTO_CONFIRM=true
-    _tmux_offer_autoattach
-" < /dev/null 2>/dev/null)
-assert_contains "$_out" "WROTE" "auto_confirm=true adds the auto-attach snippet unattended"
-
-# The rc block is delimited so uninstalling removes exactly what was added.
-_rc_dir=$(mktemp -d)
-_out=$(HOME="$_rc_dir" SHELL=/bin/bash bash -c "
-    info(){ :; }; warn(){ :; }
-    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
-    printf 'export KEEP_ME=1\n' > '$_rc_dir/.bashrc'
-    _tmux_write_autoattach >/dev/null
-    _tmux_remove_autoattach >/dev/null
-    cat '$_rc_dir/.bashrc'
-" 2>/dev/null)
-assert_contains "$_out" "KEEP_ME" "removing the auto-attach block leaves the user's own rc lines"
-assert_false "removing the auto-attach block strips the whole block" grep -q "auto-attach" <<<"$_out"
-rm -rf "$_rc_dir"
-
 
 echo "=== Pre-flight Refresh Scope Tests ==="
 
