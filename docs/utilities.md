@@ -256,6 +256,8 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **Devolutions RDM** | Remote Desktop Manager — Cloudsmith repo / AUR / flatpak / snap *(Remote Access)* |
 | **Enable RDP** | Enables Remote Desktop Protocol access via XRDP server; also installs a polkit rule so seatless RDP sessions can manage NetworkManager without a password prompt *(Remote Access)* |
 | **OpenSSH Server** | Secure Shell server for remote access *(Remote Access)* |
+| **tmux** | Terminal multiplexer; SSH sessions survive dropped connections *(Remote Access)* |
+| **tmux Resurrect** | Saves and restores tmux session layout across reboots *(Remote Access)* |
 | **Remmina** | Remote desktop client (RDP, VNC, SSH, SPICE) *(Remote Access)* |
 | **RustDesk** | Open-source remote desktop and remote assistance tool *(Remote Access)* |
 | **Termius SSH Client** | Modern SSH client with cross-device sync *(Remote Access)* |

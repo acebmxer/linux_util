@@ -66,6 +66,8 @@ Obsidian
 OnlyOffice
 OpenLogi
 OpenSSH Server
+tmux
+tmux Resurrect
 Pantheon Desktop
 Pay Respects
 PIA VPN

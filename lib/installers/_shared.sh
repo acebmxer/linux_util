@@ -7,8 +7,31 @@
 
 # Prompt the user to confirm a potentially destructive step.
 # Returns 0 (yes) only on an explicit y/yes; defaults to No on Enter or anything else.
+#
+# Two cases answer without asking:
+#   auto_confirm=true   -- the user has opted into unattended runs, so proceed.
+#   no terminal         -- a piped or scripted run cannot answer, and the old
+#                          behaviour (reading /dev/tty unconditionally) either
+#                          failed the read and fell through to "No" by accident
+#                          or blocked outright. Decline explicitly instead, so
+#                          an unattended run never takes a destructive branch
+#                          nobody approved.
 _confirm_step() {
     local prompt="$1" reply=""
+
+    if [[ "${CFG_AUTO_CONFIRM:-false}" == "true" ]]; then
+        info "${prompt} [auto-confirmed]"
+        return 0
+    fi
+
+    # Test that /dev/tty can actually be opened, not merely that it exists: a
+    # detached session (setsid, cron, a systemd unit) still passes -r but errors
+    # on open, which would leak a raw shell error before declining.
+    if ! { : < /dev/tty; } 2>/dev/null; then
+        warn "${prompt} -- declining, no terminal to ask on (set auto_confirm=true to proceed unattended)."
+        return 1
+    fi
+
     read -rp "${YELLOW:-}${prompt} [y/N]: ${RESET:-}" reply < /dev/tty
     [[ "${reply,,}" =~ ^(y|yes)$ ]]
 }

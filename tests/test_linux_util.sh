@@ -3384,6 +3384,76 @@ test_reboot_stale_files_matches_system_libraries
 test_reboot_stale_packages_separator
 
 echo ""
+echo ""
+echo "=== auto_confirm / tmux Auto-Attach Tests ==="
+
+# auto_confirm was parsed and validated by lib/config.sh but read by nothing, so
+# setting it changed no behaviour. These pin it to its documented meaning ("skip
+# confirmation prompts") at the shared gate every installer already calls.
+
+_confirm_probe() {
+    # Run _confirm_step in a detached session so /dev/tty cannot be opened,
+    # which is what an unattended run actually looks like.
+    local auto="$1"
+    setsid bash -c "
+        info(){ :; }; warn(){ :; }; YELLOW=''; RESET=''
+        source '${SCRIPT_DIR}/lib/installers/_shared.sh'
+        CFG_AUTO_CONFIRM='${auto}'
+        if _confirm_step 'Proceed?'; then echo PROCEED; else echo DECLINE; fi
+    " < /dev/null 2>/dev/null
+}
+
+_out=$(_confirm_probe true)
+assert_eq "PROCEED" "$_out" "auto_confirm=true proceeds without a prompt"
+
+_out=$(_confirm_probe false)
+assert_eq "DECLINE" "$_out" "auto_confirm=false declines when there is no terminal"
+
+# The no-terminal path must decline quietly: testing -r on /dev/tty passes in a
+# detached session but errors on open, leaking a raw shell error to the user.
+_err=$(setsid bash -c "
+    info(){ :; }; warn(){ :; }; YELLOW=''; RESET=''
+    source '${SCRIPT_DIR}/lib/installers/_shared.sh'
+    CFG_AUTO_CONFIRM=false
+    _confirm_step 'Proceed?' >/dev/null
+" < /dev/null 2>&1)
+assert_false "no-terminal decline emits no raw shell error" grep -q "No such device" <<<"$_err"
+
+# The tmux auto-attach snippet writes to a file the user maintains, so an
+# unattended run must not add it unless auto_confirm opts in.
+_out=$(setsid bash -c "
+    info(){ echo \"[INFO] \$*\"; }; warn(){ :; }; error(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach(){ echo WROTE; }
+    CFG_AUTO_CONFIRM=false
+    _tmux_offer_autoattach
+" < /dev/null 2>/dev/null)
+assert_false "auto-attach snippet is skipped on a non-interactive run" grep -q "WROTE" <<<"$_out"
+
+_out=$(setsid bash -c "
+    info(){ :; }; warn(){ :; }; error(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach(){ echo WROTE; }
+    CFG_AUTO_CONFIRM=true
+    _tmux_offer_autoattach
+" < /dev/null 2>/dev/null)
+assert_contains "$_out" "WROTE" "auto_confirm=true adds the auto-attach snippet unattended"
+
+# The rc block is delimited so uninstalling removes exactly what was added.
+_rc_dir=$(mktemp -d)
+_out=$(HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    printf 'export KEEP_ME=1\n' > '$_rc_dir/.bashrc'
+    _tmux_write_autoattach >/dev/null
+    _tmux_remove_autoattach >/dev/null
+    cat '$_rc_dir/.bashrc'
+" 2>/dev/null)
+assert_contains "$_out" "KEEP_ME" "removing the auto-attach block leaves the user's own rc lines"
+assert_false "removing the auto-attach block strips the whole block" grep -q "auto-attach" <<<"$_out"
+rm -rf "$_rc_dir"
+
+
 echo "=== Pre-flight Refresh Scope Tests ==="
 
 source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null

@@ -225,6 +225,8 @@ register_utility "Obsidian"            install_obsidian         check_obsidian  
 register_utility "OnlyOffice"          install_onlyoffice       check_onlyoffice       uninstall_onlyoffice       update_onlyoffice          get_version_onlyoffice
 register_utility "OpenLogi"            install_openlogi         check_openlogi         uninstall_openlogi         update_openlogi            get_version_openlogi
 register_utility "OpenSSH Server"      install_openssh_server   check_openssh_server   uninstall_openssh_server   update_openssh_server      get_version_openssh_server
+register_utility "tmux"                install_tmux             check_tmux             uninstall_tmux             update_tmux                get_version_tmux
+register_utility "tmux Resurrect"      install_tmux_resurrect   check_tmux_resurrect   uninstall_tmux_resurrect   update_tmux_resurrect      get_version_tmux_resurrect
 register_utility "OpenTofu"            install_opentofu         check_opentofu         uninstall_opentofu         update_opentofu            get_version_opentofu
 register_utility "Pay Respects"        install_pay_respects     check_pay_respects     uninstall_pay_respects     update_pay_respects        get_version_pay_respects
 register_utility "PIA VPN"             install_pia_vpn          check_pia_vpn          uninstall_pia_vpn          update_pia_vpn             get_version_pia_vpn
@@ -575,6 +577,8 @@ UTILITY_CATEGORY["OCCT"]="System Tools"
 UTILITY_CATEGORY["Obsidian"]="Productivity"
 UTILITY_CATEGORY["OnlyOffice"]="Productivity"
 UTILITY_CATEGORY["OpenSSH Server"]="Remote Admin Tools"
+UTILITY_CATEGORY["tmux"]="Remote Admin Tools"
+UTILITY_CATEGORY["tmux Resurrect"]="Remote Admin Tools"
 UTILITY_CATEGORY["PIA VPN"]="Internet"
 UTILITY_CATEGORY["Postman"]="Development"
 UTILITY_CATEGORY["PowerShell"]="Development"
@@ -699,6 +703,8 @@ UTILITY_SUBCATEGORY["LocalSend"]="File Transfer"
 UTILITY_SUBCATEGORY["Remmina"]="Remote Access"
 UTILITY_SUBCATEGORY["Termius SSH Client"]="Remote Access"
 UTILITY_SUBCATEGORY["OpenSSH Server"]="Remote Access"
+UTILITY_SUBCATEGORY["tmux"]="Remote Access"
+UTILITY_SUBCATEGORY["tmux Resurrect"]="Remote Access"
 UTILITY_SUBCATEGORY["Devolutions RDM"]="Remote Access"
 UTILITY_SUBCATEGORY["Enable RDP"]="Remote Access"
 UTILITY_SUBCATEGORY["Cockpit"]="Remote Access"
@@ -946,6 +952,8 @@ UTILITY_DESCRIPTION["Google Chrome"]="Google's web browser with extensive extens
 UTILITY_DESCRIPTION["KMail"]="KDE's feature-rich email client with PGP encryption, multiple account support, and filters."
 UTILITY_DESCRIPTION["NeoMutt"]="Terminal email client, a maintained fork of Mutt with sidebar, notmuch, and NNTP support. Ships no default account config — you write ~/.config/neomutt/neomuttrc yourself."
 UTILITY_DESCRIPTION["OpenSSH Server"]="Secure Shell server enabling encrypted remote terminal access to this machine."
+UTILITY_DESCRIPTION["tmux"]="Terminal multiplexer whose sessions survive dropped SSH connections; reattach and resume exactly where you left off. Runs on the server only, so any client works."
+UTILITY_DESCRIPTION["tmux Resurrect"]="Saves and restores tmux session layout across reboots, which plain tmux sessions do not survive. Restores windows, panes and directories, not running processes."
 UTILITY_DESCRIPTION["Proton Mail Bridge"]="Local IMAP/SMTP gateway that decrypts Proton Mail so any desktop client can use it. Requires a paid Proton plan and a running keyring. Installed from Flathub, as Proton publishes no tracking repo."
 UTILITY_DESCRIPTION["PIA VPN"]="Private Internet Access VPN client for encrypted and anonymous internet browsing."
 UTILITY_DESCRIPTION["ProtonVPN"]="Free and open-source VPN service by Proton for secure and private browsing."

@@ -14,6 +14,34 @@ when a release is cut.
 
 ### Added
 
+- **tmux** and **tmux Resurrect** under *Remote Admin Tools > Remote Access*,
+  covering SSH sessions that survive a dropped connection. An SSH drop kills the
+  client, not the remote shell: with tmux the session and everything running in
+  it stay alive on the server, and reattaching resumes the same shell rather than
+  starting a new one. tmux runs entirely on the remote side, so unlike mosh or
+  Eternal Terminal — which need matching binaries at both ends — it works from
+  any terminal or SSH client, including GNOME Terminal, Konsole and Termius.
+  Installed from each distro's own repositories (verified present in Arch
+  `extra`, Debian stable, Ubuntu noble, and Fedora 41).
+  The **tmux** installer offers, as an explicit prompt defaulting to yes, to
+  append an auto-attach block to the user's shell startup file (`~/.bashrc` or
+  `~/.zshrc`) so an interactive login reattaches to a `work` session instead of
+  landing in a bare shell. **This edits a file the user maintains**; declining
+  leaves the file untouched, the block is delimited by markers so uninstalling
+  removes exactly what was added, and a non-interactive run skips it entirely
+  rather than rewriting a login shell's rc unattended — unless `auto_confirm` is
+  set, which takes the default (yes) as the user's standing answer. The snippet is guarded
+  against recursing inside an existing tmux session and against firing on
+  non-interactive sessions, which would otherwise break `scp`, `rsync` and
+  git-over-SSH.
+  **tmux Resurrect** covers the case tmux alone does not: sessions live in the
+  tmux server's memory and so do not survive a reboot of the machine hosting
+  them. It restores window and pane layout and working directories — not the
+  processes that were running in them. No distribution packages it, so it is
+  installed by cloning upstream into `~/.tmux/plugins/` and sourced directly
+  from `~/.tmux.conf`, avoiding a dependency on TPM for a single plugin; it
+  pulls tmux in first if missing, since the plugin is inert without it.
+
 - The TUI header now shows the current release version on the byline row, as
   `Version: v1.3.1   By: PozzaTech`. The number is read from the tag list by
   version sort (`git tag --sort=-v:refname`) rather than `git describe`, which
@@ -43,6 +71,20 @@ when a release is cut.
   consulted these keys.
 
 ### Fixed
+
+- The `auto_confirm` config key did nothing. `lib/config.sh` parsed it, validated
+  it as a boolean and assigned `CFG_AUTO_CONFIRM`, but no code ever read that
+  variable — so a user who set `auto_confirm=true` to skip prompts, as the
+  shipped example told them it would, still got every prompt. It is now consumed
+  by `_confirm_step()` in `lib/installers/_shared.sh`, the shared gate the
+  installers already call for confirmations, so one change covers all of them.
+  The no-terminal case is now explicit too: `_confirm_step` previously read
+  `/dev/tty` unconditionally, which in a detached run (a pipe, cron, a systemd
+  unit) either failed the read and fell through to "No" by accident or blocked
+  outright. It now tests that `/dev/tty` can actually be opened — `-r` alone
+  passes in a detached session and then errors on open, leaking a raw shell
+  error — and declines with an explanation, so an unattended run never takes a
+  destructive branch nobody approved.
 
 - **System Updates** on Arch-family systems applied the entire system upgrade
   during the pre-flight step, before the run the user had actually selected
