@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-06
+
 ### Changed
 
 - **tmux is now a plain package install.** The **tmux** installer previously
