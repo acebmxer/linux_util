@@ -38,9 +38,27 @@ CFG_AUTO_CLEANUP=true
 LATEST_CONFIG_VERSION=1
 CFG_CONFIG_VERSION=0
 
-# Set by migrate_config so the caller can tell the user what changed. Filled
-# with "key=value" strings for the keys this run appended.
+# Where the config lives, overridable so a caller can point the loader and the
+# migration at a file of its own. This exists because the repository IS a
+# working install: linux_util.conf sits in the checkout, so a test suite that
+# runs the real script from the repo root migrates the developer's own config
+# and leaves backup files in their working tree. Tests set this to a temp copy.
+: "${LINUX_UTIL_CONFIG_FILE:=}"
+
+# The config path a caller gets when it does not name one.
+_cfg_default_file() {
+    if [[ -n "${LINUX_UTIL_CONFIG_FILE:-}" ]]; then
+        echo "$LINUX_UTIL_CONFIG_FILE"
+    else
+        echo "${SCRIPT_DIR}/linux_util.conf"
+    fi
+}
+
+# Set by migrate_config so the caller can tell the user what changed. ADDED is
+# filled with "key=value" strings for the keys this run appended; UPDATED with
+# the names of existing keys whose comment text was refreshed from the example.
 CONFIG_MIGRATION_ADDED=()
+CONFIG_MIGRATION_UPDATED=()
 CONFIG_MIGRATION_FROM=""
 
 # --- Verbose / Debug Mode ---
@@ -101,7 +119,7 @@ _cfg_require_channel() {
 # Reads key=value pairs from a config file, ignoring comments and blank lines.
 # Only sets variables that match known CFG_* keys (whitelist approach).
 load_config() {
-    local config_file="${1:-${SCRIPT_DIR}/linux_util.conf}"
+    local config_file="${1:-$(_cfg_default_file)}"
 
     if [[ ! -f "$config_file" ]]; then
         local example_file="${config_file}.example"
@@ -178,12 +196,19 @@ load_config() {
 #
 # migrate_config tops that file up: any key present in linux_util.conf.example
 # but absent from linux_util.conf is appended, with the example's own comment
-# block above it so it arrives documented. Existing keys are never touched --
-# values the user set, their ordering, and their own comments are left exactly
-# as they are. Nothing is ever removed or rewritten in place.
+# block above it so it arrives documented.
 #
-# THIS EDITS A FILE THE USER MAINTAINS. It appends only, it reports every key it
-# added, and it keeps a timestamped backup beside the config first.
+# It also refreshes documentation. A key that already exists keeps the value the
+# user set, but if the example has since reworded the comment above it, that new
+# text replaces the old. Otherwise a config written a few releases ago keeps
+# describing behaviour the program no longer has -- which is worse than a
+# missing comment, because the user has no reason to doubt it.
+#
+# Values, key ordering, and keys not present in the example are never touched.
+#
+# THIS EDITS A FILE THE USER MAINTAINS. It reports every key it added and every
+# comment it rewrote, and it keeps a timestamped backup beside the config
+# first.
 
 # Names of keys the example file defines, in the order it defines them.
 _cfg_example_keys() {
@@ -211,6 +236,12 @@ _cfg_has_key() {
 _cfg_example_comment_for() {
     local file="$1" key="$2"
     awk -v want="$key" '
+        # A "# --- Section ---" banner heads a group of keys, it does not
+        # document the one that happens to follow it. Treating it as part of
+        # the block would copy the banner along with the key and leave the
+        # config with a second "# --- Installation ---" halfway down. Start the
+        # block after it instead.
+        /^[[:space:]]*#[[:space:]]*---.*---[[:space:]]*$/ { block = ""; next }
         /^[[:space:]]*#/ { block = block $0 "\n"; next }
         /^[[:space:]]*$/ { block = ""; next }
         {
@@ -224,14 +255,97 @@ _cfg_example_comment_for() {
     ' "$file"
 }
 
+# The comment block a key carries in the user's own config file. Same shape as
+# _cfg_example_comment_for, deliberately a separate call rather than a second
+# implementation: both go through the same awk so the two blocks are extracted
+# by identical rules and can be compared directly. Do not add a third.
+_cfg_config_comment_for() {
+    _cfg_example_comment_for "$@"
+}
+
+# Replace the comment block above a key in the config file with the example's
+# current block, leaving the key's own line -- and therefore the user's value --
+# untouched. Used when documentation for an existing setting has been reworded
+# in the example: without this, a config written before the rewording keeps
+# describing behaviour the program no longer has.
+#
+# The whole preceding comment block is replaced, so a comment the user wrote
+# directly above a documented key is lost. That is the trade: a per-line merge
+# cannot tell an edited stock comment from a hand-written one, and leaving both
+# in place is how a config ends up documenting the same key two contradictory
+# ways. The timestamped backup taken before any migration write is the recovery
+# path, and the notice names every key whose text was replaced.
+_cfg_replace_comment_for() {
+    local file="$1" key="$2" new_block="$3"
+
+    # A block that does not end in a newline would be printed straight onto the
+    # key's own line, commenting the setting out. Normalise before writing.
+    [[ -z "$new_block" || "$new_block" == *$'\n' ]] || new_block+=$'\n'
+
+    local tmp block_file
+    tmp="$(mktemp "${file}.migrate.XXXXXX")" || return 1
+    block_file="$(mktemp "${file}.block.XXXXXX")" || { rm -f "$tmp"; return 1; }
+    printf '%s' "$new_block" > "$block_file" || {
+        rm -f "$tmp" "$block_file"; return 1
+    }
+
+    # The replacement text is handed over in a file rather than through awk -v:
+    # -v applies escape-sequence processing to its value, so a backslash in a
+    # comment would be silently rewritten on its way into the config.
+    awk -v want="$key" -v blockfile="$block_file" '
+        function flush_block() { printf "%s", block; block = "" }
+        function emit_new(  line) {
+            while ((getline line < blockfile) > 0) print line
+            close(blockfile)
+        }
+        # Section banners are not part of any key block -- see
+        # _cfg_example_comment_for. Print them straight through so replacing a
+        # key comment never swallows the heading above it.
+        /^[[:space:]]*#[[:space:]]*---.*---[[:space:]]*$/ {
+            flush_block(); print; next
+        }
+        /^[[:space:]]*#/ { block = block $0 "\n"; next }
+        /^[[:space:]]*$/ { flush_block(); print; next }
+        {
+            line = $0
+            sub(/^[[:space:]]*/, "", line)
+            split(line, parts, "=")
+            gsub(/[[:space:]]/, "", parts[1])
+            if (parts[1] == want && !done) {
+                emit_new()
+                block = ""
+                done = 1
+                print
+                next
+            }
+            flush_block()
+            print
+            next
+        }
+        END { flush_block() }
+    ' "$file" > "$tmp" 2>/dev/null || {
+        rm -f "$tmp" "$block_file"; return 1
+    }
+    rm -f "$block_file"
+
+    # Never install an empty or truncated result over a file the user maintains.
+    [[ -s "$tmp" ]] || { rm -f "$tmp"; return 1; }
+    _cfg_has_key "$key" "$tmp" || { rm -f "$tmp"; return 1; }
+
+    cat "$tmp" > "$file" 2>/dev/null || { rm -f "$tmp"; return 1; }
+    rm -f "$tmp"
+    return 0
+}
+
 # Top up the user's config with keys added to the example since it was written.
 # Returns 0 whether or not anything changed; a failure to write is a warning,
 # not a fatal error, since the run can proceed on defaults.
 migrate_config() {
-    local config_file="${1:-${SCRIPT_DIR}/linux_util.conf}"
+    local config_file="${1:-$(_cfg_default_file)}"
     local example_file="${config_file}.example"
 
     CONFIG_MIGRATION_ADDED=()
+    CONFIG_MIGRATION_UPDATED=()
     CONFIG_MIGRATION_FROM=""
 
     [[ -f "$config_file" && -f "$example_file" ]] || return 0
@@ -256,15 +370,45 @@ migrate_config() {
     # whoever shipped it. The scan is a grep per key over two small files, run
     # once at startup; the version stamp records what happened, and never gates
     # whether it happens.
-    local key missing=()
+    # Two passes over the same key list: keys absent from the config are
+    # appended, keys present but carrying outdated documentation have their
+    # comment block refreshed. config_version is excluded from both -- it is
+    # stamped by _cfg_stamp_version, which owns both its value and its comment.
+    local key missing=() restale=()
+    local example_comment config_comment
     while IFS= read -r key; do
         [[ "$key" == "config_version" ]] && continue
-        _cfg_has_key "$key" "$config_file" || missing+=("$key")
+        if ! _cfg_has_key "$key" "$config_file"; then
+            missing+=("$key")
+            continue
+        fi
+        example_comment="$(_cfg_example_comment_for "$example_file" "$key")"
+        config_comment="$(_cfg_config_comment_for "$config_file" "$key")"
+        # An example that documents a key the config leaves bare still counts as
+        # stale: the user is missing text, not merely holding an older version
+        # of it. The reverse -- the example dropping a comment the config has --
+        # deliberately does not, so a hand-written note is never silently
+        # deleted just because the example says nothing about that key.
+        if [[ -n "$example_comment" && "$example_comment" != "$config_comment" ]]; then
+            restale+=("$key")
+        fi
     done < <(_cfg_example_keys "$example_file")
 
-    # Nothing missing: stamp the version if it is behind, but write nothing else
-    # and leave no backup -- the common case is a config that is already current.
-    if [[ ${#missing[@]} -eq 0 ]]; then
+    # The stamp's own comment can go stale without the version number moving --
+    # a reworded explanation on an unchanged schema. Check it directly rather
+    # than letting a version bump be the only thing that refreshes it.
+    local stamp_stale=false
+    example_comment="$(_cfg_example_comment_for "$example_file" config_version)"
+    config_comment="$(_cfg_config_comment_for "$config_file" config_version)"
+    if [[ -n "$example_comment" && "$example_comment" != "$config_comment" ]] \
+        && _cfg_has_key config_version "$config_file"; then
+        stamp_stale=true
+    fi
+
+    # Nothing missing and nothing stale: stamp the version if it is behind, but
+    # write nothing else and leave no backup -- the common case is a config that
+    # is already current.
+    if [[ ${#missing[@]} -eq 0 && ${#restale[@]} -eq 0 && "$stamp_stale" == false ]]; then
         if [[ "$current_ver" -lt "$latest_ver" ]]; then
             _cfg_stamp_version "$config_file" "$latest_ver" || return 0
             CFG_CONFIG_VERSION="$latest_ver"
@@ -279,36 +423,50 @@ migrate_config() {
         return 0
     fi
 
-    {
-        echo ""
-        echo "# --- Added by linux_util config migration on $(date '+%Y-%m-%d %H:%M') ---"
-        echo "# These settings were added to linux_util.conf.example after this file"
-        echo "# was created. The values below are the defaults; edit them as needed."
-    } >> "$config_file" 2>/dev/null || {
-        echo "[WARN] Could not write to ${config_file}; leaving it unchanged." >&2
-        return 0
-    }
-
+    # Refresh outdated comments first, in place, so the appended block below
+    # lands at the end of a file whose existing text is already current.
     local comment default_line
-    for key in "${missing[@]}"; do
+    for key in "${restale[@]}"; do
         comment="$(_cfg_example_comment_for "$example_file" "$key")"
-        default_line="$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "$example_file" | head -1)"
-        {
-            echo ""
-            # printf %s, not echo: the block already ends in a newline, and a
-            # second one would separate the comment from its key. But a block
-            # that somehow lacks one would glue the comment and key together and
-            # comment the key out, so normalise it.
-            if [[ -n "$comment" ]]; then
-                printf '%s' "$comment"
-                [[ "$comment" == *$'\n' ]] || echo ""
-            fi
-            echo "$default_line"
-        } >> "$config_file"
-        CONFIG_MIGRATION_ADDED+=("$default_line")
+        if _cfg_replace_comment_for "$config_file" "$key" "$comment"; then
+            CONFIG_MIGRATION_UPDATED+=("$key")
+        else
+            echo "[WARN] Could not refresh the comment for '${key}' in ${config_file}." >&2
+        fi
     done
 
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        {
+            echo ""
+            echo "# --- Added by linux_util config migration on $(date '+%Y-%m-%d %H:%M') ---"
+            echo "# These settings were added to linux_util.conf.example after this file"
+            echo "# was created. The values below are the defaults; edit them as needed."
+        } >> "$config_file" 2>/dev/null || {
+            echo "[WARN] Could not write to ${config_file}; leaving it unchanged." >&2
+            return 0
+        }
+
+        for key in "${missing[@]}"; do
+            comment="$(_cfg_example_comment_for "$example_file" "$key")"
+            default_line="$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "$example_file" | head -1)"
+            {
+                echo ""
+                # printf %s, not echo: the block already ends in a newline, and a
+                # second one would separate the comment from its key. But a block
+                # that somehow lacks one would glue the comment and key together
+                # and comment the key out, so normalise it.
+                if [[ -n "$comment" ]]; then
+                    printf '%s' "$comment"
+                    [[ "$comment" == *$'\n' ]] || echo ""
+                fi
+                echo "$default_line"
+            } >> "$config_file"
+            CONFIG_MIGRATION_ADDED+=("$default_line")
+        done
+    fi
+
     _cfg_stamp_version "$config_file" "$latest_ver"
+    [[ "$stamp_stale" == true ]] && CONFIG_MIGRATION_UPDATED+=("config_version")
     CONFIG_MIGRATION_FROM="$current_ver"
     CFG_CONFIG_VERSION="$latest_ver"
 
@@ -318,15 +476,32 @@ migrate_config() {
 }
 
 # Record the schema version in the config file, replacing any existing stamp.
+#
+# The comment above the stamp comes from the example file rather than being
+# written out here, so there is one authority on how this key is documented.
+# config_version is excluded from the ordinary comment-refresh pass precisely
+# because this function owns it; hardcoding different text here is how the
+# config ended up describing the key one way and the example another.
 _cfg_stamp_version() {
     local config_file="$1" version="${2:-$LATEST_CONFIG_VERSION}"
+    local example_file="${config_file}.example"
+    local comment=""
+    [[ -f "$example_file" ]] && \
+        comment="$(_cfg_example_comment_for "$example_file" config_version)"
+    [[ -n "$comment" ]] || comment="# Config schema version - written by linux_util, do not edit"$'\n'
+
     if grep -qE '^[[:space:]]*config_version[[:space:]]*=' "$config_file" 2>/dev/null; then
         sed -i "s/^[[:space:]]*config_version[[:space:]]*=.*/config_version=${version}/" \
             "$config_file" 2>/dev/null || return 1
+        # Bring the stamp's own comment up to date too. A failure here leaves the
+        # value correctly stamped with older wording above it, which is worth a
+        # warning but not worth failing the migration over.
+        _cfg_replace_comment_for "$config_file" config_version "$comment" || return 0
     else
         {
             echo ""
-            echo "# Config schema version - written by linux_util, do not edit"
+            printf '%s' "$comment"
+            [[ "$comment" == *$'\n' ]] || echo ""
             echo "config_version=${version}"
         } >> "$config_file" 2>/dev/null || return 1
     fi
@@ -340,20 +515,33 @@ _cfg_stamp_version() {
 # maintains by hand: finding new lines later with no idea where they came from
 # is exactly the surprise this notice exists to prevent.
 show_config_migration_notice() {
-    [[ ${#CONFIG_MIGRATION_ADDED[@]} -gt 0 ]] || return 0
+    [[ ${#CONFIG_MIGRATION_ADDED[@]} -gt 0 || ${#CONFIG_MIGRATION_UPDATED[@]} -gt 0 ]] \
+        || return 0
 
     echo ""
     echo "${YELLOW:-}┌─ Configuration updated ─────────────────────────────────────┐${RESET:-}"
     echo ""
-    echo "  Your linux_util.conf was missing settings added in newer"
-    echo "  releases. They have been appended with their default values:"
-    echo ""
     local entry
-    for entry in "${CONFIG_MIGRATION_ADDED[@]}"; do
-        echo "    ${GREEN:-}+${RESET:-} ${entry}"
-    done
-    echo ""
-    echo "  Existing settings were not changed. A backup of the previous"
+    if [[ ${#CONFIG_MIGRATION_ADDED[@]} -gt 0 ]]; then
+        echo "  Your linux_util.conf was missing settings added in newer"
+        echo "  releases. They have been appended with their default values:"
+        echo ""
+        for entry in "${CONFIG_MIGRATION_ADDED[@]}"; do
+            echo "    ${GREEN:-}+${RESET:-} ${entry}"
+        done
+        echo ""
+    fi
+    if [[ ${#CONFIG_MIGRATION_UPDATED[@]} -gt 0 ]]; then
+        echo "  These settings had comments describing older behaviour. The"
+        echo "  explanatory text above them was replaced; the values you set"
+        echo "  were not touched:"
+        echo ""
+        for entry in "${CONFIG_MIGRATION_UPDATED[@]}"; do
+            echo "    ${GREEN:-}~${RESET:-} ${entry}"
+        done
+        echo ""
+    fi
+    echo "  No setting values were changed. A backup of the previous"
     echo "  file is saved beside it as linux_util.conf.bak.<timestamp>."
     echo ""
     echo "  Review the new settings before continuing if you want to"
