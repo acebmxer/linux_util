@@ -43,6 +43,22 @@ when a release is cut.
   and relocated even when its guards are already correct. Shells with no p10k
   preamble — the common case — are unaffected and still get a plain append.
 
+- **fastfetch stopped appearing once tmux auto-attach was enabled.** Both
+  installers insert their block above the Powerlevel10k preamble, so whichever
+  ran last ended up first. With the tmux block ahead of it, `tmux attach`
+  replaced the shell before the `# linux_util:fastfetch` line was ever reached
+  and the banner silently disappeared; in the opposite order it printed on every
+  single reconnect, including reattaches to a session already in progress.
+  Neither is right, and an rc-file line cannot tell the two cases apart. The
+  auto-attach snippet now runs fastfetch on the branch that *creates* the
+  session — `if ! tmux attach -t work; then fastfetch; tmux new -s work; fi` — so
+  it shows on a first connect after a reboot or after `exit` destroyed the
+  session, and never paints over work being resumed after a dropped connection.
+  The **fastfetch** installer's own line gained a `-z $TMUX` guard so it does not
+  double up inside tmux while still running normally outside it, and because the
+  marker check made a re-run a no-op, an existing line without that guard is
+  rewritten in place rather than left stale.
+
 - **Test suite no longer edits the developer's own `linux_util.conf`.** The
   repository is itself a working install — `linux_util.conf` sits in the
   checkout — and the CLI tests run the real `linux_util.sh` from the repo root.

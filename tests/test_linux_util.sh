@@ -3773,6 +3773,57 @@ HOME="$_rc_dir" SHELL=/bin/bash bash -c "
 assert_eq "1" "$(head -1 "$_rc_dir/.bashrc" | grep -c 'KEEP_ME')" \
     "without p10k the snippet is appended, not prepended"
 rm -rf "$_rc_dir"
+
+# fastfetch belongs on the branch that CREATES the session: a reattach after a
+# dropped connection must return the user to their work without a banner over it.
+_rc_dir=$(mktemp -d)
+printf 'export KEEP_ME=1\n' > "$_rc_dir/.bashrc"
+HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+_blk=$(sed -n '/>>> linux_util tmux auto-attach >>>/,/<<< linux_util tmux auto-attach <<</p' "$_rc_dir/.bashrc")
+assert_contains "$_blk" "fastfetch" "auto-attach snippet shows fastfetch on a new session"
+assert_true "fastfetch runs only when tmux attach fails (session creation)" \
+    grep -qF 'if ! tmux attach -t work' <<<"$_blk"
+_ff_line=$(grep -n 'fastfetch' <<<"$_blk" | head -1 | cut -d: -f1)
+_new_line=$(grep -n 'tmux new -s work' <<<"$_blk" | head -1 | cut -d: -f1)
+assert_true "fastfetch is ordered before the session is created" [ "$_ff_line" -lt "$_new_line" ]
+rm -rf "$_rc_dir"
+
+# The fastfetch installer's own rc line must skip inside tmux, or the banner
+# would print twice: once from the auto-attach block, once from the new shell.
+_rc_dir=$(mktemp -d)
+printf 'export KEEP_ME=1\n' > "$_rc_dir/.bashrc"
+HOME="$_rc_dir" bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/fastfetch.sh'
+    _fastfetch_configure_shells >/dev/null 2>&1
+" 2>/dev/null
+assert_true "fastfetch auto-run line skips when already inside tmux" \
+    grep -qF -- '-z $TMUX' "$_rc_dir/.bashrc"
+rm -rf "$_rc_dir"
+
+# An rc written before that guard existed is rewritten in place on a re-run.
+_rc_dir=$(mktemp -d)
+{
+    printf 'export KEEP_ME=1\n'
+    printf '# linux_util:fastfetch\n'
+    printf '[[ $- == *i* ]] && fastfetch\n'
+} > "$_rc_dir/.bashrc"
+HOME="$_rc_dir" bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/fastfetch.sh'
+    _fastfetch_configure_shells >/dev/null 2>&1
+" 2>/dev/null
+assert_true "an existing fastfetch line gains the tmux guard on re-run" \
+    grep -qF -- '-z $TMUX' "$_rc_dir/.bashrc"
+assert_eq "1" "$(grep -c '&& fastfetch$' "$_rc_dir/.bashrc")" \
+    "refreshing the fastfetch line does not duplicate it"
+assert_contains "$(cat "$_rc_dir/.bashrc")" "KEEP_ME" \
+    "refreshing the fastfetch line leaves the user's own rc lines"
+rm -rf "$_rc_dir"
 rm -rf "$_rc_dir"
 
 

@@ -135,7 +135,15 @@ ${_TMUX_AUTOATTACH_MARKER}
 # shell is not interactive (scp, rsync, git).
 if [ -z "\$TMUX" ] && command -v tmux >/dev/null 2>&1; then
     case \$- in
-        *i*) tmux attach -t work 2>/dev/null || tmux new -s work ;;
+        *i*)
+            # fastfetch runs only on the branch that creates the session, so a
+            # reattach after a dropped connection returns you to your work
+            # without reprinting the banner over it.
+            if ! tmux attach -t work 2>/dev/null; then
+                command -v fastfetch >/dev/null 2>&1 && fastfetch
+                tmux new -s work
+            fi
+            ;;
     esac
 fi
 ${_TMUX_AUTOATTACH_MARKER_END}
