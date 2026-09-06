@@ -103,16 +103,33 @@ fi
 if [ -z "\$TMUX" ] && command -v tmux >/dev/null 2>&1; then
     case \$- in
         *i*)
-            # fastfetch runs only on the branch that creates the session, so a
+            # Only the branch that CREATES the session shows the banner, so a
             # reattach after a dropped connection returns you to your work
-            # without reprinting the banner over it.
+            # without painting over it.
+            #
+            # It is shown in two places by design. Once here, before tmux takes
+            # the screen: that is what remains in the scrollback after exiting,
+            # and it is the only one that shows if tmux fails to start. Then
+            # again inside the session, because tmux clears the screen and would
+            # otherwise wipe it. send-keys is what puts it there: it types the
+            # command into the new session's first window, so it runs as that
+            # shell's own output and stays on screen. Passing the banner via the
+            # environment does not work -- a shell inside tmux inherits the tmux
+            # *server's* environment, not the client's.
             if ! tmux attach -t work 2>/dev/null; then
                 command -v fastfetch >/dev/null 2>&1 && fastfetch
-                tmux new -s work
+                if command -v fastfetch >/dev/null 2>&1; then
+                    tmux new-session -d -s work 2>/dev/null &&
+                        tmux send-keys -t work 'clear; fastfetch' Enter 2>/dev/null
+                    tmux attach -t work
+                else
+                    tmux new -s work
+                fi
             fi
             ;;
     esac
 fi
+
 ${_TMUX_AUTOATTACH_MARKER_END}
 EOF
 }

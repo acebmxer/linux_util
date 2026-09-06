@@ -3911,6 +3911,29 @@ assert_true "a block stranded below the fastfetch line is moved above it" \
 assert_eq "1" "$(grep -c '>>> linux_util tmux auto-attach >>>' "$_rc_dir/.bashrc")" \
     "reordering past the fastfetch line leaves exactly one block"
 rm -rf "$_rc_dir"
+
+# tmux clears the screen when it takes over, so a banner printed before it is
+# gone from view. The block therefore shows it twice on session creation: once
+# on the login shell (kept in the scrollback after exit) and once inside the
+# session via send-keys, which is the copy that stays on screen.
+_rc_dir=$(mktemp -d)
+printf 'export KEEP_ME=1\n' > "$_rc_dir/.bashrc"
+HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+_blk=$(sed -n '/>>> linux_util tmux auto-attach >>>/,/<<< linux_util tmux auto-attach <<</p' "$_rc_dir/.bashrc")
+assert_true "the in-session banner is delivered with send-keys" \
+    grep -qF 'send-keys -t work' <<<"$_blk"
+assert_true "the in-session banner runs in the newly created session" \
+    grep -qF 'new-session -d -s work' <<<"$_blk"
+assert_true "a detached create is followed by an attach" \
+    grep -qF 'tmux attach -t work' <<<"$_blk"
+# Without fastfetch there is nothing to show, so the plain path must remain.
+assert_true "the plain 'tmux new' path survives when fastfetch is absent" \
+    grep -qF 'tmux new -s work' <<<"$_blk"
+rm -rf "$_rc_dir"
 rm -rf "$_rc_dir"
 
 

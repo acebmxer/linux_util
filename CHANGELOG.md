@@ -59,6 +59,20 @@ when a release is cut.
   marker check made a re-run a no-op, an existing line without that guard is
   rewritten in place rather than left stale.
 
+- **fastfetch was never visible inside the tmux session.** The banner was
+  printed by the login shell just before tmux started, and tmux clears the
+  screen when it takes over — so on a session-creating connect it was wiped
+  immediately and only reappeared in the scrollback after exiting. The block now
+  shows it in both places: once on the login shell as before, and once inside the
+  new session, where it stays on screen. The in-session copy is delivered by
+  creating the session detached and using `tmux send-keys` to run `clear;
+  fastfetch` in its first window, then attaching. Passing a flag through the
+  environment does not work here — a shell started inside tmux inherits the tmux
+  *server's* environment rather than the client's, so both a `VAR=1` prefix and
+  `tmux new -e` arrive empty. Extra windows and panes opened later are unaffected,
+  a reattach still shows nothing, and the plain `tmux new` path is kept for
+  machines with no fastfetch installed.
+
 - **fastfetch printed twice on a connect that created a tmux session.** The
   `-z $TMUX` guard added to the **fastfetch** auto-run line only suppresses it
   for shells started *inside* tmux. On the login shell that is about to start
