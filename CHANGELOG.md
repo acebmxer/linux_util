@@ -29,6 +29,20 @@ when a release is cut.
   forever; the installer now detects a stale block containing `[ -t 1 ]`, strips
   it, and writes the corrected one, leaving the user's own rc lines untouched.
 
+- **tmux auto-attach failed with "open terminal failed: not a terminal" under
+  Powerlevel10k.** With the `[ -t 1 ]` guard removed the block finally ran, but
+  appending it to the end of `~/.zshrc` put it *after* p10k's instant-prompt
+  preamble, which takes over the console partway through initialisation. tmux
+  started from there gets no usable terminal and exits immediately, dropping the
+  user at a bare shell, and p10k additionally warns about "console output during
+  zsh initialization". Powerlevel10k documents that code needing the console must
+  run above the preamble, so the installer now looks for the
+  `p10k-instant-prompt` guard and inserts the block above it, backing up over the
+  preceding comment block so the snippet lands before the preamble rather than
+  inside its comments. An existing block stranded below the preamble is detected
+  and relocated even when its guards are already correct. Shells with no p10k
+  preamble — the common case — are unaffected and still get a plain append.
+
 - **Test suite no longer edits the developer's own `linux_util.conf`.** The
   repository is itself a working install — `linux_util.conf` sits in the
   checkout — and the CLI tests run the real `linux_util.sh` from the repo root.

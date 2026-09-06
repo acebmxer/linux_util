@@ -93,9 +93,23 @@ _tmux_write_autoattach() {
         # An earlier version guarded the block with [ -t 1 ], which is false
         # while an rc file is sourced at startup, so that snippet never fired.
         # Strip the stale block and fall through to write the corrected one.
-        if grep -q '\[ -t 1 \]' "$rc" 2>/dev/null &&
-           sed -n "/${_TMUX_AUTOATTACH_MARKER}/,/${_TMUX_AUTOATTACH_MARKER_END}/p" "$rc" |
+        local stale=false
+        # An earlier version guarded the block with [ -t 1 ], which is false
+        # while an rc file is sourced at startup, so that snippet never fired.
+        if sed -n "/${_TMUX_AUTOATTACH_MARKER}/,/${_TMUX_AUTOATTACH_MARKER_END}/p" "$rc" |
                grep -q '\[ -t 1 \]'; then
+            stale=true
+        fi
+        # A block sitting after p10k's instant prompt cannot open a terminal,
+        # so it needs relocating above the preamble even if its guards are fine.
+        local _p10k _blk
+        _p10k=$(grep -n 'p10k-instant-prompt' "$rc" 2>/dev/null | head -1 | cut -d: -f1)
+        _blk=$(grep -n "$_TMUX_AUTOATTACH_MARKER" "$rc" 2>/dev/null | head -1 | cut -d: -f1)
+        if [[ -n "$_p10k" && -n "$_blk" ]] && (( _blk > _p10k )); then
+            stale=true
+        fi
+
+        if [[ "$stale" == true ]]; then
             info "Replacing an outdated auto-attach snippet in ${rc}."
             _tmux_remove_autoattach_quiet "$rc" || return 1
         else
@@ -113,8 +127,8 @@ _tmux_write_autoattach() {
     # terminal, so [ -t 1 ] is false even in a real interactive SSH login -- the
     # block would never run. \$- carries 'i' for exactly the interactive shells
     # we want and is absent for 'ssh host cmd', scp and rsync.
-    cat >> "$rc" <<EOF
-
+    local block
+    block=$(cat <<EOF
 ${_TMUX_AUTOATTACH_MARKER}
 # Reattach to a persistent tmux session on interactive login, so a dropped
 # connection can be resumed. Skipped when already inside tmux and when the
@@ -126,6 +140,37 @@ if [ -z "\$TMUX" ] && command -v tmux >/dev/null 2>&1; then
 fi
 ${_TMUX_AUTOATTACH_MARKER_END}
 EOF
+)
+
+    # Powerlevel10k's instant prompt takes over the console partway through
+    # .zshrc and warns about "console output during zsh initialization" for
+    # anything after it -- and tmux started from there gets no terminal at all
+    # ("open terminal failed: not a terminal"). p10k documents that such code
+    # must run *above* the preamble, so insert there when it is present.
+    local p10k_line
+    p10k_line=$(grep -n 'p10k-instant-prompt' "$rc" 2>/dev/null | head -1 | cut -d: -f1)
+    if [[ -n "$p10k_line" ]]; then
+        # Back up to the comment block p10k puts above its own guard, so the
+        # snippet lands before the preamble rather than inside its comments.
+        local insert_at="$p10k_line"
+        while (( insert_at > 1 )) &&
+              [[ "$(sed -n "$((insert_at - 1))p" "$rc")" =~ ^[[:space:]]*(#.*)?$ ]]; do
+            insert_at=$((insert_at - 1))
+        done
+        local tmp
+        tmp=$(mktemp) || return 1
+        {
+            (( insert_at > 1 )) && sed -n "1,$((insert_at - 1))p" "$rc"
+            printf '%s\n\n' "$block"
+            sed -n "${insert_at},\$p" "$rc"
+        } > "$tmp" && cat "$tmp" > "$rc"
+        rm -f "$tmp"
+        info "Auto-attach snippet added to ${rc}, above the Powerlevel10k instant prompt."
+        info "Takes effect on your next login."
+        return 0
+    fi
+
+    printf '\n%s\n' "$block" >> "$rc"
 
     info "Auto-attach snippet added to ${rc} (takes effect on your next login)."
 }

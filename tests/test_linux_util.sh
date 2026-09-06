@@ -3713,6 +3713,66 @@ assert_eq "1" "$(grep -c '>>> linux_util tmux auto-attach >>>' "$_rc_dir/.bashrc
     "replacing a stale snippet leaves exactly one block"
 assert_contains "$_out" "KEEP_ME" "replacing a stale snippet leaves the user's own rc lines"
 rm -rf "$_rc_dir"
+
+# Powerlevel10k's instant prompt seizes the console partway through .zshrc, so a
+# snippet below it gets no terminal ("open terminal failed: not a terminal").
+# p10k documents that such code must run above the preamble.
+_rc_dir=$(mktemp -d)
+{
+    printf '# Enable Powerlevel10k instant prompt. Should stay close to the top.\n'
+    printf 'if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-x.zsh" ]]; then\n'
+    printf '  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-x.zsh"\nfi\n'
+    printf 'export KEEP_ME=1\n'
+} > "$_rc_dir/.zshrc"
+HOME="$_rc_dir" SHELL=/bin/zsh bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+_snip_line=$(grep -n '>>> linux_util tmux auto-attach >>>' "$_rc_dir/.zshrc" | head -1 | cut -d: -f1)
+_p10k_line=$(grep -n 'p10k-instant-prompt' "$_rc_dir/.zshrc" | head -1 | cut -d: -f1)
+assert_true "auto-attach snippet is inserted above the p10k instant prompt" \
+    [ "$_snip_line" -lt "$_p10k_line" ]
+assert_eq "1" "$(grep -c 'Should stay close to the top' "$_rc_dir/.zshrc")" \
+    "inserting above p10k does not duplicate the surrounding rc lines"
+assert_contains "$(cat "$_rc_dir/.zshrc")" "KEEP_ME" \
+    "inserting above p10k leaves the user's own rc lines"
+rm -rf "$_rc_dir"
+
+# A correctly-guarded block that simply sits below the preamble is relocated.
+_rc_dir=$(mktemp -d)
+{
+    printf 'if [[ -r "$HOME/.cache/p10k-instant-prompt-x.zsh" ]]; then\n'
+    printf '  source "$HOME/.cache/p10k-instant-prompt-x.zsh"\nfi\n'
+    printf '# >>> linux_util tmux auto-attach >>>\n'
+    printf 'if [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then\n'
+    printf '    case $- in\n        *i*) tmux attach -t work ;;\n    esac\nfi\n'
+    printf '# <<< linux_util tmux auto-attach <<<\n'
+} > "$_rc_dir/.zshrc"
+HOME="$_rc_dir" SHELL=/bin/zsh bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+_snip_line=$(grep -n '>>> linux_util tmux auto-attach >>>' "$_rc_dir/.zshrc" | head -1 | cut -d: -f1)
+_p10k_line=$(grep -n 'p10k-instant-prompt' "$_rc_dir/.zshrc" | head -1 | cut -d: -f1)
+assert_true "a snippet stranded below the p10k preamble is moved above it" \
+    [ "$_snip_line" -lt "$_p10k_line" ]
+assert_eq "1" "$(grep -c '>>> linux_util tmux auto-attach >>>' "$_rc_dir/.zshrc")" \
+    "relocating below-p10k snippet leaves exactly one block"
+rm -rf "$_rc_dir"
+
+# An rc file with no p10k preamble keeps the plain append.
+_rc_dir=$(mktemp -d)
+printf 'export KEEP_ME=1\n' > "$_rc_dir/.bashrc"
+HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+assert_eq "1" "$(head -1 "$_rc_dir/.bashrc" | grep -c 'KEEP_ME')" \
+    "without p10k the snippet is appended, not prepended"
+rm -rf "$_rc_dir"
 rm -rf "$_rc_dir"
 
 
