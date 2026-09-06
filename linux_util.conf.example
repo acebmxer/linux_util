@@ -13,7 +13,11 @@ compress_old_logs=true
 log_level=INFO
 
 # --- Installation ---
-# Skip confirmation prompts (not recommended)
+# Answer yes to installer confirmation prompts instead of asking (not
+# recommended). This applies to prompts the installers raise -- a destructive
+# step, or an optional extra such as the tmux shell auto-attach snippet -- not
+# to the package manager's own prompts, which are already answered.
+# With this false, a run that has no terminal to ask on declines instead.
 auto_confirm=false
 # Retry failed installations
 retry_failed=true
@@ -46,3 +50,9 @@ auto_cleanup=true
 verbose=false
 # Enable debug output (internal state, parsed values)
 debug=false
+
+# --- Config schema ---
+# Records which schema version this file has been brought up to. Written by
+# linux_util when it adds keys introduced in a newer release; do not edit.
+# Delete this line to force a re-scan for missing keys on the next run.
+config_version=1

@@ -984,6 +984,17 @@ main() {
     done
 
     self_update_script "$@"
+
+    # Top up linux_util.conf with keys added to the example, AFTER self-update:
+    # a pull that brings in a new linux_util.conf.example is the moment those
+    # keys first exist on disk. Running this before the pull would compare
+    # against the old example, find nothing, and leave the user a release behind
+    # until their next launch. When self-update actually applies a new version
+    # it re-execs, so this runs in the fresh process with the new example --
+    # exactly once, against current files. It appends only and backs up first;
+    # show_config_migration_notice below reports anything it added.
+    migrate_config
+
     parse_args "$@"
 
     # One-time WSL notice (the TUI clears the screen, so it must be shown here,
@@ -991,6 +1002,11 @@ main() {
     if is_wsl; then
         info "Running under WSL (${WSL_DISTRO_NAME:-unknown}). 'Reboot' restarts this distro, not Windows."
     fi
+
+    # Report a config file topped up at startup. Same placement reason as the
+    # WSL notice above: the TUI clears the screen, so a message about a file the
+    # user maintains has to be seen and acknowledged before the menu takes over.
+    show_config_migration_notice
 
     # Main loop: show menu, process selections, repeat
     while true; do

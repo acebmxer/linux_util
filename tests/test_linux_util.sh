@@ -3384,6 +3384,165 @@ test_reboot_stale_files_matches_system_libraries
 test_reboot_stale_packages_separator
 
 echo ""
+echo ""
+echo ""
+echo "=== Config Schema Migration Tests ==="
+
+# migrate_config tops up a hand-maintained linux_util.conf with keys added to
+# linux_util.conf.example since it was written. It must append only: values the
+# user set, and their own comments, survive untouched.
+
+_mig_dir=$(mktemp -d)
+cp "${SCRIPT_DIR}/linux_util.conf.example" "$_mig_dir/"
+cat > "$_mig_dir/linux_util.conf" <<'MIGCONF'
+# A comment the user wrote
+log_retention_days=90
+log_level=DEBUG
+retry_attempts=7
+MIGCONF
+
+_mig_run() {
+    bash -c "
+        source '${SCRIPT_DIR}/lib/config.sh'
+        load_config '$_mig_dir/linux_util.conf' >/dev/null 2>&1
+        migrate_config '$_mig_dir/linux_util.conf' >/dev/null 2>&1
+        echo \"added=\${#CONFIG_MIGRATION_ADDED[@]}\"
+    " 2>/dev/null
+}
+
+_out=$(_mig_run)
+assert_contains "$_out" "added=1" "migration appends keys missing from the user's config" || true
+assert_true "user-set values survive migration" \
+    grep -qE '^retry_attempts=7$' "$_mig_dir/linux_util.conf"
+assert_true "the user's own comments survive migration" \
+    grep -q 'A comment the user wrote' "$_mig_dir/linux_util.conf"
+assert_true "a key absent from the config is appended" \
+    grep -qE '^update_channel=' "$_mig_dir/linux_util.conf"
+assert_true "migration stamps the schema version" \
+    grep -qE '^config_version=' "$_mig_dir/linux_util.conf"
+assert_true "migration backs the config up before writing" \
+    bash -c "ls '$_mig_dir'/linux_util.conf.bak.* >/dev/null 2>&1"
+
+# An appended key must be a live setting, not glued onto the end of its own
+# comment line -- which would comment it out and silently drop the default.
+assert_true "an appended key parses back as a live setting" \
+    bash -c "
+        source '${SCRIPT_DIR}/lib/config.sh'
+        load_config '$_mig_dir/linux_util.conf' >/dev/null 2>&1
+        [[ \"\$CFG_DISK_MIN_MB\" == 1024 ]]
+    "
+
+# Running on every launch, so a no-op run must not rewrite the file or spill
+# backups.
+_before=$(md5sum < "$_mig_dir/linux_util.conf")
+_out=$(_mig_run)
+_after=$(md5sum < "$_mig_dir/linux_util.conf")
+assert_eq "$_before" "$_after" "a second migration run leaves the file byte-identical"
+assert_contains "$_out" "added=0" "a second migration run reports nothing added" || true
+assert_eq "1" "$(ls "$_mig_dir"/linux_util.conf.bak.* 2>/dev/null | wc -l)" \
+    "a no-op migration creates no extra backup"
+
+# The reason migrate_config runs after self_update_script: a pull delivers the
+# new example, and the migration must see it on that same run rather than
+# leaving the user a release behind until their next launch.
+#
+# Critically, this must work WITHOUT anyone remembering to bump a version
+# constant. An earlier draft skipped the scan whenever the user's config was
+# already stamped at the latest version, so shipping a key without bumping the
+# constant left every existing config stamped current and silently missing the
+# key -- while fresh installs got it, hiding the bug from whoever shipped it.
+printf '\n# A setting added by a later release\nnew_feature_key=true\n' \
+    >> "$_mig_dir/linux_util.conf.example"
+_out=$(_mig_run)
+assert_contains "$_out" "added=1" "a key added to the example is picked up with no version bump" || true
+assert_true "a newly shipped key reaches an already-current config" \
+    grep -qE '^new_feature_key=true$' "$_mig_dir/linux_util.conf"
+
+# The schema version travels with the example that defines the keys, so the
+# user's stamp follows it rather than a constant that can drift out of step.
+sed -i 's/^config_version=.*/config_version=7/' "$_mig_dir/linux_util.conf.example"
+_mig_run >/dev/null
+assert_true "the user's config_version follows the example's" \
+    grep -qE '^config_version=7$' "$_mig_dir/linux_util.conf"
+
+rm -rf "$_mig_dir"
+
+# main() must call migrate_config after self_update_script, not before: the
+# pull is what puts the new example on disk.
+_mig_line=$(grep -n 'migrate_config' "${SCRIPT_DIR}/linux_util.sh" | grep -v '#' | head -1 | cut -d: -f1)
+_upd_line=$(grep -n 'self_update_script "\$@"' "${SCRIPT_DIR}/linux_util.sh" | head -1 | cut -d: -f1)
+assert_true "migrate_config runs after self_update_script in main()" \
+    bash -c "[[ -n '$_mig_line' && -n '$_upd_line' && $_mig_line -gt $_upd_line ]]"
+
+echo "=== auto_confirm / tmux Auto-Attach Tests ==="
+
+# auto_confirm was parsed and validated by lib/config.sh but read by nothing, so
+# setting it changed no behaviour. These pin it to its documented meaning ("skip
+# confirmation prompts") at the shared gate every installer already calls.
+
+_confirm_probe() {
+    # Run _confirm_step in a detached session so /dev/tty cannot be opened,
+    # which is what an unattended run actually looks like.
+    local auto="$1"
+    setsid bash -c "
+        info(){ :; }; warn(){ :; }; YELLOW=''; RESET=''
+        source '${SCRIPT_DIR}/lib/installers/_shared.sh'
+        CFG_AUTO_CONFIRM='${auto}'
+        if _confirm_step 'Proceed?'; then echo PROCEED; else echo DECLINE; fi
+    " < /dev/null 2>/dev/null
+}
+
+_out=$(_confirm_probe true)
+assert_eq "PROCEED" "$_out" "auto_confirm=true proceeds without a prompt"
+
+_out=$(_confirm_probe false)
+assert_eq "DECLINE" "$_out" "auto_confirm=false declines when there is no terminal"
+
+# The no-terminal path must decline quietly: testing -r on /dev/tty passes in a
+# detached session but errors on open, leaking a raw shell error to the user.
+_err=$(setsid bash -c "
+    info(){ :; }; warn(){ :; }; YELLOW=''; RESET=''
+    source '${SCRIPT_DIR}/lib/installers/_shared.sh'
+    CFG_AUTO_CONFIRM=false
+    _confirm_step 'Proceed?' >/dev/null
+" < /dev/null 2>&1)
+assert_false "no-terminal decline emits no raw shell error" grep -q "No such device" <<<"$_err"
+
+# The tmux auto-attach snippet writes to a file the user maintains, so an
+# unattended run must not add it unless auto_confirm opts in.
+_out=$(setsid bash -c "
+    info(){ echo \"[INFO] \$*\"; }; warn(){ :; }; error(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach(){ echo WROTE; }
+    CFG_AUTO_CONFIRM=false
+    _tmux_offer_autoattach
+" < /dev/null 2>/dev/null)
+assert_false "auto-attach snippet is skipped on a non-interactive run" grep -q "WROTE" <<<"$_out"
+
+_out=$(setsid bash -c "
+    info(){ :; }; warn(){ :; }; error(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach(){ echo WROTE; }
+    CFG_AUTO_CONFIRM=true
+    _tmux_offer_autoattach
+" < /dev/null 2>/dev/null)
+assert_contains "$_out" "WROTE" "auto_confirm=true adds the auto-attach snippet unattended"
+
+# The rc block is delimited so uninstalling removes exactly what was added.
+_rc_dir=$(mktemp -d)
+_out=$(HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    printf 'export KEEP_ME=1\n' > '$_rc_dir/.bashrc'
+    _tmux_write_autoattach >/dev/null
+    _tmux_remove_autoattach >/dev/null
+    cat '$_rc_dir/.bashrc'
+" 2>/dev/null)
+assert_contains "$_out" "KEEP_ME" "removing the auto-attach block leaves the user's own rc lines"
+assert_false "removing the auto-attach block strips the whole block" grep -q "auto-attach" <<<"$_out"
+rm -rf "$_rc_dir"
+
+
 echo "=== Pre-flight Refresh Scope Tests ==="
 
 source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
