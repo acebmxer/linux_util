@@ -78,57 +78,11 @@ _tmux_offer_autoattach() {
 }
 
 # Append the guarded auto-attach block to the rc file for the running shell.
-_tmux_write_autoattach() {
-    local rc
-    case "$(basename "${SHELL:-/bin/bash}")" in
-        zsh)  rc="$HOME/.zshrc" ;;
-        bash) rc="$HOME/.bashrc" ;;
-        *)
-            warn "Unrecognized shell '${SHELL}'. Add the auto-attach line by hand."
-            return 0
-            ;;
-    esac
-
-    if grep -q "$_TMUX_AUTOATTACH_MARKER" "$rc" 2>/dev/null; then
-        # An earlier version guarded the block with [ -t 1 ], which is false
-        # while an rc file is sourced at startup, so that snippet never fired.
-        # Strip the stale block and fall through to write the corrected one.
-        local stale=false
-        # An earlier version guarded the block with [ -t 1 ], which is false
-        # while an rc file is sourced at startup, so that snippet never fired.
-        if sed -n "/${_TMUX_AUTOATTACH_MARKER}/,/${_TMUX_AUTOATTACH_MARKER_END}/p" "$rc" |
-               grep -q '\[ -t 1 \]'; then
-            stale=true
-        fi
-        # A block sitting after p10k's instant prompt cannot open a terminal,
-        # so it needs relocating above the preamble even if its guards are fine.
-        local _p10k _blk
-        _p10k=$(grep -n 'p10k-instant-prompt' "$rc" 2>/dev/null | head -1 | cut -d: -f1)
-        _blk=$(grep -n "$_TMUX_AUTOATTACH_MARKER" "$rc" 2>/dev/null | head -1 | cut -d: -f1)
-        if [[ -n "$_p10k" && -n "$_blk" ]] && (( _blk > _p10k )); then
-            stale=true
-        fi
-
-        if [[ "$stale" == true ]]; then
-            info "Replacing an outdated auto-attach snippet in ${rc}."
-            _tmux_remove_autoattach_quiet "$rc" || return 1
-        else
-            info "Auto-attach snippet already present in ${rc}."
-            return 0
-        fi
-    fi
-
-    # The guards matter: without them tmux would recurse inside its own shells,
-    # and scp/rsync/git-over-SSH would break on a non-interactive session that
-    # suddenly speaks terminal escapes.
-    #
-    # Interactivity is tested with \$- and NOT with [ -t 1 ]. While an rc file is
-    # being sourced during shell startup, stdout is not yet connected to the
-    # terminal, so [ -t 1 ] is false even in a real interactive SSH login -- the
-    # block would never run. \$- carries 'i' for exactly the interactive shells
-    # we want and is absent for 'ssh host cmd', scp and rsync.
-    local block
-    block=$(cat <<EOF
+# The single definition of the rc block. _tmux_write_autoattach compares what an
+# rc file already has against this, so any change here is picked up on a re-run
+# without needing a new bespoke staleness check for each edit.
+_tmux_autoattach_block() {
+    cat <<EOF
 ${_TMUX_AUTOATTACH_MARKER}
 # Reattach to a persistent tmux session on interactive login, so a dropped
 # connection can be resumed. Skipped when already inside tmux and when the
@@ -148,7 +102,56 @@ if [ -z "\$TMUX" ] && command -v tmux >/dev/null 2>&1; then
 fi
 ${_TMUX_AUTOATTACH_MARKER_END}
 EOF
-)
+}
+
+_tmux_write_autoattach() {
+    local rc
+    case "$(basename "${SHELL:-/bin/bash}")" in
+        zsh)  rc="$HOME/.zshrc" ;;
+        bash) rc="$HOME/.bashrc" ;;
+        *)
+            warn "Unrecognized shell '${SHELL}'. Add the auto-attach line by hand."
+            return 0
+            ;;
+    esac
+
+    if grep -q "$_TMUX_AUTOATTACH_MARKER" "$rc" 2>/dev/null; then
+        # Compare what is on disk against what we would write now. Earlier
+        # versions checked for one specific defect at a time ([ -t 1 ], a block
+        # below the p10k preamble), which meant every later change to the block
+        # needed its own new check and silently no-op'd on existing installs
+        # until it got one. A content comparison covers all of them at once.
+        local current
+        current=$(sed -n "\|${_TMUX_AUTOATTACH_MARKER}|,\|${_TMUX_AUTOATTACH_MARKER_END}|p" "$rc")
+
+        local misplaced=false
+        local _p10k _blk
+        _p10k=$(grep -n 'p10k-instant-prompt' "$rc" 2>/dev/null | head -1 | cut -d: -f1)
+        _blk=$(grep -n "$_TMUX_AUTOATTACH_MARKER" "$rc" 2>/dev/null | head -1 | cut -d: -f1)
+        if [[ -n "$_p10k" && -n "$_blk" ]] && (( _blk > _p10k )); then
+            misplaced=true
+        fi
+
+        if [[ "$current" == "$(_tmux_autoattach_block)" && "$misplaced" == false ]]; then
+            info "Auto-attach snippet already present in ${rc}."
+            return 0
+        fi
+
+        info "Replacing an outdated auto-attach snippet in ${rc}."
+        _tmux_remove_autoattach_quiet "$rc" || return 1
+    fi
+
+    # The guards matter: without them tmux would recurse inside its own shells,
+    # and scp/rsync/git-over-SSH would break on a non-interactive session that
+    # suddenly speaks terminal escapes.
+    #
+    # Interactivity is tested with \$- and NOT with [ -t 1 ]. While an rc file is
+    # being sourced during shell startup, stdout is not yet connected to the
+    # terminal, so [ -t 1 ] is false even in a real interactive SSH login -- the
+    # block would never run. \$- carries 'i' for exactly the interactive shells
+    # we want and is absent for 'ssh host cmd', scp and rsync.
+    local block
+    block=$(_tmux_autoattach_block)
 
     # Powerlevel10k's instant prompt takes over the console partway through
     # .zshrc and warns about "console output during zsh initialization" for

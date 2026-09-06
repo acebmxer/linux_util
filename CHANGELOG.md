@@ -59,6 +59,18 @@ when a release is cut.
   marker check made a re-run a no-op, an existing line without that guard is
   rewritten in place rather than left stale.
 
+- **An out-of-date tmux auto-attach block was not refreshed unless it matched a
+  known defect.** The installer decided whether to rewrite an existing block by
+  testing for specific faults — first a `[ -t 1 ]` guard, later a position below
+  the Powerlevel10k preamble — which meant each new change to the block needed
+  its own bespoke check and silently no-op'd on machines that already had one.
+  Adding the fastfetch line hit exactly this: a correctly placed, correctly
+  guarded block reported "already present" and kept the old body. The block now
+  has a single definition (`_tmux_autoattach_block`) and the installer compares
+  what is on disk against it, rewriting on any difference, so future edits reach
+  existing installs without further changes. Writing twice still converges, so a
+  re-run does not churn the file.
+
 - **Test suite no longer edits the developer's own `linux_util.conf`.** The
   repository is itself a working install — `linux_util.conf` sits in the
   checkout — and the CLI tests run the real `linux_util.sh` from the repo root.

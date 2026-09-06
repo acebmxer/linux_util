@@ -3824,6 +3824,38 @@ assert_eq "1" "$(grep -c '&& fastfetch$' "$_rc_dir/.bashrc")" \
 assert_contains "$(cat "$_rc_dir/.bashrc")" "KEEP_ME" \
     "refreshing the fastfetch line leaves the user's own rc lines"
 rm -rf "$_rc_dir"
+
+# A block that is correctly placed and correctly guarded but simply OUT OF DATE
+# must still be rewritten. Earlier versions tested for one known defect at a
+# time, so a newly-changed block silently no-op'd on existing installs.
+_rc_dir=$(mktemp -d)
+{
+    printf 'export KEEP_ME=1\n'
+    printf '# >>> linux_util tmux auto-attach >>>\n'
+    printf 'if [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then\n'
+    printf '    case $- in\n        *i*) tmux attach -t work ;;\n    esac\nfi\n'
+    printf '# <<< linux_util tmux auto-attach <<<\n'
+} > "$_rc_dir/.bashrc"
+HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+assert_contains "$(cat "$_rc_dir/.bashrc")" "fastfetch" \
+    "an out-of-date block is refreshed even when correctly placed and guarded"
+assert_eq "1" "$(grep -c '>>> linux_util tmux auto-attach >>>' "$_rc_dir/.bashrc")" \
+    "refreshing an out-of-date block leaves exactly one block"
+
+# ...and a second run must then be a no-op, or every install would rewrite the rc.
+_before=$(cat "$_rc_dir/.bashrc")
+HOME="$_rc_dir" SHELL=/bin/bash bash -c "
+    info(){ :; }; warn(){ :; }
+    source '${SCRIPT_DIR}/lib/installers/tmux.sh'
+    _tmux_write_autoattach >/dev/null
+" 2>/dev/null
+assert_eq "$_before" "$(cat "$_rc_dir/.bashrc")" \
+    "writing the auto-attach block twice converges instead of rewriting"
+rm -rf "$_rc_dir"
 rm -rf "$_rc_dir"
 
 
