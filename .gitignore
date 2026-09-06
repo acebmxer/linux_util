@@ -2,3 +2,6 @@ logs/*.log
 .claude/agents/
 CLAUDE.md
 linux_util.conf
+# Timestamped copies the config migration takes before rewriting linux_util.conf.
+# The repo is a working install, so these land here on a normal run.
+linux_util.conf.bak.*

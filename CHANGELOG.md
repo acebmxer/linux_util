@@ -12,6 +12,18 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Test suite no longer edits the developer's own `linux_util.conf`.** The
+  repository is itself a working install — `linux_util.conf` sits in the
+  checkout — and the CLI tests run the real `linux_util.sh` from the repo root.
+  Startup config migration therefore fired against that file, rewriting comments
+  in it and leaving `linux_util.conf.bak.<stamp>` files in the working tree, on
+  every test run. `lib/config.sh` now honours a `LINUX_UTIL_CONFIG_FILE`
+  override for the config path, and the CLI test harness points every run at a
+  throwaway copy under `/tmp`. A guard test fails the suite if a run ever leaves
+  a new backup beside the repository's own config again.
+
 ### Added
 
 - **Config schema migration.** `linux_util.conf` is created once by copying
@@ -20,15 +32,36 @@ when a release is cut.
   ago silently ran on defaults its owner had never seen or chosen. On startup,
   any key present in the example but absent from the user's config is now
   appended, carrying the example's own comment block so it arrives documented.
-  **This edits a file the user maintains.** It appends only: existing values,
-  their ordering and the user's own comments are never touched, nothing is
-  removed or rewritten in place, and a timestamped `linux_util.conf.bak.<stamp>`
-  is written beside the file before any change. A notice before the menu lists
-  every key that was added and points at the backup, so new lines in a
-  hand-edited file are never a surprise found later; it waits for ENTER so the
-  TUI does not clear it off the screen, and skips that wait when no terminal is
-  attached. A run that adds nothing is silent, writes nothing and leaves no
-  backup.
+  Documentation is kept current too: a key that already exists keeps whatever
+  value the user set, but where the example has since reworded the comment above
+  it, that new text replaces the old. Without this, only *missing keys* were
+  ever brought over, so a config written before a rewording kept describing
+  behaviour the program no longer had — worse than a missing comment, because
+  the user has no reason to doubt it. This is how `auto_confirm` came to be
+  documented as "Skip confirmation prompts" in existing configs long after the
+  example explained that it answers installer prompts and not the package
+  manager's, and how the `config_version` stamp kept a one-line note that
+  contradicted the three-line block the example ships. The stamp's comment is
+  now taken from the example rather than written out separately in
+  `_cfg_stamp_version`, so one file is the authority on how that key is
+  documented, and a reworded explanation reaches existing configs even when the
+  schema version itself has not moved.
+  Replacing a comment replaces the whole block above the key, so a note the user
+  hand-wrote directly above a documented setting is lost — a per-line merge
+  cannot tell an edited stock comment from a hand-written one, and keeping both
+  is how a config ends up documenting one key two contradictory ways. Comments
+  above keys the example does not define are never touched, and the backup is
+  the recovery path. `# --- Section ---` banners are treated as headings rather
+  than as part of the following key's comment, so migrating a key no longer
+  drags a duplicate section header into the config with it.
+  **This edits a file the user maintains.** Setting values and their ordering
+  are never changed, no key is ever removed, and a timestamped
+  `linux_util.conf.bak.<stamp>` is written beside the file before any change. A
+  notice before the menu lists every key that was added and every comment that
+  was rewritten, and points at the backup, so changes to a hand-edited file are
+  never a surprise found later; it waits for ENTER so the TUI does not clear it
+  off the screen, and skips that wait when no terminal is attached. A run that
+  changes nothing is silent, writes nothing and leaves no backup.
   It runs *after* the self-update step, which is the ordering that makes it
   work: a `git pull` is the moment a new `linux_util.conf.example` first exists
   on disk, so migrating beforehand would compare against the old example, find

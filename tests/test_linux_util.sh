@@ -923,6 +923,10 @@ test_profile_register_count
 echo ""
 echo "=== Integration CLI Smoke Tests ==="
 
+# Recorded before any test runs so the guard below can tell a backup this suite
+# created from one that was already sitting in the working tree.
+_PRE_EXISTING_CONF_BAKS=$(ls "$SCRIPT_DIR"/linux_util.conf.bak.* 2>/dev/null)
+
 _FAKE_BIN=$(mktemp -d /tmp/linux_util_fakebin_XXXXXX)
 printf '#!/bin/bash\nexit 0\n' > "$_FAKE_BIN/sudo"
 chmod +x "$_FAKE_BIN/sudo"
@@ -936,10 +940,19 @@ chmod +x "$_FAKE_BIN/git"
 # the script's exit code.
 # Uses a temp file instead of command substitution so background subprocesses
 # spawned by the script cannot keep the capture pipe open and stall tests.
+# The repository is itself a working install: linux_util.conf lives in the
+# checkout. Running the real script from here therefore migrates the developer's
+# own config and drops linux_util.conf.bak.<stamp> files in their working tree.
+# Point every CLI run at a throwaway copy instead. (Discovered the hard way.)
+_CLI_CONF_DIR=$(mktemp -d /tmp/linux_util_cli_conf_XXXXXX)
+cp "$SCRIPT_DIR/linux_util.conf.example" "$_CLI_CONF_DIR/linux_util.conf.example"
+cp "$SCRIPT_DIR/linux_util.conf.example" "$_CLI_CONF_DIR/linux_util.conf"
+
 _run_cli() {
     local _tmp_out
     _tmp_out=$(mktemp /tmp/linux_util_cli_out_XXXXXX)
-    PATH="$_FAKE_BIN:$PATH" timeout -k 2 10 bash "$SCRIPT_DIR/linux_util.sh" "$@" </dev/null >"$_tmp_out" 2>&1
+    PATH="$_FAKE_BIN:$PATH" LINUX_UTIL_CONFIG_FILE="$_CLI_CONF_DIR/linux_util.conf" \
+        timeout -k 2 10 bash "$SCRIPT_DIR/linux_util.sh" "$@" </dev/null >"$_tmp_out" 2>&1
     local _rc=$?
     _RUN_OUTPUT=$(<"$_tmp_out")
     rm -f "$_tmp_out"
@@ -3466,6 +3479,129 @@ assert_true "the user's config_version follows the example's" \
     grep -qE '^config_version=7$' "$_mig_dir/linux_util.conf"
 
 rm -rf "$_mig_dir"
+
+# Documentation drift: only missing keys were ever brought over, so a key the
+# user already had kept whatever comment the example carried when their config
+# was written. A reworded explanation then described behaviour the program no
+# longer had -- worse than no comment, since there is no reason to doubt it.
+
+_cmt_dir=$(mktemp -d)
+cat > "$_cmt_dir/linux_util.conf.example" <<'CMTEX'
+# --- Installation ---
+# The new and correct explanation of this setting,
+# which runs to a second line.
+auto_confirm=false
+
+# --- Output ---
+# Enable verbose output (extra status messages)
+verbose=false
+
+# --- Config schema ---
+# A three-line block describing the stamp,
+# replacing the old one-liner, which
+# contradicted this file.
+config_version=1
+CMTEX
+cat > "$_cmt_dir/linux_util.conf" <<'CMTCONF'
+# --- Installation ---
+# The old, now-wrong one-line explanation
+auto_confirm=true
+
+# A note the user wrote about their own key
+my_own_key=keepme
+
+# --- Output ---
+# Enable verbose output (extra status messages)
+verbose=false
+
+# Config schema version - written by linux_util, do not edit
+config_version=1
+CMTCONF
+
+_cmt_run() {
+    bash -c "
+        source '${SCRIPT_DIR}/lib/config.sh'
+        load_config '$_cmt_dir/linux_util.conf' >/dev/null 2>&1
+        migrate_config '$_cmt_dir/linux_util.conf' >/dev/null 2>&1
+        echo \"updated=\${#CONFIG_MIGRATION_UPDATED[@]}\"
+    " 2>/dev/null
+}
+
+_out=$(_cmt_run)
+assert_true "a reworded comment reaches an existing key" \
+    grep -q 'The new and correct explanation' "$_cmt_dir/linux_util.conf"
+assert_true "the superseded comment is gone, not left alongside the new one" \
+    bash -c "! grep -q 'old, now-wrong one-line' '$_cmt_dir/linux_util.conf'"
+
+# The whole point of refreshing a comment is that the value beneath it is the
+# user's. Rewriting documentation must never reset a setting.
+assert_true "refreshing a comment leaves the user's value alone" \
+    grep -qE '^auto_confirm=true$' "$_cmt_dir/linux_util.conf"
+
+# config_version is stamped by _cfg_stamp_version rather than the ordinary
+# refresh pass, so its comment has its own path to going stale -- and it must
+# update even though the schema version itself has not moved.
+assert_true "the config_version stamp's own comment is refreshed" \
+    grep -q 'A three-line block describing the stamp' "$_cmt_dir/linux_util.conf"
+assert_true "the stamp's contradictory one-liner is removed" \
+    bash -c "! grep -q 'written by linux_util, do not edit' '$_cmt_dir/linux_util.conf'"
+
+# Comments above keys the example says nothing about are the user's own.
+assert_true "a comment on the user's own key is untouched" \
+    grep -q 'A note the user wrote about their own key' "$_cmt_dir/linux_util.conf"
+
+# A banner heads a section, it does not document the key after it. Copying it
+# along with a key leaves a duplicate heading halfway down the config.
+assert_eq "1" "$(grep -c -- '--- Installation ---' "$_cmt_dir/linux_util.conf")" \
+    "a section banner is not duplicated by migration"
+
+# A refreshed key must still parse: a block that does not end in a newline would
+# print onto the key's own line and comment the setting out.
+assert_true "a key keeps parsing after its comment is replaced" \
+    bash -c "
+        source '${SCRIPT_DIR}/lib/config.sh'
+        load_config '$_cmt_dir/linux_util.conf' >/dev/null 2>&1
+        [[ \"\$CFG_AUTO_CONFIRM\" == true ]]
+    "
+
+# Runs on every launch, so once current it must stop rewriting the file.
+_before=$(md5sum < "$_cmt_dir/linux_util.conf")
+_out=$(_cmt_run)
+_after=$(md5sum < "$_cmt_dir/linux_util.conf")
+assert_eq "$_before" "$_after" "a second comment-refresh run leaves the file byte-identical"
+assert_contains "$_out" "updated=0" "a second comment-refresh run reports nothing updated" || true
+
+# An identical comment is not drift, and must not trigger a rewrite or a backup.
+assert_true "a key whose comment already matches is not reported as updated" \
+    bash -c "! grep -q 'verbose' <<< '$_out'"
+
+# The migration edits a file the user maintains, so a comment-only change still
+# has to leave a recovery path.
+assert_true "a comment-only migration still backs the config up" \
+    bash -c "ls '$_cmt_dir'/linux_util.conf.bak.* >/dev/null 2>&1"
+
+# The awk that installs the block gets it from a file, not awk -v, which applies
+# escape processing and would silently rewrite a backslash on its way in.
+printf '# A path such as C:\\Users\\name survives\nverbose=false\n' \
+    > "$_cmt_dir/ex_tail"
+sed -i '/^# Enable verbose output/,+1d' "$_cmt_dir/linux_util.conf.example"
+cat "$_cmt_dir/ex_tail" >> "$_cmt_dir/linux_util.conf.example"
+_cmt_run >/dev/null
+assert_true "a backslash in a comment is not mangled on its way into the config" \
+    grep -q 'C:\\Users\\name' "$_cmt_dir/linux_util.conf"
+
+# No stray working files beside a config the user opens by hand.
+assert_eq "0" "$(ls "$_cmt_dir"/*.migrate.* "$_cmt_dir"/*.block.* 2>/dev/null | wc -l)" \
+    "migration leaves no temporary working files behind"
+
+rm -rf "$_cmt_dir"
+
+# The suite must never write to the developer's own config. The repo is a
+# working install, so a CLI test that forgets to redirect the config path
+# migrates the real linux_util.conf and litters the working tree with backups.
+_POST_CONF_BAKS=$(ls "$SCRIPT_DIR"/linux_util.conf.bak.* 2>/dev/null)
+assert_eq "$_PRE_EXISTING_CONF_BAKS" "$_POST_CONF_BAKS" \
+    "the test suite leaves the repo's own linux_util.conf alone"
 
 # main() must call migrate_config after self_update_script, not before: the
 # pull is what puts the new example on disk.
