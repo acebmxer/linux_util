@@ -12,91 +12,20 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Changed
+
+- **tmux is now a plain package install.** The **tmux** installer previously
+  offered to append an auto-attach block to `~/.bashrc` or `~/.zshrc`, which
+  attached or created a `work` session on interactive login and carried its own
+  fastfetch banner handling. That block edited a file the user maintains and
+  coupled the installer to Powerlevel10k's instant prompt and to the fastfetch
+  auto-run line, both of which it had to detect and order itself. It is gone:
+  install, uninstall, update, check and version are a stock package operation
+  and nothing else, and neither `~/.tmux.conf` nor any shell rc file is touched.
+  tmux configuration is the user's own. **tmux Resurrect** is unaffected and
+  remains a separate utility.
+
 ### Fixed
-
-- **tmux auto-attach never fired on SSH login.** The snippet the **tmux**
-  installer appends to `~/.bashrc` or `~/.zshrc` was guarded by
-  `[ -z "$TMUX" ] && [ -t 1 ]`. The `[ -t 1 ]` test is the problem: an rc file is
-  sourced while the shell is still starting up, before stdout is connected to the
-  terminal, so the test returns false even in a genuine interactive SSH login and
-  the whole block was skipped. Reconnecting after a dropped connection therefore
-  landed in a bare shell instead of the persistent `work` session — the exact
-  scenario the feature exists for. The guard now tests `$-` for the `i` flag
-  alone, which is set for interactive shells and absent for `ssh host cmd`, scp
-  and rsync, preserving the protection that stopped non-interactive transfers
-  from being broken by terminal escapes. Because the marker check made a re-run a
-  no-op, an rc file already carrying the broken snippet would have kept it
-  forever; the installer now detects a stale block containing `[ -t 1 ]`, strips
-  it, and writes the corrected one, leaving the user's own rc lines untouched.
-
-- **tmux auto-attach failed with "open terminal failed: not a terminal" under
-  Powerlevel10k.** With the `[ -t 1 ]` guard removed the block finally ran, but
-  appending it to the end of `~/.zshrc` put it *after* p10k's instant-prompt
-  preamble, which takes over the console partway through initialisation. tmux
-  started from there gets no usable terminal and exits immediately, dropping the
-  user at a bare shell, and p10k additionally warns about "console output during
-  zsh initialization". Powerlevel10k documents that code needing the console must
-  run above the preamble, so the installer now looks for the
-  `p10k-instant-prompt` guard and inserts the block above it, backing up over the
-  preceding comment block so the snippet lands before the preamble rather than
-  inside its comments. An existing block stranded below the preamble is detected
-  and relocated even when its guards are already correct. Shells with no p10k
-  preamble — the common case — are unaffected and still get a plain append.
-
-- **fastfetch stopped appearing once tmux auto-attach was enabled.** Both
-  installers insert their block above the Powerlevel10k preamble, so whichever
-  ran last ended up first. With the tmux block ahead of it, `tmux attach`
-  replaced the shell before the `# linux_util:fastfetch` line was ever reached
-  and the banner silently disappeared; in the opposite order it printed on every
-  single reconnect, including reattaches to a session already in progress.
-  Neither is right, and an rc-file line cannot tell the two cases apart. The
-  auto-attach snippet now runs fastfetch on the branch that *creates* the
-  session — `if ! tmux attach -t work; then fastfetch; tmux new -s work; fi` — so
-  it shows on a first connect after a reboot or after `exit` destroyed the
-  session, and never paints over work being resumed after a dropped connection.
-  The **fastfetch** installer's own line gained a `-z $TMUX` guard so it does not
-  double up inside tmux while still running normally outside it, and because the
-  marker check made a re-run a no-op, an existing line without that guard is
-  rewritten in place rather than left stale.
-
-- **fastfetch was never visible inside the tmux session.** The banner was
-  printed by the login shell just before tmux started, and tmux clears the
-  screen when it takes over — so on a session-creating connect it was wiped
-  immediately and only reappeared in the scrollback after exiting. The block now
-  shows it in both places: once on the login shell as before, and once inside the
-  new session, where it stays on screen. The in-session copy is delivered by
-  creating the session detached and using `tmux send-keys` to run `clear;
-  fastfetch` in its first window, then attaching. Passing a flag through the
-  environment does not work here — a shell started inside tmux inherits the tmux
-  *server's* environment rather than the client's, so both a `VAR=1` prefix and
-  `tmux new -e` arrive empty. Extra windows and panes opened later are unaffected,
-  a reattach still shows nothing, and the plain `tmux new` path is kept for
-  machines with no fastfetch installed.
-
-- **fastfetch printed twice on a connect that created a tmux session.** The
-  `-z $TMUX` guard added to the **fastfetch** auto-run line only suppresses it
-  for shells started *inside* tmux. On the login shell that is about to start
-  tmux, `$TMUX` is still empty, so that line ran, and then the auto-attach block
-  ran it again on the create branch — two banners on a first connect, and one on
-  a reattach where there should have been none. The auto-attach block now sets
-  `_LU_TMUX_AUTOATTACH` when it is going to handle the login, the fastfetch line
-  stands down on that flag, and the installer writes the block above that line so
-  the flag is assigned before it is read. The flag is set only when tmux is
-  actually present, so removing tmux hands the banner back to the fastfetch line
-  rather than silencing it everywhere; a block already sitting below the
-  fastfetch line is detected and moved above it.
-
-- **An out-of-date tmux auto-attach block was not refreshed unless it matched a
-  known defect.** The installer decided whether to rewrite an existing block by
-  testing for specific faults — first a `[ -t 1 ]` guard, later a position below
-  the Powerlevel10k preamble — which meant each new change to the block needed
-  its own bespoke check and silently no-op'd on machines that already had one.
-  Adding the fastfetch line hit exactly this: a correctly placed, correctly
-  guarded block reported "already present" and kept the old body. The block now
-  has a single definition (`_tmux_autoattach_block`) and the installer compares
-  what is on disk against it, rewriting on any difference, so future edits reach
-  existing installs without further changes. Writing twice still converges, so a
-  re-run does not churn the file.
 
 - **Test suite no longer edits the developer's own `linux_util.conf`.** The
   repository is itself a working install — `linux_util.conf` sits in the
