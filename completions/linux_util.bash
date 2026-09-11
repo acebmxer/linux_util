@@ -92,6 +92,7 @@ Thermalright TRCC
 Thorium Browser
 Thunderbird
 Timeshift
+TMOG
 Trojita
 Num Lock at Boot
 UFW Firewall

@@ -256,6 +256,7 @@ register_utility "Thermalright TRCC"   install_trcc             check_trcc      
 register_utility "Thorium Browser"     install_thorium          check_thorium          uninstall_thorium          update_thorium             get_version_thorium
 register_utility "Thunderbird"         install_thunderbird      check_thunderbird      uninstall_thunderbird      update_thunderbird         get_version_thunderbird
 register_utility "Timeshift"           install_timeshift        check_timeshift        uninstall_timeshift        update_timeshift           get_version_timeshift
+register_utility "TMOG"                install_tmog             check_tmog             uninstall_tmog             update_tmog                get_version_tmog
 register_utility "Trojita"             install_trojita          check_trojita          uninstall_trojita          update_trojita             get_version_trojita
 register_utility "Create Snapshot"     setup_create_snapshot    check_always_false     noop_function              setup_create_snapshot
 NO_RETRY["Create Snapshot"]=1
@@ -600,6 +601,7 @@ UTILITY_CATEGORY["Thorium Browser"]="Internet"
 UTILITY_CATEGORY["Thunderbird"]="Internet"
 UTILITY_CATEGORY["Trojita"]="Internet"
 UTILITY_CATEGORY["Timeshift"]="Backup"
+UTILITY_CATEGORY["TMOG"]="System Tools"
 UTILITY_CATEGORY["Create Snapshot"]="Backup"
 UTILITY_CATEGORY["Restore Snapshot"]="Backup"
 UTILITY_CATEGORY["Delete Snapshot"]="Backup"
@@ -1023,6 +1025,7 @@ UTILITY_DESCRIPTION["GParted"]="Graphical partition editor for creating, resizin
 UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written in C, displaying OS, hardware, and software details."
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
 UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS. Install this first to enable Create, Restore, and Delete Snapshot."
+UTILITY_DESCRIPTION["TMOG"]="Native Qt task manager with real-time system metrics. Installed from tmog.org, which has no repo, AUR package, or checksums upstream."
 UTILITY_DESCRIPTION["Déjà Dup"]="(GNOME) Simple, beginner-friendly backup tool for backing up files and folders to local drives, network shares, or cloud storage. Uses duplicity under the hood for encrypted, incremental backups."
 UTILITY_DESCRIPTION["Kup"]="(KDE) Backup tool that integrates with Plasma System Settings. Supports incremental versioned backups (via bup) and synchronized folder copies (via rsync) to local drives or external media. On Fedora, installed from the zawertun/kde-kup Copr as it is not in the official repos. Not available for RHEL-based systems."
 UTILITY_DESCRIPTION["Vorta"]="GUI frontend for BorgBackup — a fast, deduplicating backup tool with encryption and compression. Installs both Borg (CLI) and Vorta (GUI). On RHEL-based systems, only BorgBackup is installed via EPEL as Vorta is not packaged there."

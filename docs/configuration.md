@@ -42,6 +42,14 @@ self-update run. A manual `git checkout` always takes precedence: if you have
 checked out a tag or commit by hand, self-update leaves you there and says so,
 rather than dragging you back onto the configured channel.
 
+To skip the self-update check entirely for a single run — e.g. testing local
+changes before committing, without a `git pull` overwriting them — set
+`LINUX_UTIL_NO_SELF_UPDATE=1`:
+
+```bash
+LINUX_UTIL_NO_SELF_UPDATE=1 ./linux_util.sh
+```
+
 ## Logging
 
 Every run creates timestamped log files in `logs/`:

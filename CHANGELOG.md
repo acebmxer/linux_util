@@ -12,6 +12,27 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **`LINUX_UTIL_NO_SELF_UPDATE=1`** skips the self-update check for a single
+  run — `self_update_script()` previously had no way to opt out short of
+  running from a non-git checkout or a detached HEAD, so testing local,
+  uncommitted changes risked a `git pull` (or, on conflict, a `git reset
+  --hard`) overwriting them. Matches the equivalent `XO_NO_SELF_UPDATE` flag
+  in `install_xen_orchestra`.
+
+- **TMOG.** Native Qt task manager, added under System Tools. Upstream
+  (tmog.org) ships no GitHub repo, no package repo, no AUR entry and no
+  checksums — just fixed-name files served from `tmog.org/downloads/`, with
+  the current version only visible embedded in those filenames on the
+  download page itself (currently "BETA 3" / 0.1.3). The installer scrapes
+  the current `.deb`/`.AppImage` filenames off the homepage since there is no
+  version API to query, and falls back to `verify_download`'s non-empty/
+  magic-byte check since there is no checksums file to verify against.
+  Debian/Ubuntu get the real `.deb`; Fedora/RHEL, Arch and openSUSE get the
+  AppImage extracted per-user (same approach as Stacer), since there is no
+  `.rpm` and no repo/AUR package to fall back to.
+
 ## [1.4.0] - 2026-09-06
 
 ### Changed
