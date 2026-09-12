@@ -143,10 +143,38 @@ setup_system_updates() {
     return 0
 }
 
+# How long a cached pending-update count is reused, and where it lives. Same
+# default window as PKG_CACHE_MAX_AGE_SECS. Set SYSTEM_UPDATES_VER_REFRESH=1 to
+# bypass the cache for one call.
+_SYSTEM_UPDATES_VER_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/linux_util/system-updates-version"
+
+# Longest a single metadata-refreshing probe (dnf check-update, checkupdates,
+# fwupdmgr get-upgrades) is allowed to run before we give up on it. These hit
+# the network on top of local package data, and none of them takes a
+# --cacheonly-style flag that skips the refresh outright, so an unreachable or
+# slow mirror previously hung the whole menu at startup — measured once at
+# 2m34s wall clock for what should be an instant status read. A stale/failed
+# probe just means the badge is missing or slightly out of date, never worth
+# blocking the menu over.
+_SYSTEM_UPDATES_PROBE_TIMEOUT_SECS=5
+
 # --- System Updates version/status ---
 # Returns pending update count for display in the menu.
 # Uses cached MOTD data on Ubuntu or package manager queries as fallback.
+# Cached for PKG_CACHE_MAX_AGE_SECS (the menu redraws often and every branch
+# below either hits the network or re-parses a package listing).
 get_version_system_updates() {
+    # -f, not -s: an empty file is a valid cached result ("nothing pending"),
+    # and requiring non-empty here would force a full re-probe on every call
+    # while the system is up to date -- the single most common case.
+    if [[ "${SYSTEM_UPDATES_VER_REFRESH:-0}" != "1" && -f "$_SYSTEM_UPDATES_VER_CACHE" ]]; then
+        local age=$(( $(date +%s) - $(stat -c %Y "$_SYSTEM_UPDATES_VER_CACHE" 2>/dev/null || echo 0) ))
+        if (( age < ${PKG_CACHE_MAX_AGE_SECS:-3600} )); then
+            cat "$_SYSTEM_UPDATES_VER_CACHE"
+            return 0
+        fi
+    fi
+
     local total=0 security=0 kernel=0
 
     case "${PKG_MGR:-}" in
@@ -170,13 +198,19 @@ get_version_system_updates() {
             fi
             ;;
         dnf|yum)
+            # check-update refreshes repo metadata over the network with no
+            # --cacheonly equivalent, so bound it — an unreachable mirror must
+            # not hang the menu (see _SYSTEM_UPDATES_PROBE_TIMEOUT_SECS above).
             local _out
-            _out=$("${PKG_MGR}" check-update 2>/dev/null) || true
+            _out=$(timeout "$_SYSTEM_UPDATES_PROBE_TIMEOUT_SECS" "${PKG_MGR}" check-update 2>/dev/null) || true
             total=$(echo "$_out" | grep -cE '^\S+\.\S+\s' || true)
             ;;
         pacman)
+            # checkupdates syncs a temporary copy of the repo databases over the
+            # network; same bound as dnf above. pacman -Qu (local-only, no
+            # network) is the fallback and needs no timeout.
             local _out
-            _out=$(checkupdates 2>/dev/null || pacman -Qu 2>/dev/null) || true
+            _out=$(timeout "$_SYSTEM_UPDATES_PROBE_TIMEOUT_SECS" checkupdates 2>/dev/null || pacman -Qu 2>/dev/null) || true
             total=$(echo "$_out" | grep -c '.' || true)
             ;;
         zypper)
@@ -184,16 +218,19 @@ get_version_system_updates() {
             ;;
     esac
 
-    # Count pending device firmware updates (fwupd/LVFS). Uses cached metadata
-    # only — no sudo, no network — so it's safe/fast for the menu. Each device
-    # that has a pending upgrade prints exactly one "New version:" line in the
-    # get-upgrades tree output; devices with no update (which also use • bullets)
-    # never print that line, so counting it is an accurate per-device tally.
-    # Non-fatal and skipped entirely if fwupdmgr isn't installed.
+    # Count pending device firmware updates (fwupd/LVFS). Reads whatever
+    # metadata fwupd already has cached rather than refreshing it (no sudo),
+    # but get-upgrades itself can still make a brief network call to LVFS, so
+    # it gets the same timeout bound as the package-manager probes above. Each
+    # device that has a pending upgrade prints exactly one "New version:" line
+    # in the get-upgrades tree output; devices with no update (which also use
+    # • bullets) never print that line, so counting it is an accurate
+    # per-device tally. Non-fatal and skipped entirely if fwupdmgr isn't
+    # installed.
     local firmware=0
     if _have_cmd fwupdmgr; then
         local _fw
-        _fw=$(fwupdmgr get-upgrades 2>/dev/null) || true
+        _fw=$(timeout "$_SYSTEM_UPDATES_PROBE_TIMEOUT_SECS" fwupdmgr get-upgrades 2>/dev/null) || true
         [[ -n "$_fw" ]] && firmware=$(echo "$_fw" | grep -cE '^[[:space:]]*New version:' || true)
     fi
 
@@ -207,10 +244,7 @@ get_version_system_updates() {
         upstream=$(upstream_binaries_with_updates 2>/dev/null | grep -c '.' || true)
     fi
 
-    # Return empty if nothing pending at all (menu shows no status tag)
-    [[ "$total" -le 0 && "$firmware" -le 0 && "$upstream" -le 0 ]] && return 0
-
-    # Build display string
+    # Build display string ("" if nothing pending at all — menu shows no status tag)
     local _out=""
     if [[ "$total" -gt 0 ]]; then
         _out="${total} updates"
@@ -226,5 +260,11 @@ get_version_system_updates() {
         _out+="${upstream} app"
         (( upstream > 1 )) && _out+="s"
     fi
+
+    # Cache every result, including empty ("nothing pending") — an unwritten
+    # cache on the common case would mean a from-scratch, network-touching
+    # probe on every single startup instead of once per PKG_CACHE_MAX_AGE_SECS.
+    mkdir -p "$(dirname "$_SYSTEM_UPDATES_VER_CACHE")" 2>/dev/null && \
+        printf '%s' "$_out" > "$_SYSTEM_UPDATES_VER_CACHE" 2>/dev/null
     echo "$_out"
 }

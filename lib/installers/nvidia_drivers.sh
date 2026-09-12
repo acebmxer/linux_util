@@ -200,8 +200,10 @@ get_nvidia_installed_version() {
             pacman -Q nvidia-utils 2>/dev/null | awk '{print $2}' | cut -d- -f1
             ;;
         suse)
-            rpm -qa 'nvidia-driver*' 2>/dev/null | \
-                grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | head -1
+            # openSUSE identifies installed drivers by GPU generation (G04-G07),
+            # not a numeric branch — see install_nvidia_drivers's suse case.
+            rpm -qa 'nvidia-compute*' 'nvidia-driver-G0*-kmp-*' 2>/dev/null | \
+                grep -oP 'G0[4-9]' | sort -ru | head -1
             ;;
         *)
             echo ""
@@ -237,7 +239,11 @@ check_nvidia_i386_libs() {
             pacman -Qi lib32-nvidia-utils &>/dev/null
             ;;
         suse)
-            rpm -q nvidia-32bit &>/dev/null
+            # No generic 'nvidia-32bit' package exists on openSUSE's NVIDIA
+            # repo (verified) — the naming is per-generation, see the install
+            # side of this in install_nvidia_i386_libs.
+            rpm -q "nvidia-compute${driver_version}-32bit" &>/dev/null || \
+                rpm -q "nvidia-compute-${driver_version}-32bit" &>/dev/null
             ;;
         *)
             return 1
@@ -317,6 +323,9 @@ install_nvidia_i386_libs() {
             ;;
         fedora|rhel)
             case "$driver_version" in
+                580xx)
+                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-580xx-libs.i686
+                    ;;
                 470xx)
                     sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-470xx-libs.i686
                     ;;
@@ -332,13 +341,23 @@ install_nvidia_i386_libs() {
             sudo pacman -S --noconfirm lib32-nvidia-utils
             ;;
         suse)
-            if [[ "$driver_version" =~ ^G0[0-9]$ ]]; then
-                sudo zypper install -y "nvidia-${driver_version}-32bit" 2>/dev/null || \
-                    sudo zypper install -y nvidia-32bit 2>/dev/null || true
-            else
-                sudo zypper install -y "libnvidia-gl${driver_version}-32bit" 2>/dev/null || \
-                    sudo zypper install -y nvidia-32bit 2>/dev/null || true
-            fi
+            # openSUSE's NVIDIA repo names 32-bit packages differently across
+            # GPU generations (verified against the real repo, not booted):
+            # G04/G05 (older, Kepler-and-earlier) use no hyphen —
+            # nvidia-computeG05-32bit. G06/G07 (Maxwell-and-later) use a
+            # hyphen — nvidia-compute-G06-32bit / nvidia-compute-G07-32bit.
+            case "$driver_version" in
+                G04|G05)
+                    sudo zypper install -y "nvidia-compute${driver_version}-32bit"
+                    ;;
+                G06|G07)
+                    sudo zypper install -y "nvidia-compute-${driver_version}-32bit"
+                    ;;
+                *)
+                    sudo zypper install -y "libnvidia-gl${driver_version}-32bit" 2>/dev/null || \
+                        sudo zypper install -y nvidia-32bit 2>/dev/null || true
+                    ;;
+            esac
             ;;
         *)
             warn "NVIDIA 32-bit library installation not implemented for ${DISTRO_NAME}."
@@ -355,6 +374,57 @@ install_nvidia_drivers() {
 
     local driver_version=""
     local -a available_drivers=()
+    # Parallel to available_drivers: what to print in the menu for each entry.
+    # available_drivers holds the value used to build package names later, so
+    # it can't carry a human-friendly "580xx (580.178.04)" string itself —
+    # that goes here instead, indexed the same way.
+    local -a available_labels=()
+
+    # Look up a package's newest available version string, or print nothing.
+    # Used to annotate menu labels like "latest (610.57.04)" so version
+    # numbers shown are real, queried values, not guesses.
+    _nvidia_pkg_version() {
+        case "$PKG_MGR" in
+            dnf|yum)
+                "$PKG_MGR" --quiet repoquery --latest-limit=1 --qf '%{version}' "$1" 2>/dev/null
+                ;;
+            apt)
+                apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {print $2; exit}'
+                ;;
+            zypper)
+                zypper --non-interactive info "$1" 2>/dev/null | awk -F': *' '/^Version/ {print $2; exit}'
+                ;;
+            pacman)
+                pacman -Si "$1" 2>/dev/null | awk -F': *' '/^Version/ {print $2; exit}'
+                ;;
+        esac
+    }
+
+    # Build "label (version)" if a version was found, else just "label".
+    # Use this where the label alone doesn't tell you a version (e.g. "latest").
+    _nvidia_labeled() {
+        local label="$1" pkg="$2" ver
+        ver=$(_nvidia_pkg_version "$pkg")
+        if [[ -n "$ver" ]]; then
+            echo "${label} (${ver})"
+        else
+            echo "$label"
+        fi
+    }
+
+    # Show just the real version number, falling back to the branch label if
+    # no version was found. Use this for branch names that are themselves
+    # redundant once the version is known (e.g. "580xx" -> "580.178.04"),
+    # unlike "latest" which carries no version information on its own.
+    _nvidia_version_only() {
+        local label="$1" pkg="$2" ver
+        ver=$(_nvidia_pkg_version "$pkg")
+        if [[ -n "$ver" ]]; then
+            echo "$ver"
+        else
+            echo "$label"
+        fi
+    }
 
     # Detect available NVIDIA drivers based on distribution
     case "$DISTRO_FAMILY" in
@@ -373,6 +443,10 @@ install_nvidia_drivers() {
                     mapfile -t available_drivers < <(apt-cache search '^nvidia-driver-[0-9]+$' 2>/dev/null \
                         | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
                 fi
+                local _branch
+                for _branch in "${available_drivers[@]}"; do
+                    available_labels+=("$(_nvidia_version_only "$_branch" "nvidia-driver-${_branch}")")
+                done
             else
                 # --- Debian proper and Debian-based derivatives ---
                 # Debian ships *unversioned* driver metapackages (nvidia-driver,
@@ -408,6 +482,14 @@ install_nvidia_drivers() {
                     done
                     available_drivers=("${_reordered[@]}")
                 fi
+
+                # Debian proper's available_drivers entries are already the
+                # full metapackage name, so query each one directly.
+                for _p in "${available_drivers[@]}"; do
+                    local _label="$_p"
+                    [[ "$_p" == "$recommended_pkg" ]] && _label="${_p} — recommended"
+                    available_labels+=("$(_nvidia_labeled "$_label" "$_p")")
+                done
             fi
             ;;
         fedora|rhel)
@@ -445,26 +527,36 @@ install_nvidia_drivers() {
             fi
             
             pkg_refresh >/dev/null 2>&1
-            
+
             # Check for available NVIDIA driver packages
+            # -y: any repo on the system with an unimported GPG key (e.g. one
+            # added earlier by the NVIDIA Container Toolkit installer, a
+            # completely separate repo from RPM Fusion) makes dnf prompt
+            # "Is this ok [y/N]" on ITS FIRST use of any repo that session --
+            # not just when installing from it. Without -y that prompt blocks
+            # forever here, since this call has no controlling terminal to
+            # answer it and no timeout: a one-off menu freeze was traced to
+            # exactly this on 2026-09-12.
             # Main driver: akmod-nvidia (latest, recommended)
-            if $PKG_MGR list available akmod-nvidia &>/dev/null; then
+            if $PKG_MGR -y list available akmod-nvidia &>/dev/null; then
                 available_drivers+=("latest")
+                available_labels+=("$(_nvidia_labeled "latest" "akmod-nvidia")")
             fi
-            
-            # Legacy drivers
-            if $PKG_MGR list available xorg-x11-drv-nvidia-470xx &>/dev/null; then
-                available_drivers+=("470xx")
-            fi
-            
-            if $PKG_MGR list available xorg-x11-drv-nvidia-390xx &>/dev/null; then
-                available_drivers+=("390xx")
-            fi
-            
-            # Also check for any kmod-nvidia versioned packages
-            local kmod_versions
-            mapfile -t kmod_versions < <($PKG_MGR list available 'kmod-nvidia-*' 2>/dev/null | grep -oP 'kmod-nvidia-\K[0-9]+' | sort -rn | uniq)
-            available_drivers+=("${kmod_versions[@]}")
+
+            # Legacy drivers: RPM Fusion ships these as kmod-nvidia-<NNN>xx
+            # (the akmod-<NNN>xx variant is what actually gets rebuilt on
+            # kernel upgrades). Match only the "xx"-suffixed branch names —
+            # a bare 'kmod-nvidia-*' glob also matches per-kernel build
+            # artifacts like kmod-nvidia-7.2.4-200.fc44.x86_64.x86_64, whose
+            # kernel-version numbers are not installable driver branches.
+            local legacy_branch
+            for legacy_branch in 580xx 470xx 390xx; do
+                if $PKG_MGR -y list available "akmod-nvidia-${legacy_branch}" &>/dev/null \
+                    || $PKG_MGR -y list available "kmod-nvidia-${legacy_branch}" &>/dev/null; then
+                    available_drivers+=("$legacy_branch")
+                    available_labels+=("$(_nvidia_version_only "$legacy_branch" "akmod-nvidia-${legacy_branch}")")
+                fi
+            done
             ;;
         arch)
             echo "Detecting available NVIDIA drivers..."
@@ -482,30 +574,60 @@ install_nvidia_drivers() {
                     local mod_pkg="${kern}-nvidia-open"
                     if pacman -Si "$mod_pkg" &>/dev/null; then
                         available_drivers+=("$mod_pkg")
+                        available_labels+=("$(_nvidia_labeled "$mod_pkg" "$mod_pkg")")
                     fi
                 done
                 # nvidia-open-dkms works with any kernel (DKMS rebuild on upgrade)
                 if pacman -Si nvidia-open-dkms &>/dev/null; then
                     available_drivers+=("nvidia-open-dkms")
+                    available_labels+=("$(_nvidia_labeled "nvidia-open-dkms" "nvidia-open-dkms")")
                 fi
             else
                 # Vanilla Arch / Manjaro / other Arch derivatives
                 available_drivers=("latest" "dkms" "lts")
+                available_labels=(
+                    "$(_nvidia_labeled "latest" "nvidia")"
+                    "$(_nvidia_labeled "dkms" "nvidia-dkms")"
+                    "$(_nvidia_labeled "lts" "nvidia-lts")"
+                )
             fi
             ;;
         suse)
             echo "Detecting available NVIDIA drivers..."
             pkg_refresh >/dev/null 2>&1
-            
-            mapfile -t available_drivers < <(zypper search -s nvidia-driver 2>/dev/null | grep -oP 'nvidia-driver-\K[0-9]+' | sort -rn | uniq)
-            
-            # Check for G06/G05 packages (openSUSE naming)
-            if zypper search -s nvidia-computeG06 &>/dev/null; then
+
+            # openSUSE's NVIDIA repo names packages by GPU generation, and the
+            # naming scheme itself differs across generations (all verified
+            # against the real NVIDIA openSUSE repo — there is no bare
+            # 'nvidia-driver-<NNN>' package the way there is on Ubuntu):
+            #   G04/G05 (Kepler-and-earlier): no hyphen, e.g. nvidia-computeG05
+            #     is the actual metapackage to install.
+            #   G06 (Maxwell-through-Turing): hyphenated component names, e.g.
+            #     nvidia-compute-G06 exists but is not the top-level
+            #     metapackage — that's nvidia-driver-G06-kmp-meta ("Meta
+            #     package to select proprietary nvidia driver", per its own
+            #     description). A previous version of this check queried
+            #     'nvidia-computeG06' (no hyphen), which does not exist, so
+            #     G06 was never offered.
+            #   G07 (newest cards): the repo currently ships only the
+            #     open-source kernel module variant
+            #     (nvidia-open-driver-G07-signed-kmp-meta) — there is no
+            #     nvidia-driver-G07-kmp-meta (proprietary) package to offer.
+            if zypper search -s "nvidia-open-driver-G07-signed-kmp-meta" &>/dev/null; then
+                available_drivers+=("G07")
+                available_labels+=("$(_nvidia_labeled "G07 (open kernel module)" "nvidia-open-driver-G07-signed-kmp-meta")")
+            fi
+            if zypper search -s "nvidia-driver-G06-kmp-meta" &>/dev/null; then
                 available_drivers+=("G06")
+                available_labels+=("$(_nvidia_version_only "G06" "nvidia-driver-G06-kmp-meta")")
             fi
-            if zypper search -s nvidia-computeG05 &>/dev/null; then
-                available_drivers+=("G05")
-            fi
+            local gen
+            for gen in G05 G04; do
+                if zypper search -s "nvidia-compute${gen}" &>/dev/null; then
+                    available_drivers+=("$gen")
+                    available_labels+=("$(_nvidia_version_only "$gen" "nvidia-compute${gen}")")
+                fi
+            done
             ;;
         *)
             warn "NVIDIA driver detection not implemented for ${DISTRO_NAME}."
@@ -525,7 +647,10 @@ install_nvidia_drivers() {
     echo "Available NVIDIA driver versions:"
     echo "────────────────────────────────────────────────────────────────"
     for i in "${!available_drivers[@]}"; do
-        echo "  $((i+1)). ${available_drivers[$i]}"
+        # available_labels should be filled in parallel to available_drivers
+        # by every detection branch above; fall back to the raw value if a
+        # label is missing so the menu never prints a blank line.
+        echo "  $((i+1)). ${available_labels[$i]:-${available_drivers[$i]}}"
     done
     echo "  0. Cancel"
     echo "────────────────────────────────────────────────────────────────"
@@ -573,6 +698,10 @@ install_nvidia_drivers() {
                     echo "Installing latest NVIDIA driver (akmod-nvidia)..."
                     sudo "$PKG_MGR" install -y akmod-nvidia xorg-x11-drv-nvidia-cuda
                     ;;
+                580xx)
+                    echo "Installing legacy NVIDIA 580 driver..."
+                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-580xx akmod-nvidia-580xx
+                    ;;
                 470xx)
                     echo "Installing legacy NVIDIA 470 driver..."
                     sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-470xx akmod-nvidia-470xx
@@ -580,10 +709,6 @@ install_nvidia_drivers() {
                 390xx)
                     echo "Installing legacy NVIDIA 390 driver..."
                     sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-390xx akmod-nvidia-390xx
-                    ;;
-                [0-9]*)
-                    echo "Installing NVIDIA driver version ${driver_version}..."
-                    sudo "$PKG_MGR" install -y "kmod-nvidia-${driver_version}"
                     ;;
                 *)
                     warn "Unknown driver version: ${driver_version}"
@@ -609,11 +734,25 @@ install_nvidia_drivers() {
             esac
             ;;
         suse)
-            if [[ "$driver_version" =~ ^G0[0-9]$ ]]; then
-                sudo zypper install -y "nvidia-compute${driver_version}"
-            else
-                sudo zypper install -y "nvidia-driver-${driver_version}"
-            fi
+            case "$driver_version" in
+                G04|G05)
+                    sudo zypper install -y "nvidia-compute${driver_version}"
+                    ;;
+                G06)
+                    echo "Installing NVIDIA ${driver_version} driver (proprietary kmp)..."
+                    sudo zypper install -y "nvidia-driver-${driver_version}-kmp-meta"
+                    ;;
+                G07)
+                    # G07 ships only as the open-source kernel module on
+                    # openSUSE's NVIDIA repo — no proprietary kmp package
+                    # exists for it (verified against the real repo).
+                    echo "Installing NVIDIA G07 driver (open kernel module)..."
+                    sudo zypper install -y "nvidia-open-driver-G07-signed-kmp-meta"
+                    ;;
+                *)
+                    sudo zypper install -y "nvidia-driver-${driver_version}"
+                    ;;
+            esac
             ;;
         *)
             warn "NVIDIA driver installation not implemented for ${DISTRO_NAME}."
