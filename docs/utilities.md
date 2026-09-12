@@ -275,6 +275,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **OCCT** | CPU/RAM/GPU stability and stress testing — free Personal edition, x86_64 binary from ocbase.com, installed per-user under `~/.local/share/occt` |
 | **Pay Respects** | Press `F` to fix the last failed command — Rust `thefuck` replacement with inline `Ctrl+X` correction. Installed from upstream's `.deb`/`.rpm` (in no distro repo; AUR on Arch) and wired into `~/.bashrc`/`~/.zshrc`; its AI module is disabled by default |
 | **Stacer** | Graphical system optimizer and monitor |
+| **TMOG** | Native Qt task manager with real-time system metrics — no repo, AUR, or checksums upstream; installed from tmog.org's `.deb` on Debian/Ubuntu, AppImage elsewhere |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |
 
 Grouped under a **Kernel Managers** folder inside the System Tools tab — tools for installing and switching alternate kernels. Each is listed on every distro but installs only on the family it supports (warning and stopping otherwise):

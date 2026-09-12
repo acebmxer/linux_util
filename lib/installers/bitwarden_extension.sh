@@ -76,7 +76,7 @@ _bw_ext_apply_chromium_entry() {
             line="${line#\"}"
             line="${line%\"}"
             [[ -n "$line" ]] && entries+=("$line")
-        done < <(sudo grep -oE '"[a-z0-9]{32};https://clients2\.google\.com/service/update2/crx"' "$policy_file" 2>/dev/null)
+        done < <(grep -oE '"[a-z0-9]{32};https://clients2\.google\.com/service/update2/crx"' "$policy_file" 2>/dev/null)
     fi
 
     for line in "${entries[@]}"; do
@@ -104,7 +104,7 @@ _bw_ext_remove_chromium_entry() {
         line="${line#\"}"
         line="${line%\"}"
         [[ -n "$line" && "$line" != "$entry" ]] && kept+=("$line")
-    done < <(sudo grep -oE '"[a-z0-9]{32};https://clients2\.google\.com/service/update2/crx"' "$policy_file" 2>/dev/null)
+    done < <(grep -oE '"[a-z0-9]{32};https://clients2\.google\.com/service/update2/crx"' "$policy_file" 2>/dev/null)
 
     if (( ${#kept[@]} == 0 )); then
         sudo rm -f "$policy_file"
@@ -363,14 +363,14 @@ check_bitwarden_extension() {
     for browser in "${!_BW_CHROMIUM_POLICY_DIRS[@]}"; do
         local pf
         pf="$(_bw_ext_policy_file "$browser")"
-        [[ -f "$pf" ]] && sudo grep -q "${_BW_EXT_ID};${_BW_EXT_UPDATE_URL}" "$pf" 2>/dev/null && return 0
+        [[ -f "$pf" ]] && grep -q "${_BW_EXT_ID};${_BW_EXT_UPDATE_URL}" "$pf" 2>/dev/null && return 0
     done
     local ff_path
     ff_path="$(_bw_ext_firefox_policy_path)"
-    [[ -n "$ff_path" && -f "$ff_path" ]] && sudo grep -q "\"${_BW_FF_GUID}\"" "$ff_path" 2>/dev/null && return 0
+    [[ -n "$ff_path" && -f "$ff_path" ]] && grep -q "\"${_BW_FF_GUID}\"" "$ff_path" 2>/dev/null && return 0
     local lw_path
     lw_path="$(_bw_ext_librewolf_policy_path)"
-    [[ -n "$lw_path" && -f "$lw_path" ]] && sudo grep -q "\"${_BW_FF_GUID}\"" "$lw_path" 2>/dev/null && return 0
+    [[ -n "$lw_path" && -f "$lw_path" ]] && grep -q "\"${_BW_FF_GUID}\"" "$lw_path" 2>/dev/null && return 0
     local zen_path
     zen_path="$(_bw_ext_zen_policy_path)"
     [[ -n "$zen_path" && -f "$zen_path" ]] && grep -q "\"${_BW_FF_GUID}\"" "$zen_path" 2>/dev/null && return 0

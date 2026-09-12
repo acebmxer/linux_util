@@ -2,6 +2,10 @@
 # Self-update script functions
 
 self_update_script() {
+    if [[ "${LINUX_UTIL_NO_SELF_UPDATE:-0}" == "1" ]]; then
+        info "LINUX_UTIL_NO_SELF_UPDATE=1 set; skipping self-update check."
+        return 0
+    fi
     info "Checking for script updates..."
     if ! command -v git &>/dev/null; then
         warn "git is not installed; cannot self-update."

@@ -12,6 +12,127 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Fedora/RHEL NVIDIA driver menu offered bogus entries like "580", "470",
+  "390" and "7" alongside the real "580xx"/"470xx"/"390xx" legacy branches**,
+  none of which were installable packages. The menu built its list with
+  `dnf list available 'kmod-nvidia-*' | grep -oP 'kmod-nvidia-\K[0-9]+'`, which
+  was meant to catch legacy branch packages but instead matched *any*
+  `kmod-nvidia-*` package on the system — including the akmod-built,
+  per-kernel packages already installed (e.g.
+  `kmod-nvidia-7.2.4-200.fc44.x86_64.x86_64`), from which it extracted the
+  leading digit of the kernel version as if it were a driver branch. Selecting
+  one of those bogus entries passed a meaningless value straight to
+  `dnf install kmod-nvidia-<N>`, a package that has never existed. Replaced
+  with explicit availability checks for the three real legacy branches RPM
+  Fusion actually ships (`580xx`, `470xx`, `390xx`), matching the pattern
+  already used for the 470xx/390xx 32-bit-library and install-time package
+  names. The 580xx branch was also missing from both the install step and the
+  32-bit-library step even though RPM Fusion has shipped it for a while; both
+  now handle it the same way as 470xx/390xx.
+
+- **openSUSE's NVIDIA driver detection and install used package names that
+  don't exist for the two newest GPU generations, so G06 was never offered
+  and there was no G07 entry at all.** The original numeric-branch regex
+  (`zypper search -s nvidia-driver | grep -oP 'nvidia-driver-\K[0-9]+'`) could
+  never match anything on real openSUSE repos, since NVIDIA's openSUSE
+  packages are named by GPU generation, not a numeric branch. The replacement
+  check that followed queried `nvidia-computeG06` (no hyphen) for the "G06"
+  entry, which also does not exist — verified against the real NVIDIA
+  openSUSE repo, whose actual package naming is inconsistent across
+  generations: G04/G05 use no hyphen (`nvidia-computeG05` is the real
+  metapackage), while G06 uses hyphenated component names and its real
+  top-level metapackage is `nvidia-driver-G06-kmp-meta`. G07 has no
+  proprietary kmp package at all on this repo — only the open-source kernel
+  module variant, `nvidia-open-driver-G07-signed-kmp-meta`. Detection, the
+  32-bit-library install/check, and the driver install step are now correct
+  per generation, and G07 is offered (labelled "open kernel module" so it
+  isn't mistaken for the proprietary driver the other entries install).
+
+### Changed
+
+- **The NVIDIA driver selection menu now shows the real available version
+  number for each entry**, queried live from the package manager at
+  menu-build time, on every supported distro family (Fedora/RHEL,
+  Debian/Ubuntu, Arch/CachyOS, openSUSE). Previously the menu showed only a
+  branch label with no way to tell what version it would actually install
+  without picking it. Where the label alone already carries no version
+  information (`latest`, `dkms`, `lts`, package names like
+  `nvidia-tesla-535-driver`), it's shown as `label (version)`, e.g. `latest
+  (610.57.04)`. Where the label is just a branch number that becomes
+  redundant once the real version is known (`580xx`, `470xx`, `390xx`, and
+  openSUSE's `G04`-`G06`), the version replaces it outright, e.g. `580xx` now
+  reads `580.178.04`. If a version lookup fails for some reason, the entry
+  falls back to showing the original label.
+
+- **Installing NVIDIA Drivers on Fedora/RHEL could hang indefinitely at
+  "Detecting available NVIDIA drivers..."** with no visible prompt and no
+  response to Ctrl+C. The four `dnf list available <pkg>` probes that build
+  the driver-version menu ran with no `-y`, and dnf/dnf5 ask to import a
+  repository's GPG key on that repo's first use in a session — not only when
+  installing from it. If any other repo on the system had an unimported key
+  (e.g. one added earlier by this project's own NVIDIA Container Toolkit
+  installer, an entirely separate repo from RPM Fusion), the first `dnf list
+  available` call hit that prompt with no controlling terminal to answer it
+  and blocked forever; dnf holds stdin while waiting on the prompt, which is
+  why Ctrl+C appeared to do nothing until the process was killed outright.
+  All four calls now pass `-y` (as every other package-manager call in this
+  installer already does) so an unimported key is accepted automatically
+  instead of blocking.
+
+- **Startup could take minutes instead of seconds while checking installed
+  utilities.** `check_installed_utilities()` runs every registered utility's
+  check (and, for System Updates, its version function) once on every launch.
+  Two of those were disproportionately expensive:
+
+  - The Bitwarden, Joplin Web Clipper and SponsorBlock extension checks read
+    their browser policy files with `sudo grep`. Those files are written by
+    this tool's own installers via `sudo tee`/`sudo mkdir`, so they land
+    world-readable — `sudo` was never needed to read them back. With no sudo
+    timestamp cached and no TTY to prompt on, each `sudo grep` call silently
+    blocked for ~2 seconds before failing, and each of the three checks makes
+    up to six such calls (one per browser/profile), adding roughly 10-12
+    seconds of pure stalling. All three now use a plain `grep`.
+
+  - `get_version_system_updates()` (the pending-updates badge next to System
+    Updates) called `dnf check-update`, pacman's `checkupdates`, and
+    `fwupdmgr get-upgrades` directly, unbounded and uncached, on every single
+    startup. All three refresh metadata over the network with no
+    cache-only/offline flag, so a slow or unreachable mirror hung the entire
+    menu — measured once at 2 minutes 34 seconds wall clock for what should be
+    an instant status read. Each of the three now runs under a 5-second
+    `timeout`, and the result (including "nothing pending") is cached for
+    `PKG_CACHE_MAX_AGE_SECS` (default 1 hour, same window the package-manager
+    metadata cache already uses), the same pattern `upstream_latest_version()`
+    already used for upstream-binary version checks. Set
+    `SYSTEM_UPDATES_VER_REFRESH=1` to bypass the cache for one call.
+
+  Together these took a full startup scan from 2m34s down to about 5 seconds
+  cold and under 5 seconds warm, measured against this project's own registry
+  of 216 utilities on Fedora.
+
+### Added
+
+- **`LINUX_UTIL_NO_SELF_UPDATE=1`** skips the self-update check for a single
+  run — `self_update_script()` previously had no way to opt out short of
+  running from a non-git checkout or a detached HEAD, so testing local,
+  uncommitted changes risked a `git pull` (or, on conflict, a `git reset
+  --hard`) overwriting them. Matches the equivalent `XO_NO_SELF_UPDATE` flag
+  in `install_xen_orchestra`.
+
+- **TMOG.** Native Qt task manager, added under System Tools. Upstream
+  (tmog.org) ships no GitHub repo, no package repo, no AUR entry and no
+  checksums — just fixed-name files served from `tmog.org/downloads/`, with
+  the current version only visible embedded in those filenames on the
+  download page itself (currently "BETA 3" / 0.1.3). The installer scrapes
+  the current `.deb`/`.AppImage` filenames off the homepage since there is no
+  version API to query, and falls back to `verify_download`'s non-empty/
+  magic-byte check since there is no checksums file to verify against.
+  Debian/Ubuntu get the real `.deb`; Fedora/RHEL, Arch and openSUSE get the
+  AppImage extracted per-user (same approach as Stacer), since there is no
+  `.rpm` and no repo/AUR package to fall back to.
+
 ## [1.4.0] - 2026-09-06
 
 ### Changed
