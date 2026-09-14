@@ -1327,243 +1327,22 @@ test_json_list_alternate_is_valid_json
 test_json_check_unknown_exits_nonzero
 
 # ============================================================================
-# Test: WSL Support (is_wsl / wsl_distro_name / do_reboot)
+# Test: do_reboot
 # ============================================================================
 echo ""
-echo "=== WSL Support Tests ==="
+echo "=== Reboot Tests ==="
 
-# is_wsl detects WSL when $WSL_DISTRO_NAME is set. Run in a subshell so the
-# cached _IS_WSL and the env override do not leak into other tests.
-test_is_wsl_true_when_distro_name_set() {
-    local rc
-    ( unset _IS_WSL; WSL_DISTRO_NAME="Ubuntu"; is_wsl ); rc=$?
-    assert_eq "0" "$rc" "is_wsl returns true when WSL_DISTRO_NAME is set"
-}
-
-# is_wsl returns false when no WSL marker is present. We unset the env var and
-# shadow grep so /proc/version cannot match microsoft/-WSL2.
-test_is_wsl_false_without_markers() {
-    local rc
-    (
-        unset _IS_WSL WSL_DISTRO_NAME
-        grep() { return 1; }
-        is_wsl
-    ); rc=$?
-    assert_eq "1" "$rc" "is_wsl returns false when no WSL markers present"
-}
-
-# is_wsl detects WSL via /proc/version markers even without the env var.
-test_is_wsl_true_via_proc_version() {
-    local rc
-    (
-        unset _IS_WSL WSL_DISTRO_NAME
-        grep() { return 0; }   # simulate microsoft/-WSL2 match
-        is_wsl
-    ); rc=$?
-    assert_eq "0" "$rc" "is_wsl returns true when /proc/version matches"
-}
-
-# is_wsl caches its result in _IS_WSL on first call.
-test_is_wsl_caches_result() {
-    local cached
-    cached=$( unset _IS_WSL; WSL_DISTRO_NAME="Ubuntu"; is_wsl; printf '%s' "$_IS_WSL" )
-    assert_eq "true" "$cached" "is_wsl caches result in _IS_WSL"
-}
-
-# wsl_distro_name echoes the running distro name.
-test_wsl_distro_name_echoes_var() {
-    local out
-    out=$( WSL_DISTRO_NAME="Ubuntu" wsl_distro_name )
-    assert_eq "Ubuntu" "$out" "wsl_distro_name echoes WSL_DISTRO_NAME"
-}
-
-# do_reboot under WSL no longer attempts to terminate or relaunch the distro
-# via the wsl.exe interop bridge — that mechanism could leave the Windows
-# terminal in a broken state (a wedged interop socket, or a garbled input
-# mode needing the window closed and reopened) in a way that couldn't be
-# detected or fixed from inside the script, since the breakage happens on
-# the Windows side after this process's control ends. It now only prints
-# manual restart instructions and returns — never exits, never calls
-# wsl.exe, never calls systemctl.
-test_do_reboot_wsl_prints_instructions_only() {
-    local out
-    out=$(
-        _IS_WSL=true
-        WSL_DISTRO_NAME="Ubuntu"
-        wsl.exe() { echo "WSLEXE_CALLED:$*"; }
-        systemctl() { echo "SYSTEMCTL_CALLED"; }
-        do_reboot 2>&1
-    )
-    assert_contains "$out" "wsl --terminate Ubuntu" \
-        "do_reboot (WSL) prints the terminate instruction"
-    assert_contains "$out" "wsl -d Ubuntu" \
-        "do_reboot (WSL) prints the relaunch instruction"
-    assert_false "do_reboot (WSL) does not call wsl.exe itself" \
-        grep -q "WSLEXE_CALLED" <<< "$out"
-    assert_false "do_reboot (WSL) does not call systemctl" \
-        grep -q "SYSTEMCTL_CALLED" <<< "$out"
-}
-
-# do_reboot under WSL returns normally (does not exit the process) so the
-# caller can continue — there is nothing left for it to exit early for.
-test_do_reboot_wsl_returns_not_exits() {
-    local rc
-    (
-        _IS_WSL=true
-        WSL_DISTRO_NAME="Ubuntu"
-        do_reboot >/dev/null 2>&1
-    ); rc=$?
-    assert_eq "0" "$rc" "do_reboot (WSL) returns 0 instead of exiting"
-}
-
-# do_reboot on a normal host runs `sudo systemctl reboot` (unchanged behavior).
+# do_reboot runs `sudo systemctl reboot`.
 test_do_reboot_host_uses_systemctl() {
     local out
     out=$(
-        _IS_WSL=false
         sudo() { echo "SUDO:$*"; }
         do_reboot 2>&1
     )
     assert_contains "$out" "SUDO:systemctl reboot" \
-        "do_reboot (host) runs sudo systemctl reboot"
+        "do_reboot runs sudo systemctl reboot"
 }
-
-test_is_wsl_true_when_distro_name_set
-test_is_wsl_false_without_markers
-test_is_wsl_true_via_proc_version
-test_is_wsl_caches_result
-test_wsl_distro_name_echoes_var
-test_do_reboot_wsl_prints_instructions_only
-test_do_reboot_wsl_returns_not_exits
 test_do_reboot_host_uses_systemctl
-
-# ============================================================================
-# Test: Window Button Layout (detect_window_button_de / install_window_buttons)
-# ============================================================================
-echo ""
-echo "=== Window Button Layout Tests ==="
-
-# The installer functions live in a per-utility file that the harness does not
-# source by default (only lib/*.sh are sourced). Source it here; it only defines
-# functions, so sourcing has no side effects.
-source "${SCRIPT_DIR}/lib/installers/window_buttons.sh"
-
-# detect_window_button_de maps the XDG_CURRENT_DESKTOP hint to a DE token.
-test_detect_de_gnome_from_hint() {
-    local out
-    out=$( XDG_CURRENT_DESKTOP="ubuntu:GNOME" DESKTOP_SESSION="" detect_window_button_de )
-    assert_eq "gnome" "$out" "detect_window_button_de maps GNOME hint to gnome"
-}
-
-test_detect_de_kde_from_hint() {
-    local out
-    out=$( XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="plasma" detect_window_button_de )
-    assert_eq "kde" "$out" "detect_window_button_de maps KDE hint to kde"
-}
-
-test_detect_de_xfce_from_hint() {
-    local out
-    out=$( XDG_CURRENT_DESKTOP="XFCE" DESKTOP_SESSION="" detect_window_button_de )
-    assert_eq "xfce" "$out" "detect_window_button_de maps XFCE hint to xfce"
-}
-
-# With no hint, detection falls back to probing the available gsettings schema.
-# Stub gsettings to advertise only the GNOME schema and command to report it
-# present; xfconf-query is reported absent.
-test_detect_de_fallback_to_gnome_schema() {
-    local out
-    out=$(
-        unset XDG_CURRENT_DESKTOP DESKTOP_SESSION
-        command() {
-            case "${2:-}" in
-                gsettings) return 0 ;;
-                xfconf-query) return 1 ;;
-            esac
-            builtin command "$@"
-        }
-        gsettings() {
-            [[ "${1:-}" == "list-schemas" ]] && { printf 'org.gnome.desktop.wm.preferences\n'; return 0; }
-            return 0
-        }
-        detect_window_button_de
-    )
-    assert_eq "gnome" "$out" "detect_window_button_de falls back to gnome via schema probe"
-}
-
-# install_window_buttons on GNOME issues the exact gsettings command and never
-# calls sudo. A session bus is faked so the no-GUI guard is not taken.
-test_install_window_buttons_gnome_sets_layout() {
-    local out
-    out=$(
-        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/fake"
-        XDG_CURRENT_DESKTOP="GNOME"
-        DESKTOP_SESSION=""
-        gsettings() { echo "GSETTINGS:$*"; return 0; }
-        sudo() { echo "SUDO_CALLED"; }
-        install_window_buttons 2>&1
-    )
-    assert_contains "$out" "GSETTINGS:set org.gnome.desktop.wm.preferences button-layout :minimize,maximize,close" \
-        "install_window_buttons (GNOME) sets button-layout to :minimize,maximize,close"
-    assert_false "install_window_buttons (GNOME) does not call sudo" \
-        grep -q "SUDO_CALLED" <<< "$out"
-}
-
-# install_window_buttons on Xfce uses xfconf-query, not gsettings.
-test_install_window_buttons_xfce_uses_xfconf() {
-    local out
-    out=$(
-        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/fake"
-        XDG_CURRENT_DESKTOP="XFCE"
-        DESKTOP_SESSION=""
-        xfconf-query() { echo "XFCONF:$*"; return 0; }
-        gsettings() { echo "GSETTINGS_CALLED"; }
-        install_window_buttons 2>&1
-    )
-    assert_contains "$out" "XFCONF:-c xfwm4 -p /general/button_layout -s O|HMC" \
-        "install_window_buttons (Xfce) sets xfwm4 button_layout via xfconf-query"
-    assert_false "install_window_buttons (Xfce) does not use gsettings" \
-        grep -q "GSETTINGS_CALLED" <<< "$out"
-}
-
-# install_window_buttons on KDE makes no change (KWin ignores the GNOME key).
-test_install_window_buttons_kde_skips() {
-    local out
-    out=$(
-        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/fake"
-        XDG_CURRENT_DESKTOP="KDE"
-        DESKTOP_SESSION=""
-        gsettings() { echo "GSETTINGS_CALLED"; }
-        xfconf-query() { echo "XFCONF_CALLED"; }
-        install_window_buttons 2>&1
-    )
-    assert_false "install_window_buttons (KDE) does not call gsettings" \
-        grep -q "GSETTINGS_CALLED" <<< "$out"
-    assert_false "install_window_buttons (KDE) does not call xfconf-query" \
-        grep -q "XFCONF_CALLED" <<< "$out"
-}
-
-# With no graphical session (no D-Bus/Wayland/X), the function warns and makes
-# no change instead of failing obscurely.
-test_install_window_buttons_no_session_skips() {
-    local out
-    out=$(
-        unset DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY DISPLAY
-        XDG_CURRENT_DESKTOP="GNOME"
-        gsettings() { echo "GSETTINGS_CALLED"; }
-        install_window_buttons 2>&1
-    )
-    assert_contains "$out" "No graphical session detected" \
-        "install_window_buttons warns when no graphical session is present"
-    assert_false "install_window_buttons (no session) does not call gsettings" \
-        grep -q "GSETTINGS_CALLED" <<< "$out"
-}
-
-# get_version_window_buttons reports a human-readable DE label for the menu.
-test_get_version_window_buttons_reports_de() {
-    local out
-    out=$( XDG_CURRENT_DESKTOP="GNOME" DESKTOP_SESSION="" get_version_window_buttons )
-    assert_eq "GNOME" "$out" "get_version_window_buttons reports detected DE label"
-}
 
 # ----------------------------------------------------------------------------
 # System info gatherer: Packages / WM / DE fields (lib/menu.sh)
@@ -1594,8 +1373,6 @@ test_gather_os_age_format() {
         # the host timezone. 1710460800 = 2024-03-15 00:00:00 UTC.
         export TZ=UTC
         PKG_MGR=""
-        is_wsl() { return 1; }
-        detect_window_button_de() { printf 'unknown'; }
         # _gather_sysinfo uses live `date` for "now", so assert only on the
         # parenthesized install date, which is deterministic under fixed TZ.
         _detect_install_epoch() { printf '1710460800'; }
@@ -1610,8 +1387,6 @@ test_gather_os_age_unknown() {
     local out
     out=$(
         PKG_MGR=""
-        is_wsl() { return 1; }
-        detect_window_button_de() { printf 'unknown'; }
         _detect_install_epoch() { printf ''; }
         _gather_sysinfo
         printf '%s' "$_SYSINFO_OS_AGE"
@@ -1633,8 +1408,6 @@ test_gather_packages_apt_format() {
             builtin command "$@"
         }
         dpkg-query() { printf '.\n.\n.\n'; }
-        is_wsl() { return 1; }
-        detect_window_button_de() { printf 'unknown'; }
         _gather_sysinfo
         printf '%s' "$_SYSINFO_PACKAGES"
     )
@@ -1646,53 +1419,22 @@ test_gather_packages_unknown_when_no_tool() {
     local out
     out=$(
         PKG_MGR=""
-        is_wsl() { return 1; }
-        detect_window_button_de() { printf 'unknown'; }
         _gather_sysinfo
         printf '%s' "$_SYSINFO_PACKAGES"
     )
     assert_eq "unknown" "$out" "_gather_sysinfo reports unknown packages when no manager"
 }
 
-# DE: maps the detect_window_button_de token to a display name.
-test_gather_de_maps_kde_token() {
-    local out
-    out=$(
-        PKG_MGR=""
-        is_wsl() { return 1; }
-        detect_window_button_de() { printf 'kde'; }
-        _gather_sysinfo
-        printf '%s' "$_SYSINFO_DE"
-    )
-    assert_eq "KDE Plasma" "$out" "_gather_sysinfo maps kde token to 'KDE Plasma'"
-}
-
-# DE: falls back to the XDG hint (prefix-stripped) on an unknown token.
-test_gather_de_falls_back_to_xdg_hint() {
+# DE: reports the XDG hint (prefix-stripped).
+test_gather_de_reports_xdg_hint() {
     local out
     out=$(
         PKG_MGR=""
         XDG_CURRENT_DESKTOP="ubuntu:GNOME"
-        is_wsl() { return 1; }
-        detect_window_button_de() { printf 'unknown'; }
         _gather_sysinfo
         printf '%s' "$_SYSINFO_DE"
     )
-    assert_eq "GNOME" "$out" "_gather_sysinfo falls back to XDG hint and strips prefix"
-}
-
-# WM: reports WSLg under WSL with a Wayland display.
-test_gather_wm_wslg_under_wsl() {
-    local out
-    out=$(
-        PKG_MGR=""
-        WAYLAND_DISPLAY="wayland-0"
-        is_wsl() { return 0; }
-        detect_window_button_de() { printf 'unknown'; }
-        _gather_sysinfo
-        printf '%s' "$_SYSINFO_WM"
-    )
-    assert_eq "WSLg" "$out" "_gather_sysinfo reports WSLg under WSL with Wayland display"
+    assert_eq "GNOME" "$out" "_gather_sysinfo reports XDG hint and strips prefix"
 }
 
 # ============================================================================
@@ -1784,10 +1526,6 @@ test_check_fedora_mainline_kernel_absent
 test_install_linux_tkg_unsupported_distro
 test_check_linux_tkg_absent
 
-test_detect_de_gnome_from_hint
-test_detect_de_kde_from_hint
-test_detect_de_xfce_from_hint
-test_detect_de_fallback_to_gnome_schema
 test_humanize_duration_hours
 test_humanize_duration_days
 test_humanize_duration_months
@@ -1796,14 +1534,7 @@ test_gather_os_age_format
 test_gather_os_age_unknown
 test_gather_packages_apt_format
 test_gather_packages_unknown_when_no_tool
-test_gather_de_maps_kde_token
-test_gather_de_falls_back_to_xdg_hint
-test_gather_wm_wslg_under_wsl
-test_install_window_buttons_gnome_sets_layout
-test_install_window_buttons_xfce_uses_xfconf
-test_install_window_buttons_kde_skips
-test_install_window_buttons_no_session_skips
-test_get_version_window_buttons_reports_de
+test_gather_de_reports_xdg_hint
 
 # ============================================================================
 # Test: AUR Routing Helpers (repo_or_aur / flatpak_or_aur)

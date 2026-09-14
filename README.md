@@ -27,7 +27,6 @@ scripting and automation.
 | Everything it can install, by category | [docs/utilities.md](docs/utilities.md) |
 | The menu — controls, selection logic, profiles | [docs/menu.md](docs/menu.md) |
 | Config file, logging, shell completions | [docs/configuration.md](docs/configuration.md) |
-| Running under WSL | [docs/wsl.md](docs/wsl.md) |
 | Something went wrong | [docs/troubleshooting.md](docs/troubleshooting.md) |
 | Adding a utility, code style, tests | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
@@ -123,7 +122,6 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
 | **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |
 | **Window Managers** | Hyprland, Sway, i3, bspwm, awesome, dwm, Openbox |
-| **Windows Integration** *(WSL only)* | Linux Apps on Windows — installs a desktop environment's applications (file manager, editor, terminal, viewers) into a WSL distro without the desktop session, so they run as ordinary windows on the Windows desktop via WSLg |
 | **System Tools** | Btop, Fastfetch, ClamAV, Stacer, Filelight, Input Leap, OCCT, Pay Respects, Zsh + Oh My Zsh, and a Kernel Managers folder |
 
 Every entry, with its per-utility description and any distro limits, is in
@@ -179,10 +177,6 @@ Tab-completion for bash and zsh ships in `completions/` — setup is in
 
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then
 by auto-detecting the available package manager.
-
-The script also runs under **WSL2**, which it detects automatically and adapts
-to — most visibly, "reboot" prints the commands to restart the distribution
-yourself rather than restarting the machine. See [docs/wsl.md](docs/wsl.md).
 
 ---
 

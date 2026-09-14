@@ -207,19 +207,6 @@ register_utility "LACT"                install_lact             check_lact      
 register_utility "Libation"            install_libation         check_libation         uninstall_libation         update_libation            get_version_libation
 register_utility "LibreOffice"         install_libreoffice      check_libreoffice      uninstall_libreoffice      update_libreoffice         get_version_libreoffice
 register_utility "LibreWolf"           install_librewolf        check_librewolf        uninstall_librewolf        update_librewolf           get_version_librewolf
-# Linux Apps on Windows: installs a desktop environment's applications (without
-# the session) inside a WSL distro, to run on the Windows desktop via WSLg. Only
-# meaningful under WSL — not registered at all elsewhere, so it never appears as
-# a normal-distro option.
-if is_wsl; then
-    # check_wsl_apps reports installed only when an application install is
-    # recorded and still present — the one thing this entry owns and can remove.
-    # A desktop session is reported and uninstalled by its own Desktop
-    # Environments entry, not here.
-    register_utility "Linux Apps on Windows" setup_wsl_apps        check_wsl_apps         uninstall_wsl_apps         update_wsl_apps            get_version_wsl_apps
-    # Fully interactive picker — re-running the menu after a failure only asks again
-    NO_RETRY["Linux Apps on Windows"]=1
-fi
 register_utility "LocalSend"           install_localsend        check_localsend        uninstall_localsend        update_localsend           get_version_localsend
 register_utility "Logseq"              install_logseq           check_logseq           uninstall_logseq           update_logseq              get_version_logseq
 register_utility "Lutris"              install_lutris           check_lutris           uninstall_lutris           update_lutris              get_version_lutris
@@ -405,11 +392,6 @@ if [[ "$DISTRO_FAMILY" == "arch" ]] || [[ "$DISTRO_ID" == "opensuse-tumbleweed" 
     register_utility "Pantheon Desktop"    install_pantheon         check_pantheon         uninstall_pantheon         update_pantheon            get_version_pantheon
 fi
 
-# Linux Apps on Windows lives in its own "Windows Integration" category, not in
-# Desktop Environments: it installs applications to run on the Windows desktop
-# via WSLg, deliberately without a desktop session. See its registration further
-# down, with the other Windows Integration entries.
-
 if [[ "$DISTRO_ID" != "elementary" ]]; then
     register_utility "Xfce Desktop"        install_xfce             check_xfce             uninstall_xfce             update_xfce                get_version_xfce
 fi
@@ -488,14 +470,6 @@ NO_RETRY["linux-tkg"]=1
 # The order here determines the tab order in the left panel.
 CATEGORIES=("System Tasks" "Backup" "Bootloaders" "Desktop Environments" "Development" "Disk Utilities" "Drivers" "File Managers" "Firewalls" "Gaming" "Internet" "Login Screens" "Package Managers" "Productivity" "Remote Admin Tools" "System Tools" "Window Managers")
 
-# Windows Integration holds utilities that only make sense when Linux and
-# Windows are running together. Everything in it is WSL-only, so the category is
-# added only under WSL — listing it unconditionally would show an empty tab on
-# every native Linux machine.
-if is_wsl; then
-    CATEGORIES+=("Windows Integration")
-fi
-
 # Category assignment for each utility (System Tasks are identified by SYSTEM_TASKS array)
 UTILITY_CATEGORY["Angry IP Scanner"]="Internet"
 UTILITY_CATEGORY["GRUB"]="Bootloaders"
@@ -535,7 +509,6 @@ UTILITY_CATEGORY["KDE Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["LXQt Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["MATE Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Pantheon Desktop"]="Desktop Environments"
-UTILITY_CATEGORY["Linux Apps on Windows"]="Windows Integration"
 UTILITY_CATEGORY["Xfce Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["awesome"]="Window Managers"
 UTILITY_CATEGORY["bspwm"]="Window Managers"
@@ -898,7 +871,6 @@ UTILITY_DESCRIPTION["LXQt Desktop"]="Lightweight Qt-based desktop offering a fas
 UTILITY_DESCRIPTION["MATE Desktop"]="Traditional GNOME 2-based desktop offering a familiar layout, low resource usage, and broad hardware support."
 UTILITY_DESCRIPTION["Pantheon Desktop"]="Elegant, opinionated desktop from the elementary OS project, designed for simplicity and consistency with a macOS-inspired aesthetic."
 UTILITY_DESCRIPTION["Xfce Desktop"]="Lightweight and fast desktop that is visually clean, reliable, and ideal for older or lower-end hardware."
-UTILITY_DESCRIPTION["Linux Apps on Windows"]="Installs a desktop environment's applications — file manager, text editor, terminal, archiver, image and document viewers — inside a WSL distro, without the desktop session. WSLg publishes each one to the Windows Start menu, so they open as ordinary windows on the Windows desktop alongside your Windows apps; no X server, RDP or display manager involved. Offers whichever desktops are available on this distro (KDE, GNOME, Xfce, MATE, Cinnamon, LXQt, Budgie, Deepin, Pantheon), so you can mix and match. Afterwards it offers to restore the minimize and maximize buttons on GTK title bars, which WSLg omits by default. Records what it installed so uninstall removes exactly those packages and nothing that was already present. A full desktop session is installed from the Desktop Environments category instead. Only appears under WSL."
 UTILITY_DESCRIPTION["XEN Guest Utilities"]="Installs XEN guest agent for improved virtual machine performance, clipboard sharing, and host integration."
 UTILITY_DESCRIPTION["Cockpit"]="Web-based server management console reachable at https://<host>:9090. Provides a browser UI for system metrics, logs, storage, networking, services, containers, user accounts, and a built-in terminal. Enables cockpit.socket so the service activates on first connection, and opens 9090/tcp in the active firewall (firewalld or UFW)."
 UTILITY_DESCRIPTION["Enable RDP"]="Enables Remote Desktop Protocol access to this machine using the XRDP server."

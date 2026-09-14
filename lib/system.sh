@@ -191,61 +191,8 @@ setup_logrotate() {
     return 0
 }
 
-# ============================================================================
-# WSL (Windows Subsystem for Linux) Support
-# ============================================================================
-
-# is_wsl returns 0 (true) when running inside a WSL distribution, 1 otherwise.
-# The result is cached in _IS_WSL so detection runs at most once per process.
-#
-# Detection signals (any match → WSL):
-#   - $WSL_DISTRO_NAME is set (present in WSL 0.0.something onward)
-#   - /proc/version contains "microsoft" or the "-WSL2" kernel suffix
-is_wsl() {
-    if [[ -z "${_IS_WSL:-}" ]]; then
-        if [[ -n "${WSL_DISTRO_NAME:-}" ]] \
-           || grep -qiE 'microsoft|-WSL2' /proc/version 2>/dev/null; then
-            _IS_WSL=true
-        else
-            _IS_WSL=false
-        fi
-    fi
-    [[ "$_IS_WSL" == true ]]
-}
-
-# wsl_distro_name echoes the running WSL distribution name (e.g. "Ubuntu"),
-# or an empty string when unknown/not under WSL.
-wsl_distro_name() { printf '%s' "${WSL_DISTRO_NAME:-}"; }
-
-# do_reboot performs a system reboot appropriate to the environment.
-#
-# On a normal Linux host/VM this runs the same `sudo systemctl reboot` the
-# script has always used. Under WSL a real reboot is not possible from inside
-# the distro: Windows owns the VM lifecycle and there is no bootloader.
-#
-# This used to auto-terminate and relaunch the distro via the wsl.exe interop
-# bridge, but that mechanism was unreliable in ways that were never fully
-# fixable from here: `wsl.exe --terminate` can leave the parent Windows
-# terminal (PowerShell, or a terminal app's WSL connection) in a broken state
-# — a wedged interop socket, or a garbled input mode requiring the window to
-# be closed and reopened — regardless of which terminal launched it, and
-# regardless of how carefully the relaunch's own wait-for-termination polling
-# was implemented (see git history for the polling fixes attempted). Because
-# the breakage happens on the Windows side of the interop bridge, after this
-# process's own control ends, it cannot be detected or recovered from inside
-# the script. So WSL no longer attempts to terminate or relaunch anything —
-# it tells the user how to restart the distro themselves.
+# do_reboot reboots the system.
 do_reboot() {
-    if is_wsl; then
-        local distro
-        distro="$(wsl_distro_name)"
-        warn "A reboot cannot be performed automatically under WSL — Windows owns the VM lifecycle, and automatic distro termination/relaunch has been removed because it could leave the Windows terminal in a broken state."
-        echo "  To restart this distro yourself, run in Windows PowerShell:"
-        echo "    wsl --terminate ${distro:-<DistroName>}"
-        echo "    wsl -d ${distro:-<DistroName>}"
-        return 0
-    fi
-    # Normal Linux host/VM — unchanged behavior.
     sudo systemctl reboot
 }
 

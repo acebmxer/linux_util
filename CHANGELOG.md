@@ -14,45 +14,6 @@ when a release is cut.
 
 ### Added
 
-- **New "Windows Integration" category with a "Linux Apps on Windows" entry.**
-  Installs a desktop environment's applications — file manager, terminal, text
-  editor, archiver, image viewer, document viewer — inside a WSL distro, with no
-  session, compositor or display manager. WSLg publishes each application's
-  `.desktop` entry to the Windows Start menu, so they open as ordinary windows on
-  the Windows desktop alongside Windows applications. The list offers whichever
-  Desktop Environments utilities are registered for the running distro, so
-  per-distro availability applies automatically and any packaged desktop's
-  applications can be used, not a favoured few.
-
-  The per-desktop package sets live in `wsl_apps.sh` rather than in each
-  desktop's own installer, so the feature cannot change how a bare-metal desktop
-  install behaves. Desktops whose applications are not packaged separately from
-  their session (COSMIC) are marked "(no separate applications)" in the list and
-  refuse rather than installing nothing. Packages a given distro does not carry
-  are reported as skipped instead of aborting the whole set.
-
-  After installing, it offers to restore the minimize and maximize buttons on
-  GTK title bars, which WSLg's default window-manager button layout omits — an
-  application with only a close button does not behave like a Windows one. This
-  delegates to the existing `install_window_buttons` implementation rather than
-  setting the key a second time. It asks rather than applying silently, because
-  it writes a per-user desktop preference that the user may have set
-  deliberately and that is not undone automatically.
-
-  Installs can be **uninstalled** from the same entry. Each install records the
-  packages it actually added under `~/.config/linux_util/wsl_apps/`, and
-  uninstall removes only those — packages already present beforehand are
-  recorded as such and never removed. It lists what it will remove and asks
-  first. `check_wsl_apps` reports "installed" only while such a record exists
-  with at least one of its packages still present, which is what makes the menu
-  offer the uninstall. A desktop session installed from Desktop Environments is
-  deliberately not covered: it is reported and removed by that desktop's own
-  entry, so counting it here would offer two uninstalls for one thing.
-
-  The category and the entry are registered only under WSL, so neither appears
-  on a native install. After installing it warns, with the `wsl --update` /
-  `wsl --shutdown` fix, if no WSLg display was detected in the current session.
-
 - **`NO_HEALTH_CHECK` opt-out for the post-install health check.** A utility
   whose check function describes only one of several possible outcomes can set
   `NO_HEALTH_CHECK["Name"]=1` to skip it. Previously the only way to avoid a
@@ -62,12 +23,11 @@ when a release is cut.
 
 ### Removed
 
-- **The one-time "Running under WSL... 'Reboot' restarts this distro, not
-  Windows" startup notice.** It existed to explain that reboot behaved
-  differently under WSL, from when reboot used to automatically terminate and
-  relaunch the distro. That automatic behavior was already removed (reboot now
-  only prints the manual `wsl --terminate` / `wsl -d` commands), so the notice
-  was stale leftover noise shown on every single launch under WSL.
+- **Environment-specific reboot handling, its System Details indicator, its
+  window-manager detection entry, and the GTK title-bar-button feature and
+  category built on it.** `do_reboot` now always runs `sudo systemctl reboot`,
+  with no environment-specific branching anywhere in it, the reboot prompt, or
+  the rest of the script.
 
 ### Fixed
 
@@ -85,39 +45,6 @@ when a release is cut.
   requiring a full reinstall. The helper is already idempotent, so this is a
   no-op once configuration is correct.
 
-### Removed
-
-- **The standalone "GTK Window Fix" system task and the "WSL Fixes"
-  subcategory that held it.** The fix it applied — restoring the minimize and
-  maximize buttons that WSLg's default button layout omits — is now offered
-  directly at the end of a Linux Apps on Windows install, which is the only
-  point at which it is needed and the only point at which the user knows it is
-  relevant. Having it as a separate entry meant installing the applications and
-  then being told, in the completion message, to go and find another menu item
-  to make them usable. The subcategory had exactly one member and disappears
-  with it. `install_window_buttons` and `detect_window_button_de` in
-  `lib/installers/window_buttons.sh` are unchanged and still used — the first by
-  the apps install, the second by the menu's system-information panel — so no
-  behaviour is lost, only the separate menu entry.
-
-- **`do_reboot` no longer terminates or relaunches the WSL distro
-  automatically.** Under WSL, "reboot" now only prints the
-  `wsl --terminate <distro>` / `wsl -d <distro>` commands for the user to run
-  themselves; it no longer calls `wsl.exe` at all. The automatic version —
-  terminating the distro's init via the `wsl.exe` interop bridge, then
-  queuing a relaunch — went through several attempted fixes (queuing the
-  relaunch before terminating rather than after, then replacing a `findstr`-
-  based wait with one that correctly decodes `wsl.exe`'s UTF-16LE output) and
-  still failed: it could leave the Windows terminal that launched it (seen in
-  both Termius and a native admin PowerShell window, so not specific to
-  either) in a broken state — a wedged interop connection reporting
-  `WSL_E_DISTRO_NOT_FOUND`, or an input mode left garbled until the window
-  was closed and reopened. That breakage happens on the Windows side, after
-  this process's own control has ended, so it cannot be detected or
-  recovered from inside the script. `linux_util.sh`'s reboot prompt is
-  skipped entirely under WSL now, since there's no automatic action left to
-  ask y/N about.
-
 ### Fixed
 
 - **The Desktop Environments category in the menu did not list entries in
@@ -125,14 +52,11 @@ when a release is cut.
   `register_utility` is called in `lib/installers.sh`, not the
   `UTILITY_CATEGORY` map — so reordering that map's entries (an earlier,
   incomplete pass at this same fix) had no effect on what actually renders.
-  The real order was Cinnamon, COSMIC, Deepin, GNOME, KDE, MATE, Xfce, WSL,
-  Budgie, LXQt, Pantheon, with Budgie, LXQt and Pantheon each stuck at the
-  end because their conditional registration blocks were written after the
-  others. Reordered the `register_utility` calls (and split the combined
-  GNOME/KDE/MATE/Xfce block apart) into case-insensitive alphanumeric order:
-  Budgie, Cinnamon, COSMIC, Deepin, GNOME, KDE, LXQt, MATE, Pantheon, WSL,
-  Xfce. No change to which entries appear on which distro — only their
-  order.
+  Reordered the `register_utility` calls (and split the combined
+  GNOME/KDE/MATE/Xfce block apart) into case-insensitive alphanumeric order,
+  with a couple of entries each stuck at the end because their conditional
+  registration blocks were written after the others. No change to which
+  entries appear on which distro — only their order.
 
 - **The "System Updates" badge kept showing the pending-update count from
   before the last update run, for up to an hour after updates were actually
@@ -146,7 +70,7 @@ when a release is cut.
   the update run so the cache file is deleted afterwards regardless of
   outcome, forcing a fresh probe the next time the menu draws.
 
-- **On a minimal Fedora WSL rootfs with no `hostname` binary installed, the
+- **On a minimal Fedora rootfs with no `hostname` binary installed, the
   log header's `$(hostname)` call failed with `hostname: command not found`
   printed straight to the terminal**, because that line had no fallback,
   unlike the equivalent lookup already used for the on-screen System Details
@@ -154,27 +78,7 @@ when a release is cut.
   `${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}` fallback so a
   missing `hostname` command degrades to "unknown" instead of erroring.
 
-- **Under WSL, "reboot" only powered the distro off and left the user at a bare
-  Windows prompt instead of actually restarting it.** `do_reboot()`'s WSL path
-  runs `wsl.exe --terminate` (the only way to end a distro's VM from inside
-  itself — WSL has no bootloader or `systemctl reboot` equivalent a distro can
-  trigger on its own) but never relaunched it, so the "reboot" never completed
-  the second half of what a reboot means: coming back up.
-
-  Fixed by queuing a relaunch *before* terminating, not after: any interop call
-  issued from inside a WSL session goes through that session's interop socket,
-  which belongs to the distro's own init process, so a relaunch command queued
-  after `--terminate` has already killed that process silently has no socket
-  left to run through. The relaunch is a small batch script written to
-  Windows' own `%TEMP%` that waits for the distro to actually stop, then runs
-  `wsl -d <distro>` and deletes itself; it's launched detached
-  (`cmd.exe /c start`) so it survives as an independent Windows process once
-  this session ends. If `cmd.exe`/`wslpath` aren't reachable, it falls back to
-  terminate-only with the manual relaunch command printed, same as before.
-  This is in the shared `do_reboot()`, so it covers every WSL distro, not just
-  Fedora.
-
-- **A minimal Fedora install (seen on a Fedora WSL rootfs) has no `awk`, and
+- **A minimal Fedora install has no `awk`, and
   every module under `lib/` calls it unconditionally with no fallback**, so
   the very first sourced module (`lib/config.sh`) failed with a wall of
   `command not found` errors on every config read, and the same happened again
@@ -593,7 +497,7 @@ when a release is cut.
 - **`README.md` trimmed from 694 lines to a lean front page, with the deep-dive
   material moved into `docs/`.** The README had grown to carry the entire
   utility catalogue — every category's per-item table, roughly 260 lines of it —
-  alongside the config reference, logging, shell completions, WSL behaviour,
+  alongside the config reference, logging, shell completions,
   project structure, module responsibilities, the how-to-add-a-utility walkthrough
   and the full troubleshooting section. The result was a front page nobody could
   skim: the answer to "what is this and how do I run it" sat above ten screens of
@@ -607,8 +511,7 @@ when a release is cut.
   - New `docs/utilities.md` holds the complete catalogue, every per-utility
     description carried over verbatim, with a category index at the top.
   - New `docs/menu.md` (controls, selection logic, profiles), `docs/configuration.md`
-    (config settings, logging, `manage_logs.sh`, bash/zsh completions),
-    `docs/wsl.md` (WSL detection and the restart-the-distro reboot behaviour) and
+    (config settings, logging, `manage_logs.sh`, bash/zsh completions) and
     `docs/troubleshooting.md` (including the xrdp polkit and KDE Wallet PAM
     material).
   - The README's developer sections were dropped in favour of `CONTRIBUTING.md`,
@@ -1857,7 +1760,6 @@ to this release.
 - Distrobox, BoxBuddy, and DistroShelf installers.
 - Zen Browser installer with extension-policy support; Brave Origin browser support.
 - Cockpit web-based server management utility.
-- WSL support: environment detection, reboot handling, and the GTK Window Fix task.
 - Minimal/standard/full install-tier selection.
 - Package-repair tasks, the Delete Default Cloud-Init User task, and the Fix RDP
   Kerberos Delay task.

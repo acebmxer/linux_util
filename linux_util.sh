@@ -21,9 +21,9 @@ fi
 
 # Require core POSIX text tools before sourcing any lib/ module — config.sh
 # and most of lib/ call awk/sed/grep unconditionally with no fallback. Minimal
-# distro images (e.g. a bare Fedora WSL rootfs) can omit awk entirely, since
-# it ships in a separate "gawk" package rather than the base install, and
-# every call then fails with "command not found" instead of a clear error.
+# distro images can omit awk entirely, since it ships in a separate "gawk"
+# package rather than the base install, and every call then fails with
+# "command not found" instead of a clear error.
 _lu_missing_core=()
 for _lu_cmd in awk sed grep; do
     command -v "$_lu_cmd" &>/dev/null || _lu_missing_core+=("$_lu_cmd")
@@ -258,7 +258,7 @@ process_selected() {
     local needs_shell_reload=false
 
     # These tasks do not require a reboot after successful completion
-    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1 ["Configure Syncthing Folders"]=1 ["Linux Apps on Windows"]=1)
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1 ["Configure Syncthing Folders"]=1)
 
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do
@@ -650,38 +650,30 @@ process_selected() {
 
     # Offer reboot (System Tasks, Docker, Drivers, or an OS-flagged pending reboot)
     if [[ "$needs_reboot" == "true" ]]; then
-        # Under WSL there is nothing to offer a y/N prompt for: a real reboot
-        # isn't possible (Windows owns the VM lifecycle), and automatic distro
-        # termination/relaunch was removed — see do_reboot's own comment for
-        # why. Print the manual instructions and skip straight past the prompt.
-        if is_wsl; then
-            do_reboot
-        else
-            local _reboot_prompt="Reboot now? (y/N) "
-            while true; do
-                read -n 1 -rp "$_reboot_prompt" REBOOT_CHOICE < /dev/tty
-                echo
-                [[ $'\e' == "$REBOOT_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
-                REBOOT_CHOICE=${REBOOT_CHOICE:-N}
-                case "$REBOOT_CHOICE" in
-                    y|Y)
-                        info "Rebooting…"
-                        printf '\n\n'
-                        exec 9>&-  # release lock fd before the system goes down
-                        do_reboot
-                        exit 0     # don't fall through to reload/remind prompts
-                        ;;
-                    n|N)
-                        break
-                        ;;
-                    *)
-                        echo "  Please press Y to reboot or N to skip."
-                        continue
-                        ;;
-                esac
-                break
-            done
-        fi
+        local _reboot_prompt="Reboot now? (y/N) "
+        while true; do
+            read -n 1 -rp "$_reboot_prompt" REBOOT_CHOICE < /dev/tty
+            echo
+            [[ $'\e' == "$REBOOT_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+            REBOOT_CHOICE=${REBOOT_CHOICE:-N}
+            case "$REBOOT_CHOICE" in
+                y|Y)
+                    info "Rebooting…"
+                    printf '\n\n'
+                    exec 9>&-  # release lock fd before the system goes down
+                    do_reboot
+                    exit 0     # don't fall through to reload/remind prompts
+                    ;;
+                n|N)
+                    break
+                    ;;
+                *)
+                    echo "  Please press Y to reboot or N to skip."
+                    continue
+                    ;;
+            esac
+            break
+        done
         info "Remember to reboot later if needed."
         while true; do
             read -n 1 -rp "Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty

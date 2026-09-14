@@ -14,7 +14,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Desktop Environments](#desktop-environments) | [Backup](#backup) | [Disk Utilities](#disk-utilities) |
 | [Development](#development) | [Gaming](#gaming) | [Internet](#internet) |
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
-| [System Tools](#system-tools) | [Windows Integration](#windows-integration) | |
+| [System Tools](#system-tools) | | |
 
 > **Incomplete:** 225 utilities and system tasks are registered in
 > `lib/installers.sh`; 192 are listed below. The **File Managers**, **Firewalls**,
@@ -42,7 +42,6 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
 | **Num Lock at Boot** | Enables Num Lock on TTY consoles and the display manager login screen |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
-| **Window Button Layout** | Restores minimize/maximize/close on window title bars for GTK apps (GNOME/Cinnamon/MATE/Xfce); fixes the missing buttons seen on Ubuntu under WSLg |
 | **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/KDE Neon only)* |
 | **Fix Grub on BTRFS** | Fixes GRUB boot entries after BTRFS snapshot restores *(Ubuntu/Kubuntu/KDE Neon only)* |
 | **Fix Monitor Layout at Login** | Restores monitor layout on the login screen *(Ubuntu/Kubuntu/KDE Neon only)* |
@@ -286,12 +285,3 @@ Grouped under a **Kernel Managers** folder inside the System Tools tab — tools
 | **CachyOS Kernel Manager** | GUI to install/build/swap kernels on Arch (also configures sched-ext). Ships only in the CachyOS repo, not the AUR; installs where that repo is enabled |
 | **Fedora Mainline Kernel** | Enables the `@kernel-vanilla/mainline` Copr and installs the latest upstream mainline kernel. Fedora only (requires Secure Boot disabled) |
 | **linux-tkg** | Frogging-Family custom-kernel **builder** — compiles a kernel from source with your choice of scheduler (BORE/EEVDF/PDS), compiler, and config. Cross-distro (Arch via makepkg; Debian/Ubuntu, Fedora, openSUSE via `install.sh`). Interactive, long compile |
-
-
-## Windows Integration
-
-Only registered when running under WSL.
-
-| Utility | Description |
-|---------|-------------|
-| **Linux Apps on Windows** | Installs a desktop environment's applications — file manager, text editor, terminal, archiver, image and document viewers — inside a WSL distro, **without** the desktop session. WSLg publishes each one to the Windows Start menu, so they open as ordinary windows on the Windows desktop alongside Windows apps; no X server, RDP or display manager. Offers whichever desktops are available on the distro, so you can mix and match. Afterwards it offers to restore the minimize and maximize buttons on GTK title bars, which WSLg omits by default — this changes a per-user setting in your profile and is not undone automatically. Records what it installed, so uninstall removes exactly those packages and nothing that was already present. For a full desktop session, use the **Desktop Environments** category instead |
