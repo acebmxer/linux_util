@@ -107,7 +107,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 
 | Category | Covers |
 | --- | --- |
-| **System Tasks** | Updates and repo repair, broken-package fixes, drive/NFS/SMB mounts, UFW, time zone and locale, Num Lock, assorted distro fixes |
+| **System Tasks** | Updates and repo repair, broken-package fixes, drive/NFS/SMB mounts, UFW, time zone and locale, Num Lock, WSL Desktop, assorted distro fixes |
 | **Bootloaders** | GRUB, Limine, systemd-boot, switching between them, and five GRUB theme packs |
 | **Drivers** | NVIDIA, AMD GPU, Intel and AMD microcode, LACT, OpenLogi, Thermalright TRCC, XEN guest tools |
 | **Desktop Environments** | KDE Plasma, GNOME, Xfce, Cinnamon, MATE, LXQt, Budgie, COSMIC, Deepin, Pantheon |

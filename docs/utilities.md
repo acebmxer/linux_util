@@ -39,6 +39,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Mount NFS Share** | Discover and mount an NFS export from a remote server, persisted in `/etc/fstab` |
 | **Mount SMB Share** | Connect to an SMB/CIFS server, store credentials securely, and persist mount in `/etc/fstab` |
 | **Manage Share** | Update or unmount an existing linux_util-managed mount |
+| **WSL Desktop** | Installs a desktop environment (KDE, GNOME, Xfce, and the rest of the Desktop Environments category) inside a WSL distro, displayed through WSLg — no X server or RDP setup needed. WSL only |
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
 | **Num Lock at Boot** | Enables Num Lock on TTY consoles and the display manager login screen |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |

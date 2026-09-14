@@ -56,6 +56,9 @@ register_system_task "Mount NFS Share"    setup_mount_nfs_share   check_mount_nf
 register_system_task "Mount SMB Share"    setup_mount_smb_share   check_mount_smb_share   uninstall_mount_smb_share   update_mount_smb_share    get_version_mount_smb_share
 register_system_task "Manage Share"       setup_manage_share      check_manage_share      uninstall_manage_share      update_manage_share       get_version_manage_share
 register_system_task "Configure Syncthing Folders" setup_syncthing_folders check_syncthing_folders uninstall_syncthing_folders update_syncthing_folders get_version_syncthing_folders
+register_system_task "WSL Desktop"        setup_wsl_desktop       check_wsl_desktop       uninstall_wsl_desktop       update_wsl_desktop        get_version_wsl_desktop
+# Fully interactive picker — re-running the menu after a failure only asks again
+NO_RETRY["WSL Desktop"]=1
 register_utility "NVIDIA Drivers"         install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
 register_utility "Enable RDP"             install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
@@ -841,6 +844,7 @@ UTILITY_DESCRIPTION["Mount Local Drive"]="Interactively selects an unmounted blo
 UTILITY_DESCRIPTION["Mount NFS Share"]="Discovers NFS exports from a remote server via showmount and mounts the chosen share persistently via /etc/fstab. Installs NFS client tools if needed and backs up fstab before any changes."
 UTILITY_DESCRIPTION["Mount SMB Share"]="Connects to an SMB/CIFS server, prompts for credentials, lists available shares, and mounts the chosen share persistently via /etc/fstab. Credentials are stored in a private file under HOME. Installs cifs-utils if needed and backs up fstab before any changes."
 UTILITY_DESCRIPTION["Manage Share"]="Update or unmount an existing linux_util-managed mount. Update: change server, share path, credentials, or mount location for NFS, SMB, or local disk mounts. Unmount: remove the share, delete the mount point directory, clear the fstab entry, and remove the KDE Dolphin Places entry. Backs up fstab before any changes."
+UTILITY_DESCRIPTION["WSL Desktop"]="Installs a full desktop environment (KDE, GNOME, Xfce, and the rest of the Desktop Environments category) inside a WSL distro, for use with WSLg — the GUI support built into WSL on Windows 11 and recent Windows 10 builds. No X server, RDP, or extra display-server setup needed. WSL only; reuses the same install_* function as the standalone Desktop Environments entry, so it installs identically either way."
 UTILITY_DESCRIPTION["NVIDIA Drivers"]="Installs proprietary NVIDIA GPU drivers for optimal 3D graphics and compute performance."
 
 # Bootloaders
