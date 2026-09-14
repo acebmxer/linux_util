@@ -31,6 +31,12 @@ when a release is cut.
 
 ### Fixed
 
+- **The Desktop Environments entries in `UTILITY_CATEGORY` were not in
+  alphanumeric order**: "WSL Desktop" was appended after "Xfce Desktop"
+  instead of sitting between "Pantheon Desktop" and "Xfce Desktop" where
+  case-insensitive alphabetical order puts it. Reordered; no functional
+  change.
+
 - **The "System Updates" badge kept showing the pending-update count from
   before the last update run, for up to an hour after updates were actually
   applied.** `get_version_system_updates()` caches its probe result
