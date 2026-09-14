@@ -19,6 +19,7 @@ get_version_wsl_desktop() { :; }
 _wsl_desktop_candidates() {
     local name
     for name in "${UTILITIES[@]}"; do
+        [[ "$name" == "WSL Desktop" ]] && continue
         [[ "${UTILITY_CATEGORY[$name]:-}" == "Desktop Environments" ]] && printf '%s\n' "$name"
     done
 }
@@ -74,17 +75,22 @@ setup_wsl_desktop() {
 
     echo ""
     if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${DISPLAY:-}" ]]; then
-        info "${de_name} installed. Log out of this WSL session and back in (or run 'wsl --shutdown' from Windows and reopen the distro) to start it through WSLg."
+        info "${de_name} installed."
+        echo "  ${RED:-}${BOLD:-}Run 'wsl --shutdown' from Windows, then reopen the distro, to start it through WSLg.${RESET:-}"
+        echo "  Logging out of this WSL session and back in is not enough — a shutdown"
+        echo "  restarts the shared WSLg session too, which is usually what is needed."
     else
         warn "${de_name} installed, but no WSLg display was detected in this session (\$WAYLAND_DISPLAY / \$DISPLAY are unset)."
         echo "  WSLg ships with WSL on Windows 11 and recent Windows 10 builds. If it is"
-        echo "  missing, run 'wsl --update' from an elevated Windows prompt, then restart"
-        echo "  the distro ('wsl --shutdown' from Windows, then reopen it)."
+        echo "  missing, run 'wsl --update' from an elevated Windows prompt."
+        echo "  ${RED:-}${BOLD:-}Then run 'wsl --shutdown' from Windows and reopen the distro.${RESET:-}"
     fi
     return 0
 }
 
 # ── Lifecycle stubs ───────────────────────────────────────────────────────────
-check_wsl_desktop()     { return 1; }
+# No check_wsl_desktop(): registered with check_always_false (see installers.sh)
+# so the menu never marks it "installed" and health_check skips it after a run,
+# the same as every other run-action / picker task.
 uninstall_wsl_desktop() { return 0; }
 update_wsl_desktop()    { setup_wsl_desktop; }

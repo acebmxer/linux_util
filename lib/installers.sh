@@ -397,7 +397,7 @@ fi
 # inside a WSL distro and displayed via WSLg. Only meaningful under WSL — not
 # registered at all elsewhere, so it never appears as a normal-distro option.
 if is_wsl; then
-    register_utility "WSL Desktop"         setup_wsl_desktop        check_wsl_desktop      uninstall_wsl_desktop      update_wsl_desktop         get_version_wsl_desktop
+    register_utility "WSL Desktop"         setup_wsl_desktop        check_always_false     uninstall_wsl_desktop      update_wsl_desktop         get_version_wsl_desktop
     # Fully interactive picker — re-running the menu after a failure only asks again
     NO_RETRY["WSL Desktop"]=1
 fi

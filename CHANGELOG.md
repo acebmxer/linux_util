@@ -31,6 +31,46 @@ when a release is cut.
 
 ### Removed
 
+- **The one-time "Running under WSL... 'Reboot' restarts this distro, not
+  Windows" startup notice.** It existed to explain that reboot behaved
+  differently under WSL, from when reboot used to automatically terminate and
+  relaunch the distro. That automatic behavior was already removed (reboot now
+  only prints the manual `wsl --terminate` / `wsl -d` commands), so the notice
+  was stale leftover noise shown on every single launch under WSL.
+
+### Fixed
+
+- **The WSL Desktop picker listed itself as a choice.** Its candidate list is
+  built by scanning `UTILITY_CATEGORY` for entries tagged "Desktop
+  Environments", and WSL Desktop is tagged that way too (so it shows up under
+  that category in the main menu), so it was including itself in its own
+  numbered list. It now explicitly skips itself when building the list.
+
+- **The post-install restart instruction for WSL Desktop was easy to miss and
+  understated which restart actually works.** Confirmed on real hardware that
+  merely logging out and back in (or `wsl --terminate` / `wsl -d`) leaves the
+  shared WSLg session in whatever state it was in before the install, so a
+  freshly installed DE can come up broken (e.g. Konsole rendering wrong) until
+  `wsl --shutdown` restarts the whole WSL2 VM, WSLg included. The message now
+  states `wsl --shutdown` as the instruction to follow, printed in bold red so
+  it stands out from the rest of the output, rather than offering it as one of
+  two equally-weighted options.
+
+- **WSL Desktop always failed its post-install health check, even on a
+  successful install.** It was registered with a bespoke `check_wsl_desktop()`
+  that unconditionally returns 1 (correct, since installing a DE inside WSL
+  isn't a single on/off state), but `health_check()` only recognizes the
+  shared `check_always_false` sentinel as "no meaningful installed state to
+  check" — a custom function with the same behavior still gets run and its
+  failure reported as a real health-check failure. Every WSL Desktop run
+  printed "Health check failed for WSL Desktop" regardless of outcome. Now
+  registered with `check_always_false` directly, the same pattern already
+  used by every other run-action/picker task (System Updates, Create
+  Snapshot, Switch Bootloader, etc.), so the health check is skipped as
+  intended.
+
+### Removed
+
 - **`do_reboot` no longer terminates or relaunches the WSL distro
   automatically.** Under WSL, "reboot" now only prints the
   `wsl --terminate <distro>` / `wsl -d <distro>` commands for the user to run

@@ -1025,15 +1025,9 @@ main() {
 
     parse_args "$@"
 
-    # One-time WSL notice (the TUI clears the screen, so it must be shown here,
-    # before entering the menu loop).
-    if is_wsl; then
-        info "Running under WSL (${WSL_DISTRO_NAME:-unknown}). 'Reboot' restarts this distro, not Windows."
-    fi
-
-    # Report a config file topped up at startup. Same placement reason as the
-    # WSL notice above: the TUI clears the screen, so a message about a file the
-    # user maintains has to be seen and acknowledged before the menu takes over.
+    # Report a config file topped up at startup. Shown here because the TUI
+    # clears the screen, so a message about a file the user maintains has to
+    # be seen and acknowledged before the menu takes over.
     show_config_migration_notice
 
     # Main loop: show menu, process selections, repeat
