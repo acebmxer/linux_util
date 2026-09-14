@@ -131,7 +131,7 @@ ERROR_LOG_INITIALIZED=false
     echo "Linux Utilities Installer - Execution Log"
     echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "User: $USER"
-    echo "Hostname: $(hostname)"
+    echo "Hostname: ${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}"
     echo "════════════════════════════════════════════════════════════════"
     echo ""
 } > "$SUCCESS_LOG"

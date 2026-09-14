@@ -14,6 +14,26 @@ when a release is cut.
 
 ### Fixed
 
+- **The "System Updates" badge kept showing the pending-update count from
+  before the last update run, for up to an hour after updates were actually
+  applied.** `get_version_system_updates()` caches its probe result
+  (`dnf check-update` / `checkupdates` / etc.) for `PKG_CACHE_MAX_AGE_SECS`
+  (default 3600s) so the menu doesn't re-probe the network on every redraw,
+  but `setup_system_updates()` — the function that actually runs the update —
+  never invalidated that cache on completion. So running System Updates and
+  clearing every pending package left the menu still reading e.g. "138
+  updates" beside it until the cache aged out on its own. Fixed by wrapping
+  the update run so the cache file is deleted afterwards regardless of
+  outcome, forcing a fresh probe the next time the menu draws.
+
+- **On a minimal Fedora WSL rootfs with no `hostname` binary installed, the
+  log header's `$(hostname)` call failed with `hostname: command not found`
+  printed straight to the terminal**, because that line had no fallback,
+  unlike the equivalent lookup already used for the on-screen System Details
+  panel (`_gather_sysinfo` in `lib/menu.sh`). Made the log header use the same
+  `${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}` fallback so a
+  missing `hostname` command degrades to "unknown" instead of erroring.
+
 - **Under WSL, "reboot" only powered the distro off and left the user at a bare
   Windows prompt instead of actually restarting it.** `do_reboot()`'s WSL path
   runs `wsl.exe --terminate` (the only way to end a distro's VM from inside
