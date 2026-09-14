@@ -12,7 +12,83 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **`NO_HEALTH_CHECK` opt-out for the post-install health check.** A utility
+  whose check function describes only one of several possible outcomes can set
+  `NO_HEALTH_CHECK["Name"]=1` to skip it. Previously the only way to avoid a
+  spurious "Health check failed" warning was to register `check_always_false`,
+  which also suppresses the uninstall option — so a task could have a real check
+  function or a quiet run, but not both.
+
+### Removed
+
+- **Environment-specific reboot handling, its System Details indicator, its
+  window-manager detection entry, and the GTK title-bar-button feature and
+  category built on it.** `do_reboot` now always runs `sudo systemctl reboot`,
+  with no environment-specific branching anywhere in it, the reboot prompt, or
+  the rest of the script.
+
 ### Fixed
+
+- **Fastfetch could be shown as installed while never launching in a new
+  shell.** The auto-run line in `~/.bashrc`/`~/.zshrc`/etc. is only written by
+  `_fastfetch_configure_shells`, which previously ran only from
+  `install_fastfetch`/`update_fastfetch`. If that step was skipped — an
+  install cancelled after the package finished, or the binary present some
+  other way — the menu correctly reported Fastfetch as installed (via
+  `_check_standard`, which just checks the binary/package), but no shell ever
+  ran it automatically, with nothing telling the user config was missing.
+  `check_fastfetch` now also calls `_fastfetch_configure_shells` (silenced,
+  since it's a status check, not an install step) whenever the binary is
+  found, so a plain menu refresh repairs the missing shell config instead of
+  requiring a full reinstall. The helper is already idempotent, so this is a
+  no-op once configuration is correct.
+
+### Fixed
+
+- **The Desktop Environments category in the menu did not list entries in
+  alphanumeric order.** Display order in the menu follows the order
+  `register_utility` is called in `lib/installers.sh`, not the
+  `UTILITY_CATEGORY` map — so reordering that map's entries (an earlier,
+  incomplete pass at this same fix) had no effect on what actually renders.
+  Reordered the `register_utility` calls (and split the combined
+  GNOME/KDE/MATE/Xfce block apart) into case-insensitive alphanumeric order,
+  with a couple of entries each stuck at the end because their conditional
+  registration blocks were written after the others. No change to which
+  entries appear on which distro — only their order.
+
+- **The "System Updates" badge kept showing the pending-update count from
+  before the last update run, for up to an hour after updates were actually
+  applied.** `get_version_system_updates()` caches its probe result
+  (`dnf check-update` / `checkupdates` / etc.) for `PKG_CACHE_MAX_AGE_SECS`
+  (default 3600s) so the menu doesn't re-probe the network on every redraw,
+  but `setup_system_updates()` — the function that actually runs the update —
+  never invalidated that cache on completion. So running System Updates and
+  clearing every pending package left the menu still reading e.g. "138
+  updates" beside it until the cache aged out on its own. Fixed by wrapping
+  the update run so the cache file is deleted afterwards regardless of
+  outcome, forcing a fresh probe the next time the menu draws.
+
+- **On a minimal Fedora rootfs with no `hostname` binary installed, the
+  log header's `$(hostname)` call failed with `hostname: command not found`
+  printed straight to the terminal**, because that line had no fallback,
+  unlike the equivalent lookup already used for the on-screen System Details
+  panel (`_gather_sysinfo` in `lib/menu.sh`). Made the log header use the same
+  `${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}` fallback so a
+  missing `hostname` command degrades to "unknown" instead of erroring.
+
+- **A minimal Fedora install has no `awk`, and
+  every module under `lib/` calls it unconditionally with no fallback**, so
+  the very first sourced module (`lib/config.sh`) failed with a wall of
+  `command not found` errors on every config read, and the same happened again
+  building the utilities menu. `awk` ships in Fedora/RHEL's separate `gawk`
+  package rather than the base install, so a trimmed image can lack it while
+  still having bash 4+. Added a preflight in `linux_util.sh`, before anything
+  in `lib/` is sourced, that checks for `awk`/`sed`/`grep` and exits with a
+  clear error and the right install command for the detected distro
+  (`gawk` via dnf/apt/pacman/zypper) instead of letting dozens of cryptic
+  per-line failures scroll past.
 
 - **The Fedora/RHEL NVIDIA driver menu offered bogus entries like "580", "470",
   "390" and "7" alongside the real "580xx"/"470xx"/"390xx" legacy branches**,
@@ -421,7 +497,7 @@ when a release is cut.
 - **`README.md` trimmed from 694 lines to a lean front page, with the deep-dive
   material moved into `docs/`.** The README had grown to carry the entire
   utility catalogue — every category's per-item table, roughly 260 lines of it —
-  alongside the config reference, logging, shell completions, WSL behaviour,
+  alongside the config reference, logging, shell completions,
   project structure, module responsibilities, the how-to-add-a-utility walkthrough
   and the full troubleshooting section. The result was a front page nobody could
   skim: the answer to "what is this and how do I run it" sat above ten screens of
@@ -435,8 +511,7 @@ when a release is cut.
   - New `docs/utilities.md` holds the complete catalogue, every per-utility
     description carried over verbatim, with a category index at the top.
   - New `docs/menu.md` (controls, selection logic, profiles), `docs/configuration.md`
-    (config settings, logging, `manage_logs.sh`, bash/zsh completions),
-    `docs/wsl.md` (WSL detection and the restart-the-distro reboot behaviour) and
+    (config settings, logging, `manage_logs.sh`, bash/zsh completions) and
     `docs/troubleshooting.md` (including the xrdp polkit and KDE Wallet PAM
     material).
   - The README's developer sections were dropped in favour of `CONTRIBUTING.md`,
@@ -1685,7 +1760,6 @@ to this release.
 - Distrobox, BoxBuddy, and DistroShelf installers.
 - Zen Browser installer with extension-policy support; Brave Origin browser support.
 - Cockpit web-based server management utility.
-- WSL support: environment detection, reboot handling, and the GTK Window Fix task.
 - Minimal/standard/full install-tier selection.
 - Package-repair tasks, the Delete Default Cloud-Init User task, and the Fix RDP
   Kerberos Delay task.

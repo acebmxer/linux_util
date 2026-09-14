@@ -14,6 +14,7 @@ declare -A UNINSTALL_FUNCS
 declare -A UPDATE_FUNCS
 declare -A VERSION_FUNCS
 declare -A NO_RETRY
+declare -A NO_HEALTH_CHECK      # utility name → skip the post-install health check
 declare -A UTILITY_CATEGORY     # maps utility name → category tab label
 declare -A UTILITY_SUBCATEGORY  # maps utility name → subcategory name (optional)
 declare -A UTILITY_DESCRIPTION  # maps utility name → short description for the info panel
@@ -381,6 +382,14 @@ health_check() {
     # Skip health check for tasks with no meaningful installed state
     if [[ "$check_func" == "check_always_false" ]]; then
         verbose "Skipping health check for ${util_name} (always-run task)"
+        return 0
+    fi
+    # Skip for pickers whose check function describes only one of several
+    # outcomes: a real check exists (so uninstall is offered when there is
+    # something to remove), but a run that legitimately installs nothing it
+    # owns would otherwise be reported as a failed health check.
+    if [[ -n "${NO_HEALTH_CHECK[$util_name]:-}" ]]; then
+        verbose "Skipping health check for ${util_name} (opted out)"
         return 0
     fi
     if [[ -n "$check_func" ]] && declare -f "$check_func" &>/dev/null; then

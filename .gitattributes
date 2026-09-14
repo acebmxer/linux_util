@@ -1,4 +1,4 @@
-# Shell scripts must always use LF line endings (they run under Linux/WSL).
+# Shell scripts must always use LF line endings.
 # These attributes override core.autocrlf for matched files.
 *.sh        text eol=lf
 *.bash      text eol=lf

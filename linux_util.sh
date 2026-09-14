@@ -19,6 +19,34 @@ if (( BASH_VERSINFO[0] < 4 )); then
     exit 1
 fi
 
+# Require core POSIX text tools before sourcing any lib/ module — config.sh
+# and most of lib/ call awk/sed/grep unconditionally with no fallback. Minimal
+# distro images can omit awk entirely, since it ships in a separate "gawk"
+# package rather than the base install, and every call then fails with
+# "command not found" instead of a clear error.
+_lu_missing_core=()
+for _lu_cmd in awk sed grep; do
+    command -v "$_lu_cmd" &>/dev/null || _lu_missing_core+=("$_lu_cmd")
+done
+if (( ${#_lu_missing_core[@]} > 0 )); then
+    echo "Error: missing required command(s): ${_lu_missing_core[*]}"
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        case "${ID:-}${ID_LIKE:+ $ID_LIKE}" in
+            *fedora*|*rhel*) _lu_pkg="gawk"; _lu_install="sudo dnf install -y $_lu_pkg" ;;
+            *debian*|*ubuntu*) _lu_pkg="gawk"; _lu_install="sudo apt install -y $_lu_pkg" ;;
+            *arch*) _lu_pkg="gawk"; _lu_install="sudo pacman -S --noconfirm $_lu_pkg" ;;
+            *suse*) _lu_pkg="gawk"; _lu_install="sudo zypper install -y $_lu_pkg" ;;
+            *) _lu_pkg=""; _lu_install="" ;;
+        esac
+        if [[ -n "$_lu_install" ]]; then
+            echo "       Install it with: $_lu_install"
+        fi
+    fi
+    exit 1
+fi
+unset _lu_missing_core _lu_cmd _lu_pkg _lu_install
+
 # Catch pipeline failures (e.g. cmd | grep where cmd fails)
 set -o pipefail
 
@@ -103,7 +131,7 @@ ERROR_LOG_INITIALIZED=false
     echo "Linux Utilities Installer - Execution Log"
     echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "User: $USER"
-    echo "Hostname: $(hostname)"
+    echo "Hostname: ${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}"
     echo "════════════════════════════════════════════════════════════════"
     echo ""
 } > "$SUCCESS_LOG"
@@ -622,13 +650,7 @@ process_selected() {
 
     # Offer reboot (System Tasks, Docker, Drivers, or an OS-flagged pending reboot)
     if [[ "$needs_reboot" == "true" ]]; then
-        # Under WSL, "reboot" restarts the distro from Windows, not the host.
-        # Adjust the prompt wording so the user knows what will happen.
         local _reboot_prompt="Reboot now? (y/N) "
-        if is_wsl; then
-            echo "${YELLOW}Note: under WSL this restarts the '${WSL_DISTRO_NAME:-distro}' distribution (not Windows).${RESET}"
-            _reboot_prompt="Restart WSL distro now? (y/N) "
-        fi
         while true; do
             read -n 1 -rp "$_reboot_prompt" REBOOT_CHOICE < /dev/tty
             echo
@@ -639,8 +661,6 @@ process_selected() {
                     info "Rebooting…"
                     printf '\n\n'
                     exec 9>&-  # release lock fd before the system goes down
-                    # WSL-aware: systemctl reboot on host; under WSL this runs
-                    # `wsl.exe --terminate` (restarts this distro only).
                     do_reboot
                     exit 0     # don't fall through to reload/remind prompts
                     ;;
@@ -997,15 +1017,9 @@ main() {
 
     parse_args "$@"
 
-    # One-time WSL notice (the TUI clears the screen, so it must be shown here,
-    # before entering the menu loop).
-    if is_wsl; then
-        info "Running under WSL (${WSL_DISTRO_NAME:-unknown}). 'Reboot' restarts this distro, not Windows."
-    fi
-
-    # Report a config file topped up at startup. Same placement reason as the
-    # WSL notice above: the TUI clears the screen, so a message about a file the
-    # user maintains has to be seen and acknowledged before the menu takes over.
+    # Report a config file topped up at startup. Shown here because the TUI
+    # clears the screen, so a message about a file the user maintains has to
+    # be seen and acknowledged before the menu takes over.
     show_config_migration_notice
 
     # Main loop: show menu, process selections, repeat

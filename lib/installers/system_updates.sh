@@ -87,7 +87,19 @@ _system_updates_upstream_binaries() {
 }
 
 # --- System Updates ---
+# Thin wrapper: runs the real update, then invalidates the cached pending-
+# update count regardless of outcome. Without this, the badge next to
+# "System Updates" in the menu kept showing the pre-update count (e.g. "138
+# updates") for up to PKG_CACHE_MAX_AGE_SECS after a successful run, because
+# nothing in the update path itself touched that cache file.
 setup_system_updates() {
+    _setup_system_updates_impl
+    local _rc=$?
+    rm -f "$_SYSTEM_UPDATES_VER_CACHE" 2>/dev/null
+    return $_rc
+}
+
+_setup_system_updates_impl() {
     if _system_updates_has_arch_update; then
         local _cmd
         _cmd=$(_system_updates_arch_update_cmd)

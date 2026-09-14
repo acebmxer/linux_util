@@ -65,7 +65,6 @@ register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 # Fully interactive prompt flow — re-running the menu after a failure only asks again
 NO_RETRY["Local Time Zone / Locale"]=1
-register_system_task "GTK Window Fix" install_window_buttons check_always_false noop_function install_window_buttons get_version_window_buttons
 
 # Debian/Ubuntu-only system tasks
 if [[ "$DISTRO_FAMILY" == "debian" ]]; then
@@ -337,6 +336,13 @@ register_utility "nnn"                 install_nnn              check_nnn       
 # Elementary OS uses Pantheon exclusively; any other DE causes display manager
 # and PAM session conflicts. The elementary project explicitly advises against it.
 
+# Budgie: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
+# Not packaged in EPEL (no RHEL support). Not on elementary.
+if [[ "$DISTRO_ID" != "elementary" ]] && \
+   [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "Budgie Desktop"      install_budgie           check_budgie           uninstall_budgie           update_budgie              get_version_budgie
+fi
+
 # Cinnamon: available on Debian, Ubuntu, Fedora, Arch, openSUSE — not elementary
 if [[ "$DISTRO_ID" != "elementary" ]]; then
     register_utility "Cinnamon Desktop"    install_cinnamon         check_cinnamon         uninstall_cinnamon         update_cinnamon            get_version_cinnamon
@@ -366,15 +372,6 @@ fi
 if [[ "$DISTRO_ID" != "elementary" ]]; then
     register_utility "GNOME Desktop"       install_gnome            check_gnome            uninstall_gnome            update_gnome               get_version_gnome
     register_utility "KDE Desktop"         install_kde              check_kde              uninstall_kde              update_kde                 get_version_kde
-    register_utility "MATE Desktop"        install_mate             check_mate             uninstall_mate             update_mate                get_version_mate
-    register_utility "Xfce Desktop"        install_xfce             check_xfce             uninstall_xfce             update_xfce                get_version_xfce
-fi
-
-# Budgie: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
-# Not packaged in EPEL (no RHEL support). Not on elementary.
-if [[ "$DISTRO_ID" != "elementary" ]] && \
-   [[ "$DISTRO_FAMILY" != "rhel" ]]; then
-    register_utility "Budgie Desktop"      install_budgie           check_budgie           uninstall_budgie           update_budgie              get_version_budgie
 fi
 
 # LXQt: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
@@ -384,11 +381,19 @@ if [[ "$DISTRO_ID" != "elementary" ]] && \
     register_utility "LXQt Desktop"        install_lxqt             check_lxqt             uninstall_lxqt             update_lxqt                get_version_lxqt
 fi
 
+if [[ "$DISTRO_ID" != "elementary" ]]; then
+    register_utility "MATE Desktop"        install_mate             check_mate             uninstall_mate             update_mate                get_version_mate
+fi
+
 # Pantheon: official packages only on Arch (extra repo) and openSUSE Tumbleweed
 # (Factory pattern). Not packaged on Debian/Ubuntu, Fedora, RHEL, or Leap/SLES.
 # Already installed on elementary — no need to offer it there.
 if [[ "$DISTRO_FAMILY" == "arch" ]] || [[ "$DISTRO_ID" == "opensuse-tumbleweed" ]]; then
     register_utility "Pantheon Desktop"    install_pantheon         check_pantheon         uninstall_pantheon         update_pantheon            get_version_pantheon
+fi
+
+if [[ "$DISTRO_ID" != "elementary" ]]; then
+    register_utility "Xfce Desktop"        install_xfce             check_xfce             uninstall_xfce             update_xfce                get_version_xfce
 fi
 
 # --- Window Managers ---
@@ -818,7 +823,6 @@ UTILITY_SUBCATEGORY["Mount Local Drive"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Mount NFS Share"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Mount SMB Share"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
-UTILITY_SUBCATEGORY["GTK Window Fix"]="WSL Fixes"
 
 # Explicit subcategory display order within each category tab
 SUBCATEGORY_ORDER["Development"]="IDEs & Editors|Distrobox"
@@ -891,7 +895,6 @@ UTILITY_DESCRIPTION["Reset Repos to Default"]="Restores base distro repositories
 UTILITY_DESCRIPTION["Create Snapshot"]="Creates a system snapshot using the active backup backend (Timeshift or Snapper). Prompts for an optional description."
 UTILITY_DESCRIPTION["Restore Snapshot"]="Restores the system from a previously created snapshot. Lists all available snapshots and asks for confirmation before proceeding."
 UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshots. Lists all available snapshots and asks for confirmation before deleting."
-UTILITY_DESCRIPTION["GTK Window Fix"]="Restores the minimize, maximize, and close buttons on GTK app title bars (GNOME, Cinnamon, MATE, Xfce). Under WSLg the default window-manager layout omits minimize/maximize, leaving GTK apps such as Remmina, Nautilus, and Files with only a close button. Sets the per-user window-manager button-layout preference; KDE shows all three by default and is skipped."
 
 # Development
 UTILITY_DESCRIPTION["Ansible"]="IT automation tool for provisioning, configuration management, and application deployment using agentless SSH-based playbooks."

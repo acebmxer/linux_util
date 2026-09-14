@@ -610,31 +610,17 @@ _gather_sysinfo() {
     fi
     [[ -z "$_SYSINFO_PACKAGES" ]] && _SYSINFO_PACKAGES="unknown"
 
-    # Desktop Environment — reuse the existing detect_window_button_de() helper
-    # (sourced from lib/installers/window_buttons.sh) and map its token to a
-    # human-readable name. Fall back to the raw XDG hint when undetected.
-    local _de_token=""
-    if declare -F detect_window_button_de &>/dev/null; then
-        _de_token="$(detect_window_button_de 2>/dev/null)"
-    fi
-    case "$_de_token" in
-        gnome)    _SYSINFO_DE="GNOME" ;;
-        kde)      _SYSINFO_DE="KDE Plasma" ;;
-        xfce)     _SYSINFO_DE="XFCE" ;;
-        cinnamon) _SYSINFO_DE="Cinnamon" ;;
-        mate)     _SYSINFO_DE="MATE" ;;
-        *)        _SYSINFO_DE="${XDG_CURRENT_DESKTOP:-}" ;;
-    esac
+    # Desktop Environment — the XDG hint is all that's needed here; no
+    # dedicated detection helper.
+    _SYSINFO_DE="${XDG_CURRENT_DESKTOP:-}"
     # Strip the common "ubuntu:" / "X-" session prefixes from raw XDG hints.
     _SYSINFO_DE="${_SYSINFO_DE##*:}"
     [[ -z "$_SYSINFO_DE" ]] && _SYSINFO_DE="unknown"
 
     # Window Manager — best-effort, inherently unreliable without a display.
-    # Order: WSLg special-case → wmctrl (_NET_WM_NAME) → env hints → unknown.
+    # Order: wmctrl (_NET_WM_NAME) → env hints → unknown.
     _SYSINFO_WM=""
-    if is_wsl && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
-        _SYSINFO_WM="WSLg"
-    elif command -v wmctrl &>/dev/null; then
+    if command -v wmctrl &>/dev/null; then
         _SYSINFO_WM="$(wmctrl -m 2>/dev/null | awk -F': ' '/^Name:/ {print $2; exit}')"
     fi
     if [[ -z "$_SYSINFO_WM" ]]; then
@@ -930,12 +916,6 @@ _render_left() {
     # Sysinfo entries: label + value
     local -a _si_labels=("Host" "OS" "Kernel" "CPU" "GPU" "Mem" "Disk" "Uptime" "OS Age" "Packages" "WM" "DE")
     local -a _si_values=("$_SYSINFO_HOST" "$_SYSINFO_OS" "$_SYSINFO_KERNEL" "$_SYSINFO_CPU" "$_SYSINFO_GPU" "$_SYSINFO_MEM" "$_SYSINFO_DISK" "$_SYSINFO_UPTIME" "$_SYSINFO_OS_AGE" "$_SYSINFO_PACKAGES" "$_SYSINFO_WM" "$_SYSINFO_DE")
-
-    # Surface a WSL indicator when running under Windows Subsystem for Linux.
-    if is_wsl; then
-        _si_labels+=("Env")
-        _si_values+=("WSL${WSL_DISTRO_NAME:+ (${WSL_DISTRO_NAME})}")
-    fi
 
     local label_w=8  # fixed label column width (includes leading space)
     local val_w=$(( inner_w - label_w - 2 ))  # -2 for ": " separator

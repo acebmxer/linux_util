@@ -27,7 +27,6 @@ scripting and automation.
 | Everything it can install, by category | [docs/utilities.md](docs/utilities.md) |
 | The menu — controls, selection logic, profiles | [docs/menu.md](docs/menu.md) |
 | Config file, logging, shell completions | [docs/configuration.md](docs/configuration.md) |
-| Running under WSL | [docs/wsl.md](docs/wsl.md) |
 | Something went wrong | [docs/troubleshooting.md](docs/troubleshooting.md) |
 | Adding a utility, code style, tests | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
@@ -178,10 +177,6 @@ Tab-completion for bash and zsh ships in `completions/` — setup is in
 
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then
 by auto-detecting the available package manager.
-
-The script also runs under **WSL2**, which it detects automatically and adapts
-to — most visibly, "reboot" restarts the distribution rather than the machine.
-See [docs/wsl.md](docs/wsl.md).
 
 ---
 
