@@ -14,14 +14,14 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Desktop Environments](#desktop-environments) | [Backup](#backup) | [Disk Utilities](#disk-utilities) |
 | [Development](#development) | [Gaming](#gaming) | [Internet](#internet) |
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
-| [System Tools](#system-tools) | | |
+| [System Tools](#system-tools) | [Windows Integration](#windows-integration) | |
 
-> **Incomplete:** 226 utilities and system tasks are registered in
-> `lib/installers.sh`; 188 are listed below. The **File Managers**, **Firewalls**,
+> **Incomplete:** 225 utilities and system tasks are registered in
+> `lib/installers.sh`; 192 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
 > Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
-> Unattended Upgrades, GTK Window Fix). Run `./linux_util.sh --list` for the
+> Unattended Upgrades). Run `./linux_util.sh --list` for the
 > authoritative list.
 
 ## System Tasks
@@ -88,7 +88,6 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **LXQt Desktop** | Lightweight Qt-based desktop |
 | **MATE Desktop** | Continuation of the classic GNOME 2 desktop |
 | **Pantheon Desktop** | elementary OS desktop environment |
-| **WSL Desktop** | Installs any desktop environment above inside a WSL distro, displayed through WSLg — no X server or RDP setup needed. Only appears when running under WSL |
 | **Xfce Desktop** | Lightweight and fast traditional desktop |
 
 ## Backup
@@ -288,3 +287,11 @@ Grouped under a **Kernel Managers** folder inside the System Tools tab — tools
 | **Fedora Mainline Kernel** | Enables the `@kernel-vanilla/mainline` Copr and installs the latest upstream mainline kernel. Fedora only (requires Secure Boot disabled) |
 | **linux-tkg** | Frogging-Family custom-kernel **builder** — compiles a kernel from source with your choice of scheduler (BORE/EEVDF/PDS), compiler, and config. Cross-distro (Arch via makepkg; Debian/Ubuntu, Fedora, openSUSE via `install.sh`). Interactive, long compile |
 
+
+## Windows Integration
+
+Only registered when running under WSL.
+
+| Utility | Description |
+|---------|-------------|
+| **Linux Apps on Windows** | Installs a desktop environment's applications — file manager, text editor, terminal, archiver, image and document viewers — inside a WSL distro, **without** the desktop session. WSLg publishes each one to the Windows Start menu, so they open as ordinary windows on the Windows desktop alongside Windows apps; no X server, RDP or display manager. Offers whichever desktops are available on the distro, so you can mix and match. Afterwards it offers to restore the minimize and maximize buttons on GTK title bars, which WSLg omits by default — this changes a per-user setting in your profile and is not undone automatically. Records what it installed, so uninstall removes exactly those packages and nothing that was already present. For a full desktop session, use the **Desktop Environments** category instead |

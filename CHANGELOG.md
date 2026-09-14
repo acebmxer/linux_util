@@ -14,20 +14,51 @@ when a release is cut.
 
 ### Added
 
-- **New "WSL Desktop" entry in the Desktop Environments category**: installs
-  a full desktop environment (KDE, GNOME, Xfce, and the rest of that
-  category) inside a WSL distro, for use with WSLg — the GUI support built
-  into WSL on Windows 11 and recent Windows 10 builds. No separate X server
-  or RDP setup is needed. It is a picker, not a new installer: it lists
-  whichever Desktop Environments utilities are already registered for the
-  running distro (so per-distro availability, e.g. COSMIC being unavailable
-  on RHEL, applies automatically) and delegates straight to that utility's
-  existing `install_*` function, so it installs identically to picking the
-  DE directly. Only registered under WSL, so it never appears on a native
-  install. After install it tells the user to restart the WSL session to
-  pick it up through WSLg, and warns (with the `wsl --update` /
-  `wsl --shutdown` fix) if no WSLg display was detected in the current
-  session.
+- **New "Windows Integration" category with a "Linux Apps on Windows" entry.**
+  Installs a desktop environment's applications — file manager, terminal, text
+  editor, archiver, image viewer, document viewer — inside a WSL distro, with no
+  session, compositor or display manager. WSLg publishes each application's
+  `.desktop` entry to the Windows Start menu, so they open as ordinary windows on
+  the Windows desktop alongside Windows applications. The list offers whichever
+  Desktop Environments utilities are registered for the running distro, so
+  per-distro availability applies automatically and any packaged desktop's
+  applications can be used, not a favoured few.
+
+  The per-desktop package sets live in `wsl_apps.sh` rather than in each
+  desktop's own installer, so the feature cannot change how a bare-metal desktop
+  install behaves. Desktops whose applications are not packaged separately from
+  their session (COSMIC) are marked "(no separate applications)" in the list and
+  refuse rather than installing nothing. Packages a given distro does not carry
+  are reported as skipped instead of aborting the whole set.
+
+  After installing, it offers to restore the minimize and maximize buttons on
+  GTK title bars, which WSLg's default window-manager button layout omits — an
+  application with only a close button does not behave like a Windows one. This
+  delegates to the existing `install_window_buttons` implementation rather than
+  setting the key a second time. It asks rather than applying silently, because
+  it writes a per-user desktop preference that the user may have set
+  deliberately and that is not undone automatically.
+
+  Installs can be **uninstalled** from the same entry. Each install records the
+  packages it actually added under `~/.config/linux_util/wsl_apps/`, and
+  uninstall removes only those — packages already present beforehand are
+  recorded as such and never removed. It lists what it will remove and asks
+  first. `check_wsl_apps` reports "installed" only while such a record exists
+  with at least one of its packages still present, which is what makes the menu
+  offer the uninstall. A desktop session installed from Desktop Environments is
+  deliberately not covered: it is reported and removed by that desktop's own
+  entry, so counting it here would offer two uninstalls for one thing.
+
+  The category and the entry are registered only under WSL, so neither appears
+  on a native install. After installing it warns, with the `wsl --update` /
+  `wsl --shutdown` fix, if no WSLg display was detected in the current session.
+
+- **`NO_HEALTH_CHECK` opt-out for the post-install health check.** A utility
+  whose check function describes only one of several possible outcomes can set
+  `NO_HEALTH_CHECK["Name"]=1` to skip it. Previously the only way to avoid a
+  spurious "Health check failed" warning was to register `check_always_false`,
+  which also suppresses the uninstall option — so a task could have a real check
+  function or a quiet run, but not both.
 
 ### Removed
 
@@ -54,36 +85,20 @@ when a release is cut.
   requiring a full reinstall. The helper is already idempotent, so this is a
   no-op once configuration is correct.
 
-- **The WSL Desktop picker listed itself as a choice.** Its candidate list is
-  built by scanning `UTILITY_CATEGORY` for entries tagged "Desktop
-  Environments", and WSL Desktop is tagged that way too (so it shows up under
-  that category in the main menu), so it was including itself in its own
-  numbered list. It now explicitly skips itself when building the list.
-
-- **The post-install restart instruction for WSL Desktop was easy to miss and
-  understated which restart actually works.** Confirmed on real hardware that
-  merely logging out and back in (or `wsl --terminate` / `wsl -d`) leaves the
-  shared WSLg session in whatever state it was in before the install, so a
-  freshly installed DE can come up broken (e.g. Konsole rendering wrong) until
-  `wsl --shutdown` restarts the whole WSL2 VM, WSLg included. The message now
-  states `wsl --shutdown` as the instruction to follow, printed in bold red so
-  it stands out from the rest of the output, rather than offering it as one of
-  two equally-weighted options.
-
-- **WSL Desktop always failed its post-install health check, even on a
-  successful install.** It was registered with a bespoke `check_wsl_desktop()`
-  that unconditionally returns 1 (correct, since installing a DE inside WSL
-  isn't a single on/off state), but `health_check()` only recognizes the
-  shared `check_always_false` sentinel as "no meaningful installed state to
-  check" — a custom function with the same behavior still gets run and its
-  failure reported as a real health-check failure. Every WSL Desktop run
-  printed "Health check failed for WSL Desktop" regardless of outcome. Now
-  registered with `check_always_false` directly, the same pattern already
-  used by every other run-action/picker task (System Updates, Create
-  Snapshot, Switch Bootloader, etc.), so the health check is skipped as
-  intended.
-
 ### Removed
+
+- **The standalone "GTK Window Fix" system task and the "WSL Fixes"
+  subcategory that held it.** The fix it applied — restoring the minimize and
+  maximize buttons that WSLg's default button layout omits — is now offered
+  directly at the end of a Linux Apps on Windows install, which is the only
+  point at which it is needed and the only point at which the user knows it is
+  relevant. Having it as a separate entry meant installing the applications and
+  then being told, in the completion message, to go and find another menu item
+  to make them usable. The subcategory had exactly one member and disappears
+  with it. `install_window_buttons` and `detect_window_button_de` in
+  `lib/installers/window_buttons.sh` are unchanged and still used — the first by
+  the apps install, the second by the menu's system-information panel — so no
+  behaviour is lost, only the separate menu entry.
 
 - **`do_reboot` no longer terminates or relaunches the WSL distro
   automatically.** Under WSL, "reboot" now only prints the

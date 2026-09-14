@@ -110,7 +110,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **System Tasks** | Updates and repo repair, broken-package fixes, drive/NFS/SMB mounts, UFW, time zone and locale, Num Lock, assorted distro fixes |
 | **Bootloaders** | GRUB, Limine, systemd-boot, switching between them, and five GRUB theme packs |
 | **Drivers** | NVIDIA, AMD GPU, Intel and AMD microcode, LACT, OpenLogi, Thermalright TRCC, XEN guest tools |
-| **Desktop Environments** | KDE Plasma, GNOME, Xfce, Cinnamon, MATE, LXQt, Budgie, COSMIC, Deepin, Pantheon, and (under WSL only) WSL Desktop — installs any of the above into a WSL distro for use with WSLg |
+| **Desktop Environments** | KDE Plasma, GNOME, Xfce, Cinnamon, MATE, LXQt, Budgie, COSMIC, Deepin, Pantheon |
 | **Backup** | Timeshift and Snapper (create/restore/delete), Déjà Dup, Kup, Vorta, Duplicati |
 | **Disk Utilities** | GParted, Ventoy, and a Btrfs toolset (Assistant, btrfsmaintenance, btrbk, duperemove) |
 | **Development** | Docker, Podman, Distrobox, VS Code, VSCodium, Cursor, Claude Code, Node/NVM, Go, Rust, pyenv, Terraform, OpenTofu, Ansible, kubectl, k9s, DBeaver, Virt-Manager |
@@ -123,6 +123,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
 | **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |
 | **Window Managers** | Hyprland, Sway, i3, bspwm, awesome, dwm, Openbox |
+| **Windows Integration** *(WSL only)* | Linux Apps on Windows — installs a desktop environment's applications (file manager, editor, terminal, viewers) into a WSL distro without the desktop session, so they run as ordinary windows on the Windows desktop via WSLg |
 | **System Tools** | Btop, Fastfetch, ClamAV, Stacer, Filelight, Input Leap, OCCT, Pay Respects, Zsh + Oh My Zsh, and a Kernel Managers folder |
 
 Every entry, with its per-utility description and any distro limits, is in
