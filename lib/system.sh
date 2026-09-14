@@ -221,126 +221,26 @@ wsl_distro_name() { printf '%s' "${WSL_DISTRO_NAME:-}"; }
 #
 # On a normal Linux host/VM this runs the same `sudo systemctl reboot` the
 # script has always used. Under WSL a real reboot is not possible from inside
-# the distro: Windows owns the VM lifecycle and there is no bootloader. The
-# correct equivalent is to terminate the distro from the Windows side (via the
-# wsl.exe interop bridge) and relaunch it. Terminating ends this process, so
-# the function does not return on the WSL interop path — it exits.
+# the distro: Windows owns the VM lifecycle and there is no bootloader.
 #
-# Caller note: release any held lock fd (e.g. `exec 9>&-`) before invoking,
-# because the process will be replaced/terminated.
+# This used to auto-terminate and relaunch the distro via the wsl.exe interop
+# bridge, but that mechanism was unreliable in ways that were never fully
+# fixable from here: `wsl.exe --terminate` can leave the parent Windows
+# terminal (PowerShell, or a terminal app's WSL connection) in a broken state
+# — a wedged interop socket, or a garbled input mode requiring the window to
+# be closed and reopened — regardless of which terminal launched it, and
+# regardless of how carefully the relaunch's own wait-for-termination polling
+# was implemented (see git history for the polling fixes attempted). Because
+# the breakage happens on the Windows side of the interop bridge, after this
+# process's own control ends, it cannot be detected or recovered from inside
+# the script. So WSL no longer attempts to terminate or relaunch anything —
+# it tells the user how to restart the distro themselves.
 do_reboot() {
     if is_wsl; then
         local distro
         distro="$(wsl_distro_name)"
-        warn "Under WSL a reboot terminates and relaunches the distro from Windows (Windows itself is not affected)."
-        # Preferred path: use the wsl.exe interop bridge to terminate just this
-        # distro. The running session ends immediately and the distro auto-starts
-        # on the next terminal/app, or via `wsl -d <distro>`.
-        if command -v wsl.exe >/dev/null 2>&1 && [[ -n "$distro" ]]; then
-            # A "reboot" that just powers the distro off and leaves the user at
-            # a bare Windows prompt is not a reboot — it has to come back up.
-            # The relaunch has to be queued BEFORE we terminate, not after:
-            # any interop call from inside a WSL session (wsl.exe, cmd.exe, ...)
-            # goes through that session's interop socket, which belongs to the
-            # distro's own init process. `wsl.exe --terminate` kills that same
-            # init process, so once it has run, this session has no live
-            # socket left to launch anything through — a relaunch command
-            # issued afterwards silently does nothing. See
-            # https://github.com/Microsoft/WSL/issues/3760.
-            #
-            # Queuing the relaunch needs cmd.exe and wslpath; if either is
-            # missing, terminate still runs (matching this function's long-
-            # standing tested behavior) and the user is told how to relaunch
-            # by hand, same as the interop-unavailable fallback below.
-            if command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
-                info "Terminating WSL distro '${distro}' and relaunching it."
-                printf '\n\n'
-                # The relaunch is a small batch script, written to a temp file
-                # and queued (detached, via `cmd.exe /c start`) BEFORE we
-                # terminate. Running from a file rather than an inline
-                # one-liner keeps the Windows-side logic readable instead of a
-                # caret-escaped single line. It has to be the batch file that
-                # waits and relaunches, not this bash process: once
-                # `wsl.exe --terminate` actually kills the distro's init, this
-                # session dies with it, possibly mid-loop — a wait-then-relaunch
-                # cannot reliably run from inside the thing being terminated.
-                #
-                # It polls for this distro to drop out of `wsl --list --running`
-                # — `--terminate` only *requests* shutdown, and a systemd distro
-                # needs a moment to drain its units; relaunching too early races
-                # user@<uid>.service and can fail with "Device or resource
-                # busy" (systemd ends up 'degraded', and `wsl -d` reports
-                # "Failed to start the systemd user session") — then starts it
-                # again. `start` runs it detached in its own console so it
-                # outlives this session; the empty "" is required because
-                # `start` treats its first quoted argument as the window
-                # title, and without it, it would swallow the batch file's
-                # path as the title and run nothing.
-                # The batch file is written under Windows' own %TEMP%, not
-                # this distro's filesystem: once we terminate, `\\wsl$\...` /
-                # `\\wsl.localhost\...` UNC paths into it may briefly be
-                # unreachable from Windows, and `cmd.exe` handles a UNC path
-                # as an argument awkwardly even before that. A plain Windows
-                # temp path has neither problem.
-                #
-                # `wsl.exe --list --running` emits UTF-16LE, and piping that
-                # straight into `findstr` is unreliable — the embedded NULs
-                # (and BOM) mean a running distro can go unmatched on the very
-                # first check, so the loop falls straight through to
-                # `wsl -d` while the distro is still mid-terminate, which is
-                # exactly the WSL_E_DISTRO_NOT_FOUND race this was meant to
-                # avoid. PowerShell's `Get-Content`/`Select-String` decode text
-                # correctly, so the check is done there instead of `findstr`.
-                # The loop is also bounded (60 tries / ~60s) so a distro that
-                # never drops out of the running list — the same failure mode
-                # the bash-side wait below is bounded against — doesn't spin
-                # forever; it relaunches anyway after the timeout.
-                local win_temp relaunch_bat
-                win_temp="$(cmd.exe /c echo %TEMP% 2>/dev/null | tr -d '\r')"
-                relaunch_bat="$(wslpath -u "$win_temp")/linux_util_wsl_relaunch.bat"
-                cat > "$relaunch_bat" <<-EOF
-					@echo off
-					setlocal enabledelayedexpansion
-					set count=0
-					:wait
-					set /a count+=1
-					if !count! gtr 60 goto relaunch
-					powershell.exe -NoProfile -Command "if ((wsl.exe --list --running) -match '${distro}') { exit 1 } else { exit 0 }" >nul 2>&1
-					if errorlevel 1 (
-					    timeout /t 1 /nobreak >nul
-					    goto wait
-					)
-					:relaunch
-					wsl.exe -d "${distro}"
-					del "%~f0"
-				EOF
-                cmd.exe /c start "" "$(wslpath -w "$relaunch_bat")" >/dev/null 2>&1
-            else
-                info "Terminating WSL distro '${distro}'. Relaunch with: wsl -d ${distro}"
-                printf '\n\n'
-            fi
-            wsl.exe --terminate "$distro"
-            # --terminate only *requests* shutdown; a systemd distro needs a
-            # moment to drain its units. Wait until the distro no longer
-            # appears in the running list before returning, bounded so we
-            # never hang — callers further up (and the relaunch script above,
-            # when queued) rely on termination having actually finished.
-            local i
-            for i in $(seq 1 20); do
-                # `wsl.exe --list` emits UTF-16LE; strip NULs before matching.
-                if ! wsl.exe --list --running 2>/dev/null \
-                     | tr -d '\000' \
-                     | grep -qiE "(^|[[:space:]])${distro}([[:space:]]|\$)"; then
-                    break
-                fi
-                sleep 0.5
-            done
-            exit 0
-        fi
-        # Fallback: interop unavailable or distro name unknown — print the exact
-        # commands for the user to run from Windows PowerShell themselves.
-        warn "Could not auto-terminate (wsl.exe not reachable or distro name unknown)."
-        echo "  Run these in Windows PowerShell:"
+        warn "A reboot cannot be performed automatically under WSL — Windows owns the VM lifecycle, and automatic distro termination/relaunch has been removed because it could leave the Windows terminal in a broken state."
+        echo "  To restart this distro yourself, run in Windows PowerShell:"
         echo "    wsl --terminate ${distro:-<DistroName>}"
         echo "    wsl -d ${distro:-<DistroName>}"
         return 0

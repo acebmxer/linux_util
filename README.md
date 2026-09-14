@@ -180,8 +180,8 @@ Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then
 by auto-detecting the available package manager.
 
 The script also runs under **WSL2**, which it detects automatically and adapts
-to — most visibly, "reboot" restarts the distribution rather than the machine.
-See [docs/wsl.md](docs/wsl.md).
+to — most visibly, "reboot" prints the commands to restart the distribution
+yourself rather than restarting the machine. See [docs/wsl.md](docs/wsl.md).
 
 ---
 

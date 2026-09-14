@@ -1377,91 +1377,43 @@ test_wsl_distro_name_echoes_var() {
     assert_eq "Ubuntu" "$out" "wsl_distro_name echoes WSL_DISTRO_NAME"
 }
 
-# do_reboot under WSL must use the wsl.exe interop bridge and must NOT call
-# systemctl. We stub command -v to report wsl.exe present, stub wsl.exe and
-# exit so the function does not actually terminate the test process.
-#
-# The wsl.exe stub distinguishes `--terminate` from the post-terminate
-# `--list --running` poll: --list reports the distro as no longer running
-# (empty output) so the wait loop exits on its first iteration instead of
-# blocking for the full timeout.
-test_do_reboot_wsl_uses_interop_not_systemctl() {
+# do_reboot under WSL no longer attempts to terminate or relaunch the distro
+# via the wsl.exe interop bridge — that mechanism could leave the Windows
+# terminal in a broken state (a wedged interop socket, or a garbled input
+# mode needing the window closed and reopened) in a way that couldn't be
+# detected or fixed from inside the script, since the breakage happens on
+# the Windows side after this process's control ends. It now only prints
+# manual restart instructions and returns — never exits, never calls
+# wsl.exe, never calls systemctl.
+test_do_reboot_wsl_prints_instructions_only() {
     local out
     out=$(
         _IS_WSL=true
         WSL_DISTRO_NAME="Ubuntu"
-        command() {
-            if [[ "${1:-}" == "-v" && "${2:-}" == "wsl.exe" ]]; then return 0; fi
-            builtin command "$@"
-        }
-        wsl.exe() {
-            if [[ "${1:-}" == "--list" ]]; then return 0; fi   # distro gone
-            echo "INTEROP:wsl.exe $*"
-        }
-        systemctl() { echo "SYSTEMCTL_CALLED"; }
-        exit() { return 0; }   # neutralize the real exit so the test continues
-        do_reboot 2>&1
-    )
-    assert_contains "$out" "INTEROP:wsl.exe --terminate Ubuntu" \
-        "do_reboot (WSL) terminates distro via wsl.exe"
-    assert_false "do_reboot (WSL) does not call systemctl" \
-        grep -q "SYSTEMCTL_CALLED" <<< "$out"
-}
-
-# do_reboot under WSL waits for the distro to leave the running list before
-# returning. We make `--list --running` report the distro as still running for
-# the first two polls, then gone; the loop must spin (not break immediately)
-# and must not hang. A counter file tracks poll invocations.
-test_do_reboot_wsl_waits_for_distro_to_stop() {
-    local out cnt_file polls
-    cnt_file=$(mktemp)
-    printf '0' > "$cnt_file"
-    out=$(
-        _IS_WSL=true
-        WSL_DISTRO_NAME="Ubuntu"
-        command() {
-            if [[ "${1:-}" == "-v" && "${2:-}" == "wsl.exe" ]]; then return 0; fi
-            builtin command "$@"
-        }
-        wsl.exe() {
-            if [[ "${1:-}" == "--list" ]]; then
-                local n; n=$(<"$cnt_file")
-                n=$((n + 1)); printf '%s' "$n" > "$cnt_file"
-                # Still running for first two polls, then drop off the list.
-                if (( n <= 2 )); then printf 'Ubuntu\n'; fi
-                return 0
-            fi
-            echo "INTEROP:wsl.exe $*"
-        }
-        sleep() { :; }         # don't actually wait between polls
-        exit() { return 0; }
-        do_reboot 2>&1
-    )
-    polls=$(<"$cnt_file"); rm -f "$cnt_file"
-    assert_contains "$out" "INTEROP:wsl.exe --terminate Ubuntu" \
-        "do_reboot (WSL wait) still terminates the distro"
-    assert_eq "3" "$polls" \
-        "do_reboot (WSL wait) polls --list until distro stops (2 running + 1 gone)"
-}
-
-# do_reboot under WSL with no wsl.exe available prints manual instructions and
-# still does not call systemctl.
-test_do_reboot_wsl_fallback_prints_instructions() {
-    local out
-    out=$(
-        _IS_WSL=true
-        WSL_DISTRO_NAME="Ubuntu"
-        command() {
-            if [[ "${1:-}" == "-v" && "${2:-}" == "wsl.exe" ]]; then return 1; fi
-            builtin command "$@"
-        }
+        wsl.exe() { echo "WSLEXE_CALLED:$*"; }
         systemctl() { echo "SYSTEMCTL_CALLED"; }
         do_reboot 2>&1
     )
     assert_contains "$out" "wsl --terminate Ubuntu" \
-        "do_reboot (WSL fallback) prints terminate instruction"
-    assert_false "do_reboot (WSL fallback) does not call systemctl" \
+        "do_reboot (WSL) prints the terminate instruction"
+    assert_contains "$out" "wsl -d Ubuntu" \
+        "do_reboot (WSL) prints the relaunch instruction"
+    assert_false "do_reboot (WSL) does not call wsl.exe itself" \
+        grep -q "WSLEXE_CALLED" <<< "$out"
+    assert_false "do_reboot (WSL) does not call systemctl" \
         grep -q "SYSTEMCTL_CALLED" <<< "$out"
+}
+
+# do_reboot under WSL returns normally (does not exit the process) so the
+# caller can continue — there is nothing left for it to exit early for.
+test_do_reboot_wsl_returns_not_exits() {
+    local rc
+    (
+        _IS_WSL=true
+        WSL_DISTRO_NAME="Ubuntu"
+        do_reboot >/dev/null 2>&1
+    ); rc=$?
+    assert_eq "0" "$rc" "do_reboot (WSL) returns 0 instead of exiting"
 }
 
 # do_reboot on a normal host runs `sudo systemctl reboot` (unchanged behavior).
@@ -1476,86 +1428,14 @@ test_do_reboot_host_uses_systemctl() {
         "do_reboot (host) runs sudo systemctl reboot"
 }
 
-# do_reboot with no argument terminates this distro only under WSL (must never
-# escalate to a full --shutdown of the whole VM).
-test_do_reboot_wsl_default_still_terminates() {
-    local out
-    out=$(
-        _IS_WSL=true
-        WSL_DISTRO_NAME="Ubuntu"
-        command() {
-            if [[ "${1:-}" == "-v" && "${2:-}" == "wsl.exe" ]]; then return 0; fi
-            builtin command "$@"
-        }
-        wsl.exe() {
-            if [[ "${1:-}" == "--list" ]]; then return 0; fi
-            echo "INTEROP:wsl.exe $*"
-        }
-        exit() { return 0; }
-        do_reboot 2>&1
-    )
-    assert_contains "$out" "INTEROP:wsl.exe --terminate Ubuntu" \
-        "do_reboot (WSL) terminates this distro only"
-    assert_false "do_reboot (WSL) does not run a full --shutdown" \
-        grep -q -- "--shutdown" <<< "$out"
-}
-
-# do_reboot's relaunch .bat, when cmd.exe/wslpath are present, must not poll
-# `wsl.exe --list --running` through `findstr` — that pipe carries UTF-16LE
-# with embedded NULs, which findstr can fail to match on the very first
-# check, falling through to `wsl -d` while the distro is still mid-terminate
-# (WSL_E_DISTRO_NOT_FOUND). The wait must go through something that decodes
-# the output correctly (PowerShell), and must be bounded so an unresponsive
-# `--list` can't hang the relaunch forever.
-test_do_reboot_wsl_relaunch_bat_avoids_findstr_on_wide_output() {
-    local out bat_dir written_bat
-    bat_dir=$(mktemp -d)
-    out=$(
-        _IS_WSL=true
-        WSL_DISTRO_NAME="Ubuntu"
-        command() {
-            case "${2:-}" in
-                wsl.exe|cmd.exe|wslpath) return 0 ;;
-            esac
-            builtin command "$@"
-        }
-        cmd.exe() {
-            if [[ "$*" == "/c echo %TEMP%" ]]; then printf '%s\r\n' "$BAT_DIR"; return 0; fi
-            echo "CMD:$*"
-        }
-        wslpath() {
-            if [[ "$1" == "-u" ]]; then printf '%s' "$2"; else printf '%s' "$2"; fi
-        }
-        wsl.exe() {
-            if [[ "${1:-}" == "--list" ]]; then return 0; fi
-            echo "INTEROP:wsl.exe $*"
-        }
-        exit() { return 0; }
-        BAT_DIR="$bat_dir" do_reboot 2>&1
-    )
-    written_bat="$bat_dir/linux_util_wsl_relaunch.bat"
-    assert_true "do_reboot writes the relaunch .bat file" \
-        test -f "$written_bat"
-    assert_false "relaunch .bat does not pipe wsl.exe output through findstr" \
-        grep -q "findstr" "$written_bat"
-    assert_contains "$(cat "$written_bat" 2>/dev/null)" "powershell.exe" \
-        "relaunch .bat waits via PowerShell instead of findstr"
-    assert_contains "$(cat "$written_bat" 2>/dev/null)" "wsl.exe -d \"Ubuntu\"" \
-        "relaunch .bat still relaunches the correct distro"
-    rm -rf "$bat_dir"
-}
-
 test_is_wsl_true_when_distro_name_set
 test_is_wsl_false_without_markers
 test_is_wsl_true_via_proc_version
 test_is_wsl_caches_result
 test_wsl_distro_name_echoes_var
-test_do_reboot_wsl_uses_interop_not_systemctl
-test_do_reboot_wsl_waits_for_distro_to_stop
-test_do_reboot_wsl_fallback_prints_instructions
+test_do_reboot_wsl_prints_instructions_only
+test_do_reboot_wsl_returns_not_exits
 test_do_reboot_host_uses_systemctl
-test_do_reboot_wsl_default_still_terminates
-test_do_reboot_wsl_relaunch_bat_avoids_findstr_on_wide_output
 
 # ============================================================================
 # Test: Window Button Layout (detect_window_button_de / install_window_buttons)

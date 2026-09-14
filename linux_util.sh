@@ -650,39 +650,38 @@ process_selected() {
 
     # Offer reboot (System Tasks, Docker, Drivers, or an OS-flagged pending reboot)
     if [[ "$needs_reboot" == "true" ]]; then
-        # Under WSL, "reboot" restarts the distro from Windows, not the host.
-        # Adjust the prompt wording so the user knows what will happen.
-        local _reboot_prompt="Reboot now? (y/N) "
+        # Under WSL there is nothing to offer a y/N prompt for: a real reboot
+        # isn't possible (Windows owns the VM lifecycle), and automatic distro
+        # termination/relaunch was removed — see do_reboot's own comment for
+        # why. Print the manual instructions and skip straight past the prompt.
         if is_wsl; then
-            echo "${YELLOW}Note: under WSL this restarts the '${WSL_DISTRO_NAME:-distro}' distribution (not Windows).${RESET}"
-            _reboot_prompt="Restart WSL distro now? (y/N) "
+            do_reboot
+        else
+            local _reboot_prompt="Reboot now? (y/N) "
+            while true; do
+                read -n 1 -rp "$_reboot_prompt" REBOOT_CHOICE < /dev/tty
+                echo
+                [[ $'\e' == "$REBOOT_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
+                REBOOT_CHOICE=${REBOOT_CHOICE:-N}
+                case "$REBOOT_CHOICE" in
+                    y|Y)
+                        info "Rebooting…"
+                        printf '\n\n'
+                        exec 9>&-  # release lock fd before the system goes down
+                        do_reboot
+                        exit 0     # don't fall through to reload/remind prompts
+                        ;;
+                    n|N)
+                        break
+                        ;;
+                    *)
+                        echo "  Please press Y to reboot or N to skip."
+                        continue
+                        ;;
+                esac
+                break
+            done
         fi
-        while true; do
-            read -n 1 -rp "$_reboot_prompt" REBOOT_CHOICE < /dev/tty
-            echo
-            [[ $'\e' == "$REBOOT_CHOICE" ]] && { read -r -n 10 -t 0.05 _ < /dev/tty 2>/dev/null || true; continue; }
-            REBOOT_CHOICE=${REBOOT_CHOICE:-N}
-            case "$REBOOT_CHOICE" in
-                y|Y)
-                    info "Rebooting…"
-                    printf '\n\n'
-                    exec 9>&-  # release lock fd before the system goes down
-                    # WSL-aware: systemctl reboot on host; under WSL this
-                    # terminates and relaunches this distro only (Windows and
-                    # other distros are unaffected).
-                    do_reboot
-                    exit 0     # don't fall through to reload/remind prompts
-                    ;;
-                n|N)
-                    break
-                    ;;
-                *)
-                    echo "  Please press Y to reboot or N to skip."
-                    continue
-                    ;;
-            esac
-            break
-        done
         info "Remember to reboot later if needed."
         while true; do
             read -n 1 -rp "Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty

@@ -29,32 +29,27 @@ when a release is cut.
   `wsl --shutdown` fix) if no WSLg display was detected in the current
   session.
 
+### Removed
+
+- **`do_reboot` no longer terminates or relaunches the WSL distro
+  automatically.** Under WSL, "reboot" now only prints the
+  `wsl --terminate <distro>` / `wsl -d <distro>` commands for the user to run
+  themselves; it no longer calls `wsl.exe` at all. The automatic version —
+  terminating the distro's init via the `wsl.exe` interop bridge, then
+  queuing a relaunch — went through several attempted fixes (queuing the
+  relaunch before terminating rather than after, then replacing a `findstr`-
+  based wait with one that correctly decodes `wsl.exe`'s UTF-16LE output) and
+  still failed: it could leave the Windows terminal that launched it (seen in
+  both Termius and a native admin PowerShell window, so not specific to
+  either) in a broken state — a wedged interop connection reporting
+  `WSL_E_DISTRO_NOT_FOUND`, or an input mode left garbled until the window
+  was closed and reopened. That breakage happens on the Windows side, after
+  this process's own control has ended, so it cannot be detected or
+  recovered from inside the script. `linux_util.sh`'s reboot prompt is
+  skipped entirely under WSL now, since there's no automatic action left to
+  ask y/N about.
+
 ### Fixed
-
-- **A WSL reboot could leave the distro terminated and never relaunched,
-  with Windows reporting `WSL_E_DISTRO_NOT_FOUND` and "The batch file cannot
-  be found."** `do_reboot`'s WSL path queues a small `.bat` (via `cmd.exe`)
-  that waits for the distro to fully drop out of `wsl.exe --list --running`
-  before calling `wsl.exe -d <distro>` — needed because a systemd distro
-  takes a moment to drain its units, and relaunching too early races
-  `user@<uid>.service`. That wait polled the running list by piping it into
-  `findstr`, but `wsl.exe`'s output is UTF-16LE with embedded NULs and a BOM,
-  which `findstr` can fail to match against — so the loop could see the
-  still-running distro as already gone on its very first check and call
-  `wsl -d` while termination was still in progress, which is exactly when
-  Windows returns `WSL_E_DISTRO_NOT_FOUND`. Reproduced identically from a
-  native admin PowerShell window, so it wasn't specific to any particular
-  terminal client. The wait now goes through `powershell.exe`, which decodes
-  the output correctly, and is bounded to 60 tries (~60s) so an
-  unresponsive `--list` can't hang the relaunch forever — it relaunches
-  anyway once the bound is hit.
-
-- **`init_error_log()` failed with `hostname: command not found` on distros
-  where the `hostname` package isn't installed** (encountered on a minimal
-  Fedora WSL image), leaving the "Hostname:" line blank and, on some shells,
-  aborting the rest of the error-log header. Reads the hostname from
-  `/proc/sys/kernel/hostname` instead, falling back to the `$HOSTNAME` shell
-  variable — neither depends on an external binary being present.
 
 - **The Desktop Environments category in the menu did not list entries in
   alphanumeric order.** Display order in the menu follows the order
