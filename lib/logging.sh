@@ -30,7 +30,7 @@ init_error_log() {
             echo "Linux Utilities Installer - Error Log"
             echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
             echo "User: $USER"
-            echo "Hostname: $(hostname)"
+            echo "Hostname: $(cat /proc/sys/kernel/hostname 2>/dev/null || echo "${HOSTNAME:-unknown}")"
             echo "════════════════════════════════════════════════════════════════"
             echo ""
         } > "$ERROR_LOG"

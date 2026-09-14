@@ -1500,6 +1500,51 @@ test_do_reboot_wsl_default_still_terminates() {
         grep -q -- "--shutdown" <<< "$out"
 }
 
+# do_reboot's relaunch .bat, when cmd.exe/wslpath are present, must not poll
+# `wsl.exe --list --running` through `findstr` — that pipe carries UTF-16LE
+# with embedded NULs, which findstr can fail to match on the very first
+# check, falling through to `wsl -d` while the distro is still mid-terminate
+# (WSL_E_DISTRO_NOT_FOUND). The wait must go through something that decodes
+# the output correctly (PowerShell), and must be bounded so an unresponsive
+# `--list` can't hang the relaunch forever.
+test_do_reboot_wsl_relaunch_bat_avoids_findstr_on_wide_output() {
+    local out bat_dir written_bat
+    bat_dir=$(mktemp -d)
+    out=$(
+        _IS_WSL=true
+        WSL_DISTRO_NAME="Ubuntu"
+        command() {
+            case "${2:-}" in
+                wsl.exe|cmd.exe|wslpath) return 0 ;;
+            esac
+            builtin command "$@"
+        }
+        cmd.exe() {
+            if [[ "$*" == "/c echo %TEMP%" ]]; then printf '%s\r\n' "$BAT_DIR"; return 0; fi
+            echo "CMD:$*"
+        }
+        wslpath() {
+            if [[ "$1" == "-u" ]]; then printf '%s' "$2"; else printf '%s' "$2"; fi
+        }
+        wsl.exe() {
+            if [[ "${1:-}" == "--list" ]]; then return 0; fi
+            echo "INTEROP:wsl.exe $*"
+        }
+        exit() { return 0; }
+        BAT_DIR="$bat_dir" do_reboot 2>&1
+    )
+    written_bat="$bat_dir/linux_util_wsl_relaunch.bat"
+    assert_true "do_reboot writes the relaunch .bat file" \
+        test -f "$written_bat"
+    assert_false "relaunch .bat does not pipe wsl.exe output through findstr" \
+        grep -q "findstr" "$written_bat"
+    assert_contains "$(cat "$written_bat" 2>/dev/null)" "powershell.exe" \
+        "relaunch .bat waits via PowerShell instead of findstr"
+    assert_contains "$(cat "$written_bat" 2>/dev/null)" "wsl.exe -d \"Ubuntu\"" \
+        "relaunch .bat still relaunches the correct distro"
+    rm -rf "$bat_dir"
+}
+
 test_is_wsl_true_when_distro_name_set
 test_is_wsl_false_without_markers
 test_is_wsl_true_via_proc_version
@@ -1510,6 +1555,7 @@ test_do_reboot_wsl_waits_for_distro_to_stop
 test_do_reboot_wsl_fallback_prints_instructions
 test_do_reboot_host_uses_systemctl
 test_do_reboot_wsl_default_still_terminates
+test_do_reboot_wsl_relaunch_bat_avoids_findstr_on_wide_output
 
 # ============================================================================
 # Test: Window Button Layout (detect_window_button_de / install_window_buttons)

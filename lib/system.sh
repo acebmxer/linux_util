@@ -259,10 +259,15 @@ do_reboot() {
                 # and queued (detached, via `cmd.exe /c start`) BEFORE we
                 # terminate. Running from a file rather than an inline
                 # one-liner keeps the Windows-side logic readable instead of a
-                # caret-escaped single line. It waits for this distro to drop
-                # out of `wsl --list --running` — `--terminate` only
-                # *requests* shutdown, and a systemd distro needs a moment to
-                # drain its units; relaunching too early races
+                # caret-escaped single line. It has to be the batch file that
+                # waits and relaunches, not this bash process: once
+                # `wsl.exe --terminate` actually kills the distro's init, this
+                # session dies with it, possibly mid-loop — a wait-then-relaunch
+                # cannot reliably run from inside the thing being terminated.
+                #
+                # It polls for this distro to drop out of `wsl --list --running`
+                # — `--terminate` only *requests* shutdown, and a systemd distro
+                # needs a moment to drain its units; relaunching too early races
                 # user@<uid>.service and can fail with "Device or resource
                 # busy" (systemd ends up 'degraded', and `wsl -d` reports
                 # "Failed to start the systemd user session") — then starts it
@@ -277,17 +282,35 @@ do_reboot() {
                 # unreachable from Windows, and `cmd.exe` handles a UNC path
                 # as an argument awkwardly even before that. A plain Windows
                 # temp path has neither problem.
+                #
+                # `wsl.exe --list --running` emits UTF-16LE, and piping that
+                # straight into `findstr` is unreliable — the embedded NULs
+                # (and BOM) mean a running distro can go unmatched on the very
+                # first check, so the loop falls straight through to
+                # `wsl -d` while the distro is still mid-terminate, which is
+                # exactly the WSL_E_DISTRO_NOT_FOUND race this was meant to
+                # avoid. PowerShell's `Get-Content`/`Select-String` decode text
+                # correctly, so the check is done there instead of `findstr`.
+                # The loop is also bounded (60 tries / ~60s) so a distro that
+                # never drops out of the running list — the same failure mode
+                # the bash-side wait below is bounded against — doesn't spin
+                # forever; it relaunches anyway after the timeout.
                 local win_temp relaunch_bat
                 win_temp="$(cmd.exe /c echo %TEMP% 2>/dev/null | tr -d '\r')"
                 relaunch_bat="$(wslpath -u "$win_temp")/linux_util_wsl_relaunch.bat"
                 cat > "$relaunch_bat" <<-EOF
 					@echo off
+					setlocal enabledelayedexpansion
+					set count=0
 					:wait
-					wsl.exe --list --running | findstr /i /c:"${distro}" >nul
-					if not errorlevel 1 (
+					set /a count+=1
+					if !count! gtr 60 goto relaunch
+					powershell.exe -NoProfile -Command "if ((wsl.exe --list --running) -match '${distro}') { exit 1 } else { exit 0 }" >nul 2>&1
+					if errorlevel 1 (
 					    timeout /t 1 /nobreak >nul
 					    goto wait
 					)
+					:relaunch
 					wsl.exe -d "${distro}"
 					del "%~f0"
 				EOF
