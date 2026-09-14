@@ -236,8 +236,8 @@ do_reboot() {
         # Preferred path: use the wsl.exe interop bridge to terminate just this
         # distro. The running session ends immediately and the distro auto-starts
         # on the next terminal/app, or via `wsl -d <distro>`.
-        if command -v wsl.exe >/dev/null 2>&1 && [[ -n "$distro" ]]; then
-            info "Terminating WSL distro '${distro}'. Relaunch with: wsl -d ${distro}"
+        if command -v wsl.exe >/dev/null 2>&1 && [[ -n "$distro" ]] && command -v cmd.exe >/dev/null 2>&1; then
+            info "Terminating WSL distro '${distro}' and relaunching it."
             printf '\n\n'
             wsl.exe --terminate "$distro"
             # --terminate only *requests* shutdown; a systemd distro needs a
@@ -256,6 +256,16 @@ do_reboot() {
                 fi
                 sleep 0.5
             done
+            # A "reboot" that just powers the distro off and leaves the user at
+            # a bare Windows prompt is not a reboot. Relaunch it ourselves.
+            # `wsl -d` has to run as a fresh Windows-side process, independent
+            # of this WSL session's process tree (which is about to vanish
+            # under it) — `cmd.exe /c start` opens it in its own new console
+            # window rather than as a child that dies with our pty. The empty
+            # "" is required: `start` treats its first quoted argument as the
+            # window title, so without it "wsl.exe" itself is swallowed as the
+            # title and "-d" is run as the command instead.
+            cmd.exe /c start "" wsl.exe -d "$distro" >/dev/null 2>&1
             exit 0
         fi
         # Fallback: interop unavailable or distro name unknown — print the exact

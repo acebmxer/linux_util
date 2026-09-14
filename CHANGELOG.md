@@ -14,6 +14,21 @@ when a release is cut.
 
 ### Fixed
 
+- **Under WSL, "reboot" only powered the distro off and left the user at a bare
+  Windows prompt instead of actually restarting it.** `do_reboot()`'s WSL path
+  ran `wsl.exe --terminate` (the only way to end a distro's VM from inside
+  itself — WSL has no bootloader or `systemctl reboot` equivalent a distro can
+  trigger on its own) but never relaunched it, so the "reboot" never
+  completed the second half of what a reboot means: coming back up. Now, after
+  confirming the distro has actually stopped, it relaunches it via
+  `cmd.exe /c start "" wsl.exe -d <distro>` — run through `cmd.exe` so the new
+  instance starts as an independent Windows-side process in its own console
+  window rather than as a child of the WSL session that is being torn down out
+  from under it. (The empty `""` matters: `start` treats its first quoted
+  argument as the window title, so without it `start` swallows `wsl.exe` as the
+  title and tries to run `-d` as the command instead.) This applies to `do_reboot()`
+  itself, so it covers every WSL distro the script runs under, not just Fedora.
+
 - **A minimal Fedora install (seen on a Fedora WSL rootfs) has no `awk`, and
   every module under `lib/` calls it unconditionally with no fallback**, so
   the very first sourced module (`lib/config.sh`) failed with a wall of
