@@ -239,33 +239,54 @@ do_reboot() {
         if command -v wsl.exe >/dev/null 2>&1 && [[ -n "$distro" ]] && command -v cmd.exe >/dev/null 2>&1; then
             info "Terminating WSL distro '${distro}' and relaunching it."
             printf '\n\n'
-            wsl.exe --terminate "$distro"
-            # --terminate only *requests* shutdown; a systemd distro needs a
-            # moment to drain its units. Relaunching before the old session is
-            # gone races user@<uid>.service and can fail with "Device or
-            # resource busy" (systemd ends up 'degraded', and `wsl -d` reports
-            # "Failed to start the systemd user session"). Wait until the distro
-            # no longer appears in the running list, bounded so we never hang.
-            local i
-            for i in $(seq 1 20); do
-                # `wsl.exe --list` emits UTF-16LE; strip NULs before matching.
-                if ! wsl.exe --list --running 2>/dev/null \
-                     | tr -d '\000' \
-                     | grep -qiE "(^|[[:space:]])${distro}([[:space:]]|\$)"; then
-                    break
-                fi
-                sleep 0.5
-            done
             # A "reboot" that just powers the distro off and leaves the user at
-            # a bare Windows prompt is not a reboot. Relaunch it ourselves.
-            # `wsl -d` has to run as a fresh Windows-side process, independent
-            # of this WSL session's process tree (which is about to vanish
-            # under it) — `cmd.exe /c start` opens it in its own new console
-            # window rather than as a child that dies with our pty. The empty
-            # "" is required: `start` treats its first quoted argument as the
-            # window title, so without it "wsl.exe" itself is swallowed as the
-            # title and "-d" is run as the command instead.
-            cmd.exe /c start "" wsl.exe -d "$distro" >/dev/null 2>&1
+            # a bare Windows prompt is not a reboot — it has to come back up.
+            # The relaunch has to be queued BEFORE we terminate, not after:
+            # any interop call from inside a WSL session (wsl.exe, cmd.exe, ...)
+            # goes through that session's interop socket, which belongs to the
+            # distro's own init process. `wsl.exe --terminate` kills that same
+            # init process, so once it has run, this session has no live
+            # socket left to launch anything through — a relaunch command
+            # issued afterwards silently does nothing. See
+            # https://github.com/Microsoft/WSL/issues/3760.
+            #
+            # So the relaunch is a small batch script, written to a temp file
+            # and queued (detached, via `cmd.exe /c start`) BEFORE we
+            # terminate. Running from a file rather than an inline one-liner
+            # keeps the Windows-side logic readable instead of a caret-escaped
+            # single line. It waits for this distro to drop out of
+            # `wsl --list --running` — `--terminate` only *requests* shutdown,
+            # and a systemd distro needs a moment to drain its units;
+            # relaunching too early races user@<uid>.service and can fail with
+            # "Device or resource busy" (systemd ends up 'degraded', and
+            # `wsl -d` reports "Failed to start the systemd user session") —
+            # then starts it again. `start` runs it detached in its own
+            # console so it outlives this session; the empty "" is required
+            # because `start` treats its first quoted argument as the window
+            # title, and without it, it would swallow the batch file's path
+            # as the title and run nothing.
+            # The batch file is written under Windows' own %TEMP%, not this
+            # distro's filesystem: once we terminate, `\\wsl$\...` /
+            # `\\wsl.localhost\...` UNC paths into it may briefly be
+            # unreachable from Windows, and `cmd.exe` handles a UNC path as an
+            # argument awkwardly even before that. A plain Windows temp path
+            # has neither problem.
+            local win_temp relaunch_bat
+            win_temp="$(cmd.exe /c echo %TEMP% 2>/dev/null | tr -d '\r')"
+            relaunch_bat="$(wslpath -u "$win_temp")/linux_util_wsl_relaunch.bat"
+            cat > "$relaunch_bat" <<-EOF
+				@echo off
+				:wait
+				wsl.exe --list --running | findstr /i /c:"${distro}" >nul
+				if not errorlevel 1 (
+				    timeout /t 1 /nobreak >nul
+				    goto wait
+				)
+				wsl.exe -d "${distro}"
+				del "%~f0"
+			EOF
+            cmd.exe /c start "" "$(wslpath -w "$relaunch_bat")" >/dev/null 2>&1
+            wsl.exe --terminate "$distro"
             exit 0
         fi
         # Fallback: interop unavailable or distro name unknown — print the exact
