@@ -107,10 +107,10 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 
 | Category | Covers |
 | --- | --- |
-| **System Tasks** | Updates and repo repair, broken-package fixes, drive/NFS/SMB mounts, UFW, time zone and locale, Num Lock, WSL Desktop, assorted distro fixes |
+| **System Tasks** | Updates and repo repair, broken-package fixes, drive/NFS/SMB mounts, UFW, time zone and locale, Num Lock, assorted distro fixes |
 | **Bootloaders** | GRUB, Limine, systemd-boot, switching between them, and five GRUB theme packs |
 | **Drivers** | NVIDIA, AMD GPU, Intel and AMD microcode, LACT, OpenLogi, Thermalright TRCC, XEN guest tools |
-| **Desktop Environments** | KDE Plasma, GNOME, Xfce, Cinnamon, MATE, LXQt, Budgie, COSMIC, Deepin, Pantheon |
+| **Desktop Environments** | KDE Plasma, GNOME, Xfce, Cinnamon, MATE, LXQt, Budgie, COSMIC, Deepin, Pantheon, and (under WSL only) WSL Desktop — installs any of the above into a WSL distro for use with WSLg |
 | **Backup** | Timeshift and Snapper (create/restore/delete), Déjà Dup, Kup, Vorta, Duplicati |
 | **Disk Utilities** | GParted, Ventoy, and a Btrfs toolset (Assistant, btrfsmaintenance, btrbk, duperemove) |
 | **Development** | Docker, Podman, Distrobox, VS Code, VSCodium, Cursor, Claude Code, Node/NVM, Go, Rust, pyenv, Terraform, OpenTofu, Ansible, kubectl, k9s, DBeaver, Virt-Manager |

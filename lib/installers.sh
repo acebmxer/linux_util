@@ -56,9 +56,6 @@ register_system_task "Mount NFS Share"    setup_mount_nfs_share   check_mount_nf
 register_system_task "Mount SMB Share"    setup_mount_smb_share   check_mount_smb_share   uninstall_mount_smb_share   update_mount_smb_share    get_version_mount_smb_share
 register_system_task "Manage Share"       setup_manage_share      check_manage_share      uninstall_manage_share      update_manage_share       get_version_manage_share
 register_system_task "Configure Syncthing Folders" setup_syncthing_folders check_syncthing_folders uninstall_syncthing_folders update_syncthing_folders get_version_syncthing_folders
-register_system_task "WSL Desktop"        setup_wsl_desktop       check_wsl_desktop       uninstall_wsl_desktop       update_wsl_desktop        get_version_wsl_desktop
-# Fully interactive picker — re-running the menu after a failure only asks again
-NO_RETRY["WSL Desktop"]=1
 register_utility "NVIDIA Drivers"         install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
 register_utility "Enable RDP"             install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
@@ -373,6 +370,15 @@ if [[ "$DISTRO_ID" != "elementary" ]]; then
     register_utility "Xfce Desktop"        install_xfce             check_xfce             uninstall_xfce             update_xfce                get_version_xfce
 fi
 
+# WSL Desktop: a picker over the Desktop Environments entries above, installed
+# inside a WSL distro and displayed via WSLg. Only meaningful under WSL — not
+# registered at all elsewhere, so it never appears as a normal-distro option.
+if is_wsl; then
+    register_utility "WSL Desktop"         setup_wsl_desktop        check_wsl_desktop      uninstall_wsl_desktop      update_wsl_desktop         get_version_wsl_desktop
+    # Fully interactive picker — re-running the menu after a failure only asks again
+    NO_RETRY["WSL Desktop"]=1
+fi
+
 # Budgie: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
 # Not packaged in EPEL (no RHEL support). Not on elementary.
 if [[ "$DISTRO_ID" != "elementary" ]] && \
@@ -508,6 +514,7 @@ UTILITY_CATEGORY["LXQt Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["MATE Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Pantheon Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Xfce Desktop"]="Desktop Environments"
+UTILITY_CATEGORY["WSL Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["awesome"]="Window Managers"
 UTILITY_CATEGORY["bspwm"]="Window Managers"
 UTILITY_CATEGORY["dwm"]="Window Managers"
@@ -844,7 +851,6 @@ UTILITY_DESCRIPTION["Mount Local Drive"]="Interactively selects an unmounted blo
 UTILITY_DESCRIPTION["Mount NFS Share"]="Discovers NFS exports from a remote server via showmount and mounts the chosen share persistently via /etc/fstab. Installs NFS client tools if needed and backs up fstab before any changes."
 UTILITY_DESCRIPTION["Mount SMB Share"]="Connects to an SMB/CIFS server, prompts for credentials, lists available shares, and mounts the chosen share persistently via /etc/fstab. Credentials are stored in a private file under HOME. Installs cifs-utils if needed and backs up fstab before any changes."
 UTILITY_DESCRIPTION["Manage Share"]="Update or unmount an existing linux_util-managed mount. Update: change server, share path, credentials, or mount location for NFS, SMB, or local disk mounts. Unmount: remove the share, delete the mount point directory, clear the fstab entry, and remove the KDE Dolphin Places entry. Backs up fstab before any changes."
-UTILITY_DESCRIPTION["WSL Desktop"]="Installs a full desktop environment (KDE, GNOME, Xfce, and the rest of the Desktop Environments category) inside a WSL distro, for use with WSLg — the GUI support built into WSL on Windows 11 and recent Windows 10 builds. No X server, RDP, or extra display-server setup needed. WSL only; reuses the same install_* function as the standalone Desktop Environments entry, so it installs identically either way."
 UTILITY_DESCRIPTION["NVIDIA Drivers"]="Installs proprietary NVIDIA GPU drivers for optimal 3D graphics and compute performance."
 
 # Bootloaders
@@ -871,6 +877,7 @@ UTILITY_DESCRIPTION["LXQt Desktop"]="Lightweight Qt-based desktop offering a fas
 UTILITY_DESCRIPTION["MATE Desktop"]="Traditional GNOME 2-based desktop offering a familiar layout, low resource usage, and broad hardware support."
 UTILITY_DESCRIPTION["Pantheon Desktop"]="Elegant, opinionated desktop from the elementary OS project, designed for simplicity and consistency with a macOS-inspired aesthetic."
 UTILITY_DESCRIPTION["Xfce Desktop"]="Lightweight and fast desktop that is visually clean, reliable, and ideal for older or lower-end hardware."
+UTILITY_DESCRIPTION["WSL Desktop"]="Installs a full desktop environment (KDE, GNOME, Xfce, and the rest of this category) inside a WSL distro, for use with WSLg — the GUI support built into WSL on Windows 11 and recent Windows 10 builds. No X server, RDP, or extra display-server setup needed. Reuses the same install_* function as installing that DE directly, so it installs identically either way. Only appears under WSL."
 UTILITY_DESCRIPTION["XEN Guest Utilities"]="Installs XEN guest agent for improved virtual machine performance, clipboard sharing, and host integration."
 UTILITY_DESCRIPTION["Cockpit"]="Web-based server management console reachable at https://<host>:9090. Provides a browser UI for system metrics, logs, storage, networking, services, containers, user accounts, and a built-in terminal. Enables cockpit.socket so the service activates on first connection, and opens 9090/tcp in the active firewall (firewalld or UFW)."
 UTILITY_DESCRIPTION["Enable RDP"]="Enables Remote Desktop Protocol access to this machine using the XRDP server."

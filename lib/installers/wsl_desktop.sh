@@ -64,7 +64,7 @@ setup_wsl_desktop() {
         [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 0 && choice <= ${#candidates[@]} )) && break
         printf '%sInvalid selection.%s\n' "${RED:-}" "${RESET:-}" > /dev/tty
     done
-    [[ "$choice" == "0" ]] && { info "Cancelled."; return 0; }
+    [[ "$choice" == "0" ]] && { info "Cancelled."; return 2; }
 
     local de_name="${candidates[$((choice - 1))]}"
     info "Installing ${de_name}..."

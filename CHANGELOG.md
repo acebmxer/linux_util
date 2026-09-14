@@ -14,21 +14,20 @@ when a release is cut.
 
 ### Added
 
-- **New "WSL Desktop" system task**: installs a full desktop environment
-  (KDE, GNOME, Xfce, and the rest of the Desktop Environments category)
-  inside a WSL distro, for use with WSLg — the GUI support built into WSL on
-  Windows 11 and recent Windows 10 builds. No separate X server or RDP setup
-  is needed. It is a picker, not a new installer: it lists whichever Desktop
-  Environments utilities are already registered for the running distro (so
-  per-distro availability, e.g. COSMIC being unavailable on RHEL, applies
-  automatically) and delegates straight to that utility's existing
-  `install_*` function, so it installs identically to picking the DE
-  directly from the Desktop Environments category. Only offered under WSL;
-  on a native install it explains that and points at the Desktop
-  Environments category instead. After install it tells the user to restart
-  the WSL session to pick it up through WSLg, and warns (with the
-  `wsl --update` / `wsl --shutdown` fix) if no WSLg display was detected in
-  the current session.
+- **New "WSL Desktop" entry in the Desktop Environments category**: installs
+  a full desktop environment (KDE, GNOME, Xfce, and the rest of that
+  category) inside a WSL distro, for use with WSLg — the GUI support built
+  into WSL on Windows 11 and recent Windows 10 builds. No separate X server
+  or RDP setup is needed. It is a picker, not a new installer: it lists
+  whichever Desktop Environments utilities are already registered for the
+  running distro (so per-distro availability, e.g. COSMIC being unavailable
+  on RHEL, applies automatically) and delegates straight to that utility's
+  existing `install_*` function, so it installs identically to picking the
+  DE directly. Only registered under WSL, so it never appears on a native
+  install. After install it tells the user to restart the WSL session to
+  pick it up through WSLg, and warns (with the `wsl --update` /
+  `wsl --shutdown` fix) if no WSLg display was detected in the current
+  session.
 
 ### Fixed
 
