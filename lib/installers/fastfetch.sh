@@ -3,7 +3,16 @@
 
 # --- Fastfetch ---
 
-check_fastfetch() { _check_standard fastfetch fastfetch ""; }
+check_fastfetch() {
+    _check_standard fastfetch fastfetch "" || return 1
+    # The binary can end up installed without shell config ever having run --
+    # e.g. an install that was cancelled after the package step, or fastfetch
+    # installed by some means outside this script. _fastfetch_configure_shells
+    # is idempotent (it no-ops once the marker line is present), so it's safe
+    # to call on every check rather than only from install_fastfetch/update_fastfetch.
+    _fastfetch_configure_shells &>/dev/null
+    return 0
+}
 
 _fastfetch_latest_url() {
     local ext="$1"

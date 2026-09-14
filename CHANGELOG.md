@@ -40,6 +40,20 @@ when a release is cut.
 
 ### Fixed
 
+- **Fastfetch could be shown as installed while never launching in a new
+  shell.** The auto-run line in `~/.bashrc`/`~/.zshrc`/etc. is only written by
+  `_fastfetch_configure_shells`, which previously ran only from
+  `install_fastfetch`/`update_fastfetch`. If that step was skipped — an
+  install cancelled after the package finished, or the binary present some
+  other way — the menu correctly reported Fastfetch as installed (via
+  `_check_standard`, which just checks the binary/package), but no shell ever
+  ran it automatically, with nothing telling the user config was missing.
+  `check_fastfetch` now also calls `_fastfetch_configure_shells` (silenced,
+  since it's a status check, not an install step) whenever the binary is
+  found, so a plain menu refresh repairs the missing shell config instead of
+  requiring a full reinstall. The helper is already idempotent, so this is a
+  no-op once configuration is correct.
+
 - **The WSL Desktop picker listed itself as a choice.** Its candidate list is
   built by scanning `UTILITY_CATEGORY` for entries tagged "Desktop
   Environments", and WSL Desktop is tagged that way too (so it shows up under
