@@ -236,9 +236,7 @@ do_reboot() {
         # Preferred path: use the wsl.exe interop bridge to terminate just this
         # distro. The running session ends immediately and the distro auto-starts
         # on the next terminal/app, or via `wsl -d <distro>`.
-        if command -v wsl.exe >/dev/null 2>&1 && [[ -n "$distro" ]] && command -v cmd.exe >/dev/null 2>&1; then
-            info "Terminating WSL distro '${distro}' and relaunching it."
-            printf '\n\n'
+        if command -v wsl.exe >/dev/null 2>&1 && [[ -n "$distro" ]]; then
             # A "reboot" that just powers the distro off and leaves the user at
             # a bare Windows prompt is not a reboot — it has to come back up.
             # The relaunch has to be queued BEFORE we terminate, not after:
@@ -250,43 +248,70 @@ do_reboot() {
             # issued afterwards silently does nothing. See
             # https://github.com/Microsoft/WSL/issues/3760.
             #
-            # So the relaunch is a small batch script, written to a temp file
-            # and queued (detached, via `cmd.exe /c start`) BEFORE we
-            # terminate. Running from a file rather than an inline one-liner
-            # keeps the Windows-side logic readable instead of a caret-escaped
-            # single line. It waits for this distro to drop out of
-            # `wsl --list --running` — `--terminate` only *requests* shutdown,
-            # and a systemd distro needs a moment to drain its units;
-            # relaunching too early races user@<uid>.service and can fail with
-            # "Device or resource busy" (systemd ends up 'degraded', and
-            # `wsl -d` reports "Failed to start the systemd user session") —
-            # then starts it again. `start` runs it detached in its own
-            # console so it outlives this session; the empty "" is required
-            # because `start` treats its first quoted argument as the window
-            # title, and without it, it would swallow the batch file's path
-            # as the title and run nothing.
-            # The batch file is written under Windows' own %TEMP%, not this
-            # distro's filesystem: once we terminate, `\\wsl$\...` /
-            # `\\wsl.localhost\...` UNC paths into it may briefly be
-            # unreachable from Windows, and `cmd.exe` handles a UNC path as an
-            # argument awkwardly even before that. A plain Windows temp path
-            # has neither problem.
-            local win_temp relaunch_bat
-            win_temp="$(cmd.exe /c echo %TEMP% 2>/dev/null | tr -d '\r')"
-            relaunch_bat="$(wslpath -u "$win_temp")/linux_util_wsl_relaunch.bat"
-            cat > "$relaunch_bat" <<-EOF
-				@echo off
-				:wait
-				wsl.exe --list --running | findstr /i /c:"${distro}" >nul
-				if not errorlevel 1 (
-				    timeout /t 1 /nobreak >nul
-				    goto wait
-				)
-				wsl.exe -d "${distro}"
-				del "%~f0"
-			EOF
-            cmd.exe /c start "" "$(wslpath -w "$relaunch_bat")" >/dev/null 2>&1
+            # Queuing the relaunch needs cmd.exe and wslpath; if either is
+            # missing, terminate still runs (matching this function's long-
+            # standing tested behavior) and the user is told how to relaunch
+            # by hand, same as the interop-unavailable fallback below.
+            if command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+                info "Terminating WSL distro '${distro}' and relaunching it."
+                printf '\n\n'
+                # The relaunch is a small batch script, written to a temp file
+                # and queued (detached, via `cmd.exe /c start`) BEFORE we
+                # terminate. Running from a file rather than an inline
+                # one-liner keeps the Windows-side logic readable instead of a
+                # caret-escaped single line. It waits for this distro to drop
+                # out of `wsl --list --running` — `--terminate` only
+                # *requests* shutdown, and a systemd distro needs a moment to
+                # drain its units; relaunching too early races
+                # user@<uid>.service and can fail with "Device or resource
+                # busy" (systemd ends up 'degraded', and `wsl -d` reports
+                # "Failed to start the systemd user session") — then starts it
+                # again. `start` runs it detached in its own console so it
+                # outlives this session; the empty "" is required because
+                # `start` treats its first quoted argument as the window
+                # title, and without it, it would swallow the batch file's
+                # path as the title and run nothing.
+                # The batch file is written under Windows' own %TEMP%, not
+                # this distro's filesystem: once we terminate, `\\wsl$\...` /
+                # `\\wsl.localhost\...` UNC paths into it may briefly be
+                # unreachable from Windows, and `cmd.exe` handles a UNC path
+                # as an argument awkwardly even before that. A plain Windows
+                # temp path has neither problem.
+                local win_temp relaunch_bat
+                win_temp="$(cmd.exe /c echo %TEMP% 2>/dev/null | tr -d '\r')"
+                relaunch_bat="$(wslpath -u "$win_temp")/linux_util_wsl_relaunch.bat"
+                cat > "$relaunch_bat" <<-EOF
+					@echo off
+					:wait
+					wsl.exe --list --running | findstr /i /c:"${distro}" >nul
+					if not errorlevel 1 (
+					    timeout /t 1 /nobreak >nul
+					    goto wait
+					)
+					wsl.exe -d "${distro}"
+					del "%~f0"
+				EOF
+                cmd.exe /c start "" "$(wslpath -w "$relaunch_bat")" >/dev/null 2>&1
+            else
+                info "Terminating WSL distro '${distro}'. Relaunch with: wsl -d ${distro}"
+                printf '\n\n'
+            fi
             wsl.exe --terminate "$distro"
+            # --terminate only *requests* shutdown; a systemd distro needs a
+            # moment to drain its units. Wait until the distro no longer
+            # appears in the running list before returning, bounded so we
+            # never hang — callers further up (and the relaunch script above,
+            # when queued) rely on termination having actually finished.
+            local i
+            for i in $(seq 1 20); do
+                # `wsl.exe --list` emits UTF-16LE; strip NULs before matching.
+                if ! wsl.exe --list --running 2>/dev/null \
+                     | tr -d '\000' \
+                     | grep -qiE "(^|[[:space:]])${distro}([[:space:]]|\$)"; then
+                    break
+                fi
+                sleep 0.5
+            done
             exit 0
         fi
         # Fallback: interop unavailable or distro name unknown — print the exact

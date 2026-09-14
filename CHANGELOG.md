@@ -21,26 +21,17 @@ when a release is cut.
   trigger on its own) but never relaunched it, so the "reboot" never completed
   the second half of what a reboot means: coming back up.
 
-  A first attempt queued the relaunch (`cmd.exe /c start "" wsl.exe -d
-  <distro>`) *after* the terminate call, timed with a poll loop — that still
-  did nothing, because every interop call from inside a WSL session (`wsl.exe`,
-  `cmd.exe`, ...) goes through that session's interop socket, and the socket
-  belongs to the distro's own init process. `wsl.exe --terminate` kills that
-  same init process, so any interop command issued afterwards, in the same
-  session, has no live socket left to run through and silently no-ops — a
-  bounded poll loop on our side never sees an error, it just does nothing.
-
-  Fixed by reversing the order: a small batch script is written to Windows'
-  own `%TEMP%` (resolved via `cmd.exe /c echo %TEMP%` + `wslpath -u`, not this
-  distro's filesystem — a `\\wsl$\...`/`\\wsl.localhost\...` UNC path into it
-  can be briefly unreachable right after termination, and `cmd.exe` handles
-  UNC arguments awkwardly regardless) that polls `wsl --list --running` for
-  this distro to drop off, then starts it again with `wsl -d <distro>` and
-  deletes itself. That script is queued *before* termination, detached via
-  `cmd.exe /c start ""` so it runs as an independent Windows-side process in
-  its own console rather than a child of the session about to be torn down —
-  only then does the script call `wsl.exe --terminate`. This is in the shared
-  `do_reboot()`, so it covers every WSL distro the script runs under, not just
+  Fixed by queuing a relaunch *before* terminating, not after: any interop call
+  issued from inside a WSL session goes through that session's interop socket,
+  which belongs to the distro's own init process, so a relaunch command queued
+  after `--terminate` has already killed that process silently has no socket
+  left to run through. The relaunch is a small batch script written to
+  Windows' own `%TEMP%` that waits for the distro to actually stop, then runs
+  `wsl -d <distro>` and deletes itself; it's launched detached
+  (`cmd.exe /c start`) so it survives as an independent Windows process once
+  this session ends. If `cmd.exe`/`wslpath` aren't reachable, it falls back to
+  terminate-only with the manual relaunch command printed, same as before.
+  This is in the shared `do_reboot()`, so it covers every WSL distro, not just
   Fedora.
 
 - **A minimal Fedora install (seen on a Fedora WSL rootfs) has no `awk`, and
