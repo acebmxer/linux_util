@@ -31,11 +31,19 @@ when a release is cut.
 
 ### Fixed
 
-- **The Desktop Environments entries in `UTILITY_CATEGORY` were not in
-  alphanumeric order**: "WSL Desktop" was appended after "Xfce Desktop"
-  instead of sitting between "Pantheon Desktop" and "Xfce Desktop" where
-  case-insensitive alphabetical order puts it. Reordered; no functional
-  change.
+- **The Desktop Environments category in the menu did not list entries in
+  alphanumeric order.** Display order in the menu follows the order
+  `register_utility` is called in `lib/installers.sh`, not the
+  `UTILITY_CATEGORY` map — so reordering that map's entries (an earlier,
+  incomplete pass at this same fix) had no effect on what actually renders.
+  The real order was Cinnamon, COSMIC, Deepin, GNOME, KDE, MATE, Xfce, WSL,
+  Budgie, LXQt, Pantheon, with Budgie, LXQt and Pantheon each stuck at the
+  end because their conditional registration blocks were written after the
+  others. Reordered the `register_utility` calls (and split the combined
+  GNOME/KDE/MATE/Xfce block apart) into case-insensitive alphanumeric order:
+  Budgie, Cinnamon, COSMIC, Deepin, GNOME, KDE, LXQt, MATE, Pantheon, WSL,
+  Xfce. No change to which entries appear on which distro — only their
+  order.
 
 - **The "System Updates" badge kept showing the pending-update count from
   before the last update run, for up to an hour after updates were actually

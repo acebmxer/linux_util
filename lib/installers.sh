@@ -337,6 +337,13 @@ register_utility "nnn"                 install_nnn              check_nnn       
 # Elementary OS uses Pantheon exclusively; any other DE causes display manager
 # and PAM session conflicts. The elementary project explicitly advises against it.
 
+# Budgie: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
+# Not packaged in EPEL (no RHEL support). Not on elementary.
+if [[ "$DISTRO_ID" != "elementary" ]] && \
+   [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "Budgie Desktop"      install_budgie           check_budgie           uninstall_budgie           update_budgie              get_version_budgie
+fi
+
 # Cinnamon: available on Debian, Ubuntu, Fedora, Arch, openSUSE — not elementary
 if [[ "$DISTRO_ID" != "elementary" ]]; then
     register_utility "Cinnamon Desktop"    install_cinnamon         check_cinnamon         uninstall_cinnamon         update_cinnamon            get_version_cinnamon
@@ -366,8 +373,24 @@ fi
 if [[ "$DISTRO_ID" != "elementary" ]]; then
     register_utility "GNOME Desktop"       install_gnome            check_gnome            uninstall_gnome            update_gnome               get_version_gnome
     register_utility "KDE Desktop"         install_kde              check_kde              uninstall_kde              update_kde                 get_version_kde
+fi
+
+# LXQt: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
+# Not packaged in EPEL (no RHEL support). Not on elementary.
+if [[ "$DISTRO_ID" != "elementary" ]] && \
+   [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "LXQt Desktop"        install_lxqt             check_lxqt             uninstall_lxqt             update_lxqt                get_version_lxqt
+fi
+
+if [[ "$DISTRO_ID" != "elementary" ]]; then
     register_utility "MATE Desktop"        install_mate             check_mate             uninstall_mate             update_mate                get_version_mate
-    register_utility "Xfce Desktop"        install_xfce             check_xfce             uninstall_xfce             update_xfce                get_version_xfce
+fi
+
+# Pantheon: official packages only on Arch (extra repo) and openSUSE Tumbleweed
+# (Factory pattern). Not packaged on Debian/Ubuntu, Fedora, RHEL, or Leap/SLES.
+# Already installed on elementary — no need to offer it there.
+if [[ "$DISTRO_FAMILY" == "arch" ]] || [[ "$DISTRO_ID" == "opensuse-tumbleweed" ]]; then
+    register_utility "Pantheon Desktop"    install_pantheon         check_pantheon         uninstall_pantheon         update_pantheon            get_version_pantheon
 fi
 
 # WSL Desktop: a picker over the Desktop Environments entries above, installed
@@ -379,25 +402,8 @@ if is_wsl; then
     NO_RETRY["WSL Desktop"]=1
 fi
 
-# Budgie: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
-# Not packaged in EPEL (no RHEL support). Not on elementary.
-if [[ "$DISTRO_ID" != "elementary" ]] && \
-   [[ "$DISTRO_FAMILY" != "rhel" ]]; then
-    register_utility "Budgie Desktop"      install_budgie           check_budgie           uninstall_budgie           update_budgie              get_version_budgie
-fi
-
-# LXQt: available on Debian/Ubuntu, Fedora, Arch, and openSUSE.
-# Not packaged in EPEL (no RHEL support). Not on elementary.
-if [[ "$DISTRO_ID" != "elementary" ]] && \
-   [[ "$DISTRO_FAMILY" != "rhel" ]]; then
-    register_utility "LXQt Desktop"        install_lxqt             check_lxqt             uninstall_lxqt             update_lxqt                get_version_lxqt
-fi
-
-# Pantheon: official packages only on Arch (extra repo) and openSUSE Tumbleweed
-# (Factory pattern). Not packaged on Debian/Ubuntu, Fedora, RHEL, or Leap/SLES.
-# Already installed on elementary — no need to offer it there.
-if [[ "$DISTRO_FAMILY" == "arch" ]] || [[ "$DISTRO_ID" == "opensuse-tumbleweed" ]]; then
-    register_utility "Pantheon Desktop"    install_pantheon         check_pantheon         uninstall_pantheon         update_pantheon            get_version_pantheon
+if [[ "$DISTRO_ID" != "elementary" ]]; then
+    register_utility "Xfce Desktop"        install_xfce             check_xfce             uninstall_xfce             update_xfce                get_version_xfce
 fi
 
 # --- Window Managers ---
