@@ -14,6 +14,18 @@ when a release is cut.
 
 ### Fixed
 
+- **A minimal Fedora install (seen on a Fedora WSL rootfs) has no `awk`, and
+  every module under `lib/` calls it unconditionally with no fallback**, so
+  the very first sourced module (`lib/config.sh`) failed with a wall of
+  `command not found` errors on every config read, and the same happened again
+  building the utilities menu. `awk` ships in Fedora/RHEL's separate `gawk`
+  package rather than the base install, so a trimmed image can lack it while
+  still having bash 4+. Added a preflight in `linux_util.sh`, before anything
+  in `lib/` is sourced, that checks for `awk`/`sed`/`grep` and exits with a
+  clear error and the right install command for the detected distro
+  (`gawk` via dnf/apt/pacman/zypper) instead of letting dozens of cryptic
+  per-line failures scroll past.
+
 - **The Fedora/RHEL NVIDIA driver menu offered bogus entries like "580", "470",
   "390" and "7" alongside the real "580xx"/"470xx"/"390xx" legacy branches**,
   none of which were installable packages. The menu built its list with

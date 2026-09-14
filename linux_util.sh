@@ -19,6 +19,34 @@ if (( BASH_VERSINFO[0] < 4 )); then
     exit 1
 fi
 
+# Require core POSIX text tools before sourcing any lib/ module — config.sh
+# and most of lib/ call awk/sed/grep unconditionally with no fallback. Minimal
+# distro images (e.g. a bare Fedora WSL rootfs) can omit awk entirely, since
+# it ships in a separate "gawk" package rather than the base install, and
+# every call then fails with "command not found" instead of a clear error.
+_lu_missing_core=()
+for _lu_cmd in awk sed grep; do
+    command -v "$_lu_cmd" &>/dev/null || _lu_missing_core+=("$_lu_cmd")
+done
+if (( ${#_lu_missing_core[@]} > 0 )); then
+    echo "Error: missing required command(s): ${_lu_missing_core[*]}"
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        case "${ID:-}${ID_LIKE:+ $ID_LIKE}" in
+            *fedora*|*rhel*) _lu_pkg="gawk"; _lu_install="sudo dnf install -y $_lu_pkg" ;;
+            *debian*|*ubuntu*) _lu_pkg="gawk"; _lu_install="sudo apt install -y $_lu_pkg" ;;
+            *arch*) _lu_pkg="gawk"; _lu_install="sudo pacman -S --noconfirm $_lu_pkg" ;;
+            *suse*) _lu_pkg="gawk"; _lu_install="sudo zypper install -y $_lu_pkg" ;;
+            *) _lu_pkg=""; _lu_install="" ;;
+        esac
+        if [[ -n "$_lu_install" ]]; then
+            echo "       Install it with: $_lu_install"
+        fi
+    fi
+    exit 1
+fi
+unset _lu_missing_core _lu_cmd _lu_pkg _lu_install
+
 # Catch pipeline failures (e.g. cmd | grep where cmd fails)
 set -o pipefail
 
