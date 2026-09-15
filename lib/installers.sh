@@ -88,7 +88,7 @@ if [[ "$DISTRO_ID" == "ubuntu" ]] || [[ "$DISTRO_ID" == "kubuntu" ]] || [[ "$DIS
     register_system_task "Fix Monitor Layout at Login" install_fix_monitor_login check_always_false     noop_function              install_fix_monitor_login
 fi
 
-# Delete the stock cloud-image user (ubuntu/debian/centos/alpine). Always listed;
+# Delete the stock cloud-image user (ubuntu/debian/centos/alpine/fedora). Always listed;
 # the status column reflects whether one of those accounts currently exists.
 register_system_task "Delete Default Cloud-Init User" delete_cloud_init_user check_always_false noop_function delete_cloud_init_user get_version_delete_cloud_init_user
 
@@ -887,7 +887,7 @@ UTILITY_DESCRIPTION["firewall-config (GUI)"]="Graphical configuration tool for f
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
-UTILITY_DESCRIPTION["Delete Default Cloud-Init User"]="Removes the stock user that cloud/VM images ship with, along with its home directory. Detects the known default accounts (ubuntu, debian, centos, alpine) by presence — the status shows 'Cloud Init user found' while one exists and goes blank once removed. Uses deluser --remove-home (userdel --remove where deluser is absent). Confirms before deleting, refuses to delete the account you are logged in as, and is a no-op when none exist."
+UTILITY_DESCRIPTION["Delete Default Cloud-Init User"]="Removes the stock user that cloud/VM images ship with, along with its home directory. Detects the known default accounts (ubuntu, debian, centos, alpine, fedora) by presence — the status shows 'Cloud Init user found' while one exists and goes blank once removed. Uses deluser --remove-home (userdel --remove where deluser is absent). Confirms before deleting, refuses to delete the account you are logged in as, and is a no-op when none exist."
 UTILITY_DESCRIPTION["Fix RDP Kerberos Delay"]="Stops Remmina/FreeRDP (xfreerdp) from stalling ~20s before each Windows RDP login. The MIT krb5 sample config that ships with the krb5 package leaves dns_lookup_kdc at its default of true, so krb5 does a DNS SRV lookup for the server's Kerberos realm, fails to reach a KDC, and times out before falling back to NTLM. Sets dns_lookup_kdc, dns_lookup_realm, and rdns to false under [libdefaults] in /etc/krb5.conf — realm-agnostic, so it fixes every domain, not just one. Backs up the file first, leaves all other sections untouched, and is fully reversible."
 UTILITY_DESCRIPTION["Fix Broken Packages"]="Repairs half-installed packages and unmet dependencies (dpkg --configure -a / apt --fix-broken, dnf distro-sync, pacman -Syu, zypper verify). Read-only checks run automatically; any step that adds or removes packages is confirmed first."
 UTILITY_DESCRIPTION["Fix Package Repos"]="Refreshes repository metadata and repairs common repo errors (stale caches, unreachable mirrors, missing keys). Clearing caches or reinitializing the keyring is confirmed before it runs."

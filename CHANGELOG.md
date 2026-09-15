@@ -12,6 +12,14 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Delete Default Cloud-Init User didn't recognize Fedora's `fedora` account.**
+  `_CLOUD_INIT_USERS` only listed `ubuntu debian centos alpine`, so on a VM
+  cloned from a Fedora cloud-init template (default login `fedora`/`fedora`,
+  per `install_xen_orchestra`'s template builder) the task reported no default
+  user to remove even though one was present. Added `fedora` to the list.
+
 ## [1.5.0] - 2026-09-14
 
 ### Added
