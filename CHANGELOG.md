@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-14
+
 ### Added
 
 - **`NO_HEALTH_CHECK` opt-out for the post-install health check.** A utility
