@@ -480,7 +480,23 @@ _pkg_cleanup_thorough_impl() {
             fi
             ;;
         dnf|yum)
-            "$_runner" "Removing old kernels" sudo "$PKG_MGR" remove -y --oldinstallonly --setopt installonly_limit=2 || true
+            if [[ "$DISTRO_ID" == "fedora" ]] && (( DISTRO_VERSION_ID >= 45 )); then
+                # DNF5 removed --oldinstallonly with no direct replacement:
+                # https://github.com/rpm-software-management/dnf5/issues/762
+                # Scoped to Fedora 45+ only; 43/44 stay on the --oldinstallonly path
+                # below unchanged until their support ends, even though DNF5 has been
+                # the default there too since Fedora 41.
+                local old_kernels
+                old_kernels=$("$PKG_MGR" repoquery --installonly --latest-limit=-2 2>/dev/null)
+                if [[ -n "$old_kernels" ]]; then
+                    # shellcheck disable=SC2086
+                    "$_runner" "Removing old kernels" sudo "$PKG_MGR" remove -y $old_kernels || true
+                else
+                    info "No old kernels to remove."
+                fi
+            else
+                "$_runner" "Removing old kernels" sudo "$PKG_MGR" remove -y --oldinstallonly --setopt installonly_limit=2 || true
+            fi
             ;;
         pacman)
             # Arch doesn't accumulate old kernels the same way; skip

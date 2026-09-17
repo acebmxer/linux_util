@@ -674,6 +674,121 @@ test_detect_distro_mock_opensuse
 test_detect_distro_mock_id_like_derivative
 
 # ============================================================================
+# Test: Old-Kernel Cleanup — Fedora 45 DNF5 gating
+# DNF5 dropped --oldinstallonly with no replacement (rpm-software-management/dnf5#762).
+# _pkg_cleanup_thorough_impl must use the repoquery-based fallback on Fedora 45+
+# while leaving Fedora <45 (and RHEL-family, which shares the dnf|yum case) on the
+# original --oldinstallonly call, unchanged, until their support ends.
+# ============================================================================
+echo ""
+echo "=== Old-Kernel Cleanup Tests ==="
+
+# Runs _pkg_cleanup_thorough_impl in a subshell with fake dnf/sudo/rpm/uname
+# stubs on PATH that log every dnf invocation to a file, so we can assert
+# which kernel-removal command was actually issued for a given Fedora version.
+_run_kernel_cleanup_mock() {
+    local fedora_version="$1" has_old_kernels="$2"
+    local _log; _log=$(mktemp /tmp/kernel_cleanup_log_XXXXXX)
+    local _bin; _bin=$(mktemp -d /tmp/kernel_cleanup_bin_XXXXXX)
+
+    cat > "$_bin/dnf" <<EOF
+#!/bin/bash
+echo "\$*" >> "$_log"
+case "\$*" in
+    "repoquery --installonly --latest-limit=-2")
+        if [[ "$has_old_kernels" == "1" ]]; then
+            echo "kernel-6.0.0-1.fc${fedora_version}.x86_64"
+            echo "kernel-core-6.0.0-1.fc${fedora_version}.x86_64"
+        fi
+        ;;
+esac
+exit 0
+EOF
+    chmod +x "$_bin/dnf"
+    printf '#!/bin/bash\nexec "$@"\n' > "$_bin/sudo"; chmod +x "$_bin/sudo"
+    # rpm -E '%{rhel}' must stay non-numeric so the RHEL-only stale-release
+    # cleanup step (gated on this) exits early on Fedora, same as the real macro
+    # left undefined; rpm -q must report "not installed" for the elevate-release
+    # check, or that unrelated cleanup branch would also fire.
+    printf '#!/bin/bash\ncase "$1" in -E) echo "%%{rhel}" ;; -q) exit 1 ;; *) exit 0 ;; esac\n' > "$_bin/rpm"
+    chmod +x "$_bin/rpm"
+    printf '#!/bin/bash\necho "6.0.0-1.fc${fedora_version}.x86_64"\n' > "$_bin/uname"; chmod +x "$_bin/uname"
+
+    (
+        PATH="$_bin:$PATH"
+        source "${SCRIPT_DIR}/lib/logging.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        DISTRO_ID="fedora"
+        DISTRO_VERSION_ID="$fedora_version"
+        PKG_MGR="dnf"
+        _pkg_cleanup_thorough_impl "direct" >/dev/null 2>&1
+    )
+
+    cat "$_log"
+    rm -rf "$_log" "$_bin"
+}
+
+test_kernel_cleanup_fedora45_uses_repoquery() {
+    local _out
+    _out=$(_run_kernel_cleanup_mock "45" "1")
+    if grep -q '^repoquery --installonly --latest-limit=-2$' <<< "$_out"; then
+        _pass "Fedora 45 old-kernel cleanup calls dnf repoquery --installonly --latest-limit=-2"
+    else
+        _fail "Fedora 45 old-kernel cleanup calls dnf repoquery --installonly --latest-limit=-2 (got: $_out)"
+    fi
+    if grep -q '^remove -y kernel-6.0.0-1.fc45.x86_64 kernel-core-6.0.0-1.fc45.x86_64$' <<< "$_out"; then
+        _pass "Fedora 45 old-kernel cleanup removes the kernels repoquery listed"
+    else
+        _fail "Fedora 45 old-kernel cleanup removes the kernels repoquery listed (got: $_out)"
+    fi
+    if grep -q -- '--oldinstallonly' <<< "$_out"; then
+        _fail "Fedora 45 old-kernel cleanup does not call the dropped --oldinstallonly flag"
+    else
+        _pass "Fedora 45 old-kernel cleanup does not call the dropped --oldinstallonly flag"
+    fi
+}
+
+test_kernel_cleanup_fedora45_no_old_kernels() {
+    local _out
+    _out=$(_run_kernel_cleanup_mock "45" "0")
+    if grep -q '^remove ' <<< "$_out"; then
+        _fail "Fedora 45 old-kernel cleanup skips 'dnf remove' when repoquery finds nothing to remove (got: $_out)"
+    else
+        _pass "Fedora 45 old-kernel cleanup skips 'dnf remove' when repoquery finds nothing to remove"
+    fi
+}
+
+test_kernel_cleanup_fedora44_unchanged() {
+    local _out
+    _out=$(_run_kernel_cleanup_mock "44" "1")
+    if grep -q -- '^remove -y --oldinstallonly --setopt installonly_limit=2$' <<< "$_out"; then
+        _pass "Fedora 44 old-kernel cleanup still calls --oldinstallonly, unchanged"
+    else
+        _fail "Fedora 44 old-kernel cleanup still calls --oldinstallonly, unchanged (got: $_out)"
+    fi
+    if grep -q '^repoquery' <<< "$_out"; then
+        _fail "Fedora 44 old-kernel cleanup does not use the Fedora 45 repoquery path"
+    else
+        _pass "Fedora 44 old-kernel cleanup does not use the Fedora 45 repoquery path"
+    fi
+}
+
+test_kernel_cleanup_fedora43_unchanged() {
+    local _out
+    _out=$(_run_kernel_cleanup_mock "43" "1")
+    if grep -q -- '^remove -y --oldinstallonly --setopt installonly_limit=2$' <<< "$_out"; then
+        _pass "Fedora 43 old-kernel cleanup still calls --oldinstallonly, unchanged"
+    else
+        _fail "Fedora 43 old-kernel cleanup still calls --oldinstallonly, unchanged (got: $_out)"
+    fi
+}
+
+test_kernel_cleanup_fedora45_uses_repoquery
+test_kernel_cleanup_fedora45_no_old_kernels
+test_kernel_cleanup_fedora44_unchanged
+test_kernel_cleanup_fedora43_unchanged
+
+# ============================================================================
 # Test: Snapshot Module (lib/snapshot.sh)
 # ============================================================================
 echo ""

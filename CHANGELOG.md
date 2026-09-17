@@ -14,6 +14,21 @@ when a release is cut.
 
 ### Fixed
 
+- **Old-kernel cleanup silently did nothing on Fedora 45.** System Updates'
+  thorough-cleanup step removed old kernels on the dnf/yum path with
+  `dnf remove -y --oldinstallonly --setopt installonly_limit=2`. DNF5 dropped
+  `--oldinstallonly` entirely with no replacement flag
+  (rpm-software-management/dnf5#762), and since the call was already wrapped
+  in `|| true`, DNF5 rejecting the flag was swallowed silently — the step
+  reported success ("Nothing to do") while never actually removing anything.
+  DNF5 has been the default `dnf` since Fedora 41 and the only option since
+  Fedora 44 dropped DNF4, so this has likely been silently broken since
+  Fedora 41; only Fedora 45 is fixed for now, using
+  `dnf repoquery --installonly --latest-limit=-2` to find kernels beyond the
+  2 most recently installed and removing those explicitly. Fedora 43 and 44
+  are untouched and still use the old `--oldinstallonly` call until their
+  support ends.
+
 - **Delete Default Cloud-Init User didn't recognize Fedora's `fedora` account.**
   `_CLOUD_INIT_USERS` only listed `ubuntu debian centos alpine`, so on a VM
   cloned from a Fedora cloud-init template (default login `fedora`/`fedora`,
