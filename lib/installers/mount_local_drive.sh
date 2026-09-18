@@ -326,7 +326,7 @@ setup_mount_local_drive() {
             done
         fi
 
-        if grep -qsE "[[:space:]]${mount_point//\//\\/}[[:space:]]" /etc/fstab; then
+        if grep -qsE "[[:space:]]${mount_point}[[:space:]]" /etc/fstab; then
             error "Mount point ${mount_point} is already present in /etc/fstab. Skipping."
             continue
         fi
@@ -402,6 +402,4 @@ setup_mount_local_drive() {
 }
 
 # ── Lifecycle stubs (task is run-on-demand, not idempotent) ───────────────────
-check_mount_local_drive()     { return 1; }
-uninstall_mount_local_drive() { return 0; }
 update_mount_local_drive()    { setup_mount_local_drive; }

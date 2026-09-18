@@ -14,6 +14,32 @@ when a release is cut.
 
 ### Fixed
 
+- **Mounting a drive or share printed 3 "stray \ before /" warnings per
+  mount, and the health check after every run of Mount Local Drive, Mount
+  NFS Share, Mount SMB Share, Manage Share, Configure Syncthing Folders and
+  Configure Bootloader falsely reported "Health check failed" even when the
+  operation succeeded.** Two unrelated bugs in the same six tasks. First,
+  the fstab-collision check in `mount_local_drive.sh` and
+  `mount_smb_share.sh` built its grep pattern with
+  `${mount_point//\//\\/}`, escaping every `/` as `\/` — a convention for
+  `sed`, where `/` is the delimiter, but meaningless for `grep -E`, which
+  has no such escape and prints a warning for each one while still matching
+  the literal `/` anyway; removed the escaping since `grep -E` needs none.
+  Second, all six tasks are "run it and it's done" actions with no
+  persistent installed/uninstalled state, and every other task like this
+  (System Updates, Create Snapshot, Switch Bootloader, etc.) registers with
+  the shared `check_always_false`/`noop_function` sentinel so `health_check`
+  and the menu's status logic know to skip them — but these six instead
+  defined their own private always-`return 1` check and always-`return 0`
+  uninstall functions, functionally identical but not recognized by
+  `health_check`'s literal string match on `"check_always_false"`, so it
+  treated every successful run as a failed check. Switching all six
+  registrations to the shared sentinel functions also fixes a second latent
+  effect of the same root cause: the menu's status line for these tasks
+  never showed their version function's output (e.g. "3 drive(s) configured
+  via linux_util"), since that display path is also gated on the literal
+  `check_always_false` name.
+
 - **Docker installs and updates 404'd on a new Fedora release until Docker's
   own repo caught up.** `docker-ce.repo`'s baseurl uses `$releasever`, which
   dnf resolves to the running Fedora version — but Docker only adds a new

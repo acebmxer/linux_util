@@ -51,11 +51,11 @@ check_always_false() {
 register_system_task "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update get_version_full_update
 NO_RETRY["Full System Upgrade/Update"]=1
 register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates      get_version_system_updates
-register_system_task "Mount Local Drive"  setup_mount_local_drive check_mount_local_drive uninstall_mount_local_drive update_mount_local_drive  get_version_mount_local_drive
-register_system_task "Mount NFS Share"    setup_mount_nfs_share   check_mount_nfs_share   uninstall_mount_nfs_share   update_mount_nfs_share    get_version_mount_nfs_share
-register_system_task "Mount SMB Share"    setup_mount_smb_share   check_mount_smb_share   uninstall_mount_smb_share   update_mount_smb_share    get_version_mount_smb_share
-register_system_task "Manage Share"       setup_manage_share      check_manage_share      uninstall_manage_share      update_manage_share       get_version_manage_share
-register_system_task "Configure Syncthing Folders" setup_syncthing_folders check_syncthing_folders uninstall_syncthing_folders update_syncthing_folders get_version_syncthing_folders
+register_system_task "Mount Local Drive"  setup_mount_local_drive check_always_false noop_function update_mount_local_drive  get_version_mount_local_drive
+register_system_task "Mount NFS Share"    setup_mount_nfs_share   check_always_false   noop_function   update_mount_nfs_share    get_version_mount_nfs_share
+register_system_task "Mount SMB Share"    setup_mount_smb_share   check_always_false   noop_function   update_mount_smb_share    get_version_mount_smb_share
+register_system_task "Manage Share"       setup_manage_share      check_always_false      noop_function      update_manage_share       get_version_manage_share
+register_system_task "Configure Syncthing Folders" setup_syncthing_folders check_always_false noop_function update_syncthing_folders get_version_syncthing_folders
 register_utility "NVIDIA Drivers"         install_nvidia_drivers  check_nvidia_drivers  uninstall_nvidia_drivers  update_nvidia_drivers     get_version_nvidia_drivers
 register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_guest_utilities uninstall_xen_guest_utilities setup_xen_guest_utilities get_version_xen_guest_utilities
 register_utility "Enable RDP"             install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
@@ -126,7 +126,7 @@ register_utility "GRUB"                install_grub             check_grub      
 register_utility "Limine"              install_limine           check_limine           uninstall_limine           update_limine              get_version_limine
 register_utility "systemd-boot"        install_systemd_boot     check_systemd_boot     uninstall_systemd_boot     update_systemd_boot        get_version_systemd_boot
 register_utility "Switch Bootloader"   setup_switch_bootloader  check_always_false         noop_switch_bootloader    update_switch_bootloader    get_version_switch_bootloader
-register_utility "Configure Bootloader" setup_configure_bootloader check_configure_bootloader noop_configure_bootloader update_configure_bootloader get_version_configure_bootloader
+register_utility "Configure Bootloader" setup_configure_bootloader check_always_false noop_function update_configure_bootloader get_version_configure_bootloader
 register_utility "GRUB Theme Selector" install_grubtheme_selector    check_always_false          noop_function                   update_grubtheme_selector    get_version_grubtheme_selector
 register_utility "Distro GRUB Themes"  install_grubtheme_distro      check_grubtheme_distro      uninstall_grubtheme_distro      update_grubtheme_distro      get_version_grubtheme_distro
 register_utility "vinceliuice GRUB Themes" install_grubtheme_vinceliuice check_grubtheme_vinceliuice uninstall_grubtheme_vinceliuice update_grubtheme_vinceliuice get_version_grubtheme_vinceliuice
