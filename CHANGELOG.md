@@ -14,6 +14,17 @@ when a release is cut.
 
 ### Fixed
 
+- **Docker installs and updates 404'd on a new Fedora release until Docker's
+  own repo caught up.** `docker-ce.repo`'s baseurl uses `$releasever`, which
+  dnf resolves to the running Fedora version — but Docker only adds a new
+  version directory to `download.docker.com` some weeks after Fedora ships
+  it, so a current release (e.g. Fedora 45 at beta) 404s on every `dnf`
+  refresh even though nothing is actually broken. `setup_install_docker` now
+  probes Docker's repo and pins `$releasever` to the newest version Docker
+  actually publishes (walking back up to 4 versions if the current one
+  404s), instead of leaving `$releasever` for dnf to resolve to a version
+  that doesn't exist yet.
+
 - **Old-kernel cleanup silently did nothing on Fedora 45.** System Updates'
   thorough-cleanup step removed old kernels on the dnf/yum path with
   `dnf remove -y --oldinstallonly --setopt installonly_limit=2`. DNF5 dropped

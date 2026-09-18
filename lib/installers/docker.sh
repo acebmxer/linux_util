@@ -1,6 +1,32 @@
 #!/bin/bash
 # Docker installer functions
 
+# _docker_fedora_releasever finds the newest Fedora version Docker's own repo
+# actually has package data for. Docker lags Fedora releases by weeks, so the
+# running system's version (from rpm's $releasever) can 404 against
+# download.docker.com even though it's a real, current Fedora release.
+# Walks backward from the current version, checking each one's repodata, and
+# stops at the first that exists. Falls back to the current version if none
+# of the recent ones are reachable (e.g. offline), so the caller's sed is a
+# no-op and behaves as it did before this check existed.
+_docker_fedora_releasever() {
+    local _cur
+    _cur=$(rpm -E %fedora 2>/dev/null)
+    [[ "$_cur" == "rawhide" || -z "$_cur" ]] && _cur="${DISTRO_VERSION_ID:-}"
+    [[ -z "$_cur" ]] && return 1
+
+    local _v
+    for ((_v = _cur; _v > _cur - 5; _v--)); do
+        if curl -fsSL --head -o /dev/null \
+            "https://download.docker.com/linux/fedora/${_v}/x86_64/stable/repodata/repomd.xml"; then
+            echo "$_v"
+            return 0
+        fi
+    done
+
+    echo "$_cur"
+}
+
 # --- Docker (utility version) ---
 setup_install_docker() {
     info "Installing Docker..."
@@ -42,6 +68,21 @@ setup_install_docker() {
             [[ "$DISTRO_ID" == "fedora" ]] && docker_repo="https://download.docker.com/linux/fedora/docker-ce.repo" || docker_repo="https://download.docker.com/linux/centos/docker-ce.repo"
 
             run_as_root curl -fsSLo /etc/yum.repos.d/docker-ce.repo "${docker_repo}"
+
+            # Docker's repo file uses $releasever in its baseurl, and DNF resolves
+            # that from the running system. A new Fedora release (e.g. a beta) is
+            # routinely ahead of Docker's own repo, which only adds a version
+            # directory some weeks after Fedora ships it — dnf then 404s on every
+            # refresh. Pin $releasever to the newest Fedora version Docker actually
+            # publishes, so install and future updates work against a real repo.
+            if [[ "$DISTRO_ID" == "fedora" ]]; then
+                local _fed_ver
+                _fed_ver=$(_docker_fedora_releasever)
+                if [[ -n "$_fed_ver" ]]; then
+                    run_as_root sed -i "s|\$releasever|${_fed_ver}|g" /etc/yum.repos.d/docker-ce.repo
+                fi
+            fi
+
             run_as_root "$PKG_MGR" install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             run_as_root systemctl start docker
             run_as_root systemctl enable docker
