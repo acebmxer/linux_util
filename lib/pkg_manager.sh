@@ -168,8 +168,20 @@ pkg_refresh() {
                || _pkg_cache_is_fresh /var/cache/${PKG_MGR}/.check 2>/dev/null; then
                 log_info "Package cache is fresh, skipping ${PKG_MGR} makecache"
             else
+                # --refresh forces a real check against every repo's mirror.
+                # Plain "makecache" only refetches a repo once its own
+                # metadata_expire has elapsed (6h for Fedora's updates-testing,
+                # typically longer elsewhere) and otherwise exits 0 having made
+                # no network request at all -- so a System Updates run minutes
+                # after the last one could silently resolve against hours-old
+                # metadata and report "Nothing to do" while real updates were
+                # available the whole time. This is also why the freshness
+                # check above rarely fires on dnf5: its cache lives under
+                # /var/cache/libdnf5/<repo>-<hash>/, not the dnf4-era path
+                # checked here, so this branch runs on effectively every call
+                # -- and needs --refresh to be worth running at all.
                 "$_run" "Refreshing package cache" \
-                    timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo "$PKG_MGR" makecache
+                    timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo "$PKG_MGR" makecache --refresh
             fi
             ;;
         pacman)
@@ -291,27 +303,27 @@ pkg_full_upgrade() {
                      # Exit code 2 signals "Cancelled" to the runner, suppressing retries.
                      local _apt_out
                      _apt_out=$(mktemp)
-                     printf "  Running full system upgrade ...\n"
+                     printf "  Upgrading installed packages ...\n"
                      sudo apt full-upgrade 2>&1 | tee "$_apt_out"
                      local _apt_rc=${PIPESTATUS[0]}
                      if grep -q "^Abort\.$" "$_apt_out"; then
-                         printf "  ${RED}✗${RESET}  Running full system upgrade\n"
+                         printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
                          rm -f "$_apt_out"
                          return 2
                      fi
                      [[ $_apt_rc -eq 0 ]] \
-                         && printf "  ${GREEN}✓${RESET}  Running full system upgrade\n" \
-                         || printf "  ${RED}✗${RESET}  Running full system upgrade\n"
+                         && printf "  ${GREEN}✓${RESET}  Upgrading installed packages\n" \
+                         || printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
                      rm -f "$_apt_out"
                      return $_apt_rc
                  else
-                     "$_run" "Running full system upgrade" sudo apt full-upgrade $_y
+                     "$_run" "Upgrading installed packages" sudo apt full-upgrade $_y
                  fi ;;
-        dnf|yum) "$_run" "Running full system upgrade" sudo "$PKG_MGR" upgrade $_y ;;
+        dnf|yum) "$_run" "Upgrading installed packages" sudo "$PKG_MGR" upgrade $_y ;;
         pacman)  if [[ "${AUR_ENABLED:-false}" == "true" ]] && command -v yay &>/dev/null; then
-                     "$_run" "Running full system upgrade (yay)"  yay  -Syu $_nc
+                     "$_run" "Upgrading installed packages (yay)"  yay  -Syu $_nc
                  elif [[ "${AUR_ENABLED:-false}" == "true" ]] && command -v paru &>/dev/null; then
-                     "$_run" "Running full system upgrade (paru)" paru -Syu $_nc
+                     "$_run" "Upgrading installed packages (paru)" paru -Syu $_nc
                  else
                      if [[ "${AUR_ENABLED:-false}" != "true" ]]; then
                          warn "AUR support is currently disabled. AUR packages will NOT be updated."
@@ -321,9 +333,9 @@ pkg_full_upgrade() {
                          warn "To enable AUR updates, install yay: https://github.com/Jguer/yay#installation"
                          warn "  or paru: https://github.com/morganamilo/paru#installation"
                      fi
-                     "$_run" "Running full system upgrade (pacman only)" sudo pacman -Syu $_nc
+                     "$_run" "Upgrading installed packages (pacman only)" sudo pacman -Syu $_nc
                  fi ;;
-        zypper)  "$_run" "Running full system upgrade" sudo zypper update $_y ;;
+        zypper)  "$_run" "Upgrading installed packages" sudo zypper update $_y ;;
     esac
 }
 

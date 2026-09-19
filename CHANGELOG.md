@@ -14,6 +14,47 @@ when a release is cut.
 
 ### Fixed
 
+- **The "System Updates" task printed a step called "Running full system
+  upgrade," which reads as though it also runs the separate "Full System
+  Upgrade/Update" task (the one that additionally offers a distro-version
+  upgrade).** It doesn't — both tasks call the same shared `pkg_full_upgrade()`
+  helper in `lib/pkg_manager.sh` to apply ordinary package upgrades, and that
+  helper's step label just happened to collide with the other task's name.
+  Renamed the label (and its apt/dnf/pacman/zypper variants) to "Upgrading
+  installed packages" so the two tasks read as distinct in the output.
+
+- **System Updates could report "Nothing to do" and skip installing real,
+  available updates on dnf/yum systems, even though the menu's own
+  "(N updates)" badge still showed them pending.** Two compounding bugs.
+  First, `pkg_refresh()` in `lib/pkg_manager.sh` guards against refreshing
+  the package cache twice in a row with a global `_PKG_REFRESHED` flag, set
+  `true` the first time it runs and never cleared — `process_selected()` in
+  `linux_util.sh` calls it once per confirmed batch of selected operations,
+  and System Updates calls it again internally, so the flag exists only to
+  skip that second, redundant call within one run. Because nothing ever
+  reset it, it stayed `true` for the rest of the interactive session, so
+  every later run of System Updates (or any install/update that calls
+  `pkg_refresh`) silently skipped the cache refresh entirely. Second, and
+  the deeper cause: even a genuine refresh wasn't enough. On dnf/yum,
+  `pkg_refresh` ran plain `sudo dnf makecache`, which only re-fetches a
+  repo once *that repo's own* `metadata_expire` has elapsed (6h for
+  Fedora's `updates-testing`, and similar on other repos) — otherwise it
+  exits 0 having made no network request at all, so a System Updates run
+  minutes after the last one could still resolve against hours-old
+  metadata and correctly-by-its-own-logic report nothing pending. The
+  script's own dnf cache-freshness pre-check, meant to skip exactly this
+  redundant work, checks a dnf4-era path (`/var/cache/dnf/metadata/repomd.xml`)
+  that doesn't exist on dnf5 (Fedora's package manager since Fedora 41),
+  which made that check permanently dead rather than the intended guard.
+  Meanwhile the menu's pending-update badge reads its own separate,
+  unguarded probe (`dnf check-update`, run as the invoking user against
+  that user's own cache, not root's), so it kept showing the true count
+  while the actual upgrade run kept reporting nothing pending. Fixed by
+  resetting `_PKG_REFRESHED` at the start of every `process_selected()`
+  call, and by adding `--refresh` to the dnf/yum `makecache` call so it
+  forces a real check against the mirror instead of trusting a per-repo
+  expiry window that can run for hours.
+
 - **Mounting a drive or share printed 3 "stray \ before /" warnings per
   mount, and the health check after every run of Mount Local Drive, Mount
   NFS Share, Mount SMB Share, Manage Share, Configure Syncthing Folders and
