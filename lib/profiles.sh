@@ -27,7 +27,7 @@
 # 2. Add a corresponding register_profile call at the bottom of this file.
 #
 # ── AVAILABLE UTILITY NAMES (pass to helpers exactly as shown) ───────────
-# System Tasks:  "Full System Upgrade/Update"  "System Updates"
+# System Tasks:  "Full System Upgrade"  "System Updates"
 #                "NVIDIA Drivers"  "XEN Guest Utilities"
 #                "AMD Drivers"
 #                "Num Lock at Boot"  "Local Time Zone / Locale"

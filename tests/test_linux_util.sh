@@ -3517,16 +3517,20 @@ echo "=== Prerelease Distro Upgrade Tests ==="
 
 _PRERELEASE_FAKEBIN=$(mktemp -d /tmp/linux_util_prerelease_fakebin_XXXXXX)
 
-# Fake curl: branches on the URL substring, controlled by FAKE_BODHI_STATE
-# and FAKE_UBUNTU_DEVEL_VERSION so each test can pick what the "network"
-# returns without touching the real Bodhi API or Ubuntu's meta-release feed.
+# Fake curl: branches on the URL substring, controlled by FAKE_BODHI_STATE,
+# FAKE_BODHI_BRANCH and FAKE_UBUNTU_DEVEL_VERSION so each test can pick what
+# the "network" returns without touching the real Bodhi API or Ubuntu's
+# meta-release feed. FAKE_BODHI_BRANCH defaults to "branched" (a real,
+# already-Branched release with its own tree) since that's the case the
+# beta feature is meant for; tests for the pre-Branch "still rawhide" case
+# set it explicitly.
 cat > "$_PRERELEASE_FAKEBIN/curl" <<'EOF'
 #!/bin/bash
 args="$*"
 case "$args" in
     *bodhi.fedoraproject.org/releases/F*)
         [[ -n "${FAKE_BODHI_STATE:-}" ]] || exit 1
-        echo "{\"state\": \"${FAKE_BODHI_STATE}\"}"
+        echo "{\"state\": \"${FAKE_BODHI_STATE}\", \"branch\": \"${FAKE_BODHI_BRANCH:-branched}\"}"
         exit 0
         ;;
     *dl.fedoraproject.org*)
@@ -3590,6 +3594,7 @@ _prerelease_check_probe() {
         DISTRO_ID="$1" DISTRO_VERSION_ID="$2" \
         PKG_ALLOW_PRERELEASE_UPGRADE="$3" \
         FAKE_BODHI_STATE="${4:-}" FAKE_UBUNTU_DEVEL_VERSION="${5:-}" \
+        FAKE_BODHI_BRANCH="${6:-}" \
         pkg_check_upgrade_available
     )
 }
@@ -3611,6 +3616,17 @@ test_fedora_current_preferred_over_beta() {
     local out
     out=$(_prerelease_check_probe fedora 44 true current)
     assert_eq "45" "$out" "Fedora: a GA ('current') release is reported without a (Beta) suffix, even with the flag on"
+}
+
+test_fedora_not_branched_not_offered_even_when_allowed() {
+    # A release Bodhi has created but that hasn't Branched off Rawhide yet
+    # (bodhi "branch": "rawhide") has no installable tree at all -- offering
+    # it as a Beta, even with the flag on, would point dnf system-upgrade at
+    # a release that doesn't exist yet.
+    local out rc
+    out=$(_prerelease_check_probe fedora 44 true pending "" rawhide); rc=$?
+    assert_eq "1" "$rc" "Fedora not yet Branched: not offered even with the flag on (return code)"
+    assert_eq "" "$out" "Fedora not yet Branched: not offered even with the flag on (no output)"
 }
 
 test_ubuntu_devel_not_offered_by_default() {
@@ -3661,6 +3677,7 @@ test_ubuntu_devel_skips_lts_prompt_and_adds_flag() {
 test_fedora_branched_not_offered_by_default
 test_fedora_branched_offered_when_allowed
 test_fedora_current_preferred_over_beta
+test_fedora_not_branched_not_offered_even_when_allowed
 test_ubuntu_devel_not_offered_by_default
 test_ubuntu_devel_offered_when_allowed
 test_fedora_beta_releasever_stripped

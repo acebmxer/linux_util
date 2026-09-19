@@ -360,7 +360,8 @@ pkg_clean() {
 # These run commands in the foreground with full terminal access so that
 # dpkg config-file prompts, needrestart dialogs, and any other interactive
 # questions are presented to the user unmodified.
-# Used exclusively by full_update.sh and system_updates.sh.
+# Used by full_upgrade.sh and system_updates.sh, and by pkg_distro_upgrade()
+# below (itself only ever called from full_upgrade.sh).
 # ============================================================================
 
 pkg_refresh_interactive()     { pkg_refresh     direct; }
@@ -1028,20 +1029,25 @@ pkg_check_upgrade_available() {
             return 1
             ;;
         fedora)
-            # Offer the next release ONLY if it is an actually-released stable version.
-            #
-            # Fedora stands up the base repos for the next release while it is still
-            # "Branched" (pre-release / under development), so merely checking that the
-            # repo exists is NOT enough — it returns true for an unreleased version and
-            # would push users onto a development release whose ecosystem (Docker, etc.)
-            # has no support yet. Authoritative state comes from Fedora's Bodhi API,
-            # where a released version is marked "current".
+            # Offer the next release ONLY if it is an actually-released stable version,
+            # or -- opt-in -- an already-Branched pre-release with a real installable
+            # tree. Fedora reserves a release's name in Bodhi well before it has any
+            # installable content: it still tracks Rawhide (Bodhi "branch": "rawhide")
+            # until Branch day, when it gets its own branch/tree. Offering it before
+            # then would point dnf system-upgrade at a release tree that doesn't exist.
+            # Authoritative state comes from Fedora's Bodhi API: a released version is
+            # marked "state": "current"; a Branched one has "branch" != "rawhide".
             local next_ver=$(( DISTRO_VERSION_ID + 1 ))
 
-            local bodhi_state
-            bodhi_state=$(curl -sf --max-time 10 \
-                "https://bodhi.fedoraproject.org/releases/F${next_ver}" 2>/dev/null \
+            local bodhi_json
+            bodhi_json=$(curl -sf --max-time 10 \
+                "https://bodhi.fedoraproject.org/releases/F${next_ver}" 2>/dev/null)
+            local bodhi_state bodhi_branch
+            bodhi_state=$(echo "$bodhi_json" \
                 | grep -oE '"state"[[:space:]]*:[[:space:]]*"[^"]+"' \
+                | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+            bodhi_branch=$(echo "$bodhi_json" \
+                | grep -oE '"branch"[[:space:]]*:[[:space:]]*"[^"]+"' \
                 | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
 
             if [[ "$bodhi_state" == "current" ]]; then
@@ -1051,8 +1057,10 @@ pkg_check_upgrade_available() {
                 # Reached Bodhi and it says the next version is pending/frozen/etc.
                 # (not yet released). Only offer it if the caller explicitly opted
                 # into pre-release upgrades -- stable ("current") always wins above,
-                # this only fires when there is no stable target at all yet.
-                if [[ "$PKG_ALLOW_PRERELEASE_UPGRADE" == "true" ]]; then
+                # this only fires when there is no stable target at all yet -- and
+                # only once it has actually Branched off Rawhide, or there is nothing
+                # for dnf system-upgrade to install yet.
+                if [[ "$PKG_ALLOW_PRERELEASE_UPGRADE" == "true" && -n "$bodhi_branch" && "$bodhi_branch" != "rawhide" ]]; then
                     echo "${next_ver} (Beta)"
                     return 0
                 fi
@@ -1449,9 +1457,13 @@ pkg_distro_upgrade() {
             [[ "$target_version" == *" (Beta)"* ]] && is_beta_target=true
             local fedora_releasever="${target_version%% *}"
 
-            # Install all pending updates first — required before system-upgrade
+            # Install all pending updates first — required before system-upgrade.
+            # Reuses the same helper the "System Updates" task uses, instead of
+            # duplicating the dnf invocation here (metadata was already
+            # refreshed by setup_full_upgrade()'s own pkg_refresh_interactive
+            # step before this function was ever called).
             info "Installing all pending updates before Fedora upgrade..."
-            sudo dnf upgrade --refresh -y || {
+            pkg_full_upgrade_interactive || {
                 error "Failed to install pending updates. Cannot proceed with Fedora upgrade."
                 return 1
             }

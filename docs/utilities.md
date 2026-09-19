@@ -28,7 +28,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 
 | Task | Description |
 |------|-------------|
-| **Full System Upgrade/Update** | Comprehensive system upgrade — all configured package managers, essential tools, and cache cleanup |
+| **Full System Upgrade** | Upgrades to the next OS release when one is available and confirmed (installs pending packages first, since the release upgrade requires it); does nothing otherwise — use System Updates for regular package updates. Arch-family defers to the distro's own full-update tool |
 | **System Updates** | Package list refresh, full upgrade, autoremove, and cache clean |
 | **Fix Package Repos** | Refreshes repository metadata and repairs common repo errors (stale caches, unreachable mirrors, missing keys); cache wipe / keyring reinit is confirmed first |
 | **Fix Broken Packages** | Repairs half-installed packages and unmet dependencies (`dpkg --configure -a` / `apt --fix-broken`, `dnf distro-sync`, `pacman -Syu`, `zypper verify`) |

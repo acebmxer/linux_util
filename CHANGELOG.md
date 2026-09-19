@@ -14,7 +14,7 @@ when a release is cut.
 
 ### Added
 
-- **"Full System Upgrade/Update" can now offer a beta/pre-release version of
+- **"Full System Upgrade" can now offer a beta/pre-release version of
   the next OS release, opt-in, on Fedora and Ubuntu-family systems.**
   Previously `pkg_check_upgrade_available()` in `lib/pkg_manager.sh` only ever
   reported a next Fedora release once Fedora's Bodhi API marked it `current`
@@ -29,8 +29,8 @@ when a release is cut.
   states (reported as `"<version> (Beta)"`), and Ubuntu/Kubuntu/Pop/neon's
   own devel-release meta-release feed via `do-release-upgrade -d` (reported
   as `"<version> (Devel)"`). A stable release is always preferred over a beta
-  one when both exist. Even with the setting on, `setup_full_update()` in
-  `lib/installers/full_update.sh` shows a distinct warning (instability,
+  one when both exist. Even with the setting on, `setup_full_upgrade()` in
+  `lib/installers/full_upgrade.sh` shows a distinct warning (instability,
   lagging third-party repos, higher chance of needing to roll back) and still
   requires the normal y/N confirmation before anything runs. Debian's
   `testing` branch was considered and deliberately excluded: it's a
@@ -38,11 +38,60 @@ when a release is cut.
   version currently in beta, so offering it here would misrepresent what it
   is.
 
+### Changed
+
+- **"Full System Upgrade" (`setup_full_upgrade()` in
+  `lib/installers/full_upgrade.sh`) no longer falls back to a regular package
+  update.** Previously, if no OS-version upgrade was available, the user
+  declined it, or the distro upgrade itself failed, the function silently
+  ran a full `pkg_full_upgrade_interactive()` package update anyway and
+  reported success — which meant a genuinely failed distribution upgrade
+  could still be reported as "successful" because the fallback package
+  update happened to work. Full System Upgrade now only ever upgrades the
+  OS release (installing pending packages first when that release upgrade
+  requires it, e.g. Fedora's and RHEL's own preflight update), and does
+  nothing when there's no upgrade to offer, it's declined, or it's not
+  available on the chosen track — telling the user to run "System Updates"
+  for regular package updates instead. Arch-family systems are unaffected;
+  they have no discrete release upgrade and already defer entirely to the
+  distro's own full-update tool. Renamed the task from "Full System
+  Upgrade/Update" to "Full System Upgrade" to match — it no longer performs
+  regular updates as a feature of its own, only as an internal step of the
+  upgrade itself. `lib/installers/full_update.sh` was renamed to
+  `full_upgrade.sh`, and `setup_full_update()`/`get_version_full_update()`
+  to `setup_full_upgrade()`/`get_version_full_upgrade()`.
+
 ### Fixed
+
+- **`pkg_check_upgrade_available()`'s Fedora case could offer a beta upgrade
+  to a release that doesn't exist yet.** With `allow_prerelease_upgrade` on,
+  it treated any non-"current" Bodhi state as an offerable Beta. Fedora
+  reserves a release's name in Bodhi well before it has any installable
+  content — it still tracks Rawhide (Bodhi `"branch": "rawhide"`) until
+  Branch day, when it gets its own release tree. Confirmed against the real
+  Bodhi API: F46 currently shows `"state": "pending"`, `"branch": "rawhide"`
+  with no development tree at `dl.fedoraproject.org`, so "Full System
+  Upgrade" was offering "46 (Beta)" as a real option when `dnf
+  system-upgrade --releasever=46` would have had nothing to install. Now
+  also checks that the release has actually Branched (`"branch"` is present
+  and isn't `"rawhide"`) before offering it, matching how F45 looked when it
+  was genuinely offered as a Beta (`"branch": "f45"`, with a real tree).
+  Added a regression test for the not-yet-Branched case.
+
+- **The Fedora branch of `pkg_distro_upgrade()` in `lib/pkg_manager.sh` ran
+  its own separate `sudo dnf upgrade --refresh -y` to install pending
+  updates before a release upgrade, instead of reusing
+  `pkg_full_upgrade_interactive()` — the same helper the "System Updates"
+  task already calls for this exact job.** Two code paths doing the same "update the current release"
+  step meant a future fix to one (AUR handling, apt's fix-broken-packages
+  pass, output formatting) could silently miss the other. Fedora still fully
+  updates the current release before `dnf system-upgrade` downloads
+  anything — required by Fedora's own upgrade tooling — it now does that by
+  calling the shared helper instead of duplicating the command.
 
 - **The "System Updates" task printed a step called "Running full system
   upgrade," which reads as though it also runs the separate "Full System
-  Upgrade/Update" task (the one that additionally offers a distro-version
+  Upgrade" task (the one that additionally offers a distro-version
   upgrade).** It doesn't — both tasks call the same shared `pkg_full_upgrade()`
   helper in `lib/pkg_manager.sh` to apply ordinary package upgrades, and that
   helper's step label just happened to collide with the other task's name.

@@ -1,8 +1,8 @@
 #!/bin/bash
-# Full System Upgrade/Update functions
+# Full System Upgrade functions
 
-# --- Full System Upgrade/Update ---
-setup_full_update() {
+# --- Full System Upgrade ---
+setup_full_upgrade() {
     if _system_updates_has_arch_update; then
         local _cmd
         _cmd=$(_system_updates_arch_update_cmd)
@@ -18,9 +18,7 @@ setup_full_update() {
         return $_rc
     fi
 
-    info "Starting full system upgrade/update..."
-    local _snap_before
-    _snap_before=$(pkg_snapshot)
+    info "Starting full system upgrade..."
 
     # Step 1: Refresh repos
     pkg_refresh_interactive
@@ -111,69 +109,55 @@ setup_full_update() {
                         return 0
                     fi
 
-                    # Return code 2: no upgrade available on the selected track
-                    # (e.g., user chose LTS but no next LTS release exists yet).
-                    # Fall through to standard package updates without a warning.
-                    if (( upgrade_rc != 2 )); then
-                        # If a reboot is required (updates were applied but system needs restart),
-                        # don't fall through to redundant package updates — just exit cleanly.
-                        local reboot_needed=false
-                        if [[ -f /var/run/reboot-required ]]; then
-                            reboot_needed=true
-                        elif command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
-                            reboot_needed=true
-                        fi
-
-                        if [[ "$reboot_needed" == "true" ]]; then
-                            info "System updates were applied. Please reboot and re-run to continue the distribution upgrade."
-                            return 0
-                        fi
-
-                        warn "Distribution upgrade failed. Falling back to package updates..."
+                    if (( upgrade_rc == 2 )); then
+                        # No upgrade available on the selected track (e.g. user
+                        # chose LTS but no next LTS release exists yet) --
+                        # pkg_distro_upgrade already reported why. Nothing to do.
+                        return 3
                     fi
-                    break
+
+                    # A reboot mid-upgrade is expected, not a failure -- the
+                    # upgrade continues on the next run after the user reboots.
+                    local reboot_needed=false
+                    if [[ -f /var/run/reboot-required ]]; then
+                        reboot_needed=true
+                    elif command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+                        reboot_needed=true
+                    fi
+
+                    if [[ "$reboot_needed" == "true" ]]; then
+                        info "System updates were applied. Please reboot and re-run to continue the distribution upgrade."
+                        return 0
+                    fi
+
+                    error "Distribution upgrade failed."
+                    return 1
                     ;;
                 n|no|'')
                     info "Distribution upgrade skipped by user."
-                    break
+                    return 2
                     ;;
                 *) echo "  Please enter Y or N." ;;
             esac
         done
     else
-        info "No distribution version upgrade available."
-    fi
-
-    # Fallback: standard package update
-    info "Performing package updates..."
-    _pkg_cleanup_stale_releases direct
-    pkg_full_upgrade_interactive || return $?
-    # Device firmware (fwupd/LVFS) is a separate subsystem from the package
-    # manager — apply any pending firmware updates interactively here too.
-    _system_updates_apply_firmware
-    pkg_cleanup_thorough_interactive
-    info "System update completed."
-    local _snap_after
-    _snap_after=$(pkg_snapshot)
-    if [[ "$_snap_before" == "$_snap_after" ]]; then
-        info "No package changes were made."
+        info "No distribution version upgrade available. Run \"System Updates\" for regular package updates."
         return 3
     fi
-    return 0
 }
 
-# --- Version/status for Full System Upgrade/Update ---
+# --- Version/status for Full System Upgrade ---
 # Returns the next available distro version for display in the menu.
 # Shows nothing when no upgrade is available.
-_FULL_UPDATE_UPGRADE_CACHE=""
-_FULL_UPDATE_UPGRADE_CHECKED=false
-get_version_full_update() {
+_FULL_UPGRADE_CACHE=""
+_FULL_UPGRADE_CHECKED=false
+get_version_full_upgrade() {
     # Cache the result so the (potentially slow) network check runs only once
-    if [[ "$_FULL_UPDATE_UPGRADE_CHECKED" == true ]]; then
-        [[ -n "$_FULL_UPDATE_UPGRADE_CACHE" ]] && echo "$_FULL_UPDATE_UPGRADE_CACHE"
+    if [[ "$_FULL_UPGRADE_CHECKED" == true ]]; then
+        [[ -n "$_FULL_UPGRADE_CACHE" ]] && echo "$_FULL_UPGRADE_CACHE"
         return 0
     fi
-    _FULL_UPDATE_UPGRADE_CHECKED=true
+    _FULL_UPGRADE_CHECKED=true
 
     PKG_ALLOW_PRERELEASE_UPGRADE="$CFG_ALLOW_PRERELEASE_UPGRADE"
     local target_version=""
@@ -198,6 +182,6 @@ get_version_full_update() {
         esac
     fi
 
-    _FULL_UPDATE_UPGRADE_CACHE="↑ ${target_version}${label} available"
-    echo "$_FULL_UPDATE_UPGRADE_CACHE"
+    _FULL_UPGRADE_CACHE="↑ ${target_version}${label} available"
+    echo "$_FULL_UPGRADE_CACHE"
 }

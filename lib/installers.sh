@@ -48,8 +48,8 @@ check_always_false() {
 }
 
 # --- System Tasks (must be registered before utilities) ---
-register_system_task "Full System Upgrade/Update" setup_full_update check_always_false noop_function setup_full_update get_version_full_update
-NO_RETRY["Full System Upgrade/Update"]=1
+register_system_task "Full System Upgrade" setup_full_upgrade check_always_false noop_function setup_full_upgrade get_version_full_upgrade
+NO_RETRY["Full System Upgrade"]=1
 register_system_task "System Updates"     setup_system_updates    check_always_false    noop_function             setup_system_updates      get_version_system_updates
 register_system_task "Mount Local Drive"  setup_mount_local_drive check_always_false noop_function update_mount_local_drive  get_version_mount_local_drive
 register_system_task "Mount NFS Share"    setup_mount_nfs_share   check_always_false   noop_function   update_mount_nfs_share    get_version_mount_nfs_share
@@ -815,7 +815,7 @@ UTILITY_DISPLAY_NAME["DistroShelf"]="DistroShelf (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Zen Browser"]="Zen Browser (Beta)"
 
 # System Tasks: subcategory folders appear at the top, plain tasks keep their order.
-UTILITY_SUBCATEGORY["Full System Upgrade/Update"]="System Updaters"
+UTILITY_SUBCATEGORY["Full System Upgrade"]="System Updaters"
 UTILITY_SUBCATEGORY["System Updates"]="System Updaters"
 UTILITY_SUBCATEGORY["Unattended Upgrades"]="System Updaters"
 UTILITY_SUBCATEGORY["Configure Unattended Upgrades"]="System Updaters"
@@ -837,7 +837,7 @@ SUBCATEGORY_ORDER["System Tools"]="Kernel Managers"
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
 
 # System Tasks
-UTILITY_DESCRIPTION["Full System Upgrade/Update"]="Performs a comprehensive system upgrade including all configured package managers and removes unused packages."
+UTILITY_DESCRIPTION["Full System Upgrade"]="Upgrades to the next OS release when one is available and confirmed, installing pending packages first since the release upgrade requires it. Does nothing when no upgrade is available, it's declined, or it fails -- use System Updates for regular package updates. Arch-family systems defer to their own full-update tool instead."
 UTILITY_DESCRIPTION["System Updates"]="Installs and configures automatic system update scheduling via systemd timers or cron."
 UTILITY_DESCRIPTION["Unattended Upgrades"]="Enables the Debian/Ubuntu unattended-upgrades package so security (and optionally other) updates install automatically in the background. Runs the package's own debconf setup so you can choose what gets updated. The package must already be present (it ships by default on most Ubuntu installs)."
 UTILITY_DESCRIPTION["Configure Unattended Upgrades"]="Opens /etc/apt/apt.conf.d/50unattended-upgrades in your editor (\$EDITOR, or nano) so you can choose which update origins auto-install, blacklist packages, and set auto-reboot and notification behavior. Only appears when the unattended-upgrades package is installed."

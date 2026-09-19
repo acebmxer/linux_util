@@ -27,7 +27,7 @@ CFG_UPDATE_CHANNEL="main"  # main | dev | a release tag (e.g. v1.3.1) to pin
 CFG_AUTO_CLEANUP=true
 
 # Offers a beta/pre-release OS upgrade (currently Fedora and Ubuntu-family
-# only) from Full System Upgrade/Update. Unrelated to CFG_UPDATE_CHANNEL
+# only) from Full System Upgrade. Unrelated to CFG_UPDATE_CHANNEL
 # above, which is this tool's own self-update source, not the OS's. Even with
 # this on, a per-run confirmation is still required before anything runs.
 CFG_ALLOW_PRERELEASE_UPGRADE=false
