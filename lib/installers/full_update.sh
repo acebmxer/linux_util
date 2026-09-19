@@ -26,17 +26,23 @@ setup_full_update() {
     pkg_refresh_interactive
 
     # Step 2: Check for distro version upgrade
+    PKG_ALLOW_PRERELEASE_UPGRADE="$CFG_ALLOW_PRERELEASE_UPGRADE"
     local target_version=""
     local upgrade_available=1
     if target_version=$(pkg_check_upgrade_available); then
         upgrade_available=0
     fi
 
+    local is_prerelease_target=false
+    [[ "$target_version" == *" (Beta)"* || "$target_version" == *" (Devel)"* ]] && is_prerelease_target=true
+
     if [[ $upgrade_available -eq 0 && -n "$target_version" ]]; then
         # Determine LTS/normal labels for current and target versions
         # Ubuntu/Kubuntu LTS: XX.04 where XX is even
+        # Skipped entirely for a beta/devel target -- that's its own track,
+        # an LTS/non-LTS label on it would be meaningless noise.
         local current_label="" target_label=""
-        if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ]]; then
+        if [[ "$is_prerelease_target" != true && ( "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ) ]]; then
             local cur_year cur_month
             cur_year=$(echo "$DISTRO_VERSION_ID" | cut -d. -f1)
             cur_month=$(echo "$DISTRO_VERSION_ID" | cut -d. -f2)
@@ -63,11 +69,23 @@ setup_full_update() {
         # Display confirmation prompt
         echo ""
         echo ""
-        echo "  *** A distribution upgrade is available ***"
+        if [[ "$is_prerelease_target" == true ]]; then
+            echo "  *** A PRE-RELEASE (beta/devel) version upgrade is available ***"
+        else
+            echo "  *** A distribution upgrade is available ***"
+        fi
         echo ""
         echo "  Current: ${DISTRO_NAME} ${DISTRO_VERSION_ID}${current_label}"
         echo "  Target:  ${target_version}${target_label}"
         echo ""
+        if [[ "$is_prerelease_target" == true ]]; then
+            echo "  This is an early/beta release, not the final version. Expect:"
+            echo "    - Possible instability or missing package updates from third-party"
+            echo "      repos (e.g. Docker, browser vendors) until the final release ships"
+            echo "    - A higher chance of needing to reinstall or roll back"
+            echo "    - Less community support for issues specific to this release"
+            echo ""
+        fi
         echo "  The upgrade tool will determine the path automatically."
         echo "  A reboot may be required afterward. If intermediate steps are needed,"
         echo "  re-run this script after each reboot to continue."
@@ -157,23 +175,28 @@ get_version_full_update() {
     fi
     _FULL_UPDATE_UPGRADE_CHECKED=true
 
+    PKG_ALLOW_PRERELEASE_UPGRADE="$CFG_ALLOW_PRERELEASE_UPGRADE"
     local target_version=""
     target_version=$(pkg_check_upgrade_available 2>/dev/null) || { return 0; }
     [[ -z "$target_version" ]] && return 0
 
-    # Build display string with LTS/non-LTS label for Ubuntu-family
+    # Build display string with LTS/non-LTS label for Ubuntu-family.
+    # Skipped for a beta/devel target -- the (Beta)/(Devel) label already
+    # embedded in target_version says everything that needs saying.
     local label=""
-    case "$DISTRO_ID" in
-        ubuntu|kubuntu|pop|neon)
-            local tgt_num="${target_version%% *}"  # strip trailing text like "LTS"
-            local tgt_year tgt_month
-            tgt_year=$(echo "$tgt_num" | cut -d. -f1)
-            tgt_month=$(echo "$tgt_num" | cut -d. -f2)
-            if [[ -n "$tgt_year" && -n "$tgt_month" ]] && (( tgt_month == 4 && tgt_year % 2 == 0 )); then
-                [[ "$target_version" != *"LTS"* ]] && label=" LTS"
-            fi
-            ;;
-    esac
+    if [[ "$target_version" != *" (Beta)"* && "$target_version" != *" (Devel)"* ]]; then
+        case "$DISTRO_ID" in
+            ubuntu|kubuntu|pop|neon)
+                local tgt_num="${target_version%% *}"  # strip trailing text like "LTS"
+                local tgt_year tgt_month
+                tgt_year=$(echo "$tgt_num" | cut -d. -f1)
+                tgt_month=$(echo "$tgt_num" | cut -d. -f2)
+                if [[ -n "$tgt_year" && -n "$tgt_month" ]] && (( tgt_month == 4 && tgt_year % 2 == 0 )); then
+                    [[ "$target_version" != *"LTS"* ]] && label=" LTS"
+                fi
+                ;;
+        esac
+    fi
 
     _FULL_UPDATE_UPGRADE_CACHE="↑ ${target_version}${label} available"
     echo "$_FULL_UPDATE_UPGRADE_CACHE"

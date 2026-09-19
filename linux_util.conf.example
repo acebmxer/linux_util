@@ -42,6 +42,13 @@ disk_min_mb=1024
 # A manual `git checkout` takes precedence over this setting.
 update_channel=main
 
+# Offer a beta/pre-release OS upgrade from Full System Upgrade/Update, on
+# distros where that's actually supported (currently Fedora and Ubuntu/
+# Kubuntu/Pop/neon). Unrelated to update_channel above, which is this tool's
+# own self-update source, not the OS's. Even with this on, you're still asked
+# to confirm before anything runs.
+allow_prerelease_upgrade=false
+
 # --- Behavior ---
 auto_cleanup=true
 

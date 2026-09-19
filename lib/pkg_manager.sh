@@ -920,6 +920,12 @@ _leapp_pre_remediate() {
 # Check if a distribution version upgrade is available.
 # Returns 0 if available (outputs target version to stdout), 1 if not.
 # Dispatches on DISTRO_ID since upgrade paths are distro-specific.
+#
+# Set by callers that want a beta/pre-release target considered when no
+# stable release is available yet (Fedora Branched, Ubuntu devel). Default
+# false preserves today's stable-only behavior for every caller/distro.
+PKG_ALLOW_PRERELEASE_UPGRADE="${PKG_ALLOW_PRERELEASE_UPGRADE:-false}"
+
 pkg_check_upgrade_available() {
     case "$DISTRO_ID" in
         ubuntu|kubuntu|pop|neon)
@@ -992,6 +998,33 @@ pkg_check_upgrade_available() {
                 fi
             done
 
+            # No stable release available. If the caller opted into
+            # pre-release upgrades, check Ubuntu's own devel-release feed --
+            # same block format as above, but devel builds are never marked
+            # "Supported: 1" so match on version alone.
+            if [[ "$PKG_ALLOW_PRERELEASE_UPGRADE" == "true" ]]; then
+                local devel_content
+                devel_content=$(curl -sf --max-time 10 "http://changelogs.ubuntu.com/meta-release-development" 2>/dev/null | tr -d '\r')
+                if [[ -n "$devel_content" ]]; then
+                    local devel_version="" devel_block_version=""
+                    while IFS= read -r line; do
+                        case "$line" in
+                            Version:\ *)
+                                devel_block_version="${line#Version: }"
+                                if dpkg --compare-versions "$devel_block_version" gt "$DISTRO_VERSION_ID" 2>/dev/null; then
+                                    devel_version="$devel_block_version"
+                                fi
+                                ;;
+                        esac
+                    done <<< "$devel_content"
+
+                    if [[ -n "$devel_version" ]]; then
+                        echo "${devel_version} (Devel)"
+                        return 0
+                    fi
+                fi
+            fi
+
             return 1
             ;;
         fedora)
@@ -1016,7 +1049,13 @@ pkg_check_upgrade_available() {
                 return 0
             elif [[ -n "$bodhi_state" ]]; then
                 # Reached Bodhi and it says the next version is pending/frozen/etc.
-                # (not yet released) — do not offer it.
+                # (not yet released). Only offer it if the caller explicitly opted
+                # into pre-release upgrades -- stable ("current") always wins above,
+                # this only fires when there is no stable target at all yet.
+                if [[ "$PKG_ALLOW_PRERELEASE_UPGRADE" == "true" ]]; then
+                    echo "${next_ver} (Beta)"
+                    return 0
+                fi
                 return 1
             fi
 
@@ -1089,6 +1128,12 @@ pkg_check_upgrade_available() {
             return 1
             ;;
         debian)
+            # No pre-release/beta track here (unlike Fedora Branched or Ubuntu
+            # devel, deliberately not offered below): "testing" is a
+            # perpetually-rolling branch with no fixed identity, not a discrete
+            # next version that is currently in beta. Offering it under
+            # PKG_ALLOW_PRERELEASE_UPGRADE would misrepresent what it is --
+            # considered and excluded on purpose, not an oversight.
             # Query Debian's stable release codename and compare with current
             local stable_release_info
             stable_release_info=$(curl -sf --max-time 10 "https://deb.debian.org/debian/dists/stable/Release" 2>/dev/null) || {
@@ -1212,11 +1257,18 @@ pkg_distro_upgrade() {
 
     case "$DISTRO_ID" in
         ubuntu|kubuntu|pop|neon)
+            # A devel/beta target (from pkg_check_upgrade_available's
+            # PKG_ALLOW_PRERELEASE_UPGRADE branch) is its own track, orthogonal
+            # to LTS-vs-normal, so the whole LTS track-choice prompt below is
+            # skipped for it -- there is nothing to choose between yet.
+            local is_devel_target=false
+            [[ "$target_version" == *" (Devel)"* ]] && is_devel_target=true
+
             # LTS awareness: check if current release is LTS
             local release_config="/etc/update-manager/release-upgrades"
             local original_prompt=""
 
-            if [[ -f "$release_config" ]]; then
+            if [[ "$is_devel_target" != true && -f "$release_config" ]]; then
                 original_prompt=$(grep -oP '^Prompt=\K.*' "$release_config" 2>/dev/null || echo "")
 
                 # Check if current version is LTS (Ubuntu LTS versions: XX.04 where XX is even)
@@ -1364,7 +1416,11 @@ pkg_distro_upgrade() {
             # I-4: Run upgrade and always restore prompt setting afterward
             info "Starting distribution upgrade to ${target_version}..."
             local rc=0
-            sudo do-release-upgrade || rc=$?
+            if [[ "$is_devel_target" == true ]]; then
+                sudo do-release-upgrade -d || rc=$?
+            else
+                sudo do-release-upgrade || rc=$?
+            fi
 
             # Always restore original prompt setting
             if [[ -n "$original_prompt" && -f "$release_config" ]]; then
@@ -1385,6 +1441,14 @@ pkg_distro_upgrade() {
             fi
             ;;
         fedora)
+            # target_version may carry a trailing " (Beta)" label (see
+            # pkg_check_upgrade_available) — strip it before passing the bare
+            # number to --releasever, same as the Ubuntu case already does
+            # with its own trailing-text targets.
+            local is_beta_target=false
+            [[ "$target_version" == *" (Beta)"* ]] && is_beta_target=true
+            local fedora_releasever="${target_version%% *}"
+
             # Install all pending updates first — required before system-upgrade
             info "Installing all pending updates before Fedora upgrade..."
             sudo dnf upgrade --refresh -y || {
@@ -1400,7 +1464,7 @@ pkg_distro_upgrade() {
             fi
 
             info "Downloading upgrade packages for Fedora ${target_version}..."
-            if ! sudo dnf system-upgrade download --releasever="$target_version" -y; then
+            if ! sudo dnf system-upgrade download --releasever="$fedora_releasever" -y; then
                 error "Failed to download upgrade packages for Fedora ${target_version}."
                 return 1
             fi
@@ -1413,6 +1477,10 @@ pkg_distro_upgrade() {
             warn "The upgrade will be applied in an offline transaction during reboot."
             warn "The system will reboot into a special upgrade environment and may take"
             warn "several minutes. Do NOT power off the machine during this process."
+            if [[ "$is_beta_target" == true ]]; then
+                warn "This is a BETA release, not the final version. Expect possible"
+                warn "instability and third-party repos (Docker, browsers, etc.) lagging."
+            fi
             echo ""
             local fedora_confirm=""
             while true; do

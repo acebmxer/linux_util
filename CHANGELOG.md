@@ -12,6 +12,32 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **"Full System Upgrade/Update" can now offer a beta/pre-release version of
+  the next OS release, opt-in, on Fedora and Ubuntu-family systems.**
+  Previously `pkg_check_upgrade_available()` in `lib/pkg_manager.sh` only ever
+  reported a next Fedora release once Fedora's Bodhi API marked it `current`
+  (fully released) — a Fedora system sitting on the current stable release
+  with the next one still in Branched/beta had no in-place upgrade path
+  through this tool at all, even though `dnf system-upgrade` supports
+  upgrading to a Branched release just as well as a GA one. Added a new
+  `allow_prerelease_upgrade` config setting (default `false`, so nothing
+  changes unless a user turns it on) that, when enabled, lets
+  `pkg_check_upgrade_available()` fall back to a beta/devel target when no
+  stable release is available: Fedora's Bodhi `pending`/`frozen`/`branched`
+  states (reported as `"<version> (Beta)"`), and Ubuntu/Kubuntu/Pop/neon's
+  own devel-release meta-release feed via `do-release-upgrade -d` (reported
+  as `"<version> (Devel)"`). A stable release is always preferred over a beta
+  one when both exist. Even with the setting on, `setup_full_update()` in
+  `lib/installers/full_update.sh` shows a distinct warning (instability,
+  lagging third-party repos, higher chance of needing to roll back) and still
+  requires the normal y/N confirmation before anything runs. Debian's
+  `testing` branch was considered and deliberately excluded: it's a
+  perpetually-rolling branch with no fixed identity, not a discrete next
+  version currently in beta, so offering it here would misrepresent what it
+  is.
+
 ### Fixed
 
 - **The "System Updates" task printed a step called "Running full system
