@@ -6,8 +6,8 @@
 # "Cloud Init user found" while one of the known accounts still exists, and goes
 # blank once it has been removed (or never existed).
 #
-# Known default cloud-init accounts (matches the four distros requested):
-#   ubuntu, debian, centos, alpine
+# Known default cloud-init accounts:
+#   ubuntu, debian, centos, alpine, fedora
 #
 # Detection is by account presence rather than by DISTRO_ID so the task behaves
 # correctly on Ubuntu derivatives too (e.g. Kubuntu/Neon, whose DISTRO_ID is not
@@ -18,7 +18,7 @@
 #   userdel --remove        elsewhere (CentOS/RHEL family has no deluser)
 
 # Stock accounts cloud/VM images ship with, across the supported distros.
-_CLOUD_INIT_USERS=(ubuntu debian centos alpine)
+_CLOUD_INIT_USERS=(ubuntu debian centos alpine fedora)
 
 # Print the known cloud-init accounts that currently exist (one per line).
 _existing_cloud_init_users() {

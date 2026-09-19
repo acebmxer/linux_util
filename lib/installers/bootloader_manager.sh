@@ -619,8 +619,6 @@ get_version_switch_bootloader() {
 
 # ── Configure Bootloader ──────────────────────────────────────────────────────
 
-check_configure_bootloader() { return 1; }
-
 setup_configure_bootloader() {
     echo ""
     echo "${BOLD}${CYAN}════════════════════════════════════════════════════════════════${RESET}"
@@ -646,7 +644,6 @@ setup_configure_bootloader() {
     esac
 }
 
-noop_configure_bootloader()    { return 0; }
 update_configure_bootloader()  { setup_configure_bootloader; }
 
 get_version_configure_bootloader() {

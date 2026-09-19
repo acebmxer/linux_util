@@ -257,6 +257,15 @@ process_selected() {
     local needs_reboot=false
     local needs_shell_reload=false
 
+    # pkg_refresh's own _PKG_REFRESHED guard is meant to stop the redundant
+    # second refresh within THIS run (the queue preamble below calls it, then
+    # some operations like System Updates call it again internally) -- not to
+    # survive across separate runs. Without this reset it stays "true" for the
+    # rest of the interactive session after the first ever refresh, so every
+    # later run silently skips pkg_refresh entirely and resolves against
+    # whatever package metadata was cached the first time, however stale.
+    _PKG_REFRESHED=""
+
     # These tasks do not require a reboot after successful completion
     local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1 ["Configure Syncthing Folders"]=1)
 

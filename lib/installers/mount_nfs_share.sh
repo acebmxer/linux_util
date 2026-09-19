@@ -372,6 +372,4 @@ setup_mount_nfs_share() {
 }
 
 # ── Lifecycle stubs (task is run-on-demand, not idempotent) ───────────────────
-check_mount_nfs_share()     { return 1; }
-uninstall_mount_nfs_share() { return 0; }
 update_mount_nfs_share()    { setup_mount_nfs_share; }

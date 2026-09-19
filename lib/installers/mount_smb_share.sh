@@ -322,7 +322,7 @@ setup_mount_smb_share() {
                 done
             fi
 
-            if grep -qsE "[[:space:]]${mount_point//\//\\/}[[:space:]]" /etc/fstab; then
+            if grep -qsE "[[:space:]]${mount_point}[[:space:]]" /etc/fstab; then
                 error "Mount point ${mount_point} is already present in /etc/fstab. Skipping."
                 continue
             fi
@@ -405,6 +405,4 @@ setup_mount_smb_share() {
 }
 
 # ── Lifecycle stubs ───────────────────────────────────────────────────────────
-check_mount_smb_share()     { return 1; }
-uninstall_mount_smb_share() { return 0; }
 update_mount_smb_share()    { setup_mount_smb_share; }

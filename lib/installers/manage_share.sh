@@ -42,6 +42,4 @@ setup_manage_share() {
 }
 
 # ── Lifecycle stubs ───────────────────────────────────────────────────────────
-check_manage_share()     { return 1; }
-uninstall_manage_share() { return 0; }
 update_manage_share()    { setup_manage_share; }

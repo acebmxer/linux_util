@@ -12,6 +12,109 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The "System Updates" task printed a step called "Running full system
+  upgrade," which reads as though it also runs the separate "Full System
+  Upgrade/Update" task (the one that additionally offers a distro-version
+  upgrade).** It doesn't — both tasks call the same shared `pkg_full_upgrade()`
+  helper in `lib/pkg_manager.sh` to apply ordinary package upgrades, and that
+  helper's step label just happened to collide with the other task's name.
+  Renamed the label (and its apt/dnf/pacman/zypper variants) to "Upgrading
+  installed packages" so the two tasks read as distinct in the output.
+
+- **System Updates could report "Nothing to do" and skip installing real,
+  available updates on dnf/yum systems, even though the menu's own
+  "(N updates)" badge still showed them pending.** Two compounding bugs.
+  First, `pkg_refresh()` in `lib/pkg_manager.sh` guards against refreshing
+  the package cache twice in a row with a global `_PKG_REFRESHED` flag, set
+  `true` the first time it runs and never cleared — `process_selected()` in
+  `linux_util.sh` calls it once per confirmed batch of selected operations,
+  and System Updates calls it again internally, so the flag exists only to
+  skip that second, redundant call within one run. Because nothing ever
+  reset it, it stayed `true` for the rest of the interactive session, so
+  every later run of System Updates (or any install/update that calls
+  `pkg_refresh`) silently skipped the cache refresh entirely. Second, and
+  the deeper cause: even a genuine refresh wasn't enough. On dnf/yum,
+  `pkg_refresh` ran plain `sudo dnf makecache`, which only re-fetches a
+  repo once *that repo's own* `metadata_expire` has elapsed (6h for
+  Fedora's `updates-testing`, and similar on other repos) — otherwise it
+  exits 0 having made no network request at all, so a System Updates run
+  minutes after the last one could still resolve against hours-old
+  metadata and correctly-by-its-own-logic report nothing pending. The
+  script's own dnf cache-freshness pre-check, meant to skip exactly this
+  redundant work, checks a dnf4-era path (`/var/cache/dnf/metadata/repomd.xml`)
+  that doesn't exist on dnf5 (Fedora's package manager since Fedora 41),
+  which made that check permanently dead rather than the intended guard.
+  Meanwhile the menu's pending-update badge reads its own separate,
+  unguarded probe (`dnf check-update`, run as the invoking user against
+  that user's own cache, not root's), so it kept showing the true count
+  while the actual upgrade run kept reporting nothing pending. Fixed by
+  resetting `_PKG_REFRESHED` at the start of every `process_selected()`
+  call, and by adding `--refresh` to the dnf/yum `makecache` call so it
+  forces a real check against the mirror instead of trusting a per-repo
+  expiry window that can run for hours.
+
+- **Mounting a drive or share printed 3 "stray \ before /" warnings per
+  mount, and the health check after every run of Mount Local Drive, Mount
+  NFS Share, Mount SMB Share, Manage Share, Configure Syncthing Folders and
+  Configure Bootloader falsely reported "Health check failed" even when the
+  operation succeeded.** Two unrelated bugs in the same six tasks. First,
+  the fstab-collision check in `mount_local_drive.sh` and
+  `mount_smb_share.sh` built its grep pattern with
+  `${mount_point//\//\\/}`, escaping every `/` as `\/` — a convention for
+  `sed`, where `/` is the delimiter, but meaningless for `grep -E`, which
+  has no such escape and prints a warning for each one while still matching
+  the literal `/` anyway; removed the escaping since `grep -E` needs none.
+  Second, all six tasks are "run it and it's done" actions with no
+  persistent installed/uninstalled state, and every other task like this
+  (System Updates, Create Snapshot, Switch Bootloader, etc.) registers with
+  the shared `check_always_false`/`noop_function` sentinel so `health_check`
+  and the menu's status logic know to skip them — but these six instead
+  defined their own private always-`return 1` check and always-`return 0`
+  uninstall functions, functionally identical but not recognized by
+  `health_check`'s literal string match on `"check_always_false"`, so it
+  treated every successful run as a failed check. Switching all six
+  registrations to the shared sentinel functions also fixes a second latent
+  effect of the same root cause: the menu's status line for these tasks
+  never showed their version function's output (e.g. "3 drive(s) configured
+  via linux_util"), since that display path is also gated on the literal
+  `check_always_false` name.
+
+- **Docker installs and updates 404'd on a new Fedora release until Docker's
+  own repo caught up.** `docker-ce.repo`'s baseurl uses `$releasever`, which
+  dnf resolves to the running Fedora version — but Docker only adds a new
+  version directory to `download.docker.com` some weeks after Fedora ships
+  it, so a current release (e.g. Fedora 45 at beta) 404s on every `dnf`
+  refresh even though nothing is actually broken. `setup_install_docker` now
+  probes Docker's repo and pins `$releasever` to the newest version Docker
+  actually publishes (walking back up to 4 versions if the current one
+  404s), instead of leaving `$releasever` for dnf to resolve to a version
+  that doesn't exist yet.
+
+- **Old-kernel cleanup silently did nothing on Fedora 45.** System Updates'
+  thorough-cleanup step removed old kernels on the dnf/yum path with
+  `dnf remove -y --oldinstallonly --setopt installonly_limit=2`. DNF5 dropped
+  `--oldinstallonly` entirely with no replacement flag
+  (rpm-software-management/dnf5#762), and since the call was already wrapped
+  in `|| true`, DNF5 rejecting the flag was swallowed silently — the step
+  reported success ("Nothing to do") while never actually removing anything.
+  DNF5 has been the default `dnf` since Fedora 41 and the only option since
+  Fedora 44 dropped DNF4, so this has likely been silently broken since
+  Fedora 41; only Fedora 45 is fixed for now, using
+  `dnf repoquery --installonly --latest-limit=-2` to find kernels beyond the
+  2 most recently installed and removing those explicitly. Fedora 43 and 44
+  are untouched and still use the old `--oldinstallonly` call until their
+  support ends.
+
+- **Delete Default Cloud-Init User didn't recognize Fedora's `fedora` account.**
+  `_CLOUD_INIT_USERS` only listed `ubuntu debian centos alpine`, so on a VM
+  cloned from a Fedora cloud-init template (default login `fedora`/`fedora`,
+  per `install_xen_orchestra`'s template builder) the task reported no default
+  user to remove even though one was present. Added `fedora` to the list.
+
+## [1.5.0] - 2026-09-14
+
 ### Added
 
 - **`NO_HEALTH_CHECK` opt-out for the post-install health check.** A utility

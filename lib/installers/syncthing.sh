@@ -712,7 +712,5 @@ setup_syncthing_folders() {
 }
 
 # ── Lifecycle stubs ───────────────────────────────────────────────────────────
-check_syncthing_folders()     { return 1; }
-uninstall_syncthing_folders() { return 0; }
 update_syncthing_folders()    { setup_syncthing_folders; }
 get_version_syncthing_folders() { echo ""; }
