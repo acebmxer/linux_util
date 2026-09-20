@@ -1,8 +1,8 @@
 #!/bin/bash
-# Full System Upgrade/Update functions
+# Full System Upgrade functions
 
-# --- Full System Upgrade/Update ---
-setup_full_update() {
+# --- Full System Upgrade ---
+setup_full_upgrade() {
     if _system_updates_has_arch_update; then
         local _cmd
         _cmd=$(_system_updates_arch_update_cmd)
@@ -18,25 +18,29 @@ setup_full_update() {
         return $_rc
     fi
 
-    info "Starting full system upgrade/update..."
-    local _snap_before
-    _snap_before=$(pkg_snapshot)
+    info "Starting full system upgrade..."
 
     # Step 1: Refresh repos
     pkg_refresh_interactive
 
     # Step 2: Check for distro version upgrade
+    PKG_ALLOW_PRERELEASE_UPGRADE="$CFG_ALLOW_PRERELEASE_UPGRADE"
     local target_version=""
     local upgrade_available=1
     if target_version=$(pkg_check_upgrade_available); then
         upgrade_available=0
     fi
 
+    local is_prerelease_target=false
+    [[ "$target_version" == *" (Beta)"* || "$target_version" == *" (Devel)"* ]] && is_prerelease_target=true
+
     if [[ $upgrade_available -eq 0 && -n "$target_version" ]]; then
         # Determine LTS/normal labels for current and target versions
         # Ubuntu/Kubuntu LTS: XX.04 where XX is even
+        # Skipped entirely for a beta/devel target -- that's its own track,
+        # an LTS/non-LTS label on it would be meaningless noise.
         local current_label="" target_label=""
-        if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ]]; then
+        if [[ "$is_prerelease_target" != true && ( "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "kubuntu" ) ]]; then
             local cur_year cur_month
             cur_year=$(echo "$DISTRO_VERSION_ID" | cut -d. -f1)
             cur_month=$(echo "$DISTRO_VERSION_ID" | cut -d. -f2)
@@ -63,11 +67,23 @@ setup_full_update() {
         # Display confirmation prompt
         echo ""
         echo ""
-        echo "  *** A distribution upgrade is available ***"
+        if [[ "$is_prerelease_target" == true ]]; then
+            echo "  *** A PRE-RELEASE (beta/devel) version upgrade is available ***"
+        else
+            echo "  *** A distribution upgrade is available ***"
+        fi
         echo ""
         echo "  Current: ${DISTRO_NAME} ${DISTRO_VERSION_ID}${current_label}"
         echo "  Target:  ${target_version}${target_label}"
         echo ""
+        if [[ "$is_prerelease_target" == true ]]; then
+            echo "  This is an early/beta release, not the final version. Expect:"
+            echo "    - Possible instability or missing package updates from third-party"
+            echo "      repos (e.g. Docker, browser vendors) until the final release ships"
+            echo "    - A higher chance of needing to reinstall or roll back"
+            echo "    - Less community support for issues specific to this release"
+            echo ""
+        fi
         echo "  The upgrade tool will determine the path automatically."
         echo "  A reboot may be required afterward. If intermediate steps are needed,"
         echo "  re-run this script after each reboot to continue."
@@ -93,88 +109,79 @@ setup_full_update() {
                         return 0
                     fi
 
-                    # Return code 2: no upgrade available on the selected track
-                    # (e.g., user chose LTS but no next LTS release exists yet).
-                    # Fall through to standard package updates without a warning.
-                    if (( upgrade_rc != 2 )); then
-                        # If a reboot is required (updates were applied but system needs restart),
-                        # don't fall through to redundant package updates — just exit cleanly.
-                        local reboot_needed=false
-                        if [[ -f /var/run/reboot-required ]]; then
-                            reboot_needed=true
-                        elif command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
-                            reboot_needed=true
-                        fi
-
-                        if [[ "$reboot_needed" == "true" ]]; then
-                            info "System updates were applied. Please reboot and re-run to continue the distribution upgrade."
-                            return 0
-                        fi
-
-                        warn "Distribution upgrade failed. Falling back to package updates..."
+                    if (( upgrade_rc == 2 )); then
+                        # No upgrade available on the selected track (e.g. user
+                        # chose LTS but no next LTS release exists yet) --
+                        # pkg_distro_upgrade already reported why. Nothing to do.
+                        return 3
                     fi
-                    break
+
+                    # A reboot mid-upgrade is expected, not a failure -- the
+                    # upgrade continues on the next run after the user reboots.
+                    local reboot_needed=false
+                    if [[ -f /var/run/reboot-required ]]; then
+                        reboot_needed=true
+                    elif command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+                        reboot_needed=true
+                    fi
+
+                    if [[ "$reboot_needed" == "true" ]]; then
+                        info "System updates were applied. Please reboot and re-run to continue the distribution upgrade."
+                        return 0
+                    fi
+
+                    error "Distribution upgrade failed."
+                    return 1
                     ;;
                 n|no|'')
                     info "Distribution upgrade skipped by user."
-                    break
+                    return 2
                     ;;
                 *) echo "  Please enter Y or N." ;;
             esac
         done
     else
-        info "No distribution version upgrade available."
-    fi
-
-    # Fallback: standard package update
-    info "Performing package updates..."
-    _pkg_cleanup_stale_releases direct
-    pkg_full_upgrade_interactive || return $?
-    # Device firmware (fwupd/LVFS) is a separate subsystem from the package
-    # manager — apply any pending firmware updates interactively here too.
-    _system_updates_apply_firmware
-    pkg_cleanup_thorough_interactive
-    info "System update completed."
-    local _snap_after
-    _snap_after=$(pkg_snapshot)
-    if [[ "$_snap_before" == "$_snap_after" ]]; then
-        info "No package changes were made."
+        info "No distribution version upgrade available. Run \"System Updates\" for regular package updates."
         return 3
     fi
-    return 0
 }
 
-# --- Version/status for Full System Upgrade/Update ---
+# --- Version/status for Full System Upgrade ---
 # Returns the next available distro version for display in the menu.
 # Shows nothing when no upgrade is available.
-_FULL_UPDATE_UPGRADE_CACHE=""
-_FULL_UPDATE_UPGRADE_CHECKED=false
-get_version_full_update() {
+_FULL_UPGRADE_CACHE=""
+_FULL_UPGRADE_CHECKED=false
+get_version_full_upgrade() {
     # Cache the result so the (potentially slow) network check runs only once
-    if [[ "$_FULL_UPDATE_UPGRADE_CHECKED" == true ]]; then
-        [[ -n "$_FULL_UPDATE_UPGRADE_CACHE" ]] && echo "$_FULL_UPDATE_UPGRADE_CACHE"
+    if [[ "$_FULL_UPGRADE_CHECKED" == true ]]; then
+        [[ -n "$_FULL_UPGRADE_CACHE" ]] && echo "$_FULL_UPGRADE_CACHE"
         return 0
     fi
-    _FULL_UPDATE_UPGRADE_CHECKED=true
+    _FULL_UPGRADE_CHECKED=true
 
+    PKG_ALLOW_PRERELEASE_UPGRADE="$CFG_ALLOW_PRERELEASE_UPGRADE"
     local target_version=""
     target_version=$(pkg_check_upgrade_available 2>/dev/null) || { return 0; }
     [[ -z "$target_version" ]] && return 0
 
-    # Build display string with LTS/non-LTS label for Ubuntu-family
+    # Build display string with LTS/non-LTS label for Ubuntu-family.
+    # Skipped for a beta/devel target -- the (Beta)/(Devel) label already
+    # embedded in target_version says everything that needs saying.
     local label=""
-    case "$DISTRO_ID" in
-        ubuntu|kubuntu|pop|neon)
-            local tgt_num="${target_version%% *}"  # strip trailing text like "LTS"
-            local tgt_year tgt_month
-            tgt_year=$(echo "$tgt_num" | cut -d. -f1)
-            tgt_month=$(echo "$tgt_num" | cut -d. -f2)
-            if [[ -n "$tgt_year" && -n "$tgt_month" ]] && (( tgt_month == 4 && tgt_year % 2 == 0 )); then
-                [[ "$target_version" != *"LTS"* ]] && label=" LTS"
-            fi
-            ;;
-    esac
+    if [[ "$target_version" != *" (Beta)"* && "$target_version" != *" (Devel)"* ]]; then
+        case "$DISTRO_ID" in
+            ubuntu|kubuntu|pop|neon)
+                local tgt_num="${target_version%% *}"  # strip trailing text like "LTS"
+                local tgt_year tgt_month
+                tgt_year=$(echo "$tgt_num" | cut -d. -f1)
+                tgt_month=$(echo "$tgt_num" | cut -d. -f2)
+                if [[ -n "$tgt_year" && -n "$tgt_month" ]] && (( tgt_month == 4 && tgt_year % 2 == 0 )); then
+                    [[ "$target_version" != *"LTS"* ]] && label=" LTS"
+                fi
+                ;;
+        esac
+    fi
 
-    _FULL_UPDATE_UPGRADE_CACHE="↑ ${target_version}${label} available"
-    echo "$_FULL_UPDATE_UPGRADE_CACHE"
+    _FULL_UPGRADE_CACHE="↑ ${target_version}${label} available"
+    echo "$_FULL_UPGRADE_CACHE"
 }

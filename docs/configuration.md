@@ -23,6 +23,7 @@ cp linux_util.conf.example linux_util.conf
 | `dns_check_host` | `1.1.1.1` | Host used for the connectivity check. Override if Cloudflare is blocked on your network; a fallback to `9.9.9.9` is always tried |
 | `disk_min_mb` | `1024` | Minimum free disk space (MB) before allowing installs |
 | `update_channel` | `main` | Which stream self-update follows: `main` (releases only), `dev` (continuous), or a release tag such as `v1.3.1` to pin |
+| `allow_prerelease_upgrade` | `false` | Offer a beta/pre-release OS upgrade from Full System Upgrade (Fedora, Ubuntu-family only) |
 | `auto_cleanup` | `true` | Automatic cleanup of temp files |
 | `verbose` | `false` | Enable verbose output |
 | `debug` | `false` | Enable debug output |

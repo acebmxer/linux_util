@@ -218,11 +218,28 @@ test_config_update_channel() {
     rm -f "$tmp_conf"
 }
 
+test_config_allow_prerelease_upgrade() {
+    local tmp_conf
+    tmp_conf=$(mktemp /tmp/test_config_prerelease_XXXXXX.conf)
+
+    printf 'allow_prerelease_upgrade=true\n' > "$tmp_conf"
+    load_config "$tmp_conf"
+    assert_eq "true" "$CFG_ALLOW_PRERELEASE_UPGRADE" "allow_prerelease_upgrade accepts true"
+
+    printf 'allow_prerelease_upgrade=false\n' > "$tmp_conf"
+    load_config "$tmp_conf"
+    assert_eq "false" "$CFG_ALLOW_PRERELEASE_UPGRADE" "allow_prerelease_upgrade accepts false"
+
+    CFG_ALLOW_PRERELEASE_UPGRADE=false
+    rm -f "$tmp_conf"
+}
+
 test_config_defaults
 test_config_load_missing_file
 test_config_load_from_file
 test_config_crlf_file
 test_config_update_channel
+test_config_allow_prerelease_upgrade
 
 # ============================================================================
 # Test: Logging Module
@@ -3488,6 +3505,185 @@ test_preflight_sync_only_does_not_upgrade
 test_system_updates_marked_full_upgrade
 test_ordinary_utility_not_marked_full_upgrade
 test_preflight_scope_mixed_batch_upgrades
+
+echo ""
+echo "=== Prerelease Distro Upgrade Tests ==="
+
+# Opt-in beta/devel distro-version upgrade offer (PKG_ALLOW_PRERELEASE_UPGRADE /
+# CFG_ALLOW_PRERELEASE_UPGRADE), folded into pkg_check_upgrade_available and
+# pkg_distro_upgrade for Fedora (Bodhi Branched state) and Ubuntu-family
+# (devel meta-release feed). These run each probe in its own subshell so the
+# fake PATH/env never leaks into other tests.
+
+_PRERELEASE_FAKEBIN=$(mktemp -d /tmp/linux_util_prerelease_fakebin_XXXXXX)
+
+# Fake curl: branches on the URL substring, controlled by FAKE_BODHI_STATE,
+# FAKE_BODHI_BRANCH and FAKE_UBUNTU_DEVEL_VERSION so each test can pick what
+# the "network" returns without touching the real Bodhi API or Ubuntu's
+# meta-release feed. FAKE_BODHI_BRANCH defaults to "branched" (a real,
+# already-Branched release with its own tree) since that's the case the
+# beta feature is meant for; tests for the pre-Branch "still rawhide" case
+# set it explicitly.
+cat > "$_PRERELEASE_FAKEBIN/curl" <<'EOF'
+#!/bin/bash
+args="$*"
+case "$args" in
+    *bodhi.fedoraproject.org/releases/F*)
+        [[ -n "${FAKE_BODHI_STATE:-}" ]] || exit 1
+        echo "{\"state\": \"${FAKE_BODHI_STATE}\", \"branch\": \"${FAKE_BODHI_BRANCH:-branched}\"}"
+        exit 0
+        ;;
+    *dl.fedoraproject.org*)
+        exit 1
+        ;;
+    *meta-release-development*)
+        [[ -n "${FAKE_UBUNTU_DEVEL_VERSION:-}" ]] || exit 1
+        printf 'Dist: devel\nVersion: %s\nSupported: 0\n\n' "${FAKE_UBUNTU_DEVEL_VERSION}"
+        exit 0
+        ;;
+    *meta-release*)
+        # Stable feeds (meta-release / meta-release-lts): no stable target,
+        # forcing the caller down to the devel fallback above.
+        exit 1
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+EOF
+chmod +x "$_PRERELEASE_FAKEBIN/curl"
+
+# Fake dpkg: only --compare-versions is used by pkg_manager.sh, and only for
+# simple X.Y version strings in these tests, so a sort -V comparison is enough.
+cat > "$_PRERELEASE_FAKEBIN/dpkg" <<'EOF'
+#!/bin/bash
+if [[ "$1" == "--compare-versions" ]]; then
+    v1="$2"; op="$3"; v2="$4"
+    case "$op" in
+        gt)
+            [[ "$v1" != "$v2" ]] && [[ "$(printf '%s\n%s\n' "$v1" "$v2" | sort -V | tail -1)" == "$v1" ]]
+            exit $?
+            ;;
+    esac
+fi
+exit 1
+EOF
+chmod +x "$_PRERELEASE_FAKEBIN/dpkg"
+
+# Fake needs-restarting: always reports "no restart needed" so
+# pkg_distro_upgrade's Fedora case proceeds past that check.
+printf '#!/bin/bash\nexit 0\n' > "$_PRERELEASE_FAKEBIN/needs-restarting"
+chmod +x "$_PRERELEASE_FAKEBIN/needs-restarting"
+
+# Fake sudo: logs the command it was asked to run (to $SUDO_LOG) instead of
+# running it, so the real dnf/apt-get/do-release-upgrade never execute.
+cat > "$_PRERELEASE_FAKEBIN/sudo" <<'EOF'
+#!/bin/bash
+echo "$@" >> "${SUDO_LOG:-/dev/null}"
+exit 0
+EOF
+chmod +x "$_PRERELEASE_FAKEBIN/sudo"
+
+_prerelease_check_probe() {
+    # Runs pkg_check_upgrade_available with the given DISTRO_ID/version and
+    # fake-network responses, in a clean subshell.
+    (
+        info(){ :; }; warn(){ :; }; error(){ :; }
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        PATH="$_PRERELEASE_FAKEBIN:$PATH"
+        DISTRO_ID="$1" DISTRO_VERSION_ID="$2" \
+        PKG_ALLOW_PRERELEASE_UPGRADE="$3" \
+        FAKE_BODHI_STATE="${4:-}" FAKE_UBUNTU_DEVEL_VERSION="${5:-}" \
+        FAKE_BODHI_BRANCH="${6:-}" \
+        pkg_check_upgrade_available
+    )
+}
+
+test_fedora_branched_not_offered_by_default() {
+    local out rc
+    out=$(_prerelease_check_probe fedora 44 false pending); rc=$?
+    assert_eq "1" "$rc" "Fedora Branched: not offered with the flag off (return code)"
+    assert_eq "" "$out" "Fedora Branched: not offered with the flag off (no output)"
+}
+
+test_fedora_branched_offered_when_allowed() {
+    local out
+    out=$(_prerelease_check_probe fedora 44 true pending)
+    assert_eq "45 (Beta)" "$out" "Fedora Branched: offered as '45 (Beta)' with the flag on"
+}
+
+test_fedora_current_preferred_over_beta() {
+    local out
+    out=$(_prerelease_check_probe fedora 44 true current)
+    assert_eq "45" "$out" "Fedora: a GA ('current') release is reported without a (Beta) suffix, even with the flag on"
+}
+
+test_fedora_not_branched_not_offered_even_when_allowed() {
+    # A release Bodhi has created but that hasn't Branched off Rawhide yet
+    # (bodhi "branch": "rawhide") has no installable tree at all -- offering
+    # it as a Beta, even with the flag on, would point dnf system-upgrade at
+    # a release that doesn't exist yet.
+    local out rc
+    out=$(_prerelease_check_probe fedora 44 true pending "" rawhide); rc=$?
+    assert_eq "1" "$rc" "Fedora not yet Branched: not offered even with the flag on (return code)"
+    assert_eq "" "$out" "Fedora not yet Branched: not offered even with the flag on (no output)"
+}
+
+test_ubuntu_devel_not_offered_by_default() {
+    local out rc
+    out=$(_prerelease_check_probe ubuntu 24.04 false "" 25.10); rc=$?
+    assert_eq "1" "$rc" "Ubuntu devel: not offered with the flag off (return code)"
+}
+
+test_ubuntu_devel_offered_when_allowed() {
+    local out
+    out=$(_prerelease_check_probe ubuntu 24.04 true "" 25.10)
+    assert_eq "25.10 (Devel)" "$out" "Ubuntu devel: offered as '25.10 (Devel)' with the flag on"
+}
+
+_prerelease_upgrade_probe() {
+    # Runs pkg_distro_upgrade with the given DISTRO_ID/target in a detached
+    # session (no /dev/tty), so any internal y/N prompt fails to open and
+    # declines gracefully -- by which point the sudo calls under test have
+    # already run and been logged to $sudo_log.
+    local distro_id="$1" target="$2" sudo_log="$3"
+    SUDO_LOG="$sudo_log" setsid bash -c "
+        info(){ :; }; warn(){ :; }; error(){ :; }
+        source '${SCRIPT_DIR}/lib/pkg_manager.sh' 2>/dev/null
+        PATH='$_PRERELEASE_FAKEBIN:\$PATH'
+        DISTRO_ID='$distro_id'
+        pkg_distro_upgrade '$target'
+    " < /dev/null 2>/dev/null
+}
+
+test_fedora_beta_releasever_stripped() {
+    local sudo_log; sudo_log=$(mktemp)
+    _prerelease_upgrade_probe fedora "45 (Beta)" "$sudo_log" >/dev/null
+    assert_contains "$(cat "$sudo_log")" "releasever=45 " \
+        "Fedora beta upgrade: dnf system-upgrade gets a bare --releasever=45, not the (Beta) label"
+    assert_false "Fedora beta upgrade: the (Beta) label never reaches --releasever" \
+        grep -q -- "--releasever=45 (Beta)" "$sudo_log"
+    rm -f "$sudo_log"
+}
+
+test_ubuntu_devel_skips_lts_prompt_and_adds_flag() {
+    local sudo_log; sudo_log=$(mktemp)
+    _prerelease_upgrade_probe ubuntu "25.10 (Devel)" "$sudo_log" >/dev/null
+    assert_contains "$(cat "$sudo_log")" "do-release-upgrade -d" \
+        "Ubuntu devel upgrade: do-release-upgrade is invoked with -d"
+    rm -f "$sudo_log"
+}
+
+test_fedora_branched_not_offered_by_default
+test_fedora_branched_offered_when_allowed
+test_fedora_current_preferred_over_beta
+test_fedora_not_branched_not_offered_even_when_allowed
+test_ubuntu_devel_not_offered_by_default
+test_ubuntu_devel_offered_when_allowed
+test_fedora_beta_releasever_stripped
+test_ubuntu_devel_skips_lts_prompt_and_adds_flag
+
+rm -rf "$_PRERELEASE_FAKEBIN"
 
 echo ""
 echo "════════════════════════════════════════════════════════════════"

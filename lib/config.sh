@@ -26,6 +26,12 @@ CFG_UPDATE_CHANNEL="main"  # main | dev | a release tag (e.g. v1.3.1) to pin
 
 CFG_AUTO_CLEANUP=true
 
+# Offers a beta/pre-release OS upgrade (currently Fedora and Ubuntu-family
+# only) from Full System Upgrade. Unrelated to CFG_UPDATE_CHANNEL
+# above, which is this tool's own self-update source, not the OS's. Even with
+# this on, a per-run confirmation is still required before anything runs.
+CFG_ALLOW_PRERELEASE_UPGRADE=false
+
 # --- Config schema migration ---
 # The user's linux_util.conf is topped up with keys added to
 # linux_util.conf.example, so a hand-maintained config does not silently miss
@@ -172,6 +178,7 @@ load_config() {
             disk_min_mb)            _cfg_require_int "$key" "$value" && CFG_DISK_MIN_MB="$value" ;;
             update_channel)         _cfg_require_channel "$key" "$value" && CFG_UPDATE_CHANNEL="$value" ;;
             auto_cleanup)           _cfg_require_bool "$key" "$value" && CFG_AUTO_CLEANUP="$value" ;;
+            allow_prerelease_upgrade) _cfg_require_bool "$key" "$value" && CFG_ALLOW_PRERELEASE_UPGRADE="$value" ;;
             config_version)         _cfg_require_int "$key" "$value" && CFG_CONFIG_VERSION="$value" ;;
             verbose)                _cfg_require_bool "$key" "$value" && VERBOSE="$value" ;;
             debug)                  _cfg_require_bool "$key" "$value" && DEBUG="$value" ;;
