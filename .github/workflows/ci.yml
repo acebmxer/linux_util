@@ -87,6 +87,7 @@ jobs:
           chown -R testuser:testuser "$GITHUB_WORKSPACE"
 
       - name: Run detect_distro as a non-root user
+        shell: bash
         run: |
           output=$(su testuser -c "bash linux_util.sh --version" 2>&1)
           echo "$output"
