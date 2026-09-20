@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-09-19
+
 ### Added
 
 - **"Full System Upgrade" can now offer a beta/pre-release version of
