@@ -12,6 +12,18 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **Superfile** (File Managers → Terminal), a modern terminal file manager
+  (`spf`) with a multi-pane layout, file previews, fuzzy search, and built-in
+  theming. It's a native `extra` repo package on Arch (`pacman -S superfile`);
+  no other supported distro packages it, so Debian, Fedora/RHEL, and openSUSE
+  install upstream's Linux release tarball straight from GitHub, checksum-
+  verified against the release's own `-checksums.txt` asset, with `spf`
+  unpacked to `/usr/local/bin`. Uninstall removes the binary plus its
+  `~/.config/superfile`, `~/.local/share/superfile`, and
+  `~/.local/state/superfile` directories.
+
 ## [1.6.0] - 2026-09-19
 
 ### Added

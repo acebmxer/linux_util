@@ -331,6 +331,7 @@ register_utility "Krusader"            install_krusader         check_krusader  
 register_utility "Midnight Commander"  install_midnight_commander check_midnight_commander uninstall_midnight_commander update_midnight_commander get_version_midnight_commander
 register_utility "Ranger"              install_ranger           check_ranger           uninstall_ranger           update_ranger              get_version_ranger
 register_utility "nnn"                 install_nnn              check_nnn              uninstall_nnn              update_nnn                 get_version_nnn
+register_utility "Superfile"           install_superfile        check_superfile        uninstall_superfile        update_superfile           get_version_superfile
 
 # --- Desktop Environment Utilities ---
 # Elementary OS uses Pantheon exclusively; any other DE causes display manager
@@ -500,6 +501,7 @@ UTILITY_CATEGORY["Krusader"]="File Managers"
 UTILITY_CATEGORY["Midnight Commander"]="File Managers"
 UTILITY_CATEGORY["Ranger"]="File Managers"
 UTILITY_CATEGORY["nnn"]="File Managers"
+UTILITY_CATEGORY["Superfile"]="File Managers"
 UTILITY_CATEGORY["Budgie Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Cinnamon Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["COSMIC Desktop"]="Desktop Environments"
@@ -784,6 +786,7 @@ UTILITY_SUBCATEGORY["Krusader"]="Graphical"
 UTILITY_SUBCATEGORY["Midnight Commander"]="Terminal"
 UTILITY_SUBCATEGORY["Ranger"]="Terminal"
 UTILITY_SUBCATEGORY["nnn"]="Terminal"
+UTILITY_SUBCATEGORY["Superfile"]="Terminal"
 UTILITY_SUBCATEGORY["SDDM"]="Display Managers"
 UTILITY_SUBCATEGORY["GDM"]="Display Managers"
 UTILITY_SUBCATEGORY["LightDM"]="Display Managers"
@@ -1055,6 +1058,7 @@ UTILITY_DESCRIPTION["Krusader"]="Advanced twin-panel (orthodox) file manager for
 UTILITY_DESCRIPTION["Midnight Commander"]="Classic text-mode twin-panel file manager (mc) with menu-driven navigation, built-in editor (mcedit), archive browsing, and FTP/SFTP support. Runs in any terminal — no desktop environment required."
 UTILITY_DESCRIPTION["Ranger"]="Vim-inspired terminal file manager with a three-pane Miller column view, file previews, and heavy keyboard customization. Runs in any terminal — no desktop environment required."
 UTILITY_DESCRIPTION["nnn"]="Tiny, blazing-fast terminal file manager with optional file previews, plugins, and a context-based workflow. Minimal dependencies; runs in any terminal — no desktop environment required."
+UTILITY_DESCRIPTION["Superfile"]="Modern terminal file manager (spf) with a multi-pane layout, file previews, fuzzy search, and built-in theming. Runs in any terminal — no desktop environment required."
 
 # Window Managers
 UTILITY_DESCRIPTION["awesome"]="Highly configurable X11 window manager with dynamic tiling and floating layouts. Configured in Lua and extensible via a rich widget library. Suits users who want a tiling WM that doubles as a programmable framework."

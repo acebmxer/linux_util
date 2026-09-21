@@ -118,7 +118,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
 | **Productivity** | LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Obsidian, Joplin, Logseq, Bitwarden, Nextcloud, WinApps |
 | **Remote Admin** | Cockpit, XRDP, OpenSSH, Remmina, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
-| **File Managers** | Nautilus, Dolphin, Thunar, Nemo, Caja, PCManFM-Qt, Krusader, and the terminal managers (Midnight Commander, Ranger, nnn) |
+| **File Managers** | Nautilus, Dolphin, Thunar, Nemo, Caja, PCManFM-Qt, Krusader, and the terminal managers (Midnight Commander, Ranger, nnn, Superfile) |
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
 | **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |
 | **Window Managers** | Hyprland, Sway, i3, bspwm, awesome, dwm, Openbox |
