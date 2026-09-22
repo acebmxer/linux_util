@@ -27,6 +27,29 @@ _docker_fedora_releasever() {
     echo "$_cur"
 }
 
+# _docker_pin_fedora_repo_if_needed pins /etc/yum.repos.d/docker-ce.repo's
+# $releasever to a version Docker's repo actually serves, if that file exists
+# and is still unpinned. This is deliberately not folded into
+# setup_install_docker alone: a docker-ce.repo can reach a system three other
+# ways that install never touches — Docker installed before this pin existed,
+# Docker installed by something other than this project, or a Fedora release
+# bump landing after install pinned an older, now-irrelevant version (which is
+# harmless, since sed only acts on a literal, unresolved $releasever). Called
+# from System Updates and update_docker so a fresh dnf refresh never 404s on
+# this repo regardless of how Docker got onto the box.
+_docker_pin_fedora_repo_if_needed() {
+    [[ "$DISTRO_ID" == "fedora" ]] || return 0
+    local _repo_file="/etc/yum.repos.d/docker-ce.repo"
+    [[ -f "$_repo_file" ]] || return 0
+    grep -q '\$releasever' "$_repo_file" || return 0
+
+    local _fed_ver
+    _fed_ver=$(_docker_fedora_releasever)
+    if [[ -n "$_fed_ver" ]]; then
+        run_as_root sed -i "s|\$releasever|${_fed_ver}|g" "$_repo_file"
+    fi
+}
+
 # --- Docker (utility version) ---
 setup_install_docker() {
     info "Installing Docker..."
@@ -75,13 +98,7 @@ setup_install_docker() {
             # directory some weeks after Fedora ships it — dnf then 404s on every
             # refresh. Pin $releasever to the newest Fedora version Docker actually
             # publishes, so install and future updates work against a real repo.
-            if [[ "$DISTRO_ID" == "fedora" ]]; then
-                local _fed_ver
-                _fed_ver=$(_docker_fedora_releasever)
-                if [[ -n "$_fed_ver" ]]; then
-                    run_as_root sed -i "s|\$releasever|${_fed_ver}|g" /etc/yum.repos.d/docker-ce.repo
-                fi
-            fi
+            _docker_pin_fedora_repo_if_needed
 
             run_as_root "$PKG_MGR" install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             run_as_root systemctl start docker
@@ -152,6 +169,7 @@ update_docker() {
             pkg_upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             ;;
         fedora|rhel)
+            _docker_pin_fedora_repo_if_needed
             pkg_upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             ;;
         arch)

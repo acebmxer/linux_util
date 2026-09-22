@@ -24,6 +24,24 @@ when a release is cut.
   `~/.config/superfile`, `~/.local/share/superfile`, and
   `~/.local/state/superfile` directories.
 
+### Fixed
+
+- **System Updates could 404 against Docker's repo on Fedora even after the
+  earlier `$releasever`-pinning fix (1.5.0-era), because that fix only ran
+  inside `setup_install_docker`.** A `docker-ce.repo` reaches a machine
+  several other ways that install path never touches — Docker installed
+  before the pin existed, Docker installed by something other than this
+  project, or the repo simply left unpinned because dnf resolves
+  `$releasever` from the live system and Docker's own repo lags a new Fedora
+  release by weeks. Any of those left the repo file with a literal
+  `$releasever` in its baseurl, so every `dnf check-update`/`upgrade` run
+  under System Updates 404'd against `download.docker.com` for a Fedora
+  version Docker hadn't published yet. Extracted the pin into
+  `_docker_pin_fedora_repo_if_needed` in `lib/installers/docker.sh`, which
+  now also runs at the start of System Updates and before `update_docker`'s
+  own upgrade, in addition to install — so an existing unpinned repo gets
+  fixed the next time either runs, not only at Docker's original install.
+
 ## [1.6.0] - 2026-09-19
 
 ### Added
