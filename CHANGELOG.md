@@ -24,6 +24,17 @@ when a release is cut.
   `~/.config/superfile`, `~/.local/share/superfile`, and
   `~/.local/state/superfile` directories.
 
+- **GTK Window Fix** (System Tasks), a one-shot preference fix for GNOME-family
+  desktops: GNOME's default window-manager button layout omits minimize and
+  maximize, so GTK apps like Nautilus/Files and Remmina show only a close
+  button on a stock GNOME session. Detects the desktop (GNOME, Cinnamon, MATE,
+  Xfce, or falls back to probing the available `gsettings` schema /
+  `xfconf-query`) and sets the equivalent per-user button-layout key on each;
+  KDE already shows all three buttons and is skipped. Runs as the invoking
+  user (never sudo) since it writes a per-user dconf/xfconf setting, and warns
+  rather than failing when no graphical session is present. There is nothing
+  to uninstall — it is a preference write, not an install.
+
 ### Fixed
 
 - **System Updates could 404 against Docker's repo on Fedora even after the

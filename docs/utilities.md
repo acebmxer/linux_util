@@ -42,6 +42,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
 | **Num Lock at Boot** | Enables Num Lock on TTY consoles and the display manager login screen |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
+| **GTK Window Fix** | Restores minimize/maximize/close on window title bars for GTK apps (GNOME/Cinnamon/MATE/Xfce); GNOME's default window-manager button layout omits them |
 | **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/KDE Neon only)* |
 | **Fix Grub on BTRFS** | Fixes GRUB boot entries after BTRFS snapshot restores *(Ubuntu/Kubuntu/KDE Neon only)* |
 | **Fix Monitor Layout at Login** | Restores monitor layout on the login screen *(Ubuntu/Kubuntu/KDE Neon only)* |

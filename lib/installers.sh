@@ -65,6 +65,7 @@ register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 # Fully interactive prompt flow — re-running the menu after a failure only asks again
 NO_RETRY["Local Time Zone / Locale"]=1
+register_system_task "GTK Window Fix"     install_window_buttons  check_always_false    noop_function             install_window_buttons    get_version_window_buttons
 
 # Debian/Ubuntu-only system tasks
 if [[ "$DISTRO_FAMILY" == "debian" ]]; then
@@ -889,6 +890,7 @@ UTILITY_DESCRIPTION["firewalld"]="Dynamic zone-based firewall daemon, the defaul
 UTILITY_DESCRIPTION["firewall-config (GUI)"]="Graphical configuration tool for firewalld to manage zones, services, ports, and rich rules. Installs firewalld first if it is not already present."
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
+UTILITY_DESCRIPTION["GTK Window Fix"]="Restores the minimize, maximize, and close buttons on GTK app title bars (GNOME, Cinnamon, MATE, Xfce) — GNOME's default window-manager button layout omits minimize/maximize, leaving only a close button on apps like Nautilus and Remmina. Sets the per-user window-manager button-layout preference; KDE shows all three by default and is skipped."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
 UTILITY_DESCRIPTION["Delete Default Cloud-Init User"]="Removes the stock user that cloud/VM images ship with, along with its home directory. Detects the known default accounts (ubuntu, debian, centos, alpine, fedora) by presence — the status shows 'Cloud Init user found' while one exists and goes blank once removed. Uses deluser --remove-home (userdel --remove where deluser is absent). Confirms before deleting, refuses to delete the account you are logged in as, and is a no-op when none exist."
 UTILITY_DESCRIPTION["Fix RDP Kerberos Delay"]="Stops Remmina/FreeRDP (xfreerdp) from stalling ~20s before each Windows RDP login. The MIT krb5 sample config that ships with the krb5 package leaves dns_lookup_kdc at its default of true, so krb5 does a DNS SRV lookup for the server's Kerberos realm, fails to reach a KDC, and times out before falling back to NTLM. Sets dns_lookup_kdc, dns_lookup_realm, and rdns to false under [libdefaults] in /etc/krb5.conf — realm-agnostic, so it fixes every domain, not just one. Backs up the file first, leaves all other sections untouched, and is fully reversible."
