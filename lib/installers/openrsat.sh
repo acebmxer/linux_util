@@ -192,12 +192,10 @@ uninstall_openrsat() {
     info "Uninstalling OpenRSAT..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y openrsat 2>/dev/null || \
-                pkg_remove openrsat 2>/dev/null || pkg_remove OpenRSAT 2>/dev/null || true
+            pkg_remove openrsat 2>/dev/null || pkg_remove openrsat 2>/dev/null || pkg_remove OpenRSAT 2>/dev/null || true
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y openrsat 2>/dev/null || \
-                sudo "$PKG_MGR" remove -y OpenRSAT 2>/dev/null || true
+            pkg_remove openrsat 2>/dev/null || pkg_remove OpenRSAT 2>/dev/null || true
             ;;
         suse|*)
             # Binary install (or leftover) — remove the binary and launcher.

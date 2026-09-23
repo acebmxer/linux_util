@@ -59,20 +59,20 @@ uninstall_opentofu() {
     fi
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y opentofu 2>/dev/null || true
+            pkg_remove opentofu 2>/dev/null || true
             sudo rm -f /etc/apt/sources.list.d/opentofu.list
             sudo rm -f /etc/apt/keyrings/opentofu-archive-keyring.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y opentofu 2>/dev/null || true
+            pkg_remove opentofu 2>/dev/null || true
             sudo rm -f /etc/yum.repos.d/opentofu.repo
             ;;
         arch)
             aur_remove opentofu 2>/dev/null || \
-                sudo pacman -Rs --noconfirm opentofu 2>/dev/null || true
+                pkg_remove opentofu 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y opentofu 2>/dev/null || true
+            pkg_remove opentofu 2>/dev/null || true
             ;;
     esac
 }
@@ -84,9 +84,9 @@ update_opentofu() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade opentofu ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y opentofu ;;
+            fedora|rhel) pkg_upgrade opentofu ;;
             arch)        repo_or_aur opentofu ;;
-            suse)        sudo zypper update -y opentofu 2>/dev/null || install_opentofu ;;
+            suse)        pkg_upgrade opentofu 2>/dev/null || install_opentofu ;;
         esac
     fi
 }

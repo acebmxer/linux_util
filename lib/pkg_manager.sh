@@ -306,7 +306,14 @@ pkg_full_upgrade() {
                      printf "  Upgrading installed packages ...\n"
                      sudo apt full-upgrade 2>&1 | tee "$_apt_out"
                      local _apt_rc=${PIPESTATUS[0]}
-                     if grep -q "^Abort\.$" "$_apt_out"; then
+                     # tr '\r' '\n' first: a carriage-return-redrawn progress line
+                     # ending right before "Abort." would otherwise glue the two
+                     # together into one grep "line", hiding the match from ^.
+                     # No ^/$ anchors: apt's own "Continue? [Y/n]" prompt is
+                     # printed with no trailing newline, so a declined prompt
+                     # can glue "Abort." onto the end of that same line too --
+                     # anchoring to line-start/end missed that case entirely.
+                     if tr '\r' '\n' < "$_apt_out" | grep -q "Abort\."; then
                          printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
                          rm -f "$_apt_out"
                          return 2
@@ -319,7 +326,45 @@ pkg_full_upgrade() {
                  else
                      "$_run" "Upgrading installed packages" sudo apt full-upgrade $_y
                  fi ;;
-        dnf|yum) "$_run" "Upgrading installed packages" sudo "$PKG_MGR" upgrade $_y ;;
+        dnf|yum) if [[ "$mode" == "direct" ]]; then
+                     # Interactive (no -y): tee output so we can detect dnf/dnf5's
+                     # "Operation aborted." / "Operation aborted by the user." (user
+                     # typed N). Both dnf and dnf5 exit 1 for this exactly like any
+                     # other failure, so the exit code alone can't tell a declined
+                     # transaction apart from a real error -- same problem the apt
+                     # branch above already works around. Exit code 2 signals
+                     # "Cancelled" to the runner, suppressing retries.
+                     local _dnf_out
+                     _dnf_out=$(mktemp)
+                     printf "  Upgrading installed packages ...\n"
+                     sudo "$PKG_MGR" upgrade 2>&1 | tee "$_dnf_out"
+                     local _dnf_rc=${PIPESTATUS[0]}
+                     # tr '\r' '\n' first: dnf5 redraws its progress/scriptlet output
+                     # with carriage returns even when kept attached to a live
+                     # terminal for interactivity, so the abort line can land right
+                     # after a \r instead of a real \n -- grep's ^ anchor would then
+                     # never see it as a line start and this check would silently
+                     # miss every decline, forcing pointless retries of a transaction
+                     # the user explicitly said no to.
+                     # No ^ anchor: dnf's own "Is this ok [y/N]:" prompt is also
+                     # printed with no trailing newline, so a declined prompt
+                     # glues "Operation aborted..." onto the end of that same
+                     # line -- anchoring to line-start missed that case too,
+                     # which is what was still forcing retries after the \r fix
+                     # above.
+                     if tr '\r' '\n' < "$_dnf_out" | grep -q "Operation aborted" || (( _dnf_rc == 130 )); then
+                         printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
+                         rm -f "$_dnf_out"
+                         return 2
+                     fi
+                     [[ $_dnf_rc -eq 0 ]] \
+                         && printf "  ${GREEN}✓${RESET}  Upgrading installed packages\n" \
+                         || printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
+                     rm -f "$_dnf_out"
+                     return $_dnf_rc
+                 else
+                     "$_run" "Upgrading installed packages" sudo "$PKG_MGR" upgrade $_y
+                 fi ;;
         pacman)  if [[ "${AUR_ENABLED:-false}" == "true" ]] && command -v yay &>/dev/null; then
                      "$_run" "Upgrading installed packages (yay)"  yay  -Syu $_nc
                  elif [[ "${AUR_ENABLED:-false}" == "true" ]] && command -v paru &>/dev/null; then

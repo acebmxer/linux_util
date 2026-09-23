@@ -12,22 +12,22 @@ install_ufw() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y ufw || return 1
+            pkg_install ufw || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y ufw || return 1
+            pkg_install ufw || return 1
             ;;
         rhel)
             # ufw lives in EPEL on RHEL-based distros, not in the base repos
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y ufw || return 1
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install ufw || return 1
             ;;
         arch)
-            sudo pacman -S --noconfirm ufw || return 1
+            pkg_install ufw || return 1
             ;;
         suse)
             # Tumbleweed and Leap 16.0 ship ufw; Leap 15.6 and older do not
-            sudo zypper install -y ufw 2>/dev/null || {
+            pkg_install ufw 2>/dev/null || {
                 warn "UFW is not available in this openSUSE version's repos (Leap 15.6 and older do not ship it)."
                 warn "Install firewalld from the Firewalls category instead — it is the supported firewall here."
                 return 1
@@ -59,16 +59,16 @@ uninstall_ufw() {
     sudo systemctl disable ufw 2>/dev/null || true
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y ufw gufw 2>/dev/null || true
+            pkg_remove ufw gufw 2>/dev/null || true
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y ufw
+            pkg_remove ufw
             ;;
         arch)
-            sudo pacman -Rs --noconfirm ufw gufw 2>/dev/null || sudo pacman -Rs --noconfirm ufw 2>/dev/null || true
+            pkg_remove ufw gufw 2>/dev/null || sudo pacman -Rs --noconfirm ufw 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y ufw 2>/dev/null || true
+            pkg_remove ufw 2>/dev/null || true
             ;;
     esac
 }
@@ -77,9 +77,9 @@ update_ufw() {
     info "Updating UFW..."
     case "$DISTRO_FAMILY" in
         debian)  sudo apt-get install -y --only-upgrade ufw ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y ufw ;;
-        arch)    sudo pacman -S --noconfirm ufw ;;
-        suse)    sudo zypper update -y ufw ;;
+        fedora|rhel) pkg_upgrade ufw ;;
+        arch)    pkg_upgrade ufw ;;
+        suse)    pkg_upgrade ufw ;;
     esac
 }
 

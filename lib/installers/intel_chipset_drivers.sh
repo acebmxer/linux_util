@@ -56,20 +56,13 @@ install_intel_chipset_drivers() {
             ;;
         fedora)
             # microcode_ctl handles Intel (and AMD) microcode on Fedora
-            sudo "$PKG_MGR" install -y \
-                microcode_ctl \
-                thermald
+            pkg_install microcode_ctl thermald
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y \
-                microcode_ctl \
-                thermald 2>/dev/null || \
-            sudo "$PKG_MGR" install -y microcode_ctl
+            pkg_install microcode_ctl thermald 2>/dev/null || pkg_install microcode_ctl
             ;;
         arch)
-            sudo pacman -S --noconfirm \
-                intel-ucode \
-                thermald
+            pkg_install intel-ucode thermald
             # Trigger initramfs rebuild so the new microcode is picked up at next boot
             if command -v mkinitcpio &>/dev/null; then
                 info "Regenerating initramfs to include updated microcode..."
@@ -77,10 +70,7 @@ install_intel_chipset_drivers() {
             fi
             ;;
         suse)
-            sudo zypper install -y \
-                ucode-intel \
-                thermald 2>/dev/null || \
-            sudo zypper install -y ucode-intel
+            pkg_install ucode-intel thermald 2>/dev/null || pkg_install ucode-intel
             ;;
         *)
             warn "Intel chipset driver installation is not implemented for ${DISTRO_NAME}."
@@ -119,13 +109,13 @@ uninstall_intel_chipset_drivers() {
         fedora|rhel)
             # microcode_ctl is shared with AMD — only remove thermald
             warn "Skipping removal of microcode_ctl (shared with AMD microcode on this distro)."
-            sudo "$PKG_MGR" remove -y thermald 2>/dev/null || true
+            pkg_remove thermald 2>/dev/null || true
             ;;
         arch)
             sudo pacman -Rns --noconfirm intel-ucode thermald 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y ucode-intel thermald 2>/dev/null || true
+            pkg_remove ucode-intel thermald 2>/dev/null || true
             ;;
         *)
             warn "Uninstall not implemented for ${DISTRO_NAME}."
@@ -155,7 +145,7 @@ update_intel_chipset_drivers() {
             echo "$pkg_out" | grep -qi "nothing to do" || pkg_updated=1
             ;;
         arch)
-            sudo pacman -S --noconfirm intel-ucode thermald 2>/dev/null || true
+            pkg_upgrade intel-ucode thermald 2>/dev/null || true
             if command -v mkinitcpio &>/dev/null; then
                 sudo mkinitcpio -P 2>/dev/null || true
             fi

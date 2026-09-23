@@ -8,17 +8,17 @@ check_i3() { _check_standard i3 i3 ""; }
 install_i3() {
     info "Installing i3..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y i3 ;;
-        fedora)      sudo "$PKG_MGR" install -y i3 ;;
+        debian)      pkg_install i3 ;;
+        fedora)      pkg_install i3 ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y i3 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install i3 2>/dev/null || {
                 warn "i3 not available in repos for this RHEL-based distro."
                 return 1
             }
             ;;
-        arch)        sudo pacman -S --noconfirm i3-wm ;;
-        suse)        sudo zypper install -y i3 ;;
+        arch)        pkg_install i3-wm ;;
+        suse)        pkg_install i3 ;;
     esac
     info "i3 installed. Log out and select i3 from your display manager."
 }
@@ -26,10 +26,10 @@ install_i3() {
 uninstall_i3() {
     info "Uninstalling i3..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y i3 ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y i3 ;;
-        arch)        sudo pacman -Rs --noconfirm i3-wm ;;
-        suse)        sudo zypper remove -y i3 ;;
+        debian)      pkg_remove i3 ;;
+        fedora|rhel) pkg_remove i3 ;;
+        arch)        pkg_remove i3-wm ;;
+        suse)        pkg_remove i3 ;;
     esac
 }
 
@@ -37,9 +37,9 @@ update_i3() {
     info "Updating i3..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade i3 ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y i3 ;;
-        arch)        sudo pacman -S --noconfirm i3-wm ;;
-        suse)        sudo zypper update -y i3 ;;
+        fedora|rhel) pkg_upgrade i3 ;;
+        arch)        pkg_upgrade i3-wm ;;
+        suse)        pkg_upgrade i3 ;;
     esac
 }
 

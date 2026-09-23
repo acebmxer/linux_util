@@ -13,26 +13,26 @@ install_flatpak_setup() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y flatpak
+            pkg_install flatpak
             # Install GNOME or KDE Plasma integration plugin depending on DE
             if command -v plasmashell &>/dev/null; then
-                sudo apt install -y plasma-discover-backend-flatpak 2>/dev/null || true
+                pkg_install plasma-discover-backend-flatpak 2>/dev/null || true
             else
-                sudo apt install -y gnome-software-plugin-flatpak 2>/dev/null || true
+                pkg_install gnome-software-plugin-flatpak 2>/dev/null || true
             fi
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y flatpak
+            pkg_install flatpak
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y flatpak
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install flatpak
             ;;
         arch)
-            sudo pacman -S --noconfirm flatpak
+            pkg_install flatpak
             ;;
         suse)
-            sudo zypper install -y flatpak
+            pkg_install flatpak
             ;;
     esac
 
@@ -50,16 +50,16 @@ uninstall_flatpak_setup() {
 
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y flatpak plasma-discover-backend-flatpak gnome-software-plugin-flatpak 2>/dev/null || true
+            pkg_remove flatpak plasma-discover-backend-flatpak gnome-software-plugin-flatpak 2>/dev/null || true
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y flatpak
+            pkg_remove flatpak
             ;;
         arch)
-            sudo pacman -Rs --noconfirm flatpak
+            pkg_remove flatpak
             ;;
         suse)
-            sudo zypper remove -y flatpak
+            pkg_remove flatpak
             ;;
     esac
     warn "Installed Flatpak apps were not removed. Remove them with 'flatpak uninstall --all' first if needed."

@@ -16,7 +16,7 @@ install_anydesk() {
             echo "deb [signed-by=/etc/apt/keyrings/anydesk.gpg] http://deb.anydesk.com/ all main" | \
                 sudo tee /etc/apt/sources.list.d/anydesk.list > /dev/null
             sudo apt update
-            sudo apt install -y anydesk
+            pkg_install anydesk
             ;;
         fedora|rhel)
             # AnyDesk RPM repository
@@ -28,7 +28,7 @@ gpgcheck=1
 repo_gpgcheck=1
 gpgkey=https://keys.anydesk.com/repos/RPM-GPG-KEY
 REPO
-            sudo "$PKG_MGR" install -y anydesk
+            pkg_install anydesk
             ;;
         arch)
             # repos -> Flathub -> AUR (AUR is disabled by default).
@@ -37,7 +37,7 @@ REPO
         suse)
             sudo zypper addrepo -f "https://rpm.anydesk.com/opensuse/anydesk.repo" anydesk 2>/dev/null || true
             sudo zypper refresh
-            sudo zypper install -y anydesk 2>/dev/null || {
+            pkg_install anydesk 2>/dev/null || {
                 error "AnyDesk installation failed on openSUSE. Check https://anydesk.com/en/downloads/linux for manual install."
                 return 1
             }
@@ -50,20 +50,20 @@ uninstall_anydesk() {
     info "Uninstalling AnyDesk..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y anydesk
+            pkg_remove anydesk
             sudo rm -f /etc/apt/sources.list.d/anydesk.list
             sudo rm -f /etc/apt/keyrings/anydesk.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y anydesk
+            pkg_remove anydesk
             sudo rm -f /etc/yum.repos.d/anydesk.repo
             ;;
         arch)
             aur_remove anydesk-bin 2>/dev/null || \
-                sudo pacman -Rs --noconfirm anydesk 2>/dev/null || true
+                pkg_remove anydesk 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y anydesk
+            pkg_remove anydesk
             sudo zypper removerepo anydesk 2>/dev/null || true
             ;;
     esac
@@ -74,9 +74,9 @@ update_anydesk() {
     info "Updating AnyDesk..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade anydesk ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y anydesk ;;
+        fedora|rhel) pkg_upgrade anydesk ;;
         arch)        repo_or_aur anydesk-bin ;;
-        suse)        sudo zypper update -y anydesk ;;
+        suse)        pkg_upgrade anydesk ;;
     esac
 }
 

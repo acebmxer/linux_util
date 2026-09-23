@@ -17,20 +17,20 @@ install_github_cli() {
                 "/etc/apt/keyrings/githubcli-archive-keyring.gpg" \
                 "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
                 "/etc/apt/sources.list.d/github-cli.list"
-            sudo apt install -y gh
+            pkg_install gh
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y 'dnf-command(config-manager)' 2>/dev/null || true
+            pkg_install 'dnf-command(config-manager)' 2>/dev/null || true
             sudo "$PKG_MGR" config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-            sudo "$PKG_MGR" install -y gh
+            pkg_install gh
             ;;
         arch)
-            sudo pacman -S --noconfirm github-cli
+            pkg_install github-cli
             ;;
         suse)
             sudo zypper addrepo https://cli.github.com/packages/rpm/gh-cli.repo gh-cli 2>/dev/null || true
             sudo zypper refresh
-            sudo zypper install -y gh
+            pkg_install gh
             ;;
     esac
 }
@@ -39,19 +39,19 @@ uninstall_github_cli() {
     info "Uninstalling GitHub CLI..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y gh
+            pkg_remove gh
             sudo rm -f /etc/apt/sources.list.d/github-cli.list
             sudo rm -f /etc/apt/keyrings/githubcli-archive-keyring.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y gh
+            pkg_remove gh
             sudo rm -f /etc/yum.repos.d/gh-cli.repo
             ;;
         arch)
-            sudo pacman -Rs --noconfirm github-cli
+            pkg_remove github-cli
             ;;
         suse)
-            sudo zypper remove -y gh
+            pkg_remove gh
             sudo zypper removerepo gh-cli 2>/dev/null || true
             ;;
     esac
@@ -64,13 +64,13 @@ update_github_cli() {
             sudo apt-get install -y --only-upgrade gh
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y gh
+            pkg_upgrade gh
             ;;
         arch)
-            sudo pacman -S --noconfirm github-cli
+            pkg_upgrade github-cli
             ;;
         suse)
-            sudo zypper update -y gh
+            pkg_upgrade gh
             ;;
     esac
 }

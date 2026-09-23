@@ -69,7 +69,7 @@ uninstall_logseq() {
         case "$DISTRO_FAMILY" in
             arch)
                 aur_remove logseq-desktop-bin 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm logseq-desktop-bin 2>/dev/null || true
+                    pkg_remove logseq-desktop-bin 2>/dev/null || true
                 ;;
         esac
     fi

@@ -1918,6 +1918,12 @@ run_selection_menu() {
                 printf '\033[?1049l'  # leave alternate screen
                 show_cursor
                 stty echo
+                # Give the real terminal a moment to finish redrawing out of
+                # the alternate screen before the selected task starts writing
+                # (some terminals/SSH clients settle their screen-mode switch
+                # asynchronously; the very next output otherwise lands before
+                # that settles).
+                sleep 0.15
                 _MENU_ACTIVE=false
                 trap - WINCH INT TERM
                 trap cleanup_on_exit EXIT

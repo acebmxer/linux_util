@@ -30,21 +30,18 @@ uninstall_cosmic() {
     echo "Uninstalling COSMIC Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y cosmic-session cosmic-greeter \
-                cosmic-comp cosmic-panel cosmic-applets cosmic-settings || true
-            sudo apt autoclean
+            pkg_remove cosmic-session cosmic-greeter cosmic-comp cosmic-panel cosmic-applets cosmic-settings || true
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group remove -y @cosmic-desktop 2>/dev/null || \
-                sudo "$PKG_MGR" remove -y cosmic-session cosmic-comp cosmic-greeter 2>/dev/null || true
+                pkg_remove cosmic-session cosmic-comp cosmic-greeter 2>/dev/null || true
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm cosmic 2>/dev/null || \
-                sudo pacman -Rs --noconfirm cosmic-session cosmic-comp cosmic-panel 2>/dev/null || true
+            pkg_remove cosmic 2>/dev/null || pkg_remove cosmic-session cosmic-comp cosmic-panel 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y cosmic-session cosmic-comp cosmic-greeter 2>/dev/null || true
+            pkg_remove cosmic-session cosmic-comp cosmic-greeter 2>/dev/null || true
             ;;
     esac
     rm -rf ~/.config/cosmic* 2>/dev/null || true
@@ -56,18 +53,17 @@ update_cosmic() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade cosmic-session cosmic-comp cosmic-panel \
-                cosmic-applets cosmic-settings cosmic-greeter 2>/dev/null || true
+            pkg_upgrade cosmic-session cosmic-comp cosmic-panel cosmic-applets cosmic-settings cosmic-greeter 2>/dev/null || true
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @cosmic-desktop 2>/dev/null || \
-                sudo "$PKG_MGR" upgrade -y cosmic-session cosmic-comp cosmic-greeter 2>/dev/null || true
+                pkg_upgrade cosmic-session cosmic-comp cosmic-greeter 2>/dev/null || true
             ;;
         arch)
             sudo pacman -Syu --noconfirm cosmic 2>/dev/null || true
             ;;
         suse)
-            sudo zypper update -y cosmic-session cosmic-comp 2>/dev/null || true
+            pkg_upgrade cosmic-session cosmic-comp 2>/dev/null || true
             ;;
     esac
 }

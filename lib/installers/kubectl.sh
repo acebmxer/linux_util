@@ -17,7 +17,7 @@ install_kubectl() {
             echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /" | \
                 sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
             sudo apt update
-            sudo apt install -y kubectl
+            pkg_install kubectl
             ;;
         fedora|rhel)
             sudo tee /etc/yum.repos.d/kubernetes.repo > /dev/null <<'REPO'
@@ -28,13 +28,13 @@ enabled=1
 gpgcheck=1
 gpgkey=https://pkgs.k8s.io/core:/stable:/v1.32/rpm/repodata/repomd.xml.key
 REPO
-            sudo "$PKG_MGR" install -y kubectl
+            pkg_install kubectl
             ;;
         arch)
-            sudo pacman -S --noconfirm kubectl
+            pkg_install kubectl
             ;;
         suse)
-            sudo zypper install -y kubectl 2>/dev/null || _install_kubectl_binary
+            pkg_install kubectl 2>/dev/null || _install_kubectl_binary
             ;;
     esac
     info "kubectl installed."
@@ -63,19 +63,19 @@ uninstall_kubectl() {
     fi
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y kubectl 2>/dev/null || true
+            pkg_remove kubectl 2>/dev/null || true
             sudo rm -f /etc/apt/sources.list.d/kubernetes.list
             sudo rm -f /etc/apt/keyrings/kubernetes-apt-keyring.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y kubectl 2>/dev/null || true
+            pkg_remove kubectl 2>/dev/null || true
             sudo rm -f /etc/yum.repos.d/kubernetes.repo
             ;;
         arch)
-            sudo pacman -Rs --noconfirm kubectl 2>/dev/null || true
+            pkg_remove kubectl 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y kubectl 2>/dev/null || true
+            pkg_remove kubectl 2>/dev/null || true
             ;;
     esac
 }
@@ -87,9 +87,9 @@ update_kubectl() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade kubectl ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y kubectl ;;
-            arch)        sudo pacman -S --noconfirm kubectl ;;
-            suse)        sudo zypper update -y kubectl 2>/dev/null || _install_kubectl_binary ;;
+            fedora|rhel) pkg_upgrade kubectl ;;
+            arch)        pkg_upgrade kubectl ;;
+            suse)        pkg_upgrade kubectl 2>/dev/null || _install_kubectl_binary ;;
         esac
     fi
 }

@@ -1570,6 +1570,144 @@ test_gather_de_reports_xdg_hint() {
 }
 
 # ============================================================================
+# Test: GTK Window Fix (window button layout)
+# ============================================================================
+echo ""
+echo "=== GTK Window Fix Tests ==="
+
+# The installer functions live in a per-utility file that the harness does not
+# source by default (only lib/*.sh are sourced). Source it here; it only defines
+# functions, so sourcing has no side effects.
+source "${SCRIPT_DIR}/lib/installers/window_buttons.sh"
+
+# detect_window_button_de maps the XDG_CURRENT_DESKTOP hint to a DE token.
+test_detect_de_gnome_from_hint() {
+    local out
+    out=$( XDG_CURRENT_DESKTOP="ubuntu:GNOME" DESKTOP_SESSION="" detect_window_button_de )
+    assert_eq "gnome" "$out" "detect_window_button_de maps GNOME hint to gnome"
+}
+
+test_detect_de_kde_from_hint() {
+    local out
+    out=$( XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="plasma" detect_window_button_de )
+    assert_eq "kde" "$out" "detect_window_button_de maps KDE hint to kde"
+}
+
+test_detect_de_xfce_from_hint() {
+    local out
+    out=$( XDG_CURRENT_DESKTOP="XFCE" DESKTOP_SESSION="" detect_window_button_de )
+    assert_eq "xfce" "$out" "detect_window_button_de maps XFCE hint to xfce"
+}
+
+# With no hint, detection falls back to probing the available gsettings schema.
+# Stub gsettings to advertise only the GNOME schema and command to report it
+# present; xfconf-query is reported absent.
+test_detect_de_fallback_to_gnome_schema() {
+    local out
+    out=$(
+        unset XDG_CURRENT_DESKTOP DESKTOP_SESSION
+        command() {
+            case "${2:-}" in
+                gsettings) return 0 ;;
+                xfconf-query) return 1 ;;
+            esac
+            builtin command "$@"
+        }
+        gsettings() {
+            [[ "${1:-}" == "list-schemas" ]] && { printf 'org.gnome.desktop.wm.preferences\n'; return 0; }
+            return 0
+        }
+        detect_window_button_de
+    )
+    assert_eq "gnome" "$out" "detect_window_button_de falls back to gnome via schema probe"
+}
+
+# install_window_buttons on GNOME issues the exact gsettings command and never
+# calls sudo. A session bus is faked so the no-GUI guard is not taken.
+test_install_window_buttons_gnome_sets_layout() {
+    local out
+    out=$(
+        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/fake"
+        XDG_CURRENT_DESKTOP="GNOME"
+        DESKTOP_SESSION=""
+        gsettings() { echo "GSETTINGS:$*"; return 0; }
+        sudo() { echo "SUDO_CALLED"; }
+        install_window_buttons 2>&1
+    )
+    assert_contains "$out" "GSETTINGS:set org.gnome.desktop.wm.preferences button-layout :minimize,maximize,close" \
+        "install_window_buttons (GNOME) sets button-layout to :minimize,maximize,close"
+    assert_false "install_window_buttons (GNOME) does not call sudo" \
+        grep -q "SUDO_CALLED" <<< "$out"
+}
+
+# install_window_buttons on Xfce uses xfconf-query, not gsettings.
+test_install_window_buttons_xfce_uses_xfconf() {
+    local out
+    out=$(
+        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/fake"
+        XDG_CURRENT_DESKTOP="XFCE"
+        DESKTOP_SESSION=""
+        xfconf-query() { echo "XFCONF:$*"; return 0; }
+        gsettings() { echo "GSETTINGS_CALLED"; }
+        install_window_buttons 2>&1
+    )
+    assert_contains "$out" "XFCONF:-c xfwm4 -p /general/button_layout -s O|HMC" \
+        "install_window_buttons (Xfce) sets xfwm4 button_layout via xfconf-query"
+    assert_false "install_window_buttons (Xfce) does not use gsettings" \
+        grep -q "GSETTINGS_CALLED" <<< "$out"
+}
+
+# install_window_buttons on KDE makes no change (KWin ignores the GNOME key).
+test_install_window_buttons_kde_skips() {
+    local out
+    out=$(
+        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/fake"
+        XDG_CURRENT_DESKTOP="KDE"
+        DESKTOP_SESSION=""
+        gsettings() { echo "GSETTINGS_CALLED"; }
+        xfconf-query() { echo "XFCONF_CALLED"; }
+        install_window_buttons 2>&1
+    )
+    assert_false "install_window_buttons (KDE) does not call gsettings" \
+        grep -q "GSETTINGS_CALLED" <<< "$out"
+    assert_false "install_window_buttons (KDE) does not call xfconf-query" \
+        grep -q "XFCONF_CALLED" <<< "$out"
+}
+
+# With no graphical session (no D-Bus/Wayland/X), the function warns and makes
+# no change instead of failing obscurely.
+test_install_window_buttons_no_session_skips() {
+    local out
+    out=$(
+        unset DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY DISPLAY
+        XDG_CURRENT_DESKTOP="GNOME"
+        gsettings() { echo "GSETTINGS_CALLED"; }
+        install_window_buttons 2>&1
+    )
+    assert_contains "$out" "No graphical session detected" \
+        "install_window_buttons warns when no graphical session is present"
+    assert_false "install_window_buttons (no session) does not call gsettings" \
+        grep -q "GSETTINGS_CALLED" <<< "$out"
+}
+
+# get_version_window_buttons reports a human-readable DE label for the menu.
+test_get_version_window_buttons_reports_de() {
+    local out
+    out=$( XDG_CURRENT_DESKTOP="GNOME" DESKTOP_SESSION="" get_version_window_buttons )
+    assert_eq "GNOME" "$out" "get_version_window_buttons reports detected DE label"
+}
+
+test_detect_de_gnome_from_hint
+test_detect_de_kde_from_hint
+test_detect_de_xfce_from_hint
+test_detect_de_fallback_to_gnome_schema
+test_install_window_buttons_gnome_sets_layout
+test_install_window_buttons_xfce_uses_xfconf
+test_install_window_buttons_kde_skips
+test_install_window_buttons_no_session_skips
+test_get_version_window_buttons_reports_de
+
+# ============================================================================
 # Test: Kernel Managers (Mainline / CachyOS Kernel Manager / Fedora Mainline)
 # ============================================================================
 echo ""
@@ -3505,6 +3643,63 @@ test_preflight_sync_only_does_not_upgrade
 test_system_updates_marked_full_upgrade
 test_ordinary_utility_not_marked_full_upgrade
 test_preflight_scope_mixed_batch_upgrades
+
+echo ""
+echo "=== Interactive Upgrade Decline Detection Tests ==="
+
+# dnf5's own "Is this ok [y/N]:" prompt is printed with no trailing newline,
+# so on a declined prompt "Operation aborted by the user." lands glued onto
+# the end of that same line instead of starting a fresh one -- the user's
+# typed "n<Enter>" is echoed back by the terminal driver, never by dnf's own
+# piped stdout, so no newline from that keystroke ever reaches the captured
+# output. A grep anchored to line-start ("^Operation aborted") never matches
+# text glued onto the end of a preceding line, which is what kept forcing
+# retries of a transaction the user had already declined, even after the
+# earlier \r-redraw fix above.
+test_dnf_decline_glued_to_prompt_returns_cancelled() {
+    local out rc
+    out=$(
+        PKG_MGR=dnf
+        sudo() { "$@"; }
+        dnf() {
+            printf 'Is this ok [y/N]: Operation aborted by the user.\n'
+            return 1
+        }
+        pkg_full_upgrade direct
+        echo "RC:$?"
+    )
+    rc="${out##*RC:}"
+    assert_eq "2" "$rc" \
+        "a declined dnf prompt glued onto the same line as 'Operation aborted' returns 2 (Cancelled), not retried"
+}
+
+# Same glued-line shape can happen on the apt branch's "Continue? [Y/n]"
+# prompt, which the dnf branch's detection was deliberately written to mirror.
+test_apt_decline_glued_to_prompt_returns_cancelled() {
+    local out rc
+    out=$(
+        PKG_MGR=apt
+        sudo() { "$@"; }
+        run_direct() { shift; "$@"; }
+        apt() {
+            case "$1" in
+                --fix-broken) return 0 ;;
+                full-upgrade)
+                    printf 'Continue? [Y/n] Abort.\n'
+                    return 1
+                    ;;
+            esac
+        }
+        pkg_full_upgrade direct
+        echo "RC:$?"
+    )
+    rc="${out##*RC:}"
+    assert_eq "2" "$rc" \
+        "a declined apt prompt glued onto the same line as 'Abort.' returns 2 (Cancelled), not retried"
+}
+
+test_dnf_decline_glued_to_prompt_returns_cancelled
+test_apt_decline_glued_to_prompt_returns_cancelled
 
 echo ""
 echo "=== Prerelease Distro Upgrade Tests ==="

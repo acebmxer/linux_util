@@ -24,7 +24,7 @@ install_snapper_gui() {
     echo "Installing Snapper GUI..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y snapper-gui || return 1
+            pkg_install snapper-gui || return 1
             ;;
         arch)
             repo_or_aur snapper-gui-git || return 1
@@ -42,14 +42,12 @@ uninstall_snapper_gui() {
     echo "Uninstalling Snapper GUI..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y snapper-gui
-            sudo apt autoclean
+            pkg_remove snapper-gui
             ;;
         arch)
             # Plain snapper-gui is tried too: it never existed as a package,
             # but a user who installed one by hand should still be cleaned up.
-            sudo pacman -Rs --noconfirm snapper-gui-git 2>/dev/null || \
-            sudo pacman -Rs --noconfirm snapper-gui 2>/dev/null || true
+            pkg_remove snapper-gui-git 2>/dev/null || pkg_remove snapper-gui 2>/dev/null || true
             ;;
     esac
 }

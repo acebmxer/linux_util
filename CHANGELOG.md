@@ -12,6 +12,135 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-09-23
+
+### Added
+
+- **Superfile** (File Managers → Terminal), a modern terminal file manager
+  (`spf`) with a multi-pane layout, file previews, fuzzy search, and built-in
+  theming. It's a native `extra` repo package on Arch (`pacman -S superfile`);
+  no other supported distro packages it, so Debian, Fedora/RHEL, and openSUSE
+  install upstream's Linux release tarball straight from GitHub, checksum-
+  verified against the release's own `-checksums.txt` asset, with `spf`
+  unpacked to `/usr/local/bin`. Uninstall removes the binary plus its
+  `~/.config/superfile`, `~/.local/share/superfile`, and
+  `~/.local/state/superfile` directories.
+
+- **GTK Window Fix** (System Tasks), a one-shot preference fix for GNOME-family
+  desktops: GNOME's default window-manager button layout omits minimize and
+  maximize, so GTK apps like Nautilus/Files and Remmina show only a close
+  button on a stock GNOME session. Detects the desktop (GNOME, Cinnamon, MATE,
+  Xfce, or falls back to probing the available `gsettings` schema /
+  `xfconf-query`) and sets the equivalent per-user button-layout key on each;
+  KDE already shows all three buttons and is skipped. Runs as the invoking
+  user (never sudo) since it writes a per-user dconf/xfconf setting, and warns
+  rather than failing when no graphical session is present. There is nothing
+  to uninstall — it is a preference write, not an install.
+
+### Fixed
+
+- **The "Cancelled" status line for a user-declined operation used `⊘`, a
+  symbol that appeared nowhere else in the project.** Every other completion
+  status in the codebase pairs `✓`/green for success and `✗`/red for failure
+  (`snapshot.sh`, `pkg_manager.sh`, `logging.sh`, and `linux_util.sh` itself),
+  with `⚠`/yellow already established as the symbol for a non-fatal, worth-
+  noting outcome. `⊘` was introduced as a one-off in the commit that first
+  added cancellation handling and never matched either convention. Replaced
+  both uses in `linux_util.sh` with `⚠`, reusing the existing warning symbol
+  and color instead of the invented one.
+
+- **Package installs on Fedora/RHEL could show garbled, repeated terminal
+  output** — the same "Running %post scriptlet: ..." banner and progress line
+  printed over and over during a single package's post-install scriptlets,
+  worst on packages that trip other packages' systemd file-triggers (e.g.
+  installing OpenSSH Server retriggers `systemd`'s and `filesystem`'s own
+  triggers). Confirmed with a vanilla `dnf5 install` outside this project
+  entirely: dnf5's own progress renderer only misbehaves this way when its
+  stdout/stderr are connected directly to a real terminal; redirected to a
+  file (even within the same interactive session) it prints each scriptlet
+  banner exactly once. Nearly every installer ran the package manager
+  directly, connecting it live to the terminal. Converted the ~160 installers
+  that called `apt`/`dnf`/`yum`/`pacman`/`zypper` directly to the existing
+  `pkg_install`/`pkg_remove`/`pkg_upgrade` helpers instead, which already run
+  the package manager through `run_with_spinner` (output fully captured,
+  spinner shown, raw output dumped only on failure) — matching how a minority
+  of installers (e.g. Firefox, Flatpak) already worked. A remaining handful of
+  calls were left untouched because they need individual judgement rather
+  than a mechanical swap: bare `apt update` refreshes (apt isn't known to have
+  this bug), calls whose output is parsed via command substitution, and a few
+  distro-specific commands (`zypper removerepo`, `pacman -Syu`) the helpers
+  don't cover.
+
+- **Declining or Ctrl+C-ing dnf/dnf5's own "Is this ok [y/N]:" prompt during
+  System Updates was treated as a failure and auto-retried up to
+  `retry_attempts` times.** `pkg_full_upgrade()`'s interactive (`direct`) mode
+  runs `dnf upgrade`/`dnf5 upgrade` with no `-y` so the user sees dnf's real
+  confirmation prompt, matching the apt branch alongside it. But unlike apt —
+  which already tees output and greps for `Abort.` to map a declined
+  transaction to exit code 2 ("Cancelled", which the runner never retries) —
+  the dnf/yum branch just returned dnf's raw exit code. Both dnf4 and dnf5
+  exit 1 for a declined transaction (`"Operation aborted."` /
+  `"Operation aborted by the user."`) exactly as they do for a genuine
+  failure, so the outer retry loop couldn't tell the two apart and kept
+  re-running `dnf upgrade` after the user had already said no. The dnf/yum
+  branch now tees output the same way apt does, matches dnf's own
+  `Operation aborted` message (covering both dnf4's and dnf5's wording) or a
+  SIGINT exit code (130, from Ctrl+C), and returns 2 in either case.
+
+  While testing this, found and fixed a real bug in the detection itself:
+  dnf5 redraws its transaction progress with carriage returns even while kept
+  attached to a live terminal for interactivity, so the `Operation aborted`
+  line could land right after a `\r` instead of a real `\n`. `grep`'s `^`
+  anchor only matches text that follows an actual newline, so on that
+  redraw pattern the check silently missed every decline and the run went on
+  retrying a transaction the user had already said no to. Both the dnf/yum
+  and apt branches now run their captured output through `tr '\r' '\n'`
+  before grepping, so a carriage-return-redrawn line can no longer hide the
+  match.
+
+  Confirmed against a real run that the `\r` fix above still wasn't enough:
+  declining still retried three times every time. The actual cause is that
+  dnf's own `"Is this ok [y/N]:"` prompt is printed with no trailing newline,
+  and the user's typed `n`/Enter is echoed back by the terminal driver, never
+  by dnf's own piped stdout — so `Operation aborted by the user.` lands glued
+  onto the *end* of the prompt line, not at the start of a fresh one, and the
+  `^` anchor never matches text glued onto the end of a preceding line
+  either. Removed the `^`/`$` anchors from both the dnf/yum and apt checks
+  (matching `Operation aborted` / `Abort.` anywhere in the captured output is
+  specific enough on its own) and added regression tests
+  (`test_dnf_decline_glued_to_prompt_returns_cancelled`,
+  `test_apt_decline_glued_to_prompt_returns_cancelled`) that reproduce the
+  glued-line shape directly, rather than relying on a real prompt round-trip.
+
+- **dnf/dnf5's transaction confirmation ("Total size... / After this
+  operation... / Is this ok [y/N]:") could render with stray leading
+  whitespace, mid-line wraps, or missing lines when reached through the
+  menu, on some terminals/SSH clients — never when running the identical
+  `dnf` command by hand in the same session.** The menu leaves the
+  alternate screen buffer and hands off to the selected task's output in
+  the same breath (`lib/menu.sh`'s confirm-and-exit path). Some terminals
+  and SSH clients settle that screen-mode switch asynchronously, so the
+  very next bytes (the selected task's own output) could reach the
+  terminal before it finished that transition. Added a brief settle delay
+  (`sleep 0.15`) between leaving the alternate screen and returning control
+  to the selected task.
+
+- **System Updates could 404 against Docker's repo on Fedora even after the
+  earlier `$releasever`-pinning fix (1.5.0-era), because that fix only ran
+  inside `setup_install_docker`.** A `docker-ce.repo` reaches a machine
+  several other ways that install path never touches — Docker installed
+  before the pin existed, Docker installed by something other than this
+  project, or the repo simply left unpinned because dnf resolves
+  `$releasever` from the live system and Docker's own repo lags a new Fedora
+  release by weeks. Any of those left the repo file with a literal
+  `$releasever` in its baseurl, so every `dnf check-update`/`upgrade` run
+  under System Updates 404'd against `download.docker.com` for a Fedora
+  version Docker hadn't published yet. Extracted the pin into
+  `_docker_pin_fedora_repo_if_needed` in `lib/installers/docker.sh`, which
+  now also runs at the start of System Updates and before `update_docker`'s
+  own upgrade, in addition to install — so an existing unpinned repo gets
+  fixed the next time either runs, not only at Docker's original install.
+
 ## [1.6.0] - 2026-09-19
 
 ### Added

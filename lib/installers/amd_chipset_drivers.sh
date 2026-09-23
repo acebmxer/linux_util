@@ -54,19 +54,15 @@ install_amd_chipset_drivers() {
             ;;
         fedora)
             # microcode_ctl bundles AMD microcode on Fedora; linux-firmware covers PSP/SMU firmware
-            sudo "$PKG_MGR" install -y \
-                microcode_ctl \
-                linux-firmware
+            pkg_install microcode_ctl linux-firmware
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y microcode_ctl 2>/dev/null || true
+            pkg_install microcode_ctl 2>/dev/null || true
             # linux-firmware may be a separate or split package on RHEL variants
-            sudo "$PKG_MGR" install -y linux-firmware 2>/dev/null || true
+            pkg_install linux-firmware 2>/dev/null || true
             ;;
         arch)
-            sudo pacman -S --noconfirm \
-                amd-ucode \
-                linux-firmware
+            pkg_install amd-ucode linux-firmware
             # Trigger initramfs rebuild so new microcode is loaded at next boot
             if command -v mkinitcpio &>/dev/null; then
                 info "Regenerating initramfs to include updated microcode..."
@@ -74,11 +70,9 @@ install_amd_chipset_drivers() {
             fi
             ;;
         suse)
-            sudo zypper install -y ucode-amd 2>/dev/null || true
+            pkg_install ucode-amd 2>/dev/null || true
             # kernel-firmware-amdgpu covers PSP / SMU firmware blobs for AM4/AM5
-            sudo zypper install -y \
-                kernel-firmware-amdgpu \
-                kernel-firmware-amd 2>/dev/null || true
+            pkg_install kernel-firmware-amdgpu kernel-firmware-amd 2>/dev/null || true
             ;;
         *)
             warn "AMD chipset driver installation is not implemented for ${DISTRO_NAME}."
@@ -109,7 +103,7 @@ uninstall_amd_chipset_drivers() {
             warn "linux-firmware was not removed as it is required by many other system components."
             ;;
         suse)
-            sudo zypper remove -y ucode-amd 2>/dev/null || true
+            pkg_remove ucode-amd 2>/dev/null || true
             warn "kernel-firmware packages were not removed as they may be required by other components."
             ;;
         *)
@@ -139,7 +133,7 @@ update_amd_chipset_drivers() {
             echo "$pkg_out" | grep -qi "nothing to do" || pkg_updated=1
             ;;
         arch)
-            sudo pacman -S --noconfirm amd-ucode linux-firmware 2>/dev/null || true
+            pkg_upgrade amd-ucode linux-firmware 2>/dev/null || true
             if command -v mkinitcpio &>/dev/null; then
                 sudo mkinitcpio -P 2>/dev/null || true
             fi

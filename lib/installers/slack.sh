@@ -25,7 +25,7 @@ install_slack() {
                 return 1
             fi
             verify_download "$tmpfile" "deb" "Slack" || return 1
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel)
             if has_flatpak; then
@@ -57,11 +57,11 @@ uninstall_slack() {
             sudo flatpak uninstall -y --system com.slack.Slack
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y slack-desktop ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y slack 2>/dev/null || true ;;
+            debian)      pkg_remove slack-desktop ;;
+            fedora|rhel) pkg_remove slack 2>/dev/null || true ;;
             arch)
                 aur_remove slack-desktop 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm slack-desktop 2>/dev/null || true
+                    pkg_remove slack-desktop 2>/dev/null || true
                 ;;
         esac
     fi

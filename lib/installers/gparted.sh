@@ -9,23 +9,23 @@ install_gparted() {
     info "Installing GParted..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y gparted
+            pkg_install gparted
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y gparted
+            pkg_install gparted
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y gparted 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install gparted 2>/dev/null || {
                 warn "gparted not available in repos for this RHEL-based distro."
                 return 1
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm gparted
+            pkg_install gparted
             ;;
         suse)
-            sudo zypper install -y gparted
+            pkg_install gparted
             ;;
     esac
     info "GParted installed."
@@ -34,10 +34,10 @@ install_gparted() {
 uninstall_gparted() {
     info "Uninstalling GParted..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y gparted ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y gparted ;;
-        arch)        sudo pacman -Rs --noconfirm gparted ;;
-        suse)        sudo zypper remove -y gparted ;;
+        debian)      pkg_remove gparted ;;
+        fedora|rhel) pkg_remove gparted ;;
+        arch)        pkg_remove gparted ;;
+        suse)        pkg_remove gparted ;;
     esac
 }
 
@@ -45,9 +45,9 @@ update_gparted() {
     info "Updating GParted..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade gparted ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y gparted ;;
-        arch)        sudo pacman -S --noconfirm gparted ;;
-        suse)        sudo zypper update -y gparted ;;
+        fedora|rhel) pkg_upgrade gparted ;;
+        arch)        pkg_upgrade gparted ;;
+        suse)        pkg_upgrade gparted ;;
     esac
 }
 

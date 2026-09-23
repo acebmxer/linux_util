@@ -35,3 +35,65 @@ jobs:
 
       - name: Run ShellCheck on installers
         run: shellcheck -S error lib/installers/*.sh
+
+  distro-smoke:
+    name: Distro Detection (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:12
+            name: Debian 12
+            family: debian
+            pkg_mgr: apt
+          - image: ubuntu:24.04
+            name: Ubuntu 24.04
+            family: debian
+            pkg_mgr: apt
+          - image: fedora:41
+            name: Fedora 41
+            family: fedora
+            pkg_mgr: dnf
+          - image: rockylinux:9
+            name: Rocky Linux 9
+            family: rhel
+            pkg_mgr: dnf
+          - image: archlinux:base
+            name: Arch Linux
+            family: arch
+            pkg_mgr: pacman
+          - image: opensuse/tumbleweed
+            name: openSUSE Tumbleweed
+            family: suse
+            pkg_mgr: zypper
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare minimal image (non-root user, missing base tools)
+        run: |
+          case "${{ matrix.family }}" in
+            fedora)
+              dnf install -y -q util-linux
+              ;;
+            suse)
+              zypper --non-interactive install -y gawk
+              ;;
+          esac
+          useradd -m testuser
+          chown -R testuser:testuser "$GITHUB_WORKSPACE"
+
+      - name: Run detect_distro as a non-root user
+        shell: bash
+        run: |
+          output=$(su testuser -c "bash linux_util.sh --version" 2>&1)
+          echo "$output"
+          detected=$(echo "$output" | grep "^Detected:")
+          [[ -n "$detected" ]] || { echo "::error::detect_distro produced no 'Detected:' line"; exit 1; }
+          echo "$detected" | grep -q "family: ${{ matrix.family }}, package manager: ${{ matrix.pkg_mgr }}" || {
+            echo "::error::expected family=${{ matrix.family }} pkg_mgr=${{ matrix.pkg_mgr }}, got: $detected"
+            exit 1
+          }

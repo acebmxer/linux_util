@@ -10,8 +10,7 @@ install_handbrake() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y handbrake 2>/dev/null || \
-                sudo apt install -y handbrake-gtk 2>/dev/null || {
+            pkg_install handbrake 2>/dev/null || pkg_install handbrake-gtk 2>/dev/null || {
                     warn "handbrake not in repos. Falling back to Flatpak..."
                     if has_flatpak; then
                         sudo flatpak install -y flathub fr.handbrake.ghb
@@ -27,7 +26,7 @@ install_handbrake() {
                 sudo "$PKG_MGR" install -y \
                     "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
             fi
-            sudo "$PKG_MGR" install -y HandBrake-gui HandBrake-cli
+            pkg_install HandBrake-gui HandBrake-cli
             ;;
         rhel)
             if has_flatpak; then
@@ -38,10 +37,10 @@ install_handbrake() {
             fi
             ;;
         arch)
-            sudo pacman -S --noconfirm handbrake
+            pkg_install handbrake
             ;;
         suse)
-            sudo zypper install -y handbrake 2>/dev/null || {
+            pkg_install handbrake 2>/dev/null || {
                 if has_flatpak; then
                     sudo flatpak install -y flathub fr.handbrake.ghb
                 else
@@ -62,17 +61,16 @@ uninstall_handbrake() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y handbrake handbrake-gtk handbrake-cli 2>/dev/null || true
+                pkg_remove handbrake handbrake-gtk handbrake-cli 2>/dev/null || true
                 ;;
             fedora|rhel)
-                sudo "$PKG_MGR" remove -y HandBrake-gui HandBrake-cli 2>/dev/null || \
-                    sudo "$PKG_MGR" remove -y handbrake 2>/dev/null || true
+                pkg_remove HandBrake-gui HandBrake-cli 2>/dev/null || pkg_remove handbrake 2>/dev/null || true
                 ;;
             arch)
-                sudo pacman -Rs --noconfirm handbrake
+                pkg_remove handbrake
                 ;;
             suse)
-                sudo zypper remove -y handbrake
+                pkg_remove handbrake
                 ;;
         esac
     fi
@@ -90,13 +88,13 @@ update_handbrake() {
                 sudo apt-get install -y --only-upgrade handbrake handbrake-gtk 2>/dev/null || true
                 ;;
             fedora|rhel)
-                sudo "$PKG_MGR" upgrade -y HandBrake-gui HandBrake-cli 2>/dev/null || true
+                pkg_upgrade HandBrake-gui HandBrake-cli 2>/dev/null || true
                 ;;
             arch)
-                sudo pacman -S --noconfirm handbrake
+                pkg_upgrade handbrake
                 ;;
             suse)
-                sudo zypper update -y handbrake
+                pkg_upgrade handbrake
                 ;;
         esac
     fi

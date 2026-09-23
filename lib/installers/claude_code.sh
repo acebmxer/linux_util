@@ -24,24 +24,24 @@ _ensure_nodejs() {
                 return 1
             fi
             sudo bash "$nodesource_tmp"
-            sudo apt install -y nodejs
+            pkg_install nodejs
             # Ubuntu packages the binary as 'nodejs'; create a 'node' symlink if needed.
             if ! command -v node &>/dev/null && command -v nodejs &>/dev/null; then
                 sudo ln -sf "$(command -v nodejs)" /usr/local/bin/node
             fi
             # npm is a separate package on some Ubuntu/Kubuntu releases.
             if ! command -v npm &>/dev/null; then
-                sudo apt install -y npm
+                pkg_install npm
             fi
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y nodejs npm
+            pkg_install nodejs npm
             ;;
         arch)
-            sudo pacman -S --noconfirm nodejs npm
+            pkg_install nodejs npm
             ;;
         suse)
-            sudo zypper install -y nodejs npm
+            pkg_install nodejs npm
             ;;
         *)
             echo "Error: Unsupported distro family '${DISTRO_FAMILY}' for Node.js installation."

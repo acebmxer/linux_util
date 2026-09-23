@@ -25,7 +25,7 @@ install_tailscale() {
             curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${codename}.tailscale-keyring.list" | \
                 sudo tee /etc/apt/sources.list.d/tailscale.list > /dev/null
             sudo apt update
-            sudo apt install -y tailscale
+            pkg_install tailscale
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" config-manager --add-repo \
@@ -40,17 +40,17 @@ repo_gpgcheck=1
 gpgcheck=0
 gpgkey=https://pkgs.tailscale.com/stable/fedora/repo.gpg
 REPO
-            sudo "$PKG_MGR" install -y tailscale
+            pkg_install tailscale
             ;;
         arch)
-            sudo pacman -S --noconfirm tailscale
+            pkg_install tailscale
             ;;
         suse)
             sudo zypper addrepo -f \
                 "https://pkgs.tailscale.com/stable/opensuse/tumbleweed/tailscale.repo" \
                 tailscale 2>/dev/null || true
             sudo zypper refresh
-            sudo zypper install -y tailscale
+            pkg_install tailscale
             ;;
     esac
 
@@ -67,19 +67,19 @@ uninstall_tailscale() {
     sudo systemctl disable tailscaled 2>/dev/null || true
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y tailscale
+            pkg_remove tailscale
             sudo rm -f /etc/apt/sources.list.d/tailscale.list
             sudo rm -f /usr/share/keyrings/tailscale-archive-keyring.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y tailscale
+            pkg_remove tailscale
             sudo rm -f /etc/yum.repos.d/tailscale.repo
             ;;
         arch)
-            sudo pacman -Rs --noconfirm tailscale
+            pkg_remove tailscale
             ;;
         suse)
-            sudo zypper remove -y tailscale
+            pkg_remove tailscale
             sudo zypper removerepo tailscale 2>/dev/null || true
             ;;
     esac
@@ -89,9 +89,9 @@ update_tailscale() {
     info "Updating Tailscale..."
     case "$DISTRO_FAMILY" in
         debian)  sudo apt-get install -y --only-upgrade tailscale ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y tailscale ;;
-        arch)    sudo pacman -S --noconfirm tailscale ;;
-        suse)    sudo zypper update -y tailscale ;;
+        fedora|rhel) pkg_upgrade tailscale ;;
+        arch)    pkg_upgrade tailscale ;;
+        suse)    pkg_upgrade tailscale ;;
     esac
 }
 

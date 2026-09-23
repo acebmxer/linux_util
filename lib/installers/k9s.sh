@@ -10,7 +10,7 @@ install_k9s() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         arch)
-            sudo pacman -S --noconfirm k9s
+            pkg_install k9s
             ;;
         *)
             _install_k9s_binary
@@ -43,7 +43,7 @@ uninstall_k9s() {
         sudo rm -f /usr/local/bin/k9s
     fi
     case "$DISTRO_FAMILY" in
-        arch) sudo pacman -Rs --noconfirm k9s 2>/dev/null || true ;;
+        arch) pkg_remove k9s 2>/dev/null || true ;;
     esac
     rm -rf "$HOME/.config/k9s"
 }
@@ -51,7 +51,7 @@ uninstall_k9s() {
 update_k9s() {
     info "Updating k9s..."
     if [[ "$DISTRO_FAMILY" == "arch" ]] && ! [[ -f /usr/local/bin/k9s ]]; then
-        sudo pacman -S --noconfirm k9s
+        pkg_upgrade k9s
     else
         _install_k9s_binary
     fi

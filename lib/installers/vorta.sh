@@ -18,7 +18,7 @@ install_vorta() {
             pkg_install borg vorta || return 1
             ;;
         suse)
-            sudo zypper install -y borgbackup vorta || return 1
+            pkg_install borgbackup vorta || return 1
             ;;
         rhel)
             # borg is in EPEL; vorta is not packaged for RHEL
@@ -48,10 +48,10 @@ uninstall_vorta() {
             sudo dnf remove -y vorta borgbackup 2>/dev/null || true
             ;;
         arch)
-            sudo pacman -Rs --noconfirm vorta borg 2>/dev/null || true
+            pkg_remove vorta borg 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y vorta borgbackup 2>/dev/null || true
+            pkg_remove vorta borgbackup 2>/dev/null || true
             ;;
         rhel)
             sudo dnf remove -y borgbackup 2>/dev/null || true
@@ -72,7 +72,7 @@ update_vorta() {
             pkg_upgrade borg vorta
             ;;
         suse)
-            sudo zypper update -y borgbackup vorta || true
+            pkg_upgrade borgbackup vorta || true
             ;;
         rhel)
             sudo dnf upgrade -y borgbackup || true

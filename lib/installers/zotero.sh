@@ -73,7 +73,7 @@ uninstall_zotero() {
         case "$DISTRO_FAMILY" in
             arch)
                 aur_remove zotero 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm zotero 2>/dev/null || true
+                    pkg_remove zotero 2>/dev/null || true
                 ;;
         esac
     fi

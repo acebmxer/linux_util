@@ -67,20 +67,20 @@ install_clamav() {
     # exactly what clamtk did on Arch, where it is an AUR package.
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y clamav clamav-daemon
+            pkg_install clamav clamav-daemon
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y clamav clamav-update clamd
+            pkg_install clamav clamav-update clamd
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y clamav clamav-update clamd
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install clamav clamav-update clamd
             ;;
         arch)
-            sudo pacman -S --noconfirm clamav
+            pkg_install clamav
             ;;
         suse)
-            sudo zypper install -y clamav
+            pkg_install clamav
             ;;
     esac
 
@@ -249,16 +249,16 @@ uninstall_clamav() {
 
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y clamav clamav-daemon clamav-freshclam clamtk
+            pkg_remove clamav clamav-daemon clamav-freshclam clamtk
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y clamav clamav-update clamd clamtk
+            pkg_remove clamav clamav-update clamd clamtk
             ;;
         arch)
-            sudo pacman -Rs --noconfirm clamav
+            pkg_remove clamav
             ;;
         suse)
-            sudo zypper remove -y clamtk clamav
+            pkg_remove clamtk clamav
             ;;
     esac
 }
@@ -270,13 +270,13 @@ update_clamav() {
             sudo apt-get install -y --only-upgrade clamav clamav-daemon
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y clamav clamav-update
+            pkg_upgrade clamav clamav-update
             ;;
         arch)
-            sudo pacman -S --noconfirm clamav
+            pkg_upgrade clamav
             ;;
         suse)
-            sudo zypper update -y clamav
+            pkg_upgrade clamav
             ;;
     esac
 

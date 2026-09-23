@@ -32,9 +32,7 @@ uninstall_mate() {
     echo "Uninstalling MATE Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y mate-desktop-environment \
-                mate-desktop-environment-core mate-desktop lightdm
-            sudo apt autoclean
+            pkg_remove mate-desktop-environment mate-desktop-environment-core mate-desktop lightdm
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group remove -y @mate-desktop 2>/dev/null || \
@@ -42,11 +40,10 @@ uninstall_mate() {
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm mate mate-extra \
-                lightdm lightdm-gtk-greeter 2>/dev/null || true
+            pkg_remove mate mate-extra lightdm lightdm-gtk-greeter 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y -t pattern mate || true
+            pkg_remove -t pattern mate || true
             ;;
     esac
     rm -rf ~/.config/mate ~/.mate 2>/dev/null || true
@@ -58,17 +55,17 @@ update_mate() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade mate-desktop-environment mate-desktop-environment-core
+            pkg_upgrade mate-desktop-environment mate-desktop-environment-core
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @mate-desktop 2>/dev/null || \
-                sudo "$PKG_MGR" upgrade -y mate-desktop mate-panel mate-session-manager
+                pkg_upgrade mate-desktop mate-panel mate-session-manager
             ;;
         arch)
             sudo pacman -Syu --noconfirm mate mate-extra
             ;;
         suse)
-            sudo zypper update -y -t pattern mate
+            pkg_upgrade -t pattern mate
             ;;
     esac
 }

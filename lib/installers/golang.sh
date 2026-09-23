@@ -12,22 +12,22 @@ install_golang() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y golang-go
+            pkg_install golang-go
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y golang
+            pkg_install golang
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y golang 2>/dev/null || {
+            pkg_install golang 2>/dev/null || {
                 # Fall back to binary install for older RHEL releases
                 _install_golang_binary
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm go
+            pkg_install go
             ;;
         suse)
-            sudo zypper install -y go
+            pkg_install go
             ;;
     esac
     info "Go SDK installed."
@@ -70,10 +70,10 @@ uninstall_golang() {
         info "Removed /usr/local/go."
     fi
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y golang-go golang 2>/dev/null || true ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y golang 2>/dev/null || true ;;
-        arch)        sudo pacman -Rs --noconfirm go 2>/dev/null || true ;;
-        suse)        sudo zypper remove -y go 2>/dev/null || true ;;
+        debian)      pkg_remove golang-go golang 2>/dev/null || true ;;
+        fedora|rhel) pkg_remove golang 2>/dev/null || true ;;
+        arch)        pkg_remove go 2>/dev/null || true ;;
+        suse)        pkg_remove go 2>/dev/null || true ;;
     esac
 }
 
@@ -84,9 +84,9 @@ update_golang() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade golang-go ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y golang ;;
-            arch)        sudo pacman -S --noconfirm go ;;
-            suse)        sudo zypper update -y go ;;
+            fedora|rhel) pkg_upgrade golang ;;
+            arch)        pkg_upgrade go ;;
+            suse)        pkg_upgrade go ;;
         esac
     fi
 }

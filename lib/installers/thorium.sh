@@ -17,7 +17,7 @@ install_thorium() {
             echo "deb [trusted=yes arch=amd64] https://dl.thorium.rocks/debian/ stable main" \
                 | sudo tee /etc/apt/sources.list.d/thorium.list > /dev/null
             sudo apt update
-            sudo apt install -y thorium-browser
+            pkg_install thorium-browser
             ;;
         fedora|rhel)
             # Thorium does not maintain an official RPM repo; install via GitHub release RPM
@@ -36,7 +36,7 @@ install_thorium() {
             verify_download "$tmp_rpm" "rpm" "Thorium" || { rm -f "$tmp_rpm"; return 1; }
             github_verify_checksum "https://api.github.com/repos/Alex313031/thorium/releases/latest" \
                 "$(basename "$rpm_url")" "$tmp_rpm" || { rm -f "$tmp_rpm"; return 1; }
-            sudo "$PKG_MGR" install -y "$tmp_rpm"
+            pkg_install "$tmp_rpm"
             rm -f "$tmp_rpm"
             ;;
         arch)
@@ -59,7 +59,7 @@ install_thorium() {
             verify_download "$tmp_rpm" "rpm" "Thorium" || { rm -f "$tmp_rpm"; return 1; }
             github_verify_checksum "https://api.github.com/repos/Alex313031/thorium/releases/latest" \
                 "$(basename "$rpm_url")" "$tmp_rpm" || { rm -f "$tmp_rpm"; return 1; }
-            sudo zypper install -y "$tmp_rpm"
+            pkg_install "$tmp_rpm"
             rm -f "$tmp_rpm"
             ;;
     esac
@@ -69,19 +69,18 @@ uninstall_thorium() {
     info "Uninstalling Thorium Browser..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y thorium-browser
-            sudo apt autoclean
+            pkg_remove thorium-browser
             sudo rm -f /etc/apt/sources.list.d/thorium.list
             sudo rm -f /usr/share/keyrings/thorium-keyring.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y thorium-browser
+            pkg_remove thorium-browser
             ;;
         arch)
             aur_remove thorium-browser-bin 2>/dev/null || pkg_remove thorium-browser 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y thorium-browser
+            pkg_remove thorium-browser
             ;;
     esac
     rm -rf ~/.config/thorium
@@ -92,7 +91,7 @@ update_thorium() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade thorium-browser
+            pkg_upgrade thorium-browser
             ;;
         fedora|rhel|suse)
             # Re-run install to fetch and upgrade to the latest GitHub release RPM

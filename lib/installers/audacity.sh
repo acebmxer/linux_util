@@ -10,14 +10,14 @@ install_audacity() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y audacity
+            pkg_install audacity
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y audacity
+            pkg_install audacity
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y audacity 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install audacity 2>/dev/null || {
                 warn "audacity not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
                     sudo flatpak install -y flathub org.audacityteam.Audacity
@@ -28,10 +28,10 @@ install_audacity() {
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm audacity
+            pkg_install audacity
             ;;
         suse)
-            sudo zypper install -y audacity 2>/dev/null || {
+            pkg_install audacity 2>/dev/null || {
                 if has_flatpak; then
                     sudo flatpak install -y flathub org.audacityteam.Audacity
                 else
@@ -51,10 +51,10 @@ uninstall_audacity() {
             sudo flatpak uninstall -y --system org.audacityteam.Audacity
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y audacity ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y audacity ;;
-            arch)        sudo pacman -Rs --noconfirm audacity ;;
-            suse)        sudo zypper remove -y audacity ;;
+            debian)      pkg_remove audacity ;;
+            fedora|rhel) pkg_remove audacity ;;
+            arch)        pkg_remove audacity ;;
+            suse)        pkg_remove audacity ;;
         esac
     fi
     rm -rf "$HOME/.config/audacity"
@@ -68,9 +68,9 @@ update_audacity() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade audacity ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y audacity ;;
-            arch)        sudo pacman -S --noconfirm audacity ;;
-            suse)        sudo zypper update -y audacity ;;
+            fedora|rhel) pkg_upgrade audacity ;;
+            arch)        pkg_upgrade audacity ;;
+            suse)        pkg_upgrade audacity ;;
         esac
     fi
 }

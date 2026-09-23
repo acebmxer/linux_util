@@ -132,7 +132,7 @@ install_powershell() {
                     "/etc/apt/sources.list.d/microsoft-prod.list"
             fi
             if apt-cache show powershell &>/dev/null; then
-                sudo apt install -y powershell
+                pkg_install powershell
             else
                 # Microsoft apt repo doesn't carry powershell for this distro version yet
                 info "PowerShell not in Microsoft apt repo for $_ms_distro $_ms_ver — downloading .deb from GitHub releases..."
@@ -153,7 +153,7 @@ install_powershell() {
             sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
             sudo curl -sSL -o /etc/yum.repos.d/microsoft-prod.repo \
                 "https://packages.microsoft.com/config/rhel/${_el_ver}/prod.repo"
-            sudo "$PKG_MGR" install -y powershell
+            pkg_install powershell
             ;;
         arch)
             # repos -> (not on Flathub) -> Microsoft's tarball -> AUR.
@@ -168,7 +168,7 @@ install_powershell() {
                 sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
                 sudo zypper addrepo "https://packages.microsoft.com/config/sles/${_suse_ver}/prod.repo" microsoft-prod 2>/dev/null || true
                 sudo zypper refresh
-                sudo zypper install -y powershell
+                pkg_install powershell
             fi
             ;;
     esac
@@ -183,8 +183,7 @@ uninstall_powershell() {
     fi
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y powershell packages-microsoft-prod 2>/dev/null || \
-                sudo apt purge --autoremove -y powershell
+            pkg_remove powershell packages-microsoft-prod 2>/dev/null || pkg_remove powershell
             sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
             # Cover all keyring locations used by different install methods
             sudo rm -f /etc/apt/keyrings/microsoft-prod.gpg
@@ -192,15 +191,15 @@ uninstall_powershell() {
             sudo rm -f /etc/apt/trusted.gpg.d/microsoft-prod.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y powershell
+            pkg_remove powershell
             sudo rm -f /etc/yum.repos.d/microsoft-prod.repo
             ;;
         arch)
             aur_remove powershell-bin 2>/dev/null || \
-                sudo pacman -Rs --noconfirm powershell-bin 2>/dev/null || true
+                pkg_remove powershell-bin 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y powershell
+            pkg_remove powershell
             sudo zypper removerepo microsoft-prod 2>/dev/null || true
             ;;
     esac
@@ -220,9 +219,9 @@ update_powershell() {
                 _powershell_install_github_deb
             fi
             ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y powershell ;;
+        fedora|rhel) pkg_upgrade powershell ;;
         arch)        repo_or_aur powershell-bin ;;
-        suse)        sudo zypper update -y powershell ;;
+        suse)        pkg_upgrade powershell ;;
     esac
 }
 

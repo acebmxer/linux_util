@@ -19,16 +19,16 @@ install_thunderbird() {
             # Pin so the Mozilla repo takes precedence over distro packages
             printf 'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1001\n' | \
                 sudo tee /etc/apt/preferences.d/mozilla > /dev/null
-            sudo apt install -y thunderbird
+            pkg_install thunderbird
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y thunderbird
+            pkg_install thunderbird
             ;;
         arch)
             pkg_install thunderbird
             ;;
         suse)
-            sudo zypper install -y MozillaThunderbird
+            pkg_install MozillaThunderbird
             ;;
     esac
 }
@@ -37,8 +37,7 @@ uninstall_thunderbird() {
     info "Uninstalling Mozilla Thunderbird..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y thunderbird
-            sudo apt autoclean
+            pkg_remove thunderbird
             # Only remove the Mozilla repo/keyring if Firefox is also absent
             if ! check_firefox 2>/dev/null; then
                 sudo rm -f /etc/apt/sources.list.d/mozilla.list
@@ -47,13 +46,13 @@ uninstall_thunderbird() {
             fi
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y thunderbird
+            pkg_remove thunderbird
             ;;
         arch)
             pkg_remove thunderbird
             ;;
         suse)
-            sudo zypper remove -y MozillaThunderbird
+            pkg_remove MozillaThunderbird
             ;;
     esac
     rm -rf ~/.thunderbird
@@ -64,7 +63,7 @@ update_thunderbird() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade thunderbird
+            pkg_upgrade thunderbird
             ;;
         arch)
             pkg_install thunderbird

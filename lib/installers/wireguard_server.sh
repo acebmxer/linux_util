@@ -18,16 +18,16 @@ install_wireguard_server() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y wireguard wireguard-tools qrencode
+            pkg_install wireguard wireguard-tools qrencode
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y wireguard-tools qrencode
+            pkg_install wireguard-tools qrencode
             ;;
         arch)
-            sudo pacman -S --noconfirm wireguard-tools qrencode
+            pkg_install wireguard-tools qrencode
             ;;
         suse)
-            sudo zypper install -y wireguard-tools qrencode
+            pkg_install wireguard-tools qrencode
             ;;
         *)
             error "Unsupported distribution family: $DISTRO_FAMILY"
@@ -225,16 +225,16 @@ uninstall_wireguard_server() {
     if (( remaining_confs == 0 )); then
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y wireguard wireguard-tools qrencode 2>/dev/null || true
+                pkg_remove wireguard wireguard-tools qrencode 2>/dev/null || true
                 ;;
             fedora|rhel)
-                sudo "$PKG_MGR" remove -y wireguard-tools qrencode 2>/dev/null || true
+                pkg_remove wireguard-tools qrencode 2>/dev/null || true
                 ;;
             arch)
-                sudo pacman -Rs --noconfirm wireguard-tools qrencode 2>/dev/null || true
+                pkg_remove wireguard-tools qrencode 2>/dev/null || true
                 ;;
             suse)
-                sudo zypper remove -y wireguard-tools qrencode 2>/dev/null || true
+                pkg_remove wireguard-tools qrencode 2>/dev/null || true
                 ;;
         esac
         sudo rmdir "$_WG_SERVER_DIR" 2>/dev/null || true
@@ -249,9 +249,9 @@ update_wireguard_server() {
     info "Updating WireGuard Server..."
     case "$DISTRO_FAMILY" in
         debian)  sudo apt-get install -y --only-upgrade wireguard wireguard-tools ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y wireguard-tools ;;
-        arch)    sudo pacman -S --noconfirm wireguard-tools ;;
-        suse)    sudo zypper update -y wireguard-tools ;;
+        fedora|rhel) pkg_upgrade wireguard-tools ;;
+        arch)    pkg_upgrade wireguard-tools ;;
+        suse)    pkg_upgrade wireguard-tools ;;
     esac
 }
 

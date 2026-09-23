@@ -17,7 +17,7 @@ install_element() {
             echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/element-io-archive-keyring.gpg] https://packages.element.io/debian/ default main" | \
                 sudo tee /etc/apt/sources.list.d/element-io.list > /dev/null
             sudo apt update
-            sudo apt install -y element-desktop
+            pkg_install element-desktop
             ;;
         fedora|rhel)
             if has_flatpak; then
@@ -50,14 +50,13 @@ uninstall_element() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y element-desktop
+                pkg_remove element-desktop
                 sudo rm -f /etc/apt/sources.list.d/element-io.list
                 sudo rm -f /etc/apt/keyrings/element-io-archive-keyring.gpg
                 ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y element-desktop 2>/dev/null || true ;;
+            fedora|rhel) pkg_remove element-desktop 2>/dev/null || true ;;
             arch)
-                sudo pacman -Rs --noconfirm element-desktop 2>/dev/null || \
-                    aur_remove element-desktop 2>/dev/null || true
+                pkg_remove element-desktop 2>/dev/null || aur_remove element-desktop 2>/dev/null || true
                 ;;
         esac
     fi
@@ -72,9 +71,9 @@ update_element() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade element-desktop ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y element-desktop 2>/dev/null || true ;;
+            fedora|rhel) pkg_upgrade element-desktop 2>/dev/null || true ;;
             arch)        repo_or_aur element-desktop ;;
-            suse)        sudo zypper update -y element-desktop 2>/dev/null || true ;;
+            suse)        pkg_upgrade element-desktop 2>/dev/null || true ;;
         esac
     fi
 }

@@ -31,8 +31,7 @@ uninstall_gnome() {
     echo "Uninstalling GNOME Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y gnome gnome-shell gnome-session gdm3
-            sudo apt autoclean
+            pkg_remove gnome gnome-shell gnome-session gdm3
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group remove -y @gnome-desktop 2>/dev/null || \
@@ -40,10 +39,10 @@ uninstall_gnome() {
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm gnome gnome-extra gdm 2>/dev/null || true
+            pkg_remove gnome gnome-extra gdm 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y -t pattern gnome gnome_basis
+            pkg_remove -t pattern gnome gnome_basis
             ;;
     esac
     rm -rf ~/.config/gnome* ~/.config/dconf ~/.local/share/gnome* 2>/dev/null || true
@@ -55,17 +54,17 @@ update_gnome() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade gnome gnome-shell
+            pkg_upgrade gnome gnome-shell
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @gnome-desktop 2>/dev/null || \
-                sudo "$PKG_MGR" upgrade -y gnome-shell gnome-session gdm
+                pkg_upgrade gnome-shell gnome-session gdm
             ;;
         arch)
             sudo pacman -Syu --noconfirm gnome gnome-extra
             ;;
         suse)
-            sudo zypper update -y -t pattern gnome gnome_basis
+            pkg_upgrade -t pattern gnome gnome_basis
             ;;
     esac
 }

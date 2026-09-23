@@ -8,17 +8,17 @@ check_awesome() { _check_standard awesome awesome ""; }
 install_awesome() {
     info "Installing awesome..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y awesome ;;
-        fedora)      sudo "$PKG_MGR" install -y awesome ;;
+        debian)      pkg_install awesome ;;
+        fedora)      pkg_install awesome ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y awesome 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install awesome 2>/dev/null || {
                 warn "awesome not available in repos for this RHEL-based distro."
                 return 1
             }
             ;;
-        arch)        sudo pacman -S --noconfirm awesome ;;
-        suse)        sudo zypper install -y awesome ;;
+        arch)        pkg_install awesome ;;
+        suse)        pkg_install awesome ;;
     esac
     info "awesome installed. Log out and select awesome from your display manager."
 }
@@ -26,10 +26,10 @@ install_awesome() {
 uninstall_awesome() {
     info "Uninstalling awesome..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y awesome ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y awesome ;;
-        arch)        sudo pacman -Rs --noconfirm awesome ;;
-        suse)        sudo zypper remove -y awesome ;;
+        debian)      pkg_remove awesome ;;
+        fedora|rhel) pkg_remove awesome ;;
+        arch)        pkg_remove awesome ;;
+        suse)        pkg_remove awesome ;;
     esac
 }
 
@@ -37,9 +37,9 @@ update_awesome() {
     info "Updating awesome..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade awesome ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y awesome ;;
-        arch)        sudo pacman -S --noconfirm awesome ;;
-        suse)        sudo zypper update -y awesome ;;
+        fedora|rhel) pkg_upgrade awesome ;;
+        arch)        pkg_upgrade awesome ;;
+        suse)        pkg_upgrade awesome ;;
     esac
 }
 

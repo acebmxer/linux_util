@@ -30,9 +30,7 @@ uninstall_cinnamon() {
     echo "Uninstalling Cinnamon Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y cinnamon cinnamon-core \
-                cinnamon-desktop-environment lightdm
-            sudo apt autoclean
+            pkg_remove cinnamon cinnamon-core cinnamon-desktop-environment lightdm
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group remove -y @cinnamon-desktop 2>/dev/null || \
@@ -40,11 +38,10 @@ uninstall_cinnamon() {
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm cinnamon lightdm \
-                lightdm-gtk-greeter 2>/dev/null || true
+            pkg_remove cinnamon lightdm lightdm-gtk-greeter 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y cinnamon cinnamon-gschemas 2>/dev/null || true
+            pkg_remove cinnamon cinnamon-gschemas 2>/dev/null || true
             ;;
     esac
     rm -rf ~/.config/cinnamon* ~/.cinnamon 2>/dev/null || true
@@ -56,17 +53,17 @@ update_cinnamon() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade cinnamon cinnamon-core
+            pkg_upgrade cinnamon cinnamon-core
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @cinnamon-desktop 2>/dev/null || \
-                sudo "$PKG_MGR" upgrade -y cinnamon cinnamon-control-center
+                pkg_upgrade cinnamon cinnamon-control-center
             ;;
         arch)
             sudo pacman -Syu --noconfirm cinnamon
             ;;
         suse)
-            sudo zypper update -y cinnamon cinnamon-gschemas
+            pkg_upgrade cinnamon cinnamon-gschemas
             ;;
     esac
 }

@@ -14,10 +14,10 @@ install_duperemove() {
             pkg_install duperemove || return 1
             ;;
         debian)
-            sudo apt install -y duperemove || return 1
+            pkg_install duperemove || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y duperemove || return 1
+            pkg_install duperemove || return 1
             ;;
         *)
             warn "duperemove is not available for ${DISTRO_NAME}."
@@ -32,14 +32,13 @@ uninstall_duperemove() {
     echo "Uninstalling duperemove..."
     case "$DISTRO_FAMILY" in
         arch)
-            sudo pacman -Rs --noconfirm duperemove 2>/dev/null || true
+            pkg_remove duperemove 2>/dev/null || true
             ;;
         debian)
-            sudo apt purge --autoremove -y duperemove
-            sudo apt autoclean
+            pkg_remove duperemove
             ;;
         fedora)
-            sudo "$PKG_MGR" remove -y duperemove
+            pkg_remove duperemove
             ;;
     esac
 }

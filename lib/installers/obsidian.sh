@@ -29,7 +29,7 @@ install_obsidian() {
             verify_download "$tmpfile" "deb" "Obsidian" || return 1
             github_verify_checksum "https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest" \
                 "$(basename "$url")" "$tmpfile" || return 1
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel)
             local url
@@ -50,7 +50,7 @@ install_obsidian() {
             verify_download "$tmpfile" "rpm" "Obsidian" || return 1
             github_verify_checksum "https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest" \
                 "$(basename "$url")" "$tmpfile" || return 1
-            sudo "$PKG_MGR" install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         arch)
             repo_or_aur obsidian
@@ -74,8 +74,8 @@ uninstall_obsidian() {
             sudo flatpak uninstall -y --system md.obsidian.Obsidian
     else
         case "$DISTRO_FAMILY" in
-            debian)  sudo apt purge --autoremove -y obsidian ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y obsidian ;;
+            debian)  pkg_remove obsidian ;;
+            fedora|rhel) pkg_remove obsidian ;;
             arch)    aur_remove obsidian 2>/dev/null || sudo pacman -Rs --noconfirm obsidian 2>/dev/null || true ;;
             suse)    flatpak uninstall -y --user md.obsidian.Obsidian 2>/dev/null || \
                          sudo flatpak uninstall -y --system md.obsidian.Obsidian 2>/dev/null || true ;;

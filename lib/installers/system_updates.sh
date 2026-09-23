@@ -120,6 +120,11 @@ _setup_system_updates_impl() {
     fi
 
     info "Running system updates..."
+    # A docker-ce.repo can be sitting on disk with an unpinned $releasever
+    # regardless of whether Docker was installed through this project (see
+    # _docker_pin_fedora_repo_if_needed) — fix it before the refresh below
+    # hits it, instead of letting every run 404 against Docker's repo.
+    _docker_pin_fedora_repo_if_needed
     local _snap_before
     _snap_before=$(pkg_snapshot)
     pkg_refresh_interactive

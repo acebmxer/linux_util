@@ -30,7 +30,7 @@ uninstall_boxflat() {
             sudo flatpak uninstall -y --system io.github.lawstorant.boxflat
     elif [[ "$DISTRO_FAMILY" == "arch" ]]; then
         aur_remove boxflat-git 2>/dev/null || \
-            sudo pacman -Rs --noconfirm boxflat-git 2>/dev/null || true
+            pkg_remove boxflat-git 2>/dev/null || true
     fi
 }
 

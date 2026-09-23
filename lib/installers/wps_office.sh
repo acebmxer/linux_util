@@ -207,8 +207,7 @@ uninstall_wps_office() {
     info "Uninstalling WPS Office..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y wps-office
-            sudo apt autoclean
+            pkg_remove wps-office
             ;;
         fedora|rhel)
             # Now that Fedora installs the Flatpak, uninstall has to look there
@@ -217,7 +216,7 @@ uninstall_wps_office() {
                 flatpak uninstall -y --user com.wps.Office 2>/dev/null || \
                     sudo flatpak uninstall -y --system com.wps.Office
             else
-                sudo "$PKG_MGR" remove -y wps-office
+                pkg_remove wps-office
             fi
             ;;
         arch)
@@ -233,7 +232,7 @@ uninstall_wps_office() {
                 flatpak uninstall -y --user com.wps.Office 2>/dev/null || \
                     sudo flatpak uninstall -y --system com.wps.Office
             else
-                sudo zypper remove -y wps-office 2>/dev/null || true
+                pkg_remove wps-office 2>/dev/null || true
             fi
             ;;
         *)

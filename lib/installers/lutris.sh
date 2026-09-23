@@ -14,7 +14,7 @@ install_lutris() {
                 sudo add-apt-repository -y ppa:lutris-team/lutris
                 sudo apt update
             fi
-            sudo apt install -y lutris
+            pkg_install lutris
             ;;
         fedora)
             # Lutris is available via RPM Fusion free
@@ -23,14 +23,14 @@ install_lutris() {
                     "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
                 sudo "$PKG_MGR" makecache
             fi
-            sudo "$PKG_MGR" install -y lutris
+            pkg_install lutris
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y lutris
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install lutris
             ;;
         arch)
-            sudo pacman -S --noconfirm lutris
+            pkg_install lutris
             ;;
         suse)
             # Try OBS Games repo first, fall back to Flatpak
@@ -38,7 +38,7 @@ install_lutris() {
                 "https://download.opensuse.org/repositories/games/openSUSE_Tumbleweed/games.repo" \
                 games 2>/dev/null; then
                 sudo zypper refresh
-                sudo zypper install -y lutris
+                pkg_install lutris
             elif has_flatpak; then
                 sudo flatpak install -y flathub net.lutris.Lutris
             else
@@ -58,18 +58,18 @@ uninstall_lutris() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y lutris
+                pkg_remove lutris
                 # Remove PPA if added
                 sudo add-apt-repository -y --remove ppa:lutris-team/lutris 2>/dev/null || true
                 ;;
             fedora|rhel)
-                sudo "$PKG_MGR" remove -y lutris
+                pkg_remove lutris
                 ;;
             arch)
-                sudo pacman -Rs --noconfirm lutris
+                pkg_remove lutris
                 ;;
             suse)
-                sudo zypper remove -y lutris 2>/dev/null || true
+                pkg_remove lutris 2>/dev/null || true
                 sudo zypper removerepo games 2>/dev/null || true
                 ;;
         esac
@@ -86,9 +86,9 @@ update_lutris() {
     else
         case "$DISTRO_FAMILY" in
             debian)   sudo apt-get install -y --only-upgrade lutris ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y lutris ;;
-            arch)     sudo pacman -S --noconfirm lutris ;;
-            suse)     sudo zypper update -y lutris ;;
+            fedora|rhel) pkg_upgrade lutris ;;
+            arch)     pkg_upgrade lutris ;;
+            suse)     pkg_upgrade lutris ;;
         esac
     fi
 }

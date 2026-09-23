@@ -31,19 +31,16 @@ uninstall_deepin() {
     echo "Uninstalling Deepin Desktop..."
     case "$DISTRO_FAMILY" in
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y deepin-session deepin-shell deepin-kwin \
-                deepin-control-center deepin-desktop-base deepin-launcher \
-                deepin-dock deepin-file-manager deepin-display-manager
+            pkg_remove deepin-session deepin-shell deepin-kwin deepin-control-center deepin-desktop-base deepin-launcher deepin-dock deepin-file-manager deepin-display-manager
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm deepin deepin-extra sddm 2>/dev/null || true
+            pkg_remove deepin deepin-extra sddm 2>/dev/null || true
             ;;
         suse)
             # Remove OBS repo and packages
             sudo zypper removerepo X11:Deepin 2>/dev/null || true
-            sudo zypper remove -y deepin-session deepin-desktop-base \
-                deepin-kwin deepin-control-center 2>/dev/null || true
+            pkg_remove deepin-session deepin-desktop-base deepin-kwin deepin-control-center 2>/dev/null || true
             ;;
     esac
     rm -rf ~/.config/deepin* ~/.local/share/deepin* 2>/dev/null || true
@@ -54,16 +51,14 @@ update_deepin() {
     echo "Updating Deepin Desktop..."
     case "$DISTRO_FAMILY" in
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y deepin-session deepin-shell deepin-kwin \
-                deepin-control-center deepin-desktop-base
+            pkg_upgrade deepin-session deepin-shell deepin-kwin deepin-control-center deepin-desktop-base
             ;;
         arch)
             sudo pacman -Syu --noconfirm deepin deepin-extra
             ;;
         suse)
             sudo zypper refresh X11:Deepin 2>/dev/null || true
-            sudo zypper update -y -t pattern deepin 2>/dev/null || \
-                sudo zypper update -y deepin-session deepin-kwin deepin-control-center
+            pkg_upgrade -t pattern deepin 2>/dev/null || pkg_upgrade deepin-session deepin-kwin deepin-control-center
             ;;
     esac
 }

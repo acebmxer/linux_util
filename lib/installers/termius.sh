@@ -347,7 +347,7 @@ install_termius() {
             CLEANUP_FILES+=("$tmp_deb")
             wget -q "$_TERMIUS_DEB_URL" -O "$tmp_deb"
             verify_download "$tmp_deb" "deb" "Termius" || return 1
-            sudo apt install -y "$tmp_deb"
+            pkg_install "$tmp_deb"
             rm -f "$tmp_deb"
             ;;
         arch)
@@ -358,7 +358,7 @@ install_termius() {
             # error a failed native install produces. (No Arch repo carries
             # Termius today, CachyOS included, so this probe is for the future.)
             if arch_repo_has termius && \
-               sudo pacman -S --noconfirm --needed termius 2>/dev/null; then
+               pkg_install --needed termius 2>/dev/null; then
                 return 0
             fi
             _termius_install_native || return 1
@@ -434,7 +434,7 @@ update_termius() {
             CLEANUP_FILES+=("$tmp_deb")
             wget -q "$_TERMIUS_DEB_URL" -O "$tmp_deb"
             verify_download "$tmp_deb" "deb" "Termius" || return 1
-            sudo apt install -y "$tmp_deb"
+            pkg_install "$tmp_deb"
             rm -f "$tmp_deb"
             ;;
         arch|fedora|rhel|suse)

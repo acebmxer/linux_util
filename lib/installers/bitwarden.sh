@@ -46,7 +46,7 @@ install_bitwarden() {
                 return 1
             fi
             verify_download "$tmp_rpm" "rpm" "Bitwarden" || return 1
-            if ! sudo "$PKG_MGR" install -y "$tmp_rpm"; then
+            if ! pkg_install "$tmp_rpm"; then
                 echo "Error: Failed to install Bitwarden .rpm."
                 rm -f "$tmp_rpm"
                 return 1
@@ -55,7 +55,7 @@ install_bitwarden() {
             ;;
         arch)
             # extra/bitwarden is the official build; bitwarden-bin is the AUR fallback
-            sudo pacman -S --noconfirm --needed bitwarden 2>/dev/null || repo_or_aur bitwarden-bin
+            pkg_install --needed bitwarden 2>/dev/null || repo_or_aur bitwarden-bin
             ;;
         *)
             if has_snap; then

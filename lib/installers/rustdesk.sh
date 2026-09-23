@@ -30,7 +30,7 @@ install_rustdesk() {
                 error "RustDesk installation failed."
                 return 1
             fi
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel)
             local version tmpfile
@@ -49,7 +49,7 @@ install_rustdesk() {
                 error "RustDesk installation failed."
                 return 1
             fi
-            sudo "$PKG_MGR" install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         arch)
             flatpak_or_aur com.rustdesk.RustDesk rustdesk-bin
@@ -73,11 +73,11 @@ uninstall_rustdesk() {
             sudo flatpak uninstall -y --system com.rustdesk.RustDesk
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y rustdesk ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y rustdesk ;;
+            debian)      pkg_remove rustdesk ;;
+            fedora|rhel) pkg_remove rustdesk ;;
             arch)
                 aur_remove rustdesk-bin 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm rustdesk 2>/dev/null || true
+                    pkg_remove rustdesk 2>/dev/null || true
                 ;;
         esac
     fi

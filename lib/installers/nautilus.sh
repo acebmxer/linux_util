@@ -8,13 +8,13 @@ check_nautilus() { _check_standard nautilus nautilus ""; }
 install_nautilus() {
     info "Installing Nautilus..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y nautilus ;;
-        fedora)      sudo "$PKG_MGR" install -y nautilus ;;
+        debian)      pkg_install nautilus ;;
+        fedora)      pkg_install nautilus ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y nautilus ;;
-        arch)        sudo pacman -S --noconfirm nautilus ;;
-        suse)        sudo zypper install -y nautilus ;;
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install nautilus ;;
+        arch)        pkg_install nautilus ;;
+        suse)        pkg_install nautilus ;;
     esac
     info "Nautilus installed."
 }
@@ -22,10 +22,10 @@ install_nautilus() {
 uninstall_nautilus() {
     info "Uninstalling Nautilus..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y nautilus ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y nautilus ;;
-        arch)        sudo pacman -Rs --noconfirm nautilus ;;
-        suse)        sudo zypper remove -y nautilus ;;
+        debian)      pkg_remove nautilus ;;
+        fedora|rhel) pkg_remove nautilus ;;
+        arch)        pkg_remove nautilus ;;
+        suse)        pkg_remove nautilus ;;
     esac
 }
 
@@ -33,9 +33,9 @@ update_nautilus() {
     info "Updating Nautilus..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade nautilus ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y nautilus ;;
-        arch)        sudo pacman -S --noconfirm nautilus ;;
-        suse)        sudo zypper update -y nautilus ;;
+        fedora|rhel) pkg_upgrade nautilus ;;
+        arch)        pkg_upgrade nautilus ;;
+        suse)        pkg_upgrade nautilus ;;
     esac
 }
 

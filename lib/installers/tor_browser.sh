@@ -13,14 +13,14 @@ install_tor_browser() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y torbrowser-launcher
+            pkg_install torbrowser-launcher
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y torbrowser-launcher
+            pkg_install torbrowser-launcher
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y torbrowser-launcher 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install torbrowser-launcher 2>/dev/null || {
                 warn "torbrowser-launcher not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
                     sudo flatpak install -y flathub com.github.micahflee.torbrowser-launcher
@@ -53,13 +53,13 @@ uninstall_tor_browser() {
             sudo flatpak uninstall -y --system com.github.micahflee.torbrowser-launcher
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y torbrowser-launcher ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y torbrowser-launcher ;;
+            debian)      pkg_remove torbrowser-launcher ;;
+            fedora|rhel) pkg_remove torbrowser-launcher ;;
             arch)
                 aur_remove torbrowser-launcher 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm torbrowser-launcher 2>/dev/null || true
+                    pkg_remove torbrowser-launcher 2>/dev/null || true
                 ;;
-            suse)        sudo zypper remove -y torbrowser-launcher 2>/dev/null || true ;;
+            suse)        pkg_remove torbrowser-launcher 2>/dev/null || true ;;
         esac
     fi
     rm -rf "$HOME/.local/share/torbrowser" "$HOME/.config/torbrowser"
@@ -73,9 +73,9 @@ update_tor_browser() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade torbrowser-launcher ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y torbrowser-launcher ;;
+            fedora|rhel) pkg_upgrade torbrowser-launcher ;;
             arch)        repo_or_aur torbrowser-launcher ;;
-            suse)        sudo zypper update -y torbrowser-launcher 2>/dev/null || true ;;
+            suse)        pkg_upgrade torbrowser-launcher 2>/dev/null || true ;;
         esac
     fi
 }

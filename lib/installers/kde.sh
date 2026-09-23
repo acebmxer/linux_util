@@ -39,8 +39,7 @@ uninstall_kde() {
     echo "Uninstalling KDE Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y kde-full kde-plasma-desktop plasma-desktop sddm
-            sudo apt autoclean
+            pkg_remove kde-full kde-plasma-desktop plasma-desktop sddm
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group remove -y @kde-desktop-environment || \
@@ -48,10 +47,10 @@ uninstall_kde() {
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm plasma-meta kde-applications-meta sddm 2>/dev/null || true
+            pkg_remove plasma-meta kde-applications-meta sddm 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y -t pattern kde kde_plasma
+            pkg_remove -t pattern kde kde_plasma
             ;;
     esac
     rm -rf ~/.config/kde*
@@ -64,25 +63,21 @@ update_kde() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade kde-full plasma-desktop
+            pkg_upgrade kde-full plasma-desktop
             ;;
         fedora|rhel)
             if ! sudo "$PKG_MGR" group update -y @kde-desktop-environment 2>/dev/null && \
                ! sudo "$PKG_MGR" group update -y 'KDE Plasma Workspaces' 2>/dev/null; then
                 # Fallback: update individual packages if group update fails
                 echo "Group update not available, updating individual KDE packages..."
-                sudo "$PKG_MGR" upgrade -y plasma-desktop plasma-workspace sddm \
-                    plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons \
-                    bluedevil breeze-gtk kscreen kinfocenter kwrited \
-                    konsole dolphin kate ark gwenview okular spectacle \
-                    kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde
+                pkg_upgrade plasma-desktop plasma-workspace sddm plasma-nm plasma-pa plasma-systemmonitor kdeplasma-addons bluedevil breeze-gtk kscreen kinfocenter kwrited konsole dolphin kate ark gwenview okular spectacle kde-settings-plasma kde-gtk-config xdg-desktop-portal-kde
             fi
             ;;
         arch)
             sudo pacman -Syu --noconfirm plasma-meta kde-applications-meta
             ;;
         suse)
-            sudo zypper update -y -t pattern kde kde_plasma
+            pkg_upgrade -t pattern kde kde_plasma
             ;;
     esac
 }

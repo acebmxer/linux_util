@@ -65,6 +65,7 @@ register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 # Fully interactive prompt flow — re-running the menu after a failure only asks again
 NO_RETRY["Local Time Zone / Locale"]=1
+register_system_task "GTK Window Fix"     install_window_buttons  check_always_false    noop_function             install_window_buttons    get_version_window_buttons
 
 # Debian/Ubuntu-only system tasks
 if [[ "$DISTRO_FAMILY" == "debian" ]]; then
@@ -331,6 +332,7 @@ register_utility "Krusader"            install_krusader         check_krusader  
 register_utility "Midnight Commander"  install_midnight_commander check_midnight_commander uninstall_midnight_commander update_midnight_commander get_version_midnight_commander
 register_utility "Ranger"              install_ranger           check_ranger           uninstall_ranger           update_ranger              get_version_ranger
 register_utility "nnn"                 install_nnn              check_nnn              uninstall_nnn              update_nnn                 get_version_nnn
+register_utility "Superfile"           install_superfile        check_superfile        uninstall_superfile        update_superfile           get_version_superfile
 
 # --- Desktop Environment Utilities ---
 # Elementary OS uses Pantheon exclusively; any other DE causes display manager
@@ -500,6 +502,7 @@ UTILITY_CATEGORY["Krusader"]="File Managers"
 UTILITY_CATEGORY["Midnight Commander"]="File Managers"
 UTILITY_CATEGORY["Ranger"]="File Managers"
 UTILITY_CATEGORY["nnn"]="File Managers"
+UTILITY_CATEGORY["Superfile"]="File Managers"
 UTILITY_CATEGORY["Budgie Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["Cinnamon Desktop"]="Desktop Environments"
 UTILITY_CATEGORY["COSMIC Desktop"]="Desktop Environments"
@@ -784,6 +787,7 @@ UTILITY_SUBCATEGORY["Krusader"]="Graphical"
 UTILITY_SUBCATEGORY["Midnight Commander"]="Terminal"
 UTILITY_SUBCATEGORY["Ranger"]="Terminal"
 UTILITY_SUBCATEGORY["nnn"]="Terminal"
+UTILITY_SUBCATEGORY["Superfile"]="Terminal"
 UTILITY_SUBCATEGORY["SDDM"]="Display Managers"
 UTILITY_SUBCATEGORY["GDM"]="Display Managers"
 UTILITY_SUBCATEGORY["LightDM"]="Display Managers"
@@ -886,6 +890,7 @@ UTILITY_DESCRIPTION["firewalld"]="Dynamic zone-based firewall daemon, the defaul
 UTILITY_DESCRIPTION["firewall-config (GUI)"]="Graphical configuration tool for firewalld to manage zones, services, ports, and rich rules. Installs firewalld first if it is not already present."
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
+UTILITY_DESCRIPTION["GTK Window Fix"]="Restores the minimize, maximize, and close buttons on GTK app title bars (GNOME, Cinnamon, MATE, Xfce) — GNOME's default window-manager button layout omits minimize/maximize, leaving only a close button on apps like Nautilus and Remmina. Sets the per-user window-manager button-layout preference; KDE shows all three by default and is skipped."
 UTILITY_DESCRIPTION["Command-Not-Found Prompt"]="Enables auto-suggestion to install missing command packages when a command is not found."
 UTILITY_DESCRIPTION["Delete Default Cloud-Init User"]="Removes the stock user that cloud/VM images ship with, along with its home directory. Detects the known default accounts (ubuntu, debian, centos, alpine, fedora) by presence — the status shows 'Cloud Init user found' while one exists and goes blank once removed. Uses deluser --remove-home (userdel --remove where deluser is absent). Confirms before deleting, refuses to delete the account you are logged in as, and is a no-op when none exist."
 UTILITY_DESCRIPTION["Fix RDP Kerberos Delay"]="Stops Remmina/FreeRDP (xfreerdp) from stalling ~20s before each Windows RDP login. The MIT krb5 sample config that ships with the krb5 package leaves dns_lookup_kdc at its default of true, so krb5 does a DNS SRV lookup for the server's Kerberos realm, fails to reach a KDC, and times out before falling back to NTLM. Sets dns_lookup_kdc, dns_lookup_realm, and rdns to false under [libdefaults] in /etc/krb5.conf — realm-agnostic, so it fixes every domain, not just one. Backs up the file first, leaves all other sections untouched, and is fully reversible."
@@ -1055,6 +1060,7 @@ UTILITY_DESCRIPTION["Krusader"]="Advanced twin-panel (orthodox) file manager for
 UTILITY_DESCRIPTION["Midnight Commander"]="Classic text-mode twin-panel file manager (mc) with menu-driven navigation, built-in editor (mcedit), archive browsing, and FTP/SFTP support. Runs in any terminal — no desktop environment required."
 UTILITY_DESCRIPTION["Ranger"]="Vim-inspired terminal file manager with a three-pane Miller column view, file previews, and heavy keyboard customization. Runs in any terminal — no desktop environment required."
 UTILITY_DESCRIPTION["nnn"]="Tiny, blazing-fast terminal file manager with optional file previews, plugins, and a context-based workflow. Minimal dependencies; runs in any terminal — no desktop environment required."
+UTILITY_DESCRIPTION["Superfile"]="Modern terminal file manager (spf) with a multi-pane layout, file previews, fuzzy search, and built-in theming. Runs in any terminal — no desktop environment required."
 
 # Window Managers
 UTILITY_DESCRIPTION["awesome"]="Highly configurable X11 window manager with dynamic tiling and floating layouts. Configured in Lua and extensible via a rich widget library. Suits users who want a tiling WM that doubles as a programmable framework."

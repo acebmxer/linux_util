@@ -15,16 +15,16 @@ install_chromium() {
         debian)
             sudo apt update
             # Package name is 'chromium' on Debian, 'chromium-browser' on older Ubuntu
-            sudo apt install -y chromium 2>/dev/null || sudo apt install -y chromium-browser
+            pkg_install chromium 2>/dev/null || sudo apt install -y chromium-browser
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y chromium
+            pkg_install chromium
             ;;
         arch)
             pkg_install chromium
             ;;
         suse)
-            sudo zypper install -y chromium
+            pkg_install chromium
             ;;
     esac
 }
@@ -33,17 +33,16 @@ uninstall_chromium() {
     info "Uninstalling Chromium Browser..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y chromium chromium-browser 2>/dev/null || true
-            sudo apt autoclean
+            pkg_remove chromium chromium-browser 2>/dev/null || true
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y chromium
+            pkg_remove chromium
             ;;
         arch)
             pkg_remove chromium
             ;;
         suse)
-            sudo zypper remove -y chromium
+            pkg_remove chromium
             ;;
     esac
     rm -rf ~/.config/chromium
@@ -54,7 +53,7 @@ update_chromium() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade chromium chromium-browser 2>/dev/null || true
+            pkg_upgrade chromium chromium-browser 2>/dev/null || true
             ;;
         arch)
             pkg_install chromium

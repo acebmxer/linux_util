@@ -118,10 +118,10 @@ _mld_ensure_fs_tools() {
                 warn "ntfs-3g is not installed. Attempting to install..."
                 case "$DISTRO_FAMILY" in
                     debian)  sudo apt-get install -y ntfs-3g ;;
-                    fedora)  sudo "$PKG_MGR" install -y ntfs-3g ;;
-                    rhel)    sudo "$PKG_MGR" install -y ntfs-3g ;;
-                    arch)    sudo pacman -S --noconfirm ntfs-3g ;;
-                    suse)    sudo zypper install -y ntfs-3g ;;
+                    fedora)  pkg_install ntfs-3g ;;
+                    rhel)    pkg_install ntfs-3g ;;
+                    arch)    pkg_install ntfs-3g ;;
+                    suse)    pkg_install ntfs-3g ;;
                     *)       warn "Cannot auto-install ntfs-3g on this distro. Install it manually."; return 1 ;;
                 esac
             fi
@@ -132,10 +132,10 @@ _mld_ensure_fs_tools() {
                 case "$DISTRO_FAMILY" in
                     debian)  sudo apt-get install -y exfatprogs 2>/dev/null || \
                              sudo apt-get install -y exfat-utils 2>/dev/null || true ;;
-                    fedora)  sudo "$PKG_MGR" install -y exfatprogs ;;
-                    rhel)    sudo "$PKG_MGR" install -y exfatprogs 2>/dev/null || true ;;
-                    arch)    sudo pacman -S --noconfirm exfatprogs ;;
-                    suse)    sudo zypper install -y exfatprogs 2>/dev/null || true ;;
+                    fedora)  pkg_install exfatprogs ;;
+                    rhel)    pkg_install exfatprogs 2>/dev/null || true ;;
+                    arch)    pkg_install exfatprogs ;;
+                    suse)    pkg_install exfatprogs 2>/dev/null || true ;;
                     *)       warn "Cannot auto-install exfat support on this distro. Install it manually."; return 1 ;;
                 esac
             fi

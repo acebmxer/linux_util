@@ -119,7 +119,7 @@ install_marktext() {
                 error "Mark Text installation failed."
                 return 1
             fi
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel)
             if has_flatpak; then
@@ -153,13 +153,13 @@ uninstall_marktext() {
             sudo flatpak uninstall -y --system com.github.marktext.marktext
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y marktext ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y marktext 2>/dev/null || true ;;
+            debian)      pkg_remove marktext ;;
+            fedora|rhel) pkg_remove marktext 2>/dev/null || true ;;
             arch)
                 # marktext is the old AUR package, removed only if an install
                 # predating the tarball path is still registered with pacman.
                 pkg_check_installed marktext && \
-                    sudo pacman -Rs --noconfirm marktext 2>/dev/null
+                    pkg_remove marktext 2>/dev/null
                 true
                 ;;
         esac

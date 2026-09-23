@@ -17,22 +17,16 @@ install_pyenv() {
     info "Installing Python build dependencies..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y make build-essential libssl-dev zlib1g-dev \
-                libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
-                libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
-                libffi-dev liblzma-dev git
+            pkg_install make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev git
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y make gcc zlib-devel bzip2 bzip2-devel \
-                readline-devel sqlite sqlite-devel openssl-devel tk-devel \
-                libffi-devel xz-devel git
+            pkg_install make gcc zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel git
             ;;
         arch)
-            sudo pacman -S --noconfirm base-devel openssl zlib xz tk git
+            pkg_install base-devel openssl zlib xz tk git
             ;;
         suse)
-            sudo zypper install -y gcc make zlib-devel bzip2 libbz2-devel \
-                readline-devel sqlite3-devel openssl-devel tk-devel libffi-devel git
+            pkg_install gcc make zlib-devel bzip2 libbz2-devel readline-devel sqlite3-devel openssl-devel tk-devel libffi-devel git
             ;;
     esac
 

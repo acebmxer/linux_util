@@ -60,7 +60,7 @@ install_devolutions_rdm() {
             echo "Setting up Cloudsmith repository for Remote Desktop Manager..."
             
             # Ensure required tools
-            sudo "$PKG_MGR" install -y dnf-plugins-core pygpgme 2>/dev/null || true
+            pkg_install dnf-plugins-core pygpgme 2>/dev/null || true
             
             # Import GPG key
             sudo rpm --import 'https://dl.cloudsmith.io/public/devolutions/rdm/gpg.FE7407ECB26FD2FE.key'
@@ -71,7 +71,7 @@ install_devolutions_rdm() {
             
             # Update repository cache and install
             sudo "$PKG_MGR" makecache -y
-            sudo "$PKG_MGR" install -y RemoteDesktopManager
+            pkg_install RemoteDesktopManager
             ;;
         arch)
             # Repo package where the distro ships one (CachyOS and friends),
@@ -147,7 +147,7 @@ update_devolutions_rdm() {
             sudo apt install --only-upgrade -y remotedesktopmanager
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y RemoteDesktopManager
+            pkg_upgrade RemoteDesktopManager
             ;;
         arch)
             if has_aur_helper; then

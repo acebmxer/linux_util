@@ -31,7 +31,7 @@ install_unifi_endpoint() {
             wget -qO "$tmpfile" "$UNIFI_ENDPOINT_DEB_URL" || { error "Failed to download UniFi Endpoint .deb."; return 1; }
             verify_download "$tmpfile" "deb" "UniFi Endpoint" || return 1
             verify_sha256 "$tmpfile" "$UNIFI_ENDPOINT_DEB_SHA256" "UniFi Endpoint .deb" || return 1
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel|suse)
             local tmpfile
@@ -41,9 +41,9 @@ install_unifi_endpoint() {
             verify_download "$tmpfile" "rpm" "UniFi Endpoint" || return 1
             verify_sha256 "$tmpfile" "$UNIFI_ENDPOINT_RPM_SHA256" "UniFi Endpoint .rpm" || return 1
             if [[ "$DISTRO_FAMILY" == "suse" ]]; then
-                sudo zypper install -y --allow-unsigned-rpm "$tmpfile"
+                pkg_install --allow-unsigned-rpm "$tmpfile"
             else
-                sudo "$PKG_MGR" install -y "$tmpfile"
+                pkg_install "$tmpfile"
             fi
             ;;
         arch)
@@ -62,13 +62,13 @@ uninstall_unifi_endpoint() {
         debian)
             # purge (not just remove) also deletes any workspace CA certificates
             # the app installed into the system trust store.
-            sudo apt purge --autoremove -y unifi-endpoint
+            pkg_remove unifi-endpoint
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y unifi-endpoint
+            pkg_remove unifi-endpoint
             ;;
         suse)
-            sudo zypper remove -y unifi-endpoint
+            pkg_remove unifi-endpoint
             ;;
     esac
 }

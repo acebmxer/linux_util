@@ -176,12 +176,12 @@ install_vscodium() {
                 sudo tee /etc/apt/sources.list.d/vscodium.list > /dev/null
             rm -f "$gpg_tmp"
             sudo apt update
-            sudo apt install -y codium
+            pkg_install codium
             ;;
         fedora|rhel)
             sudo rpm --import "$_VSCODIUM_KEY_URL"
             _vscodium_write_rpm_repo /etc/yum.repos.d/vscodium.repo
-            sudo "$PKG_MGR" install -y codium
+            pkg_install codium
             _vscodium_trust_repo_key_for_user
             ;;
         arch)
@@ -193,7 +193,7 @@ install_vscodium() {
             sudo rpm --import "$_VSCODIUM_KEY_URL"
             _vscodium_write_rpm_repo /etc/zypp/repos.d/vscodium.repo $'type=rpm-md\n'
             sudo zypper refresh
-            sudo zypper install -y codium
+            pkg_install codium
             ;;
     esac
 }
@@ -202,13 +202,12 @@ uninstall_vscodium() {
     echo "Uninstalling VSCodium..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y codium
-            sudo apt autoclean
+            pkg_remove codium
             sudo rm -f /etc/apt/sources.list.d/vscodium.list
             sudo rm -f /usr/share/keyrings/vscodium-archive-keyring.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y codium
+            pkg_remove codium
             sudo rm -f /etc/yum.repos.d/vscodium.repo
             ;;
         arch)
@@ -224,7 +223,7 @@ uninstall_vscodium() {
             fi
             ;;
         suse)
-            sudo zypper remove -y codium
+            pkg_remove codium
             sudo rm -f /etc/zypp/repos.d/vscodium.repo
             ;;
     esac
@@ -237,7 +236,7 @@ update_vscodium() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade codium
+            pkg_upgrade codium
             ;;
         arch)
             # repos -> Flathub -> VSCodium's own tarball -> AUR (disabled by default).

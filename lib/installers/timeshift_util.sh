@@ -46,18 +46,18 @@ install_timeshift() {
             pkg_install timeshift || return 1
             ;;
         debian)
-            sudo apt install timeshift -y || return 1
+            pkg_install timeshift || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y timeshift || return 1
+            pkg_install timeshift || return 1
             ;;
         rhel)
             # Timeshift is in EPEL, not the base RHEL/Alma/Rocky repos
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y timeshift || return 1
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install timeshift || return 1
             ;;
         suse)
-            sudo zypper install -y timeshift || return 1
+            pkg_install timeshift || return 1
             ;;
         *)
             warn "Timeshift installation not implemented for ${DISTRO_NAME}."
@@ -105,17 +105,16 @@ uninstall_timeshift() {
     echo "Uninstalling Timeshift..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y timeshift
-            sudo apt autoclean
+            pkg_remove timeshift
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y timeshift
+            pkg_remove timeshift
             ;;
         arch)
-            sudo pacman -Rs --noconfirm timeshift
+            pkg_remove timeshift
             ;;
         suse)
-            sudo zypper remove -y timeshift
+            pkg_remove timeshift
             ;;
     esac
     rm -rf ~/.config/timeshift

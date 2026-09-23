@@ -19,8 +19,7 @@ install_gamemode() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y meson libsystemd-dev pkg-config ninja-build git \
-                dbus-user-session libdbus-1-dev libinih-dev build-essential
+            pkg_install meson libsystemd-dev pkg-config ninja-build git dbus-user-session libdbus-1-dev libinih-dev build-essential
 
             # Debian 13+ and Ubuntu 25.04+ require the additional systemd-dev package
             local need_systemd_dev=false
@@ -39,28 +38,25 @@ install_gamemode() {
 
             if [[ "$need_systemd_dev" == "true" ]]; then
                 echo "Detected $DISTRO_ID $DISTRO_VERSION_ID: installing additional systemd-dev package..."
-                sudo apt install -y systemd-dev
+                pkg_install systemd-dev
             fi
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y meson systemd-devel pkg-config git \
-                dbus-devel inih-devel
+            pkg_install meson systemd-devel pkg-config git dbus-devel inih-devel
             ;;
         rhel)
             # Build deps like inih-devel are in EPEL, not the base RHEL/Alma/Rocky repos
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y meson systemd-devel pkg-config git \
-                dbus-devel inih-devel || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install meson systemd-devel pkg-config git dbus-devel inih-devel || {
                 echo "Error: Failed to install build dependencies on RHEL."
                 return 1
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm meson systemd git dbus libinih gcc pkgconf
+            pkg_install meson systemd git dbus libinih gcc pkgconf
             ;;
         suse)
-            sudo zypper install -y meson systemd-devel git dbus-1-devel \
-                libgcc_s1 libstdc++-devel libinih-devel
+            pkg_install meson systemd-devel git dbus-1-devel libgcc_s1 libstdc++-devel libinih-devel
             ;;
         *)
             echo "Error: Unsupported distro family '$DISTRO_FAMILY' for Gamemode installation."

@@ -15,20 +15,17 @@ install_evolution() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y evolution
-            sudo apt install -y evolution-ews 2>/dev/null || \
-                warn "evolution-ews unavailable; Exchange (EWS) accounts will not be offered."
+            pkg_install evolution
+            pkg_install evolution-ews 2>/dev/null || warn "evolution-ews unavailable; Exchange (EWS) accounts will not be offered."
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y evolution
-            sudo "$PKG_MGR" install -y evolution-ews 2>/dev/null || \
-                warn "evolution-ews unavailable; Exchange (EWS) accounts will not be offered."
+            pkg_install evolution
+            pkg_install evolution-ews 2>/dev/null || warn "evolution-ews unavailable; Exchange (EWS) accounts will not be offered."
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y evolution
-            sudo "$PKG_MGR" install -y evolution-ews 2>/dev/null || \
-                warn "evolution-ews unavailable; Exchange (EWS) accounts will not be offered."
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install evolution
+            pkg_install evolution-ews 2>/dev/null || warn "evolution-ews unavailable; Exchange (EWS) accounts will not be offered."
             ;;
         arch)
             pkg_install evolution
@@ -36,9 +33,8 @@ install_evolution() {
                 warn "evolution-ews unavailable; Exchange (EWS) accounts will not be offered."
             ;;
         suse)
-            sudo zypper install -y evolution
-            sudo zypper install -y evolution-ews 2>/dev/null || \
-                warn "evolution-ews unavailable; Exchange (EWS) accounts will not be offered."
+            pkg_install evolution
+            pkg_install evolution-ews 2>/dev/null || warn "evolution-ews unavailable; Exchange (EWS) accounts will not be offered."
             ;;
     esac
     info "Evolution installed."
@@ -51,21 +47,20 @@ uninstall_evolution() {
     # whole removal on apt/pacman/zypper.
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y evolution-ews 2>/dev/null || true
-            sudo apt purge --autoremove -y evolution
-            sudo apt autoclean
+            pkg_remove evolution-ews 2>/dev/null || true
+            pkg_remove evolution
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y evolution-ews 2>/dev/null || true
-            sudo "$PKG_MGR" remove -y evolution
+            pkg_remove evolution-ews 2>/dev/null || true
+            pkg_remove evolution
             ;;
         arch)
             pkg_check_installed evolution-ews && pkg_remove evolution-ews
             pkg_remove evolution
             ;;
         suse)
-            sudo zypper remove -y evolution-ews 2>/dev/null || true
-            sudo zypper remove -y evolution
+            pkg_remove evolution-ews 2>/dev/null || true
+            pkg_remove evolution
             ;;
     esac
     rm -rf "$HOME/.config/evolution"
@@ -78,7 +73,7 @@ update_evolution() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade evolution
+            pkg_upgrade evolution
             ;;
         arch)
             pkg_install evolution

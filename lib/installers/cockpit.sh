@@ -30,16 +30,16 @@ install_cockpit() {
     info "Installing Cockpit..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y cockpit
+            pkg_install cockpit
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y cockpit
+            pkg_install cockpit
             ;;
         arch)
-            sudo pacman -S --noconfirm cockpit
+            pkg_install cockpit
             ;;
         suse)
-            sudo zypper install -y cockpit
+            pkg_install cockpit
             ;;
     esac
 
@@ -58,17 +58,16 @@ uninstall_cockpit() {
     sudo systemctl disable --now cockpit.socket 2>/dev/null || true
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y 'cockpit*'
-            sudo apt autoclean
+            pkg_remove 'cockpit*'
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y 'cockpit*'
+            pkg_remove 'cockpit*'
             ;;
         arch)
-            sudo pacman -Rs --noconfirm cockpit
+            pkg_remove cockpit
             ;;
         suse)
-            sudo zypper remove -y cockpit
+            pkg_remove cockpit
             ;;
     esac
     info "Cockpit has been uninstalled."
@@ -77,10 +76,10 @@ uninstall_cockpit() {
 update_cockpit() {
     info "Updating Cockpit..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y --only-upgrade cockpit ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y cockpit ;;
-        arch)        sudo pacman -S --noconfirm cockpit ;;
-        suse)        sudo zypper update -y cockpit ;;
+        debian)      pkg_upgrade cockpit ;;
+        fedora|rhel) pkg_upgrade cockpit ;;
+        arch)        pkg_upgrade cockpit ;;
+        suse)        pkg_upgrade cockpit ;;
     esac
 }
 

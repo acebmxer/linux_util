@@ -51,19 +51,17 @@ install_protonvpn() {
             fi
             verify_download "$tmpfile" "deb" "ProtonVPN" || return 1
             # Install the repo-setup package (adds ProtonVPN apt repo + GPG key)
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             sudo apt update
-            sudo apt install -y proton-vpn-gnome-desktop
+            pkg_install proton-vpn-gnome-desktop
             ;;
         fedora)
             # Official ProtonVPN repo for Fedora
             local fedora_ver
             fedora_ver=$(rpm -E %fedora)
-            sudo "$PKG_MGR" install -y \
-                "https://repo.protonvpn.com/fedora-${fedora_ver}-stable/protonvpn-stable-release/protonvpn-stable-release-1.0.2-1.noarch.rpm" \
-                2>/dev/null || true
+            pkg_install "https://repo.protonvpn.com/fedora-${fedora_ver}-stable/protonvpn-stable-release/protonvpn-stable-release-1.0.2-1.noarch.rpm" 2>/dev/null || true
             sudo "$PKG_MGR" update -y
-            sudo "$PKG_MGR" install -y proton-vpn-gnome-desktop
+            pkg_install proton-vpn-gnome-desktop
             ;;
         rhel)
             if has_flatpak; then
@@ -99,10 +97,10 @@ uninstall_protonvpn() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y proton-vpn-gnome-desktop protonvpn 2>/dev/null || true
+                pkg_remove proton-vpn-gnome-desktop protonvpn 2>/dev/null || true
                 ;;
             fedora)
-                sudo "$PKG_MGR" remove -y proton-vpn-gnome-desktop protonvpn 2>/dev/null || true
+                pkg_remove proton-vpn-gnome-desktop protonvpn 2>/dev/null || true
                 sudo rm -f /etc/yum.repos.d/protonvpn-stable-release.repo
                 ;;
             arch)
@@ -111,7 +109,7 @@ uninstall_protonvpn() {
                 pkg_check_installed proton-vpn-gtk-app && \
                     pkg_remove proton-vpn-gtk-app 2>/dev/null
                 pkg_check_installed protonvpn && \
-                    sudo pacman -Rs --noconfirm protonvpn 2>/dev/null
+                    pkg_remove protonvpn 2>/dev/null
                 true
                 ;;
         esac
@@ -127,7 +125,7 @@ update_protonvpn() {
     else
         case "$DISTRO_FAMILY" in
             debian)   sudo apt-get install -y --only-upgrade proton-vpn-gnome-desktop ;;
-            fedora)   sudo "$PKG_MGR" upgrade -y proton-vpn-gnome-desktop ;;
+            fedora)   pkg_upgrade proton-vpn-gnome-desktop ;;
             arch)    pkg_install proton-vpn-gtk-app ;;
         esac
     fi

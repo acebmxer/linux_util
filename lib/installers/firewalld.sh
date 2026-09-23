@@ -15,16 +15,16 @@ install_firewalld() {
     fi
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y firewalld
+            pkg_install firewalld
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y firewalld
+            pkg_install firewalld
             ;;
         arch)
-            sudo pacman -S --noconfirm firewalld
+            pkg_install firewalld
             ;;
         suse)
-            sudo zypper install -y firewalld
+            pkg_install firewalld
             ;;
     esac
     sudo systemctl enable --now firewalld
@@ -35,10 +35,10 @@ uninstall_firewalld() {
     info "Uninstalling firewalld..."
     sudo systemctl disable --now firewalld 2>/dev/null || true
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y firewalld ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y firewalld ;;
-        arch)        sudo pacman -Rs --noconfirm firewalld ;;
-        suse)        sudo zypper remove -y firewalld ;;
+        debian)      pkg_remove firewalld ;;
+        fedora|rhel) pkg_remove firewalld ;;
+        arch)        pkg_remove firewalld ;;
+        suse)        pkg_remove firewalld ;;
     esac
 }
 
@@ -46,9 +46,9 @@ update_firewalld() {
     info "Updating firewalld..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade firewalld ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y firewalld ;;
-        arch)        sudo pacman -S --noconfirm firewalld ;;
-        suse)        sudo zypper update -y firewalld ;;
+        fedora|rhel) pkg_upgrade firewalld ;;
+        arch)        pkg_upgrade firewalld ;;
+        suse)        pkg_upgrade firewalld ;;
     esac
 }
 
@@ -68,17 +68,17 @@ install_firewall_config() {
     fi
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y firewall-config
+            pkg_install firewall-config
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y firewall-config
+            pkg_install firewall-config
             ;;
         arch)
             # firewall-config ships inside the firewalld package; gtk3 is its optional GUI dependency
-            sudo pacman -S --noconfirm --needed gtk3
+            pkg_install --needed gtk3
             ;;
         suse)
-            sudo zypper install -y firewall-config
+            pkg_install firewall-config
             ;;
     esac
     info "firewall-config installed."
@@ -87,10 +87,10 @@ install_firewall_config() {
 uninstall_firewall_config() {
     info "Uninstalling firewall-config..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y firewall-config ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y firewall-config ;;
+        debian)      pkg_remove firewall-config ;;
+        fedora|rhel) pkg_remove firewall-config ;;
         arch)        warn "firewall-config is bundled with the firewalld package on Arch — uninstall firewalld to remove it." ;;
-        suse)        sudo zypper remove -y firewall-config ;;
+        suse)        pkg_remove firewall-config ;;
     esac
 }
 
@@ -98,9 +98,9 @@ update_firewall_config() {
     info "Updating firewall-config..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade firewall-config ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y firewall-config ;;
-        arch)        sudo pacman -S --noconfirm firewalld ;;
-        suse)        sudo zypper update -y firewall-config ;;
+        fedora|rhel) pkg_upgrade firewall-config ;;
+        arch)        pkg_upgrade firewalld ;;
+        suse)        pkg_upgrade firewall-config ;;
     esac
 }
 

@@ -15,26 +15,25 @@ install_remmina() {
                 sudo add-apt-repository -y ppa:remmina-ppa-team/remmina-next
                 sudo apt update
             fi
-            sudo apt install -y remmina remmina-plugin-rdp remmina-plugin-vnc
+            pkg_install remmina remmina-plugin-rdp remmina-plugin-vnc
             # remmina-plugin-ssh is bundled into remmina on modern Ubuntu; skip if absent
-            sudo apt install -y remmina-plugin-ssh 2>/dev/null || true
+            pkg_install remmina-plugin-ssh 2>/dev/null || true
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y remmina remmina-plugins-rdp remmina-plugins-vnc
+            pkg_install remmina remmina-plugins-rdp remmina-plugins-vnc
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y remmina remmina-plugins-rdp remmina-plugins-vnc 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install remmina remmina-plugins-rdp remmina-plugins-vnc 2>/dev/null || {
                 warn "Remmina plugins not found. Installing base package only..."
-                sudo "$PKG_MGR" install -y remmina
+                pkg_install remmina
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm remmina freerdp libvncserver
+            pkg_install remmina freerdp libvncserver
             ;;
         suse)
-            sudo zypper install -y remmina remmina-plugin-rdp remmina-plugin-vnc 2>/dev/null || \
-                sudo zypper install -y remmina
+            pkg_install remmina remmina-plugin-rdp remmina-plugin-vnc 2>/dev/null || pkg_install remmina
             ;;
     esac
     info "Remmina installed."
@@ -48,18 +47,18 @@ uninstall_remmina() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y remmina remmina-plugin-rdp remmina-plugin-vnc
+                pkg_remove remmina remmina-plugin-rdp remmina-plugin-vnc
                 sudo apt purge -y remmina-plugin-ssh 2>/dev/null || true
                 sudo add-apt-repository -y --remove ppa:remmina-ppa-team/remmina-next 2>/dev/null || true
                 ;;
             fedora|rhel)
-                sudo "$PKG_MGR" remove -y remmina remmina-plugins-rdp remmina-plugins-vnc
+                pkg_remove remmina remmina-plugins-rdp remmina-plugins-vnc
                 ;;
             arch)
-                sudo pacman -Rs --noconfirm remmina
+                pkg_remove remmina
                 ;;
             suse)
-                sudo zypper remove -y remmina remmina-plugin-rdp remmina-plugin-vnc
+                pkg_remove remmina remmina-plugin-rdp remmina-plugin-vnc
                 ;;
         esac
     fi
@@ -75,9 +74,9 @@ update_remmina() {
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt-get install -y --only-upgrade remmina ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y remmina ;;
-            arch)    sudo pacman -S --noconfirm remmina ;;
-            suse)    sudo zypper update -y remmina ;;
+            fedora|rhel) pkg_upgrade remmina ;;
+            arch)    pkg_upgrade remmina ;;
+            suse)    pkg_upgrade remmina ;;
         esac
     fi
 }

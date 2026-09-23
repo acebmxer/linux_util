@@ -11,17 +11,17 @@ install_input_leap() {
     case "$DISTRO_FAMILY" in
         debian)
             # Try distro repo first; if unavailable, download .deb from GitHub
-            sudo apt install -y input-leap 2>/dev/null || _install_input_leap_github_deb
+            pkg_install input-leap 2>/dev/null || _install_input_leap_github_deb
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y input-leap 2>/dev/null || {
+            pkg_install input-leap 2>/dev/null || {
                 warn "input-leap not found in repos. Trying GitHub release..."
                 _install_input_leap_github_rpm
             }
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y input-leap 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install input-leap 2>/dev/null || {
                 warn "input-leap not found in repos. Trying GitHub release..."
                 _install_input_leap_github_rpm
             }
@@ -30,7 +30,7 @@ install_input_leap() {
             repo_or_aur input-leap
             ;;
         suse)
-            sudo zypper install -y input-leap 2>/dev/null || {
+            pkg_install input-leap 2>/dev/null || {
                 warn "input-leap not available in repos."
                 error "Install Input Leap manually from https://github.com/input-leap/input-leap/releases"
                 return 1
@@ -55,7 +55,7 @@ _install_input_leap_github_deb() {
         error "Could not download Input Leap .deb. Check https://github.com/input-leap/input-leap/releases"
         return 1
     }
-    sudo apt install -y "$tmpfile"
+    pkg_install "$tmpfile"
 }
 
 _install_input_leap_github_rpm() {
@@ -70,19 +70,19 @@ _install_input_leap_github_rpm() {
         error "Could not download Input Leap .rpm. Check https://github.com/input-leap/input-leap/releases"
         return 1
     }
-    sudo "$PKG_MGR" install -y "$tmpfile"
+    pkg_install "$tmpfile"
 }
 
 uninstall_input_leap() {
     info "Uninstalling Input Leap..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y input-leap ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y input-leap ;;
+        debian)      pkg_remove input-leap ;;
+        fedora|rhel) pkg_remove input-leap ;;
         arch)
             aur_remove input-leap 2>/dev/null || \
-                sudo pacman -Rs --noconfirm input-leap 2>/dev/null || true
+                pkg_remove input-leap 2>/dev/null || true
             ;;
-        suse)        sudo zypper remove -y input-leap 2>/dev/null || true ;;
+        suse)        pkg_remove input-leap 2>/dev/null || true ;;
     esac
     rm -rf "$HOME/.config/InputLeap"
 }
@@ -91,9 +91,9 @@ update_input_leap() {
     info "Updating Input Leap..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade input-leap 2>/dev/null || _install_input_leap_github_deb ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y input-leap 2>/dev/null || _install_input_leap_github_rpm ;;
+        fedora|rhel) pkg_upgrade input-leap 2>/dev/null || _install_input_leap_github_rpm ;;
         arch)        repo_or_aur input-leap ;;
-        suse)        sudo zypper update -y input-leap 2>/dev/null || true ;;
+        suse)        pkg_upgrade input-leap 2>/dev/null || true ;;
     esac
 }
 

@@ -19,10 +19,10 @@ check_tmux() { _check_standard tmux tmux ""; }
 install_tmux() {
     info "Installing tmux..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y tmux ;;
-        fedora|rhel) sudo "$PKG_MGR" install -y tmux ;;
-        arch)        sudo pacman -S --noconfirm tmux ;;
-        suse)        sudo zypper install -y tmux ;;
+        debian)      pkg_install tmux ;;
+        fedora|rhel) pkg_install tmux ;;
+        arch)        pkg_install tmux ;;
+        suse)        pkg_install tmux ;;
     esac
     check_tmux || { error "tmux installation failed."; return 1; }
 
@@ -32,10 +32,10 @@ install_tmux() {
 uninstall_tmux() {
     info "Uninstalling tmux..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y tmux ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y tmux ;;
-        arch)        sudo pacman -Rs --noconfirm tmux ;;
-        suse)        sudo zypper remove -y tmux ;;
+        debian)      pkg_remove tmux ;;
+        fedora|rhel) pkg_remove tmux ;;
+        arch)        pkg_remove tmux ;;
+        suse)        pkg_remove tmux ;;
     esac
 }
 
@@ -43,9 +43,9 @@ update_tmux() {
     info "Updating tmux..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade tmux ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y tmux ;;
-        arch)        sudo pacman -S --noconfirm tmux ;;
-        suse)        sudo zypper update -y tmux ;;
+        fedora|rhel) pkg_upgrade tmux ;;
+        arch)        pkg_upgrade tmux ;;
+        suse)        pkg_upgrade tmux ;;
     esac
 }
 

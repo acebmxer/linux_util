@@ -8,17 +8,17 @@ check_dwm() { _check_standard dwm dwm ""; }
 install_dwm() {
     info "Installing dwm..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y dwm ;;
-        fedora)      sudo "$PKG_MGR" install -y dwm ;;
+        debian)      pkg_install dwm ;;
+        fedora)      pkg_install dwm ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y dwm 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install dwm 2>/dev/null || {
                 warn "dwm not available in repos for this RHEL-based distro."
                 return 1
             }
             ;;
-        arch)        sudo pacman -S --noconfirm dwm ;;
-        suse)        sudo zypper install -y dwm ;;
+        arch)        pkg_install dwm ;;
+        suse)        pkg_install dwm ;;
     esac
     info "dwm installed. Log out and select dwm from your display manager."
     info "Note: dwm is configured by editing config.h and recompiling — the packaged binary uses upstream defaults."
@@ -27,10 +27,10 @@ install_dwm() {
 uninstall_dwm() {
     info "Uninstalling dwm..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y dwm ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y dwm ;;
-        arch)        sudo pacman -Rs --noconfirm dwm ;;
-        suse)        sudo zypper remove -y dwm ;;
+        debian)      pkg_remove dwm ;;
+        fedora|rhel) pkg_remove dwm ;;
+        arch)        pkg_remove dwm ;;
+        suse)        pkg_remove dwm ;;
     esac
 }
 
@@ -38,9 +38,9 @@ update_dwm() {
     info "Updating dwm..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade dwm ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y dwm ;;
-        arch)        sudo pacman -S --noconfirm dwm ;;
-        suse)        sudo zypper update -y dwm ;;
+        fedora|rhel) pkg_upgrade dwm ;;
+        arch)        pkg_upgrade dwm ;;
+        suse)        pkg_upgrade dwm ;;
     esac
 }
 

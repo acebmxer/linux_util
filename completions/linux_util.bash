@@ -42,6 +42,7 @@ GIMP
 GitHub CLI
 GNOME Desktop
 Google Chrome
+GTK Window Fix
 Heroic Games Launcher
 JetBrains Toolbox
 Joplin Client

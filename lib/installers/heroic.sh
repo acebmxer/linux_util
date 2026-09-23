@@ -29,7 +29,7 @@ install_heroic() {
             verify_download "$tmpfile" "deb" "Heroic" || return 1
             github_verify_checksum "https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest" \
                 "$(basename "$url")" "$tmpfile" || return 1
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel)
             local url
@@ -45,7 +45,7 @@ install_heroic() {
             verify_download "$tmpfile" "rpm" "Heroic" || return 1
             github_verify_checksum "https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest" \
                 "$(basename "$url")" "$tmpfile" || return 1
-            sudo "$PKG_MGR" install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         arch)
             flatpak_or_aur com.heroicgameslauncher.hgl heroic-games-launcher-bin
@@ -70,14 +70,14 @@ uninstall_heroic() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y heroic
+                pkg_remove heroic
                 ;;
             fedora|rhel)
-                sudo "$PKG_MGR" remove -y heroic
+                pkg_remove heroic
                 ;;
             arch)
                 aur_remove heroic-games-launcher-bin 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm heroic 2>/dev/null || true
+                    pkg_remove heroic 2>/dev/null || true
                 ;;
             suse)
                 flatpak uninstall -y --user com.heroicgameslauncher.hgl 2>/dev/null || \

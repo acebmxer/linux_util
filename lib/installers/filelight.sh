@@ -9,23 +9,23 @@ install_filelight() {
     info "Installing Filelight..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y filelight
+            pkg_install filelight
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y filelight
+            pkg_install filelight
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y filelight 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install filelight 2>/dev/null || {
                 warn "filelight not available in repos for this RHEL-based distro."
                 return 1
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm filelight
+            pkg_install filelight
             ;;
         suse)
-            sudo zypper install -y filelight
+            pkg_install filelight
             ;;
     esac
     info "Filelight installed."
@@ -34,10 +34,10 @@ install_filelight() {
 uninstall_filelight() {
     info "Uninstalling Filelight..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y filelight ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y filelight ;;
-        arch)        sudo pacman -Rs --noconfirm filelight ;;
-        suse)        sudo zypper remove -y filelight ;;
+        debian)      pkg_remove filelight ;;
+        fedora|rhel) pkg_remove filelight ;;
+        arch)        pkg_remove filelight ;;
+        suse)        pkg_remove filelight ;;
     esac
 }
 
@@ -45,9 +45,9 @@ update_filelight() {
     info "Updating Filelight..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade filelight ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y filelight ;;
-        arch)        sudo pacman -S --noconfirm filelight ;;
-        suse)        sudo zypper update -y filelight ;;
+        fedora|rhel) pkg_upgrade filelight ;;
+        arch)        pkg_upgrade filelight ;;
+        suse)        pkg_upgrade filelight ;;
     esac
 }
 

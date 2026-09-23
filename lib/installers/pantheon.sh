@@ -28,13 +28,10 @@ uninstall_pantheon() {
     echo "Uninstalling Pantheon Desktop..."
     case "$DISTRO_FAMILY" in
         arch)
-            sudo pacman -Rs --noconfirm pantheon lightdm-pantheon-greeter 2>/dev/null || \
-                sudo pacman -Rs --noconfirm gala wingpanel switchboard \
-                    pantheon-session io.elementary.greeter 2>/dev/null || true
+            pkg_remove pantheon lightdm-pantheon-greeter 2>/dev/null || pkg_remove gala wingpanel switchboard pantheon-session io.elementary.greeter 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y -t pattern pantheon 2>/dev/null || \
-                sudo zypper remove -y gala wingpanel switchboard sddm 2>/dev/null || true
+            pkg_remove -t pattern pantheon 2>/dev/null || pkg_remove gala wingpanel switchboard sddm 2>/dev/null || true
             ;;
     esac
     rm -rf ~/.config/pantheon ~/.local/share/io.elementary.* 2>/dev/null || true
@@ -49,8 +46,7 @@ update_pantheon() {
                 sudo pacman -Syu --noconfirm gala wingpanel switchboard
             ;;
         suse)
-            sudo zypper update -y -t pattern pantheon 2>/dev/null || \
-                sudo zypper update -y gala wingpanel switchboard
+            pkg_upgrade -t pattern pantheon 2>/dev/null || pkg_upgrade gala wingpanel switchboard
             ;;
     esac
 }

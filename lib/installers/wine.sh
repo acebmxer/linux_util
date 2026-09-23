@@ -58,7 +58,7 @@ install_wine() {
                     "/etc/apt/keyrings/winehq-archive.key" \
                     "deb [arch=amd64,i386 signed-by=/etc/apt/keyrings/winehq-archive.key] ${_wine_repo_base}/ ${_winehq_codename} main" \
                     "/etc/apt/sources.list.d/winehq-${_codename}.list"
-                if sudo apt install -y --install-recommends winehq-stable; then
+                if pkg_install --install-recommends winehq-stable; then
                     return 0
                 fi
                 # winehq-stable install failed — clean up the broken repo and fall back
@@ -70,14 +70,14 @@ install_wine() {
                 info "WineHQ has no compatible repository; installing distro Wine package."
             fi
             # Fallback: distro-packaged wine
-            sudo apt install -y wine || return 1
+            pkg_install wine || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y wine || return 1
+            pkg_install wine || return 1
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y wine || return 1
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install wine || return 1
             ;;
         arch)
             if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
@@ -85,10 +85,10 @@ install_wine() {
                 sudo bash -c 'printf "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n" >> /etc/pacman.conf'
                 sudo pacman -Sy
             fi
-            sudo pacman -S --noconfirm wine wine-mono || return 1
+            pkg_install wine wine-mono || return 1
             ;;
         suse)
-            sudo zypper install -y wine || return 1
+            pkg_install wine || return 1
             ;;
     esac
     info "Wine installed."
@@ -98,8 +98,7 @@ uninstall_wine() {
     info "Uninstalling Wine..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y winehq-stable 2>/dev/null || \
-                sudo apt purge --autoremove -y wine 2>/dev/null || true
+            pkg_remove winehq-stable 2>/dev/null || pkg_remove wine 2>/dev/null || true
             local _codename="${DISTRO_VERSION_CODENAME:-}"
             if [[ -n "$_codename" ]]; then
                 sudo rm -f "/etc/apt/sources.list.d/winehq-${_codename}.list"
@@ -109,13 +108,13 @@ uninstall_wine() {
             sudo rm -f /etc/apt/keyrings/winehq-archive.key
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y wine 2>/dev/null || true
+            pkg_remove wine 2>/dev/null || true
             ;;
         arch)
-            sudo pacman -Rs --noconfirm wine wine-mono 2>/dev/null || true
+            pkg_remove wine wine-mono 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y wine 2>/dev/null || true
+            pkg_remove wine 2>/dev/null || true
             ;;
     esac
     rm -rf "$HOME/.wine"
@@ -129,7 +128,7 @@ update_wine() {
                 sudo apt-get install -y --only-upgrade wine 2>/dev/null || true
             ;;
         arch)
-            sudo pacman -S --noconfirm wine wine-mono
+            pkg_upgrade wine wine-mono
             ;;
         *)
             pkg_upgrade wine

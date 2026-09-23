@@ -21,10 +21,10 @@ _mns_ensure_nfs_tools() {
     warn "NFS client tools not found. Attempting to install..."
     case "$DISTRO_FAMILY" in
         debian)  sudo apt-get install -y nfs-common ;;
-        fedora)  sudo "$PKG_MGR" install -y nfs-utils ;;
-        rhel)    sudo "$PKG_MGR" install -y nfs-utils ;;
-        arch)    sudo pacman -S --noconfirm nfs-utils ;;
-        suse)    sudo zypper install -y nfs-client ;;
+        fedora)  pkg_install nfs-utils ;;
+        rhel)    pkg_install nfs-utils ;;
+        arch)    pkg_install nfs-utils ;;
+        suse)    pkg_install nfs-client ;;
         *)
             warn "Cannot auto-install NFS tools on this distro. Install nfs-common or nfs-utils manually."
             return 1

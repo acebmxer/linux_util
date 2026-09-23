@@ -119,13 +119,13 @@ install_nvtop_package() {
             sudo apt-get install -y nvtop
             ;;
         dnf|yum)
-            sudo "$PKG_MGR" install -y nvtop
+            pkg_install nvtop
             ;;
         pacman)
-            sudo pacman -S --noconfirm nvtop
+            pkg_install nvtop
             ;;
         zypper)
-            sudo zypper install -y nvtop
+            pkg_install nvtop
             ;;
     esac
 }
@@ -149,7 +149,7 @@ install_nvidia_container_toolkit() {
             curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
                 sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo >/dev/null
             sudo "$PKG_MGR" makecache
-            sudo "$PKG_MGR" install -y nvidia-container-toolkit
+            pkg_install nvidia-container-toolkit
             ;;
         arch)
             pkg_install nvidia-container-toolkit
@@ -159,7 +159,7 @@ install_nvidia_container_toolkit() {
             curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
                 sudo tee /etc/zypp/repos.d/nvidia-container-toolkit.repo >/dev/null
             sudo zypper refresh
-            sudo zypper install -y nvidia-container-toolkit
+            pkg_install nvidia-container-toolkit
             ;;
         *)
             warn "NVIDIA Container Toolkit installation not implemented for ${DISTRO_NAME}."
@@ -324,21 +324,21 @@ install_nvidia_i386_libs() {
         fedora|rhel)
             case "$driver_version" in
                 580xx)
-                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-580xx-libs.i686
+                    pkg_install xorg-x11-drv-nvidia-580xx-libs.i686
                     ;;
                 470xx)
-                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-470xx-libs.i686
+                    pkg_install xorg-x11-drv-nvidia-470xx-libs.i686
                     ;;
                 390xx)
-                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-390xx-libs.i686
+                    pkg_install xorg-x11-drv-nvidia-390xx-libs.i686
                     ;;
                 *)
-                    sudo "$PKG_MGR" install -y nvidia-driver-libs.i686
+                    pkg_install nvidia-driver-libs.i686
                     ;;
             esac
             ;;
         arch)
-            sudo pacman -S --noconfirm lib32-nvidia-utils
+            pkg_install lib32-nvidia-utils
             ;;
         suse)
             # openSUSE's NVIDIA repo names 32-bit packages differently across
@@ -348,14 +348,13 @@ install_nvidia_i386_libs() {
             # hyphen — nvidia-compute-G06-32bit / nvidia-compute-G07-32bit.
             case "$driver_version" in
                 G04|G05)
-                    sudo zypper install -y "nvidia-compute${driver_version}-32bit"
+                    pkg_install "nvidia-compute${driver_version}-32bit"
                     ;;
                 G06|G07)
-                    sudo zypper install -y "nvidia-compute-${driver_version}-32bit"
+                    pkg_install "nvidia-compute-${driver_version}-32bit"
                     ;;
                 *)
-                    sudo zypper install -y "libnvidia-gl${driver_version}-32bit" 2>/dev/null || \
-                        sudo zypper install -y nvidia-32bit 2>/dev/null || true
+                    pkg_install "libnvidia-gl${driver_version}-32bit" 2>/dev/null || pkg_install nvidia-32bit 2>/dev/null || true
                     ;;
             esac
             ;;
@@ -510,14 +509,10 @@ install_nvidia_drivers() {
                 if [[ "$enable_rpmfusion" =~ ^[Yy]$ ]]; then
                     echo "Enabling RPM Fusion repositories..."
                     if [[ "$DISTRO_ID" == "fedora" ]]; then
-                        sudo "$PKG_MGR" install -y \
-                            "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-${DISTRO_VERSION_ID}.noarch.rpm" \
-                            "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${DISTRO_VERSION_ID}.noarch.rpm"
+                        pkg_install "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-${DISTRO_VERSION_ID}.noarch.rpm" "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${DISTRO_VERSION_ID}.noarch.rpm"
                     else
                         # RHEL/CentOS
-                        sudo "$PKG_MGR" install -y \
-                            "https://download1.rpmfusion.org/free/el/rpmfusion-free-release-${DISTRO_VERSION_ID}.noarch.rpm" \
-                            "https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-${DISTRO_VERSION_ID}.noarch.rpm"
+                        pkg_install "https://download1.rpmfusion.org/free/el/rpmfusion-free-release-${DISTRO_VERSION_ID}.noarch.rpm" "https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-${DISTRO_VERSION_ID}.noarch.rpm"
                     fi
                     pkg_refresh >/dev/null 2>&1
                 else
@@ -696,19 +691,19 @@ install_nvidia_drivers() {
             case "$driver_version" in
                 latest)
                     echo "Installing latest NVIDIA driver (akmod-nvidia)..."
-                    sudo "$PKG_MGR" install -y akmod-nvidia xorg-x11-drv-nvidia-cuda
+                    pkg_install akmod-nvidia xorg-x11-drv-nvidia-cuda
                     ;;
                 580xx)
                     echo "Installing legacy NVIDIA 580 driver..."
-                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-580xx akmod-nvidia-580xx
+                    pkg_install xorg-x11-drv-nvidia-580xx akmod-nvidia-580xx
                     ;;
                 470xx)
                     echo "Installing legacy NVIDIA 470 driver..."
-                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-470xx akmod-nvidia-470xx
+                    pkg_install xorg-x11-drv-nvidia-470xx akmod-nvidia-470xx
                     ;;
                 390xx)
                     echo "Installing legacy NVIDIA 390 driver..."
-                    sudo "$PKG_MGR" install -y xorg-x11-drv-nvidia-390xx akmod-nvidia-390xx
+                    pkg_install xorg-x11-drv-nvidia-390xx akmod-nvidia-390xx
                     ;;
                 *)
                     warn "Unknown driver version: ${driver_version}"
@@ -720,37 +715,37 @@ install_nvidia_drivers() {
             case "$driver_version" in
                 linux-cachyos*-nvidia-open|nvidia-open-dkms)
                     # CachyOS: kernel-paired or DKMS open module + utils
-                    sudo pacman -S --noconfirm "$driver_version" nvidia-utils
+                    pkg_install "$driver_version" nvidia-utils
                     ;;
                 latest)
-                    sudo pacman -S --noconfirm nvidia nvidia-utils
+                    pkg_install nvidia nvidia-utils
                     ;;
                 dkms)
-                    sudo pacman -S --noconfirm nvidia-dkms nvidia-utils
+                    pkg_install nvidia-dkms nvidia-utils
                     ;;
                 lts)
-                    sudo pacman -S --noconfirm nvidia-lts nvidia-utils
+                    pkg_install nvidia-lts nvidia-utils
                     ;;
             esac
             ;;
         suse)
             case "$driver_version" in
                 G04|G05)
-                    sudo zypper install -y "nvidia-compute${driver_version}"
+                    pkg_install "nvidia-compute${driver_version}"
                     ;;
                 G06)
                     echo "Installing NVIDIA ${driver_version} driver (proprietary kmp)..."
-                    sudo zypper install -y "nvidia-driver-${driver_version}-kmp-meta"
+                    pkg_install "nvidia-driver-${driver_version}-kmp-meta"
                     ;;
                 G07)
                     # G07 ships only as the open-source kernel module on
                     # openSUSE's NVIDIA repo — no proprietary kmp package
                     # exists for it (verified against the real repo).
                     echo "Installing NVIDIA G07 driver (open kernel module)..."
-                    sudo zypper install -y "nvidia-open-driver-G07-signed-kmp-meta"
+                    pkg_install "nvidia-open-driver-G07-signed-kmp-meta"
                     ;;
                 *)
-                    sudo zypper install -y "nvidia-driver-${driver_version}"
+                    pkg_install "nvidia-driver-${driver_version}"
                     ;;
             esac
             ;;
@@ -792,7 +787,7 @@ uninstall_nvidia_drivers() {
             sudo apt-get autoclean
             ;;
         dnf|yum)
-            sudo "$PKG_MGR" remove -y 'nvidia*' nvtop
+            pkg_remove 'nvidia*' nvtop
             ;;
         pacman)
             # Remove any installed nvidia module packages (vanilla or CachyOS kernel-paired)
@@ -801,11 +796,11 @@ uninstall_nvidia_drivers() {
                 | awk '{print $1}' \
                 | grep -E '^(nvidia|linux-cachyos.*-nvidia)')
             [[ ${#_nvidia_pkgs[@]} -gt 0 ]] && \
-                sudo pacman -Rs --noconfirm "${_nvidia_pkgs[@]}" 2>/dev/null || true
-            sudo pacman -Rs --noconfirm nvtop 2>/dev/null || true
+                pkg_remove "${_nvidia_pkgs[@]}" 2>/dev/null || true
+            pkg_remove nvtop 2>/dev/null || true
             ;;
         zypper)
-            sudo zypper remove -y 'nvidia*' nvtop
+            pkg_remove 'nvidia*' nvtop
             ;;
     esac
     rm -rf ~/.config/nvidia

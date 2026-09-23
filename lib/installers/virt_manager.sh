@@ -10,31 +10,21 @@ install_virt_manager() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y virt-manager qemu-kvm libvirt-daemon-system \
-                libvirt-clients bridge-utils virtinst \
-                || { error "Package installation failed."; return 1; }
+            pkg_install virt-manager qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst || { error "Package installation failed."; return 1; }
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y virt-manager qemu-kvm libvirt \
-                libvirt-daemon libvirt-client virt-install \
-                || { error "Package installation failed."; return 1; }
+            pkg_install virt-manager qemu-kvm libvirt libvirt-daemon libvirt-client virt-install || { error "Package installation failed."; return 1; }
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y virt-manager qemu-kvm libvirt \
-                libvirt-daemon libvirt-client virt-install \
-                || { error "Package installation failed."; return 1; }
+            pkg_install virt-manager qemu-kvm libvirt libvirt-daemon libvirt-client virt-install || { error "Package installation failed."; return 1; }
             ;;
         arch)
             # bridge-utils was dropped from the Arch repos; iproute2 (a base
             # dependency) provides the bridge tooling libvirt needs.
-            sudo pacman -S --noconfirm virt-manager qemu-full libvirt \
-                iptables-nft dnsmasq virt-viewer \
-                || { error "Package installation failed."; return 1; }
+            pkg_install virt-manager qemu-full libvirt iptables-nft dnsmasq virt-viewer || { error "Package installation failed."; return 1; }
             ;;
         suse)
-            sudo zypper install -y virt-manager kvm libvirt libvirt-daemon \
-                libvirt-daemon-driver-qemu \
-                || { error "Package installation failed."; return 1; }
+            pkg_install virt-manager kvm libvirt libvirt-daemon libvirt-daemon-driver-qemu || { error "Package installation failed."; return 1; }
             ;;
     esac
 
@@ -68,17 +58,16 @@ uninstall_virt_manager() {
     sudo systemctl disable libvirtd 2>/dev/null || true
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y virt-manager libvirt-daemon-system \
-                libvirt-clients virtinst 2>/dev/null || true
+            pkg_remove virt-manager libvirt-daemon-system libvirt-clients virtinst 2>/dev/null || true
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y virt-manager libvirt libvirt-client 2>/dev/null || true
+            pkg_remove virt-manager libvirt libvirt-client 2>/dev/null || true
             ;;
         arch)
-            sudo pacman -Rs --noconfirm virt-manager libvirt 2>/dev/null || true
+            pkg_remove virt-manager libvirt 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y virt-manager libvirt 2>/dev/null || true
+            pkg_remove virt-manager libvirt 2>/dev/null || true
             ;;
     esac
 }
@@ -87,9 +76,9 @@ update_virt_manager() {
     info "Updating Virt-Manager..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade virt-manager ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y virt-manager ;;
-        arch)        sudo pacman -S --noconfirm virt-manager ;;
-        suse)        sudo zypper update -y virt-manager ;;
+        fedora|rhel) pkg_upgrade virt-manager ;;
+        arch)        pkg_upgrade virt-manager ;;
+        suse)        pkg_upgrade virt-manager ;;
     esac
 }
 

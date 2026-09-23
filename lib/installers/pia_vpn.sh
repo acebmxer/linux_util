@@ -93,19 +93,17 @@ uninstall_pia_vpn() {
     fi
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y privateinternetaccess
-            sudo apt autoclean
+            pkg_remove privateinternetaccess
             sudo rm -f /etc/apt/sources.list.d/pia.list
             sudo rm -f /usr/share/keyrings/pia-archive-keyring.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y privateinternetaccess
+            pkg_remove privateinternetaccess
             ;;
         arch)
             # Only reachable for an install predating the switch to the .run
             # bundle; privateinternetaccess-bin no longer exists in the AUR.
-            sudo pacman -Rs --noconfirm privateinternetaccess-bin 2>/dev/null || \
-            sudo pacman -Rs --noconfirm privateinternetaccess 2>/dev/null || true
+            pkg_remove privateinternetaccess-bin 2>/dev/null || pkg_remove privateinternetaccess 2>/dev/null || true
             ;;
         suse)
             flatpak uninstall -y --user com.privateinternetaccess.PIA 2>/dev/null || \

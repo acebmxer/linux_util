@@ -16,13 +16,13 @@ install_trojita() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         fedora)
-            sudo "$PKG_MGR" install -y trojita
+            pkg_install trojita
             ;;
         arch)
             repo_or_aur trojita || return 1
             ;;
         suse)
-            sudo zypper install -y trojita
+            pkg_install trojita
             ;;
         debian)
             error "Trojitá was removed from Debian and is not packaged for Debian or Ubuntu."
@@ -42,13 +42,13 @@ uninstall_trojita() {
     info "Uninstalling Trojitá..."
     case "$DISTRO_FAMILY" in
         fedora)
-            sudo "$PKG_MGR" remove -y trojita
+            pkg_remove trojita
             ;;
         arch)
             aur_remove trojita || true
             ;;
         suse)
-            sudo zypper remove -y trojita
+            pkg_remove trojita
             ;;
         *)
             warn "Trojitá is not installable on this distro, so there is nothing to remove."

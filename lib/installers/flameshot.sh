@@ -10,14 +10,14 @@ install_flameshot() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y flameshot
+            pkg_install flameshot
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y flameshot
+            pkg_install flameshot
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y flameshot 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install flameshot 2>/dev/null || {
                 warn "flameshot not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
                     sudo flatpak install -y flathub org.flameshot.Flameshot
@@ -28,10 +28,10 @@ install_flameshot() {
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm flameshot
+            pkg_install flameshot
             ;;
         suse)
-            sudo zypper install -y flameshot
+            pkg_install flameshot
             ;;
     esac
     info "Flameshot installed."
@@ -45,10 +45,10 @@ uninstall_flameshot() {
             sudo flatpak uninstall -y --system org.flameshot.Flameshot
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y flameshot ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y flameshot ;;
-            arch)        sudo pacman -Rs --noconfirm flameshot ;;
-            suse)        sudo zypper remove -y flameshot ;;
+            debian)      pkg_remove flameshot ;;
+            fedora|rhel) pkg_remove flameshot ;;
+            arch)        pkg_remove flameshot ;;
+            suse)        pkg_remove flameshot ;;
         esac
     fi
     rm -rf "$HOME/.config/flameshot"
@@ -62,9 +62,9 @@ update_flameshot() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade flameshot ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y flameshot ;;
-            arch)        sudo pacman -S --noconfirm flameshot ;;
-            suse)        sudo zypper update -y flameshot ;;
+            fedora|rhel) pkg_upgrade flameshot ;;
+            arch)        pkg_upgrade flameshot ;;
+            suse)        pkg_upgrade flameshot ;;
         esac
     fi
 }

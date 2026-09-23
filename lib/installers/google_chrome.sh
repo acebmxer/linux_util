@@ -19,7 +19,7 @@ install_google_chrome() {
                 "/usr/share/keyrings/google-chrome-keyring.gpg" \
                 "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
                 "/etc/apt/sources.list.d/google-chrome.list"
-            sudo apt install -y google-chrome-stable
+            pkg_install google-chrome-stable
             ;;
         fedora|rhel)
             sudo tee /etc/yum.repos.d/google-chrome.repo > /dev/null << 'EOF'
@@ -30,7 +30,7 @@ enabled=1
 gpgcheck=1
 gpgkey=https://dl.google.com/linux/linux_signing_key.pub
 EOF
-            sudo "$PKG_MGR" install -y google-chrome-stable
+            pkg_install google-chrome-stable
             ;;
         arch)
             # repos -> Flathub -> AUR (AUR is disabled by default).
@@ -40,7 +40,7 @@ EOF
             sudo rpm --import https://dl.google.com/linux/linux_signing_key.pub
             sudo zypper addrepo -f https://dl.google.com/linux/chrome/rpm/stable/x86_64 google-chrome 2>/dev/null || true
             sudo zypper refresh
-            sudo zypper install -y google-chrome-stable
+            pkg_install google-chrome-stable
             ;;
     esac
 }
@@ -49,20 +49,19 @@ uninstall_google_chrome() {
     info "Uninstalling Google Chrome..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y google-chrome-stable
-            sudo apt autoclean
+            pkg_remove google-chrome-stable
             sudo rm -f /etc/apt/sources.list.d/google-chrome.list
             sudo rm -f /usr/share/keyrings/google-chrome-keyring.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y google-chrome-stable
+            pkg_remove google-chrome-stable
             sudo rm -f /etc/yum.repos.d/google-chrome.repo
             ;;
         arch)
             aur_remove google-chrome 2>/dev/null || pkg_remove google-chrome 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y google-chrome-stable
+            pkg_remove google-chrome-stable
             sudo zypper removerepo google-chrome 2>/dev/null || true
             ;;
     esac
@@ -74,7 +73,7 @@ update_google_chrome() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade google-chrome-stable
+            pkg_upgrade google-chrome-stable
             ;;
         arch)
             # repos -> Flathub -> AUR (AUR is disabled by default).
