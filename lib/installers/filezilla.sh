@@ -8,14 +8,14 @@ check_filezilla() { _check_standard filezilla filezilla ""; }
 install_filezilla() {
     info "Installing FileZilla..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt install -y filezilla ;;
-        fedora)  sudo "$PKG_MGR" install -y filezilla ;;
+        debian)  pkg_install filezilla ;;
+        fedora)  pkg_install filezilla ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y filezilla
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install filezilla
             ;;
-        arch)    sudo pacman -S --noconfirm filezilla ;;
-        suse)    sudo zypper install -y filezilla ;;
+        arch)    pkg_install filezilla ;;
+        suse)    pkg_install filezilla ;;
     esac
     info "FileZilla installed."
 }
@@ -23,10 +23,10 @@ install_filezilla() {
 uninstall_filezilla() {
     info "Uninstalling FileZilla..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt purge --autoremove -y filezilla ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y filezilla ;;
-        arch)    sudo pacman -Rs --noconfirm filezilla ;;
-        suse)    sudo zypper remove -y filezilla ;;
+        debian)  pkg_remove filezilla ;;
+        fedora|rhel) pkg_remove filezilla ;;
+        arch)    pkg_remove filezilla ;;
+        suse)    pkg_remove filezilla ;;
     esac
     rm -rf "$HOME/.config/filezilla"
 }
@@ -35,9 +35,9 @@ update_filezilla() {
     info "Updating FileZilla..."
     case "$DISTRO_FAMILY" in
         debian)  sudo apt-get install -y --only-upgrade filezilla ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y filezilla ;;
-        arch)    sudo pacman -S --noconfirm filezilla ;;
-        suse)    sudo zypper update -y filezilla ;;
+        fedora|rhel) pkg_upgrade filezilla ;;
+        arch)    pkg_upgrade filezilla ;;
+        suse)    pkg_upgrade filezilla ;;
     esac
 }
 

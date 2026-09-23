@@ -13,20 +13,20 @@ install_neomutt() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y neomutt
+            pkg_install neomutt
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y neomutt
+            pkg_install neomutt
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y neomutt
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install neomutt
             ;;
         arch)
             pkg_install neomutt
             ;;
         suse)
-            sudo zypper install -y neomutt
+            pkg_install neomutt
             ;;
     esac
     info "NeoMutt installed. It ships no default account config — create ~/.config/neomutt/neomuttrc before first use."
@@ -36,17 +36,16 @@ uninstall_neomutt() {
     info "Uninstalling NeoMutt..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y neomutt
-            sudo apt autoclean
+            pkg_remove neomutt
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y neomutt
+            pkg_remove neomutt
             ;;
         arch)
             pkg_remove neomutt
             ;;
         suse)
-            sudo zypper remove -y neomutt
+            pkg_remove neomutt
             ;;
     esac
     # Deliberately not removing ~/.config/neomutt, ~/.neomuttrc or ~/.mail:
@@ -60,7 +59,7 @@ update_neomutt() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade neomutt
+            pkg_upgrade neomutt
             ;;
         arch)
             pkg_install neomutt

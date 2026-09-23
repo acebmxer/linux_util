@@ -10,24 +10,24 @@ install_qbittorrent() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y qbittorrent
+            pkg_install qbittorrent
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y qbittorrent
+            pkg_install qbittorrent
             ;;
         rhel)
             # qbittorrent is in EPEL, not the base RHEL/Alma/Rocky repos
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y qbittorrent
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install qbittorrent
             ;;
         arch)
-            sudo pacman -S --noconfirm qbittorrent
+            pkg_install qbittorrent
             ;;
         suse)
             if has_flatpak; then
                 sudo flatpak install -y flathub org.qbittorrent.qBittorrent
             else
-                sudo zypper install -y qbittorrent
+                pkg_install qbittorrent
             fi
             ;;
     esac
@@ -38,18 +38,17 @@ uninstall_qbittorrent() {
     echo "Uninstalling QBittorrent..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y qbittorrent
-            sudo apt autoclean
+            pkg_remove qbittorrent
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y qbittorrent
+            pkg_remove qbittorrent
             ;;
         arch)
-            sudo pacman -Rs --noconfirm qbittorrent 2>/dev/null || true
+            pkg_remove qbittorrent 2>/dev/null || true
             ;;
         suse)
             flatpak uninstall -y org.qbittorrent.qBittorrent 2>/dev/null || \
-            sudo zypper remove -y qbittorrent 2>/dev/null || true
+            pkg_remove qbittorrent 2>/dev/null || true
             ;;
     esac
     rm -rf ~/.config/qBittorrent
@@ -62,17 +61,17 @@ update_qbittorrent() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade qbittorrent
+            pkg_upgrade qbittorrent
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y qbittorrent
+            pkg_upgrade qbittorrent
             ;;
         arch)
-            sudo pacman -S --noconfirm qbittorrent
+            pkg_upgrade qbittorrent
             ;;
         suse)
             flatpak update -y org.qbittorrent.qBittorrent 2>/dev/null || \
-            sudo zypper update -y qbittorrent 2>/dev/null || true
+            pkg_upgrade qbittorrent 2>/dev/null || true
             ;;
     esac
 }

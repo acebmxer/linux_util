@@ -30,14 +30,14 @@ install_snap() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y snapd || { error "Failed to install snapd."; return 1; }
+            pkg_install snapd || { error "Failed to install snapd."; return 1; }
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y snapd || { error "Failed to install snapd."; return 1; }
+            pkg_install snapd || { error "Failed to install snapd."; return 1; }
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y snapd || { error "Failed to install snapd."; return 1; }
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install snapd || { error "Failed to install snapd."; return 1; }
             ;;
         suse)
             # snapd lives in the system:snappy OBS repo, which differs by product.
@@ -50,7 +50,7 @@ install_snap() {
             sudo zypper addrepo --refresh "$snappy_url" snappy 2>/dev/null || true
             sudo zypper --gpg-auto-import-keys refresh
             sudo zypper dup --from snappy -y 2>/dev/null || true
-            sudo zypper install -y snapd || { error "Failed to install snapd."; return 1; }
+            pkg_install snapd || { error "Failed to install snapd."; return 1; }
             ;;
         arch)
             # snapd is not in the official Arch repos; install it from the AUR.
@@ -71,11 +71,11 @@ uninstall_snap() {
     sudo systemctl disable --now snapd.socket 2>/dev/null || true
     [[ -L /snap ]] && sudo rm -f /snap 2>/dev/null || true
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y snapd 2>/dev/null || true ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y snapd 2>/dev/null || true ;;
-        suse)        sudo zypper remove -y snapd 2>/dev/null || true
+        debian)      pkg_remove snapd 2>/dev/null || true ;;
+        fedora|rhel) pkg_remove snapd 2>/dev/null || true ;;
+        suse)        pkg_remove snapd 2>/dev/null || true
                      sudo zypper removerepo snappy 2>/dev/null || true ;;
-        arch)        sudo pacman -Rs --noconfirm snapd 2>/dev/null || true ;;
+        arch)        pkg_remove snapd 2>/dev/null || true ;;
     esac
 }
 

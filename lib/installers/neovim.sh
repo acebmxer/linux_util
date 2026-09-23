@@ -10,27 +10,27 @@ install_neovim() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y neovim 2>/dev/null || {
+            pkg_install neovim 2>/dev/null || {
                 # Debian/Ubuntu repos sometimes carry very old neovim; fall back to AppImage
                 warn "neovim from apt is too old or unavailable. Installing from GitHub releases..."
                 _install_neovim_appimage
             }
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y neovim
+            pkg_install neovim
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y neovim 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install neovim 2>/dev/null || {
                 warn "neovim not in repos. Installing from GitHub releases..."
                 _install_neovim_appimage
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm neovim
+            pkg_install neovim
             ;;
         suse)
-            sudo zypper install -y neovim 2>/dev/null || {
+            pkg_install neovim 2>/dev/null || {
                 warn "neovim not in repos. Installing from GitHub releases..."
                 _install_neovim_appimage
             }
@@ -60,10 +60,10 @@ uninstall_neovim() {
         sudo rm -f /usr/local/bin/nvim
     fi
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y neovim 2>/dev/null || true ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y neovim 2>/dev/null || true ;;
-        arch)        sudo pacman -Rs --noconfirm neovim 2>/dev/null || true ;;
-        suse)        sudo zypper remove -y neovim 2>/dev/null || true ;;
+        debian)      pkg_remove neovim 2>/dev/null || true ;;
+        fedora|rhel) pkg_remove neovim 2>/dev/null || true ;;
+        arch)        pkg_remove neovim 2>/dev/null || true ;;
+        suse)        pkg_remove neovim 2>/dev/null || true ;;
     esac
     rm -rf "$HOME/.config/nvim" "$HOME/.local/share/nvim"
 }
@@ -75,9 +75,9 @@ update_neovim() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade neovim ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y neovim ;;
-            arch)        sudo pacman -S --noconfirm neovim ;;
-            suse)        sudo zypper update -y neovim ;;
+            fedora|rhel) pkg_upgrade neovim ;;
+            arch)        pkg_upgrade neovim ;;
+            suse)        pkg_upgrade neovim ;;
         esac
     fi
 }

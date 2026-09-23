@@ -49,10 +49,10 @@ install_limine() {
     # in the binary tarball with a Makefile; it only needs a C compiler and make.
     # We use the prebuilt BIOS/EFI stages, so nasm/mtools/xorriso aren't required.
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y gcc make wget 2>/dev/null || true ;;
-        fedora|rhel) sudo "$PKG_MGR" install -y gcc make wget 2>/dev/null || true ;;
-        arch)        sudo pacman -S --noconfirm gcc make 2>/dev/null || true ;;
-        suse)        sudo zypper install -y gcc make wget 2>/dev/null || true ;;
+        debian)      pkg_install gcc make wget 2>/dev/null || true ;;
+        fedora|rhel) pkg_install gcc make wget 2>/dev/null || true ;;
+        arch)        pkg_install gcc make 2>/dev/null || true ;;
+        suse)        pkg_install gcc make wget 2>/dev/null || true ;;
     esac
 
     tmpdir=$(mktemp -d /tmp/limine-XXXXXX)

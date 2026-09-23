@@ -365,12 +365,12 @@ install_winapps() {
     # RemoteApp handling that FreeRDP 2 does not expose.
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y curl dialog git iproute2 libnotify-bin netcat-openbsd || return 1
+            pkg_install curl dialog git iproute2 libnotify-bin netcat-openbsd || return 1
             # freerdp3-x11 only exists on Debian 13+ / Ubuntu 24.04+; older
             # releases ship FreeRDP 2 under the freerdp2-x11 name, which is
             # not usable here.
             if apt-cache show freerdp3-x11 &>/dev/null; then
-                sudo apt install -y freerdp3-x11 || return 1
+                pkg_install freerdp3-x11 || return 1
             else
                 warn "freerdp3-x11 is not in this release's repositories — installing FreeRDP 3 from Flathub instead."
                 _winapps_freerdp_flatpak || {
@@ -380,18 +380,18 @@ install_winapps() {
             fi
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y curl dialog git iproute libnotify nmap-ncat freerdp || return 1
+            pkg_install curl dialog git iproute libnotify nmap-ncat freerdp || return 1
             ;;
         rhel)
             # freerdp and nmap-ncat come from EPEL on RHEL/Rocky/Alma/CentOS.
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y curl dialog git iproute libnotify nmap-ncat freerdp || return 1
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install curl dialog git iproute libnotify nmap-ncat freerdp || return 1
             ;;
         arch)
-            sudo pacman -S --noconfirm --needed curl dialog git iproute2 libnotify openbsd-netcat freerdp || return 1
+            pkg_install --needed curl dialog git iproute2 libnotify openbsd-netcat freerdp || return 1
             ;;
         suse)
-            sudo zypper install -y curl dialog git iproute2 libnotify-tools netcat-openbsd freerdp || return 1
+            pkg_install curl dialog git iproute2 libnotify-tools netcat-openbsd freerdp || return 1
             ;;
         *)
             error "Unsupported distribution for WinApps."

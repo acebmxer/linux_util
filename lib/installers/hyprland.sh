@@ -9,19 +9,19 @@ install_hyprland() {
     info "Installing Hyprland..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y hyprland 2>/dev/null || {
+            pkg_install hyprland 2>/dev/null || {
                 warn "Hyprland not available in apt repos. Ubuntu 24.04+ ships it in universe; older releases require building from source."
                 return 1
             }
             ;;
-        fedora)      sudo "$PKG_MGR" install -y hyprland ;;
+        fedora)      pkg_install hyprland ;;
         rhel)
             warn "Hyprland is not packaged for RHEL-based distros (no EPEL build available)."
             return 1
             ;;
-        arch)        sudo pacman -S --noconfirm hyprland ;;
+        arch)        pkg_install hyprland ;;
         suse)
-            sudo zypper install -y hyprland 2>/dev/null || {
+            pkg_install hyprland 2>/dev/null || {
                 warn "Hyprland is only packaged for openSUSE Tumbleweed."
                 return 1
             }
@@ -33,10 +33,10 @@ install_hyprland() {
 uninstall_hyprland() {
     info "Uninstalling Hyprland..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y hyprland ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y hyprland ;;
-        arch)        sudo pacman -Rs --noconfirm hyprland ;;
-        suse)        sudo zypper remove -y hyprland ;;
+        debian)      pkg_remove hyprland ;;
+        fedora|rhel) pkg_remove hyprland ;;
+        arch)        pkg_remove hyprland ;;
+        suse)        pkg_remove hyprland ;;
     esac
 }
 
@@ -44,9 +44,9 @@ update_hyprland() {
     info "Updating Hyprland..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade hyprland ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y hyprland ;;
-        arch)        sudo pacman -S --noconfirm hyprland ;;
-        suse)        sudo zypper update -y hyprland ;;
+        fedora|rhel) pkg_upgrade hyprland ;;
+        arch)        pkg_upgrade hyprland ;;
+        suse)        pkg_upgrade hyprland ;;
     esac
 }
 

@@ -8,17 +8,17 @@ check_dolphin() { _check_standard dolphin dolphin ""; }
 install_dolphin() {
     info "Installing Dolphin..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y dolphin ;;
-        fedora)      sudo "$PKG_MGR" install -y dolphin ;;
+        debian)      pkg_install dolphin ;;
+        fedora)      pkg_install dolphin ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y dolphin 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install dolphin 2>/dev/null || {
                 warn "dolphin not available in repos for this RHEL-based distro."
                 return 1
             }
             ;;
-        arch)        sudo pacman -S --noconfirm dolphin ;;
-        suse)        sudo zypper install -y dolphin ;;
+        arch)        pkg_install dolphin ;;
+        suse)        pkg_install dolphin ;;
     esac
     info "Dolphin installed."
 }
@@ -26,10 +26,10 @@ install_dolphin() {
 uninstall_dolphin() {
     info "Uninstalling Dolphin..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y dolphin ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y dolphin ;;
-        arch)        sudo pacman -Rs --noconfirm dolphin ;;
-        suse)        sudo zypper remove -y dolphin ;;
+        debian)      pkg_remove dolphin ;;
+        fedora|rhel) pkg_remove dolphin ;;
+        arch)        pkg_remove dolphin ;;
+        suse)        pkg_remove dolphin ;;
     esac
 }
 
@@ -37,9 +37,9 @@ update_dolphin() {
     info "Updating Dolphin..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade dolphin ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y dolphin ;;
-        arch)        sudo pacman -S --noconfirm dolphin ;;
-        suse)        sudo zypper update -y dolphin ;;
+        fedora|rhel) pkg_upgrade dolphin ;;
+        arch)        pkg_upgrade dolphin ;;
+        suse)        pkg_upgrade dolphin ;;
     esac
 }
 

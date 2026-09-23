@@ -15,24 +15,24 @@ install_syncthing() {
                 "/etc/apt/keyrings/syncthing-archive-keyring.gpg" \
                 "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" \
                 "/etc/apt/sources.list.d/syncthing.list"
-            sudo apt install -y syncthing
+            pkg_install syncthing
             ;;
         fedora)
             # Syncthing is included in official Fedora repos by default
-            sudo "$PKG_MGR" install -y syncthing
+            pkg_install syncthing
             ;;
         rhel)
             # Syncthing is in EPEL, not the base RHEL/Alma/Rocky repos
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y syncthing
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install syncthing
             ;;
         arch)
             # Syncthing is available in the community repository
-            sudo pacman -S --noconfirm syncthing
+            pkg_install syncthing
             ;;
         suse)
             # Install from official repository
-            sudo zypper install -y syncthing
+            pkg_install syncthing
             ;;
     esac
 
@@ -114,20 +114,19 @@ uninstall_syncthing() {
 
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y syncthing
-            sudo apt autoclean
+            pkg_remove syncthing
             sudo rm -f /etc/apt/sources.list.d/syncthing.list
             sudo rm -f /etc/apt/keyrings/syncthing-archive-keyring.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y syncthing
+            pkg_remove syncthing
             sudo rm -f /etc/yum.repos.d/syncthing.repo
             ;;
         arch)
-            sudo pacman -Rs --noconfirm syncthing
+            pkg_remove syncthing
             ;;
         suse)
-            sudo zypper remove -y syncthing
+            pkg_remove syncthing
             ;;
     esac
     rm -rf ~/.config/syncthing
@@ -140,16 +139,16 @@ update_syncthing() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade syncthing
+            pkg_upgrade syncthing
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y syncthing
+            pkg_upgrade syncthing
             ;;
         arch)
-            sudo pacman -S --noconfirm syncthing
+            pkg_upgrade syncthing
             ;;
         suse)
-            sudo zypper update -y syncthing
+            pkg_upgrade syncthing
             ;;
     esac
 }

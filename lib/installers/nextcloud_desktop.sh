@@ -13,15 +13,14 @@ install_nextcloud_desktop() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y nextcloud-desktop
+            pkg_install nextcloud-desktop
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y nextcloud-client nextcloud-client-nautilus 2>/dev/null || \
-                sudo "$PKG_MGR" install -y nextcloud-client
+            pkg_install nextcloud-client nextcloud-client-nautilus 2>/dev/null || pkg_install nextcloud-client
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y nextcloud-client 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install nextcloud-client 2>/dev/null || {
                 warn "nextcloud-client not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
                     sudo flatpak install -y flathub com.nextcloud.desktopclient.nextcloud
@@ -32,10 +31,10 @@ install_nextcloud_desktop() {
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm nextcloud-client
+            pkg_install nextcloud-client
             ;;
         suse)
-            sudo zypper install -y nextcloud-client 2>/dev/null || {
+            pkg_install nextcloud-client 2>/dev/null || {
                 if has_flatpak; then
                     sudo flatpak install -y flathub com.nextcloud.desktopclient.nextcloud
                 else
@@ -55,10 +54,10 @@ uninstall_nextcloud_desktop() {
             sudo flatpak uninstall -y --system com.nextcloud.desktopclient.nextcloud
     else
         case "$DISTRO_FAMILY" in
-            debian)  sudo apt purge --autoremove -y nextcloud-desktop ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y nextcloud-client ;;
-            arch)    sudo pacman -Rs --noconfirm nextcloud-client ;;
-            suse)    sudo zypper remove -y nextcloud-client ;;
+            debian)  pkg_remove nextcloud-desktop ;;
+            fedora|rhel) pkg_remove nextcloud-client ;;
+            arch)    pkg_remove nextcloud-client ;;
+            suse)    pkg_remove nextcloud-client ;;
         esac
     fi
     rm -rf "$HOME/.config/Nextcloud"
@@ -73,9 +72,9 @@ update_nextcloud_desktop() {
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt-get install -y --only-upgrade nextcloud-desktop ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y nextcloud-client ;;
-            arch)    sudo pacman -S --noconfirm nextcloud-client ;;
-            suse)    sudo zypper update -y nextcloud-client ;;
+            fedora|rhel) pkg_upgrade nextcloud-client ;;
+            arch)    pkg_upgrade nextcloud-client ;;
+            suse)    pkg_upgrade nextcloud-client ;;
         esac
     fi
 }

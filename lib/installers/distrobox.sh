@@ -11,21 +11,21 @@ install_distrobox() {
     local ok=1
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y distrobox && ok=0
+            pkg_install distrobox && ok=0
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y distrobox && ok=0
+            pkg_install distrobox && ok=0
             ;;
         rhel)
             # distrobox lives in EPEL on RHEL/Rocky/Alma/CentOS
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y distrobox && ok=0
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install distrobox && ok=0
             ;;
         arch)
-            sudo pacman -S --noconfirm distrobox && ok=0
+            pkg_install distrobox && ok=0
             ;;
         suse)
-            sudo zypper install -y distrobox && ok=0
+            pkg_install distrobox && ok=0
             ;;
     esac
 
@@ -51,10 +51,10 @@ install_distrobox() {
 uninstall_distrobox() {
     info "Uninstalling Distrobox..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y distrobox 2>/dev/null || true ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y distrobox 2>/dev/null || true ;;
-        arch)        sudo pacman -Rs --noconfirm distrobox 2>/dev/null || true ;;
-        suse)        sudo zypper remove -y distrobox 2>/dev/null || true ;;
+        debian)      pkg_remove distrobox 2>/dev/null || true ;;
+        fedora|rhel) pkg_remove distrobox 2>/dev/null || true ;;
+        arch)        pkg_remove distrobox 2>/dev/null || true ;;
+        suse)        pkg_remove distrobox 2>/dev/null || true ;;
     esac
     # Remove a rootless (curl-installer) copy if present.
     rm -f "$HOME/.local/bin/distrobox"* 2>/dev/null || true
@@ -69,9 +69,9 @@ update_distrobox() {
     fi
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade distrobox ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y distrobox ;;
-        arch)        sudo pacman -S --noconfirm distrobox ;;
-        suse)        sudo zypper update -y distrobox ;;
+        fedora|rhel) pkg_upgrade distrobox ;;
+        arch)        pkg_upgrade distrobox ;;
+        suse)        pkg_upgrade distrobox ;;
     esac
 }
 

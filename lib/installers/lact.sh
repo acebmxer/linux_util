@@ -66,7 +66,7 @@ install_lact() {
             info "Downloading LACT from: $url"
             wget -qO "$tmpfile" "$url" || { error "Failed to download LACT .deb."; return 1; }
             verify_download "$tmpfile" "deb" "LACT" || return 1
-            sudo apt install -y "$tmpfile" || { error "Failed to install LACT .deb."; return 1; }
+            pkg_install "$tmpfile" || { error "Failed to install LACT .deb."; return 1; }
             ;;
         fedora)
             # LACT is available via a COPR repository
@@ -83,7 +83,7 @@ install_lact() {
                 error "Failed to enable LACT COPR repository. Ensure 'dnf-plugins-core' is installed."
                 return 1
             }
-            sudo "$PKG_MGR" install -y lact || { error "Failed to install LACT."; return 1; }
+            pkg_install lact || { error "Failed to install LACT."; return 1; }
             ;;
         arch)
             repo_or_aur lact
@@ -100,7 +100,7 @@ install_lact() {
                 "https://download.opensuse.org/repositories/hardware/${obs_distro}/" \
                 "hardware" 2>/dev/null || true
             sudo zypper --gpg-auto-import-keys refresh
-            sudo zypper install -y lact || { error "Failed to install LACT."; return 1; }
+            pkg_install lact || { error "Failed to install LACT."; return 1; }
             ;;
         *)
             error "LACT installation is not supported on this distribution."
@@ -127,17 +127,17 @@ uninstall_lact() {
 
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y lact 2>/dev/null || true
+            pkg_remove lact 2>/dev/null || true
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y lact 2>/dev/null || true
+            pkg_remove lact 2>/dev/null || true
             ;;
         arch)
             aur_remove lact 2>/dev/null || \
-                sudo pacman -Rs --noconfirm lact 2>/dev/null || true
+                pkg_remove lact 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y lact 2>/dev/null || true
+            pkg_remove lact 2>/dev/null || true
             ;;
     esac
 
@@ -151,13 +151,13 @@ update_lact() {
             install_lact
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y lact 2>/dev/null || install_lact
+            pkg_upgrade lact 2>/dev/null || install_lact
             ;;
         arch)
             repo_or_aur lact
             ;;
         suse)
-            sudo zypper update -y lact 2>/dev/null || install_lact
+            pkg_upgrade lact 2>/dev/null || install_lact
             ;;
     esac
 }

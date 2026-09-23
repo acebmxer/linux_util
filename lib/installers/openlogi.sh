@@ -123,13 +123,13 @@ uninstall_openlogi() {
 
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y openlogi 2>/dev/null || true
+            pkg_remove openlogi 2>/dev/null || true
             ;;
         fedora|rhel|suse)
-            sudo "$PKG_MGR" remove -y openlogi 2>/dev/null || true
+            pkg_remove openlogi 2>/dev/null || true
             ;;
         arch)
-            sudo pacman -Rs --noconfirm openlogi 2>/dev/null || true
+            pkg_remove openlogi 2>/dev/null || true
             ;;
     esac
 

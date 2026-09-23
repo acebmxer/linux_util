@@ -67,10 +67,10 @@ _homebrew_install_deps() {
         fedora) sudo dnf group install -y development-tools 2>/dev/null || sudo dnf groupinstall -y 'Development Tools'
                 sudo dnf install -y procps-ng curl file git ;;
         rhel)   sudo "$PKG_MGR" groupinstall -y 'Development Tools'
-                sudo "$PKG_MGR" install -y procps-ng curl file git ;;
-        arch)   sudo pacman -S --noconfirm --needed base-devel procps-ng curl file git ;;
-        suse)   sudo zypper install -y -t pattern devel_basis
-                sudo zypper install -y procps curl file git ;;
+                pkg_install procps-ng curl file git ;;
+        arch)   pkg_install --needed base-devel procps-ng curl file git ;;
+        suse)   pkg_install -t pattern devel_basis
+                pkg_install procps curl file git ;;
     esac
 }
 

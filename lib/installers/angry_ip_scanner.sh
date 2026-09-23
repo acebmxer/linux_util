@@ -122,7 +122,7 @@ install_angry_ip_scanner() {
             verify_download "$tmpfile" "deb" "Angry IP Scanner" || return 1
             github_verify_checksum "https://api.github.com/repos/angryip/ipscan/releases/latest" \
                 "$(basename "$url")" "$tmpfile" || return 1
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel)
             local url tmpfile
@@ -137,7 +137,7 @@ install_angry_ip_scanner() {
             verify_download "$tmpfile" "rpm" "Angry IP Scanner" || return 1
             github_verify_checksum "https://api.github.com/repos/angryip/ipscan/releases/latest" \
                 "$(basename "$url")" "$tmpfile" || return 1
-            sudo "$PKG_MGR" install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         arch)
             # Nothing in the Arch repos; the JAR avoids the AUR entirely.
@@ -156,7 +156,7 @@ install_angry_ip_scanner() {
             verify_download "$tmpfile" "rpm" "Angry IP Scanner" || return 1
             github_verify_checksum "https://api.github.com/repos/angryip/ipscan/releases/latest" \
                 "$(basename "$url")" "$tmpfile" || return 1
-            sudo zypper install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
     esac
     info "Angry IP Scanner installed."
@@ -165,8 +165,8 @@ install_angry_ip_scanner() {
 uninstall_angry_ip_scanner() {
     info "Uninstalling Angry IP Scanner..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt purge --autoremove -y ipscan ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y ipscan ;;
+        debian)  pkg_remove ipscan ;;
+        fedora|rhel) pkg_remove ipscan ;;
         # Remove the per-user JAR install, then any older package-based copy.
         # angryipscanner is an older AUR name; aur_remove drops to pacman -Rs
         # when no AUR helper is present.
@@ -175,7 +175,7 @@ uninstall_angry_ip_scanner() {
                  rmdir "$_IPSCAN_DIR" 2>/dev/null || true
                  refresh_desktop_caches
                  aur_remove ipscan 2>/dev/null || aur_remove angryipscanner 2>/dev/null || true ;;
-        suse)    sudo zypper remove -y ipscan 2>/dev/null || true ;;
+        suse)    pkg_remove ipscan 2>/dev/null || true ;;
     esac
     rm -rf "$HOME/.ipscan"
 }

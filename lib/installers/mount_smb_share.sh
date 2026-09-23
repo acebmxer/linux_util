@@ -21,10 +21,10 @@ _msb_ensure_smb_tools() {
     warn "SMB client tools not found. Attempting to install..."
     case "$DISTRO_FAMILY" in
         debian)  sudo apt-get install -y cifs-utils smbclient ;;
-        fedora)  sudo "$PKG_MGR" install -y cifs-utils samba-client ;;
-        rhel)    sudo "$PKG_MGR" install -y cifs-utils samba-client ;;
-        arch)    sudo pacman -S --noconfirm cifs-utils smbclient ;;
-        suse)    sudo zypper install -y cifs-utils samba-client ;;
+        fedora)  pkg_install cifs-utils samba-client ;;
+        rhel)    pkg_install cifs-utils samba-client ;;
+        arch)    pkg_install cifs-utils smbclient ;;
+        suse)    pkg_install cifs-utils samba-client ;;
         *)
             warn "Cannot auto-install SMB tools on this distro. Install cifs-utils and smbclient manually."
             return 1

@@ -108,7 +108,7 @@ _stacer_install_deb_deps() {
                libqt6widgets6t64 libqt6widgets6 libqt6network6t64 libqt6network6 \
                libqt6charts6 libqt6svg6; do
         pkg_check_installed "$dep" && continue
-        sudo apt install -y "$dep" >/dev/null 2>&1 || true
+        pkg_install "$dep" >/dev/null 2>&1 || true
     done
     return 0
 }
@@ -201,7 +201,7 @@ install_stacer() {
             verify_download "$tmpfile" "deb" "Stacer" || return 1
             github_verify_checksum "$_STACER_REPO_API" "$(basename "$url")" "$tmpfile" || return 1
             _stacer_install_deb_deps
-            sudo apt install -y "$tmpfile" || { error "Failed to install Stacer .deb."; return 1; }
+            pkg_install "$tmpfile" || { error "Failed to install Stacer .deb."; return 1; }
             ;;
         fedora|rhel)
             local url tmpfile
@@ -247,12 +247,12 @@ uninstall_stacer() {
         refresh_desktop_caches
     else
         case "$DISTRO_FAMILY" in
-            debian)     sudo apt purge --autoremove -y stacer ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y stacer 2>/dev/null || true ;;
+            debian)     pkg_remove stacer ;;
+            fedora|rhel) pkg_remove stacer 2>/dev/null || true ;;
             # stacer-bin is the old AUR name, tried only so an install
             # predating the AppImage path is still removed.
-            arch)       sudo pacman -Rs --noconfirm stacer-bin 2>/dev/null || sudo pacman -Rs --noconfirm stacer 2>/dev/null || true ;;
-            suse)       sudo zypper remove -y stacer 2>/dev/null || true ;;
+            arch)       pkg_remove stacer-bin 2>/dev/null || sudo pacman -Rs --noconfirm stacer 2>/dev/null || true ;;
+            suse)       pkg_remove stacer 2>/dev/null || true ;;
         esac
     fi
     rm -rf "$HOME/.config/stacer"

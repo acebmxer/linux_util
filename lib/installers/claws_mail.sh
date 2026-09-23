@@ -14,20 +14,20 @@ install_claws_mail() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y claws-mail
+            pkg_install claws-mail
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y claws-mail
+            pkg_install claws-mail
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y claws-mail
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install claws-mail
             ;;
         arch)
             pkg_install claws-mail
             ;;
         suse)
-            sudo zypper install -y claws-mail
+            pkg_install claws-mail
             ;;
     esac
     info "Claws Mail installed."
@@ -37,17 +37,16 @@ uninstall_claws_mail() {
     info "Uninstalling Claws Mail..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y claws-mail
-            sudo apt autoclean
+            pkg_remove claws-mail
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y claws-mail
+            pkg_remove claws-mail
             ;;
         arch)
             pkg_remove claws-mail
             ;;
         suse)
-            sudo zypper remove -y claws-mail
+            pkg_remove claws-mail
             ;;
     esac
     # Claws Mail keeps mail and account config in ~/.claws-mail (not XDG).
@@ -60,7 +59,7 @@ update_claws_mail() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade claws-mail
+            pkg_upgrade claws-mail
             ;;
         arch)
             pkg_install claws-mail

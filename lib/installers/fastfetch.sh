@@ -175,7 +175,7 @@ install_fastfetch() {
     case "$DISTRO_FAMILY" in
         debian)
             # Available in Ubuntu 23.10+ and Debian 13+ natively; use .deb for older versions
-            if sudo apt install -y fastfetch 2>/dev/null; then
+            if pkg_install fastfetch 2>/dev/null; then
                 : # installed from repo
             else
                 info "Installing Fastfetch from GitHub release..."
@@ -192,15 +192,15 @@ install_fastfetch() {
                 verify_download "$tmpfile" "deb" "Fastfetch" || return 1
                 github_verify_checksum "https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest" \
                     "$(basename "$url")" "$tmpfile" || return 1
-                sudo apt install -y "$tmpfile"
+                pkg_install "$tmpfile"
             fi
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y fastfetch
+            pkg_install fastfetch
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y fastfetch 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install fastfetch 2>/dev/null || {
                 info "Installing Fastfetch from GitHub release..."
                 local url
                 url=$(_fastfetch_latest_url "rpm")
@@ -212,14 +212,14 @@ install_fastfetch() {
                 verify_download "$tmpfile" "rpm" "Fastfetch" || return 1
                 github_verify_checksum "https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest" \
                     "$(basename "$url")" "$tmpfile" || return 1
-                sudo "$PKG_MGR" install -y "$tmpfile"
+                pkg_install "$tmpfile"
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm fastfetch
+            pkg_install fastfetch
             ;;
         suse)
-            sudo zypper install -y fastfetch 2>/dev/null || {
+            pkg_install fastfetch 2>/dev/null || {
                 info "Installing Fastfetch from GitHub release..."
                 local url
                 url=$(_fastfetch_latest_url "rpm")
@@ -231,7 +231,7 @@ install_fastfetch() {
                 verify_download "$tmpfile" "rpm" "Fastfetch" || return 1
                 github_verify_checksum "https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest" \
                     "$(basename "$url")" "$tmpfile" || return 1
-                sudo zypper install -y "$tmpfile"
+                pkg_install "$tmpfile"
             }
             ;;
     esac
@@ -242,10 +242,10 @@ install_fastfetch() {
 uninstall_fastfetch() {
     info "Uninstalling Fastfetch..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt purge --autoremove -y fastfetch 2>/dev/null || sudo dpkg -r fastfetch 2>/dev/null || true ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y fastfetch ;;
-        arch)    sudo pacman -Rs --noconfirm fastfetch ;;
-        suse)    sudo zypper remove -y fastfetch ;;
+        debian)  pkg_remove fastfetch 2>/dev/null || sudo dpkg -r fastfetch 2>/dev/null || true ;;
+        fedora|rhel) pkg_remove fastfetch ;;
+        arch)    pkg_remove fastfetch ;;
+        suse)    pkg_remove fastfetch ;;
     esac
     _fastfetch_deconfigure_shells
     rm -rf "$HOME/.config/fastfetch"
@@ -257,9 +257,9 @@ update_fastfetch() {
         debian)
             sudo apt-get install -y --only-upgrade fastfetch 2>/dev/null || install_fastfetch
             ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y fastfetch 2>/dev/null || install_fastfetch ;;
-        arch)    sudo pacman -S --noconfirm fastfetch ;;
-        suse)    sudo zypper update -y fastfetch 2>/dev/null || install_fastfetch ;;
+        fedora|rhel) pkg_upgrade fastfetch 2>/dev/null || install_fastfetch ;;
+        arch)    pkg_upgrade fastfetch ;;
+        suse)    pkg_upgrade fastfetch 2>/dev/null || install_fastfetch ;;
     esac
     _fastfetch_configure_shells
 }

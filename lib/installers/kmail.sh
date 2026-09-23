@@ -12,16 +12,16 @@ install_kmail() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y kmail
+            pkg_install kmail
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y kmail
+            pkg_install kmail
             ;;
         arch)
             pkg_install kmail
             ;;
         suse)
-            sudo zypper install -y kmail
+            pkg_install kmail
             ;;
     esac
 }
@@ -30,17 +30,16 @@ uninstall_kmail() {
     info "Uninstalling KMail..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y kmail
-            sudo apt autoclean
+            pkg_remove kmail
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y kmail
+            pkg_remove kmail
             ;;
         arch)
             pkg_remove kmail
             ;;
         suse)
-            sudo zypper remove -y kmail
+            pkg_remove kmail
             ;;
     esac
     rm -rf ~/.local/share/kmail2
@@ -53,7 +52,7 @@ update_kmail() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade kmail
+            pkg_upgrade kmail
             ;;
         arch)
             pkg_install kmail

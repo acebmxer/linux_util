@@ -3,7 +3,7 @@
 
 install_fail2ban() {
     info "Installing fail2ban..."
-    sudo apt install -y fail2ban
+    pkg_install fail2ban
     sudo systemctl enable --now fail2ban
     info "fail2ban installed and enabled."
 }
@@ -15,7 +15,7 @@ check_fail2ban() {
 uninstall_fail2ban() {
     info "Removing fail2ban..."
     sudo systemctl disable --now fail2ban 2>/dev/null || true
-    sudo apt purge --autoremove -y fail2ban
+    pkg_remove fail2ban
 }
 
 update_fail2ban() {

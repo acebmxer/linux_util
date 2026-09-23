@@ -18,7 +18,7 @@ install_deja_dup() {
             pkg_install deja-dup || return 1
             ;;
         suse)
-            sudo zypper install -y deja-dup || return 1
+            pkg_install deja-dup || return 1
             ;;
         rhel)
             warn "Déjà Dup is not available for RHEL-based systems."
@@ -42,10 +42,10 @@ uninstall_deja_dup() {
             sudo dnf remove -y deja-dup || true
             ;;
         arch)
-            sudo pacman -Rs --noconfirm deja-dup 2>/dev/null || true
+            pkg_remove deja-dup 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y deja-dup || true
+            pkg_remove deja-dup || true
             ;;
     esac
 }
@@ -63,7 +63,7 @@ update_deja_dup() {
             pkg_upgrade deja-dup
             ;;
         suse)
-            sudo zypper update -y deja-dup || true
+            pkg_upgrade deja-dup || true
             ;;
     esac
 }

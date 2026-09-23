@@ -238,10 +238,10 @@ install_zsh_setup() {
     # 1. Install Zsh
     if ! command -v zsh &>/dev/null; then
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt install -y zsh ;;
-            fedora|rhel) sudo "$PKG_MGR" install -y zsh ;;
-            arch)        sudo pacman -S --noconfirm zsh ;;
-            suse)        sudo zypper install -y zsh ;;
+            debian)      pkg_install zsh ;;
+            fedora|rhel) pkg_install zsh ;;
+            arch)        pkg_install zsh ;;
+            suse)        pkg_install zsh ;;
         esac
     fi
 
@@ -316,10 +316,10 @@ uninstall_zsh_setup() {
     fi
 
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y zsh 2>/dev/null || true ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y zsh 2>/dev/null || true ;;
-        arch)        sudo pacman -Rs --noconfirm zsh 2>/dev/null || true ;;
-        suse)        sudo zypper remove -y zsh 2>/dev/null || true ;;
+        debian)      pkg_remove zsh 2>/dev/null || true ;;
+        fedora|rhel) pkg_remove zsh 2>/dev/null || true ;;
+        arch)        pkg_remove zsh 2>/dev/null || true ;;
+        suse)        pkg_remove zsh 2>/dev/null || true ;;
     esac
 
     info "Zsh setup removed. Default shell set to bash (takes effect after you log out and back in)."

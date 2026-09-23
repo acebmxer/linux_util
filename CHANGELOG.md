@@ -37,6 +37,28 @@ when a release is cut.
 
 ### Fixed
 
+- **Package installs on Fedora/RHEL could show garbled, repeated terminal
+  output** — the same "Running %post scriptlet: ..." banner and progress line
+  printed over and over during a single package's post-install scriptlets,
+  worst on packages that trip other packages' systemd file-triggers (e.g.
+  installing OpenSSH Server retriggers `systemd`'s and `filesystem`'s own
+  triggers). Confirmed with a vanilla `dnf5 install` outside this project
+  entirely: dnf5's own progress renderer only misbehaves this way when its
+  stdout/stderr are connected directly to a real terminal; redirected to a
+  file (even within the same interactive session) it prints each scriptlet
+  banner exactly once. Nearly every installer ran the package manager
+  directly, connecting it live to the terminal. Converted the ~160 installers
+  that called `apt`/`dnf`/`yum`/`pacman`/`zypper` directly to the existing
+  `pkg_install`/`pkg_remove`/`pkg_upgrade` helpers instead, which already run
+  the package manager through `run_with_spinner` (output fully captured,
+  spinner shown, raw output dumped only on failure) — matching how a minority
+  of installers (e.g. Firefox, Flatpak) already worked. A remaining handful of
+  calls were left untouched because they need individual judgement rather
+  than a mechanical swap: bare `apt update` refreshes (apt isn't known to have
+  this bug), calls whose output is parsed via command substitution, and a few
+  distro-specific commands (`zypper removerepo`, `pacman -Syu`) the helpers
+  don't cover.
+
 - **Declining or Ctrl+C-ing dnf/dnf5's own "Is this ok [y/N]:" prompt during
   System Updates was treated as a failure and auto-retried up to
   `retry_attempts` times.** `pkg_full_upgrade()`'s interactive (`direct`) mode

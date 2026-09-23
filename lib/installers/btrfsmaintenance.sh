@@ -14,13 +14,13 @@ install_btrfsmaintenance() {
             pkg_install btrfsmaintenance || return 1
             ;;
         debian)
-            sudo apt install -y btrfsmaintenance || return 1
+            pkg_install btrfsmaintenance || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y btrfsmaintenance || return 1
+            pkg_install btrfsmaintenance || return 1
             ;;
         suse)
-            sudo zypper install -y btrfsmaintenance || return 1
+            pkg_install btrfsmaintenance || return 1
             ;;
         *)
             warn "btrfsmaintenance is not available for ${DISTRO_NAME}."
@@ -36,17 +36,16 @@ uninstall_btrfsmaintenance() {
     echo "Uninstalling btrfsmaintenance..."
     case "$DISTRO_FAMILY" in
         arch)
-            sudo pacman -Rs --noconfirm btrfsmaintenance 2>/dev/null || true
+            pkg_remove btrfsmaintenance 2>/dev/null || true
             ;;
         debian)
-            sudo apt purge --autoremove -y btrfsmaintenance
-            sudo apt autoclean
+            pkg_remove btrfsmaintenance
             ;;
         fedora)
-            sudo "$PKG_MGR" remove -y btrfsmaintenance
+            pkg_remove btrfsmaintenance
             ;;
         suse)
-            sudo zypper remove -y btrfsmaintenance || true
+            pkg_remove btrfsmaintenance || true
             ;;
     esac
 }
@@ -64,7 +63,7 @@ update_btrfsmaintenance() {
             pkg_upgrade btrfsmaintenance
             ;;
         suse)
-            sudo zypper update -y btrfsmaintenance || true
+            pkg_upgrade btrfsmaintenance || true
             ;;
     esac
 }

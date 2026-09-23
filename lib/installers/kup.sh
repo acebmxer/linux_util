@@ -19,7 +19,7 @@ install_kup() {
             ;;
         fedora)
             # Not in the official repos — enable the community Copr first
-            sudo "$PKG_MGR" install -y 'dnf-command(copr)' 2>/dev/null || true
+            pkg_install 'dnf-command(copr)' 2>/dev/null || true
             sudo dnf copr enable -y "$KUP_FEDORA_COPR" || {
                 error "Failed to enable the $KUP_FEDORA_COPR Copr."
                 return 1
@@ -36,7 +36,7 @@ install_kup() {
                 warn "Could not install 'bup' — incremental backups will be unavailable (synchronized folder mode still works)."
             ;;
         suse)
-            sudo zypper install -y kup || return 1
+            pkg_install kup || return 1
             ;;
         rhel)
             warn "Kup is not available for RHEL-based systems."
@@ -62,10 +62,10 @@ uninstall_kup() {
             sudo dnf copr disable -y "$KUP_FEDORA_COPR" 2>/dev/null || true
             ;;
         arch)
-            sudo pacman -Rs --noconfirm kup 2>/dev/null || true
+            pkg_remove kup 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y kup 2>/dev/null || true
+            pkg_remove kup 2>/dev/null || true
             ;;
     esac
 }
@@ -83,7 +83,7 @@ update_kup() {
             pkg_upgrade kup
             ;;
         suse)
-            sudo zypper update -y kup || true
+            pkg_upgrade kup || true
             ;;
     esac
 }

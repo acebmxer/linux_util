@@ -10,10 +10,10 @@ install_kdenlive() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y kdenlive
+            pkg_install kdenlive
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y kdenlive
+            pkg_install kdenlive
             ;;
         rhel)
             if has_flatpak; then
@@ -24,10 +24,10 @@ install_kdenlive() {
             fi
             ;;
         arch)
-            sudo pacman -S --noconfirm kdenlive
+            pkg_install kdenlive
             ;;
         suse)
-            sudo zypper install -y kdenlive 2>/dev/null || {
+            pkg_install kdenlive 2>/dev/null || {
                 if has_flatpak; then
                     sudo flatpak install -y flathub org.kde.kdenlive
                 else
@@ -47,10 +47,10 @@ uninstall_kdenlive() {
             sudo flatpak uninstall -y --system org.kde.kdenlive
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y kdenlive ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y kdenlive ;;
-            arch)        sudo pacman -Rs --noconfirm kdenlive ;;
-            suse)        sudo zypper remove -y kdenlive ;;
+            debian)      pkg_remove kdenlive ;;
+            fedora|rhel) pkg_remove kdenlive ;;
+            arch)        pkg_remove kdenlive ;;
+            suse)        pkg_remove kdenlive ;;
         esac
     fi
     rm -rf "$HOME/.config/kdenliverc" "$HOME/.local/share/kdenlive"
@@ -64,9 +64,9 @@ update_kdenlive() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade kdenlive ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y kdenlive ;;
-            arch)        sudo pacman -S --noconfirm kdenlive ;;
-            suse)        sudo zypper update -y kdenlive ;;
+            fedora|rhel) pkg_upgrade kdenlive ;;
+            arch)        pkg_upgrade kdenlive ;;
+            suse)        pkg_upgrade kdenlive ;;
         esac
     fi
 }

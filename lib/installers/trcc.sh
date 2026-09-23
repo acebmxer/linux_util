@@ -108,7 +108,7 @@ _trcc_install_first_available() {
     local pkg
     for pkg in "$@"; do
         pkg_check_installed "$pkg" && return 0
-        if sudo "$PKG_MGR" install -y "$pkg" &>/dev/null; then
+        if pkg_install "$pkg" &>/dev/null; then
             verbose "TRCC: installed optional dependency ${pkg}"
             return 0
         fi

@@ -14,10 +14,10 @@ install_btrbk() {
             pkg_install btrbk || return 1
             ;;
         debian)
-            sudo apt install -y btrbk || return 1
+            pkg_install btrbk || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y btrbk || return 1
+            pkg_install btrbk || return 1
             ;;
         *)
             warn "btrbk is not available for ${DISTRO_NAME}."
@@ -34,14 +34,13 @@ uninstall_btrbk() {
     echo "Uninstalling btrbk..."
     case "$DISTRO_FAMILY" in
         arch)
-            sudo pacman -Rs --noconfirm btrbk 2>/dev/null || true
+            pkg_remove btrbk 2>/dev/null || true
             ;;
         debian)
-            sudo apt purge --autoremove -y btrbk
-            sudo apt autoclean
+            pkg_remove btrbk
             ;;
         fedora)
-            sudo "$PKG_MGR" remove -y btrbk
+            pkg_remove btrbk
             ;;
     esac
 }

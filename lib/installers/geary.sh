@@ -16,20 +16,20 @@ install_geary() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y geary
+            pkg_install geary
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y geary
+            pkg_install geary
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y geary
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install geary
             ;;
         arch)
             pkg_install geary
             ;;
         suse)
-            sudo zypper install -y geary
+            pkg_install geary
             ;;
     esac
     info "Geary installed."
@@ -39,17 +39,16 @@ uninstall_geary() {
     info "Uninstalling Geary..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y geary
-            sudo apt autoclean
+            pkg_remove geary
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y geary
+            pkg_remove geary
             ;;
         arch)
             pkg_remove geary
             ;;
         suse)
-            sudo zypper remove -y geary
+            pkg_remove geary
             ;;
     esac
     rm -rf "$HOME/.config/geary"
@@ -62,7 +61,7 @@ update_geary() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade geary
+            pkg_upgrade geary
             ;;
         arch)
             pkg_install geary

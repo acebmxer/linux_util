@@ -54,7 +54,7 @@ _localsend_install_deb() {
     github_verify_checksum \
         "https://api.github.com/repos/localsend/localsend/releases/tags/${tag}" \
         "$(basename "$url")" "$tmpfile" || return 1
-    sudo apt install -y "$tmpfile"
+    pkg_install "$tmpfile"
 }
 
 # Which firewall is active, if any: echoes "ufw", "firewalld", or nothing.
@@ -183,12 +183,11 @@ uninstall_localsend() {
 
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y localsend 2>/dev/null || true
-            sudo apt autoclean
+            pkg_remove localsend 2>/dev/null || true
             ;;
         arch)
             aur_remove localsend-bin 2>/dev/null || \
-                sudo pacman -Rs --noconfirm localsend-bin 2>/dev/null || true
+                pkg_remove localsend-bin 2>/dev/null || true
             ;;
     esac
 

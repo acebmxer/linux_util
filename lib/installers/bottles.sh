@@ -34,7 +34,7 @@ uninstall_bottles() {
         case "$DISTRO_FAMILY" in
             arch)
                 aur_remove bottles 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm bottles 2>/dev/null || true
+                    pkg_remove bottles 2>/dev/null || true
                 ;;
         esac
     fi

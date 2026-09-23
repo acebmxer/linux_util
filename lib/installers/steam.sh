@@ -123,7 +123,7 @@ _steam_arch_settle_vulkan() {
         pkg="vulkan-swrast"
         [[ "$virt" == lib32-* ]] && pkg="lib32-vulkan-swrast"
         echo "Installing ${pkg} to satisfy ${virt} (software rendering, no GPU required)..."
-        if ! sudo pacman -S --noconfirm --needed "$pkg"; then
+        if ! pkg_install --needed "$pkg"; then
             echo "Error: Failed to install ${pkg}, which Steam requires."
             return 1
         fi
@@ -132,8 +132,7 @@ _steam_arch_settle_vulkan() {
     # The loaders are what actually dispatch to whichever ICD is present.
     for pkg in vulkan-icd-loader lib32-vulkan-icd-loader; do
         pkg_check_installed "$pkg" && continue
-        sudo pacman -S --noconfirm --needed "$pkg" || \
-            warn "Could not install ${pkg}; Vulkan may not work until it is present."
+        pkg_install --needed "$pkg" || warn "Could not install ${pkg}; Vulkan may not work until it is present."
     done
     return 0
 }
@@ -171,8 +170,7 @@ _steam_arch_add_gpu_driver() {
     for pkg in "${drivers[@]}"; do
         pkg_check_installed "$pkg" && continue
         # Individually, so one unavailable name cannot cost the other.
-        sudo pacman -S --noconfirm --needed "$pkg" || \
-            warn "Could not install ${pkg}; Steam will fall back to software rendering."
+        pkg_install --needed "$pkg" || warn "Could not install ${pkg}; Steam will fall back to software rendering."
     done
     return 0
 }
@@ -203,7 +201,7 @@ install_steam() {
                 sudo add-apt-repository multiverse -y
                 sudo apt update
                 echo "Installing Steam..."
-                if ! sudo apt install -y steam; then
+                if ! pkg_install steam; then
                     echo "Error: Steam installation failed."
                     return 1
                 fi
@@ -222,7 +220,7 @@ install_steam() {
 
                 # Install Steam - prompts will be shown for user to accept/decline
                 echo "Installing Steam (follow any on-screen prompts)..."
-                sudo apt install -y "$steam_deb"
+                pkg_install "$steam_deb"
                 local install_result=$?
                 rm -f "$steam_deb"
 
@@ -244,14 +242,14 @@ install_steam() {
                 sudo "$PKG_MGR" makecache
             fi
             echo "Installing Steam from RPM Fusion..."
-            if ! sudo "$PKG_MGR" install -y steam; then
+            if ! pkg_install steam; then
                 echo "Error: Failed to install Steam."
                 return 1
             fi
             
             # Install graphics libraries for better compatibility
             echo "Installing graphics libraries (Vulkan, Mesa)..."
-            sudo "$PKG_MGR" install -y mesa-vulkan-drivers vulkan-loader 2>/dev/null || true
+            pkg_install mesa-vulkan-drivers vulkan-loader 2>/dev/null || true
             ;;
         rhel)
             echo "Steam is not officially available for RHEL-based distributions."
@@ -273,7 +271,7 @@ install_steam() {
             _steam_arch_settle_vulkan || return 1
 
             echo "Installing Steam..."
-            if ! sudo pacman -S --noconfirm steam; then
+            if ! pkg_install steam; then
                 echo "Error: Failed to install Steam."
                 return 1
             fi
@@ -283,15 +281,14 @@ install_steam() {
             ;;
         suse)
             echo "Installing Steam..."
-            if ! sudo zypper install -y steam; then
+            if ! pkg_install steam; then
                 echo "Error: Failed to install Steam."
                 return 1
             fi
             
             # Install graphics libraries for better compatibility
             echo "Installing graphics libraries (Vulkan, Mesa)..."
-            sudo zypper install -y libvulkan1 libvulkan1-32bit \
-                Mesa-libGL1 Mesa-libGL1-32bit 2>/dev/null || true
+            pkg_install libvulkan1 libvulkan1-32bit Mesa-libGL1 Mesa-libGL1-32bit 2>/dev/null || true
             ;;
     esac
 }
@@ -303,8 +300,7 @@ uninstall_steam() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y steam steam-installer steam-launcher
-                sudo apt autoclean
+                pkg_remove steam steam-installer steam-launcher
                 ;;
             *)      pkg_remove steam 2>/dev/null || true ;;
         esac
@@ -321,7 +317,7 @@ update_steam() {
         case "$DISTRO_FAMILY" in
             debian)
                 sudo apt update
-                sudo apt install -y --only-upgrade steam
+                pkg_upgrade steam
                 ;;
             *)
                 pkg_upgrade steam

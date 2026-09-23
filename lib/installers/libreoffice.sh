@@ -72,13 +72,13 @@ install_libreoffice() {
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" check-update >/dev/null 2>&1 || true
-            sudo "$PKG_MGR" install -y libreoffice
+            pkg_install libreoffice
             ;;
         arch)
-            sudo pacman -S --noconfirm libreoffice-fresh
+            pkg_install libreoffice-fresh
             ;;
         suse)
-            sudo zypper install -y libreoffice
+            pkg_install libreoffice
             ;;
         *)
             if has_flatpak; then
@@ -94,19 +94,17 @@ uninstall_libreoffice() {
     echo "Uninstalling LibreOffice..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y 'libreoffice*'
-            sudo apt autoclean
+            pkg_remove 'libreoffice*'
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y 'libreoffice*'
+            pkg_remove 'libreoffice*'
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm libreoffice-fresh 2>/dev/null || \
-                sudo pacman -Rs --noconfirm libreoffice-still 2>/dev/null || true
+            pkg_remove libreoffice-fresh 2>/dev/null || pkg_remove libreoffice-still 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y libreoffice
+            pkg_remove libreoffice
             ;;
         *)
             if flatpak_is_installed libreoffice; then
@@ -128,16 +126,16 @@ update_libreoffice() {
         fedora|rhel)
             # Check if libreoffice is installed, if not install it instead of upgrading
             if pkg_check_installed libreoffice; then
-                sudo "$PKG_MGR" upgrade -y libreoffice
+                pkg_upgrade libreoffice
             else
                 install_libreoffice
             fi
             ;;
         arch)
-            sudo pacman -S --noconfirm libreoffice-fresh
+            pkg_upgrade libreoffice-fresh
             ;;
         suse)
-            sudo zypper update -y libreoffice
+            pkg_upgrade libreoffice
             ;;
         *)
             if flatpak_is_installed libreoffice; then

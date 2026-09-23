@@ -23,10 +23,10 @@ install_systemd_boot() {
     if ! command -v bootctl &>/dev/null; then
         # bootctl ships with systemd; install systemd if missing
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt install -y systemd ;;
-            fedora|rhel) sudo "$PKG_MGR" install -y systemd ;;
-            arch)        sudo pacman -S --noconfirm systemd ;;
-            suse)        sudo zypper install -y systemd ;;
+            debian)      pkg_install systemd ;;
+            fedora|rhel) pkg_install systemd ;;
+            arch)        pkg_install systemd ;;
+            suse)        pkg_install systemd ;;
         esac
     fi
 

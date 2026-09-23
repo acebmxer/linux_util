@@ -29,16 +29,16 @@ install_firefox() {
             if dpkg -l firefox 2>/dev/null | grep -q "^ii.*1snap1"; then
                 sudo apt purge -y firefox 2>/dev/null || true
             fi
-            sudo apt install -y firefox
+            pkg_install firefox
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y firefox
+            pkg_install firefox
             ;;
         arch)
             pkg_install firefox
             ;;
         suse)
-            sudo zypper install -y MozillaFirefox
+            pkg_install MozillaFirefox
             ;;
     esac
 }
@@ -47,8 +47,7 @@ uninstall_firefox() {
     info "Uninstalling Mozilla Firefox..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y firefox 2>/dev/null || true
-            sudo apt autoclean
+            pkg_remove firefox 2>/dev/null || true
             sudo rm -f /etc/apt/sources.list.d/mozilla.list
             sudo rm -f /usr/share/keyrings/mozilla-firefox-keyring.gpg
             sudo rm -f /etc/apt/preferences.d/mozilla
@@ -58,13 +57,13 @@ uninstall_firefox() {
             fi
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y firefox
+            pkg_remove firefox
             ;;
         arch)
             pkg_remove firefox
             ;;
         suse)
-            sudo zypper remove -y MozillaFirefox
+            pkg_remove MozillaFirefox
             ;;
     esac
     rm -rf ~/.mozilla/firefox
@@ -75,7 +74,7 @@ update_firefox() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade firefox
+            pkg_upgrade firefox
             ;;
         arch)
             pkg_install firefox

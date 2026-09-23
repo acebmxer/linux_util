@@ -22,21 +22,17 @@ uninstall_budgie() {
     echo "Uninstalling Budgie Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y ubuntu-budgie-desktop budgie-desktop \
-                budgie-core budgie-indicator-applet lightdm
-            sudo apt autoclean
+            pkg_remove ubuntu-budgie-desktop budgie-desktop budgie-core budgie-indicator-applet lightdm
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y budgie-desktop budgie-session \
-                budgie-backgrounds budgie-desktop-libs
+            pkg_remove budgie-desktop budgie-session budgie-backgrounds budgie-desktop-libs
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm budgie-desktop budgie-desktop-services \
-                budgie-desktop-view 2>/dev/null || true
+            pkg_remove budgie-desktop budgie-desktop-services budgie-desktop-view 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y budgie-desktop budgie-session
+            pkg_remove budgie-desktop budgie-session
             ;;
     esac
     rm -rf ~/.config/budgie-* ~/.local/share/budgie-* 2>/dev/null || true
@@ -48,18 +44,17 @@ update_budgie() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade budgie-desktop ubuntu-budgie-desktop 2>/dev/null || \
-                sudo apt install -y --only-upgrade budgie-desktop
+            pkg_upgrade budgie-desktop ubuntu-budgie-desktop 2>/dev/null || pkg_upgrade budgie-desktop
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" upgrade -y budgie-desktop budgie-session budgie-desktop-libs
+            pkg_upgrade budgie-desktop budgie-session budgie-desktop-libs
             ;;
         arch)
             sudo pacman -Syu --noconfirm budgie-desktop budgie-desktop-services \
                 budgie-desktop-view
             ;;
         suse)
-            sudo zypper update -y budgie-desktop
+            pkg_upgrade budgie-desktop
             ;;
     esac
 }

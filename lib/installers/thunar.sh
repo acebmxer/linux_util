@@ -14,18 +14,17 @@ check_thunar() {
 install_thunar() {
     info "Installing Thunar..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y thunar ;;
-        fedora)      sudo "$PKG_MGR" install -y Thunar ;;
+        debian)      pkg_install thunar ;;
+        fedora)      pkg_install Thunar ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y Thunar 2>/dev/null || \
-                sudo "$PKG_MGR" install -y thunar 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install Thunar 2>/dev/null || pkg_install thunar 2>/dev/null || {
                 warn "thunar not available in repos for this RHEL-based distro."
                 return 1
             }
             ;;
-        arch)        sudo pacman -S --noconfirm thunar ;;
-        suse)        sudo zypper install -y thunar ;;
+        arch)        pkg_install thunar ;;
+        suse)        pkg_install thunar ;;
     esac
     info "Thunar installed."
 }
@@ -33,10 +32,10 @@ install_thunar() {
 uninstall_thunar() {
     info "Uninstalling Thunar..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y thunar ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y Thunar 2>/dev/null || sudo "$PKG_MGR" remove -y thunar ;;
-        arch)        sudo pacman -Rs --noconfirm thunar ;;
-        suse)        sudo zypper remove -y thunar ;;
+        debian)      pkg_remove thunar ;;
+        fedora|rhel) pkg_remove Thunar 2>/dev/null || sudo "$PKG_MGR" remove -y thunar ;;
+        arch)        pkg_remove thunar ;;
+        suse)        pkg_remove thunar ;;
     esac
 }
 
@@ -44,9 +43,9 @@ update_thunar() {
     info "Updating Thunar..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade thunar ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y Thunar 2>/dev/null || sudo "$PKG_MGR" upgrade -y thunar ;;
-        arch)        sudo pacman -S --noconfirm thunar ;;
-        suse)        sudo zypper update -y thunar ;;
+        fedora|rhel) pkg_upgrade Thunar 2>/dev/null || sudo "$PKG_MGR" upgrade -y thunar ;;
+        arch)        pkg_upgrade thunar ;;
+        suse)        pkg_upgrade thunar ;;
     esac
 }
 

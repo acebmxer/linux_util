@@ -280,18 +280,18 @@ uninstall_pay_respects() {
 
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y pay-respects 2>/dev/null || true
+            pkg_remove pay-respects 2>/dev/null || true
             ;;
         fedora|rhel|suse)
-            sudo "$PKG_MGR" remove -y pay-respects 2>/dev/null || true
+            pkg_remove pay-respects 2>/dev/null || true
             ;;
         arch)
             # Package first (an AUR or repo install predating the tarball
             # path), then the files this installer lays down itself.
             if pkg_check_installed pay-respects-bin; then
-                sudo pacman -Rs --noconfirm pay-respects-bin 2>/dev/null || true
+                pkg_remove pay-respects-bin 2>/dev/null || true
             elif pkg_check_installed pay-respects; then
-                sudo pacman -Rs --noconfirm pay-respects 2>/dev/null || true
+                pkg_remove pay-respects 2>/dev/null || true
             fi
             _payr_remove_tarball
             ;;

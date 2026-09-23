@@ -19,7 +19,7 @@ install_onlyoffice() {
             echo "deb [signed-by=/usr/share/keyrings/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main" | \
                 sudo tee /etc/apt/sources.list.d/onlyoffice.list > /dev/null
             sudo apt update
-            sudo apt install -y onlyoffice-desktopeditors
+            pkg_install onlyoffice-desktopeditors
             ;;
         fedora|rhel)
             if has_flatpak; then
@@ -55,8 +55,7 @@ uninstall_onlyoffice() {
     info "Uninstalling OnlyOffice Desktop Editors..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y onlyoffice-desktopeditors
-            sudo apt autoclean
+            pkg_remove onlyoffice-desktopeditors
             sudo rm -f /etc/apt/sources.list.d/onlyoffice.list
             sudo rm -f /usr/share/keyrings/onlyoffice.gpg
             ;;
@@ -65,7 +64,7 @@ uninstall_onlyoffice() {
                 flatpak uninstall -y --user org.onlyoffice.desktopeditors 2>/dev/null || \
                     sudo flatpak uninstall -y --system org.onlyoffice.desktopeditors
             else
-                sudo "$PKG_MGR" remove -y onlyoffice-desktopeditors 2>/dev/null || true
+                pkg_remove onlyoffice-desktopeditors 2>/dev/null || true
             fi
             ;;
         arch)
@@ -81,7 +80,7 @@ uninstall_onlyoffice() {
                 flatpak uninstall -y --user org.onlyoffice.desktopeditors 2>/dev/null || \
                     sudo flatpak uninstall -y --system org.onlyoffice.desktopeditors
             else
-                sudo zypper remove -y onlyoffice-desktopeditors 2>/dev/null || true
+                pkg_remove onlyoffice-desktopeditors 2>/dev/null || true
             fi
             ;;
         *)
@@ -101,7 +100,7 @@ update_onlyoffice() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade onlyoffice-desktopeditors
+            pkg_upgrade onlyoffice-desktopeditors
             ;;
         arch)
             if flatpak_is_installed "org.onlyoffice.desktopeditors"; then

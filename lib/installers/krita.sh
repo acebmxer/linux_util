@@ -10,10 +10,10 @@ install_krita() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y krita
+            pkg_install krita
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y krita
+            pkg_install krita
             ;;
         rhel)
             if has_flatpak; then
@@ -24,10 +24,10 @@ install_krita() {
             fi
             ;;
         arch)
-            sudo pacman -S --noconfirm krita
+            pkg_install krita
             ;;
         suse)
-            sudo zypper install -y krita
+            pkg_install krita
             ;;
     esac
     info "Krita installed."
@@ -40,10 +40,10 @@ uninstall_krita() {
             sudo flatpak uninstall -y --system org.kde.krita
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y krita ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y krita ;;
-            arch)        sudo pacman -Rs --noconfirm krita ;;
-            suse)        sudo zypper remove -y krita ;;
+            debian)      pkg_remove krita ;;
+            fedora|rhel) pkg_remove krita ;;
+            arch)        pkg_remove krita ;;
+            suse)        pkg_remove krita ;;
         esac
     fi
     rm -rf "$HOME/.config/kritarc" "$HOME/.local/share/krita"
@@ -57,9 +57,9 @@ update_krita() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade krita ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y krita ;;
-            arch)        sudo pacman -S --noconfirm krita ;;
-            suse)        sudo zypper update -y krita ;;
+            fedora|rhel) pkg_upgrade krita ;;
+            arch)        pkg_upgrade krita ;;
+            suse)        pkg_upgrade krita ;;
         esac
     fi
 }

@@ -10,14 +10,14 @@ install_inkscape() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y inkscape
+            pkg_install inkscape
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y inkscape
+            pkg_install inkscape
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y inkscape 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install inkscape 2>/dev/null || {
                 warn "inkscape not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
                     sudo flatpak install -y flathub org.inkscape.Inkscape
@@ -28,10 +28,10 @@ install_inkscape() {
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm inkscape
+            pkg_install inkscape
             ;;
         suse)
-            sudo zypper install -y inkscape
+            pkg_install inkscape
             ;;
     esac
     info "Inkscape installed."
@@ -44,10 +44,10 @@ uninstall_inkscape() {
             sudo flatpak uninstall -y --system org.inkscape.Inkscape
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y inkscape ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y inkscape ;;
-            arch)        sudo pacman -Rs --noconfirm inkscape ;;
-            suse)        sudo zypper remove -y inkscape ;;
+            debian)      pkg_remove inkscape ;;
+            fedora|rhel) pkg_remove inkscape ;;
+            arch)        pkg_remove inkscape ;;
+            suse)        pkg_remove inkscape ;;
         esac
     fi
     rm -rf "$HOME/.config/inkscape"
@@ -61,9 +61,9 @@ update_inkscape() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade inkscape ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y inkscape ;;
-            arch)        sudo pacman -S --noconfirm inkscape ;;
-            suse)        sudo zypper update -y inkscape ;;
+            fedora|rhel) pkg_upgrade inkscape ;;
+            arch)        pkg_upgrade inkscape ;;
+            suse)        pkg_upgrade inkscape ;;
         esac
     fi
 }

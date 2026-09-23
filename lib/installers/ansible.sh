@@ -10,21 +10,21 @@ install_ansible() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y ansible
+            pkg_install ansible
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y ansible
+            pkg_install ansible
             ;;
         rhel)
             # ansible-core is in AppStream; full ansible collection is in EPEL
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y ansible
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install ansible
             ;;
         arch)
-            sudo pacman -S --noconfirm ansible
+            pkg_install ansible
             ;;
         suse)
-            sudo zypper install -y ansible
+            pkg_install ansible
             ;;
     esac
     info "Ansible installed."
@@ -34,10 +34,10 @@ install_ansible() {
 uninstall_ansible() {
     info "Uninstalling Ansible..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y ansible ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y ansible ;;
-        arch)        sudo pacman -Rs --noconfirm ansible ;;
-        suse)        sudo zypper remove -y ansible ;;
+        debian)      pkg_remove ansible ;;
+        fedora|rhel) pkg_remove ansible ;;
+        arch)        pkg_remove ansible ;;
+        suse)        pkg_remove ansible ;;
     esac
 }
 
@@ -45,9 +45,9 @@ update_ansible() {
     info "Updating Ansible..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade ansible ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y ansible ;;
-        arch)        sudo pacman -S --noconfirm ansible ;;
-        suse)        sudo zypper update -y ansible ;;
+        fedora|rhel) pkg_upgrade ansible ;;
+        arch)        pkg_upgrade ansible ;;
+        suse)        pkg_upgrade ansible ;;
     esac
 }
 

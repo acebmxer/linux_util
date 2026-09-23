@@ -16,7 +16,7 @@ install_signal() {
                 "/etc/apt/keyrings/signal-desktop-keyring.gpg" \
                 "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/signal-desktop-keyring.gpg] https://updates.signal.org/desktop/apt xenial main" \
                 "/etc/apt/sources.list.d/signal-xenial.list"
-            sudo apt install -y signal-desktop
+            pkg_install signal-desktop
             ;;
         fedora|rhel|suse)
             if has_flatpak; then
@@ -41,13 +41,13 @@ uninstall_signal() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y signal-desktop
+                pkg_remove signal-desktop
                 sudo rm -f /etc/apt/sources.list.d/signal-xenial.list
                 sudo rm -f /etc/apt/keyrings/signal-desktop-keyring.gpg
                 ;;
             arch)
                 aur_remove signal-desktop 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm signal-desktop 2>/dev/null || true
+                    pkg_remove signal-desktop 2>/dev/null || true
                 ;;
         esac
     fi

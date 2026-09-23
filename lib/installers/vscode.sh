@@ -137,13 +137,13 @@ install_vscode() {
                 sudo tee /etc/apt/sources.list.d/vscode.list > /dev/null
             rm -f "$gpg_tmp"
             sudo apt update
-            sudo apt install -y code
+            pkg_install code
             ;;
         fedora|rhel)
             sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
             printf "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc\n" | \
                 sudo tee /etc/yum.repos.d/vscode.repo > /dev/null
-            sudo "$PKG_MGR" install -y code
+            pkg_install code
             ;;
         arch)
             # repos -> Flathub -> Microsoft's own tarball -> AUR (disabled by default).
@@ -155,7 +155,7 @@ install_vscode() {
             printf "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc\n" | \
                 sudo tee /etc/zypp/repos.d/vscode.repo > /dev/null
             sudo zypper refresh
-            sudo zypper install -y code
+            pkg_install code
             ;;
     esac
 }
@@ -163,13 +163,12 @@ uninstall_vscode() {
     echo "Uninstalling Visual Studio Code..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y code
-            sudo apt autoclean
+            pkg_remove code
             sudo rm -f /etc/apt/sources.list.d/vscode.list
             sudo rm -f /etc/apt/keyrings/packages.microsoft.gpg
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y code
+            pkg_remove code
             sudo rm -f /etc/yum.repos.d/vscode.repo
             ;;
         arch)
@@ -185,7 +184,7 @@ uninstall_vscode() {
             fi
             ;;
         suse)
-            sudo zypper remove -y code
+            pkg_remove code
             sudo rm -f /etc/zypp/repos.d/vscode.repo
             ;;
     esac
@@ -197,7 +196,7 @@ update_vscode() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade code
+            pkg_upgrade code
             ;;
         arch)
             # repos -> Flathub -> Microsoft's own tarball -> AUR (disabled by default).

@@ -18,7 +18,7 @@ install_dbeaver() {
                 return 1
             fi
             verify_download "$tmpfile" "deb" "DBeaver" || return 1
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel)
             local tmpfile
@@ -29,7 +29,7 @@ install_dbeaver() {
                 return 1
             fi
             verify_download "$tmpfile" "rpm" "DBeaver" || return 1
-            sudo "$PKG_MGR" install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         arch)
             repo_or_aur dbeaver
@@ -43,7 +43,7 @@ install_dbeaver() {
                 return 1
             fi
             verify_download "$tmpfile" "rpm" "DBeaver" || return 1
-            sudo zypper install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
     esac
     info "DBeaver Community Edition installed."
@@ -53,16 +53,16 @@ uninstall_dbeaver() {
     info "Uninstalling DBeaver..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y dbeaver-ce
+            pkg_remove dbeaver-ce
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y dbeaver-ce
+            pkg_remove dbeaver-ce
             ;;
         arch)
-            sudo pacman -Rs --noconfirm dbeaver 2>/dev/null || true
+            pkg_remove dbeaver 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y dbeaver-ce
+            pkg_remove dbeaver-ce
             ;;
     esac
     rm -rf "$HOME/.local/share/DBeaverData"

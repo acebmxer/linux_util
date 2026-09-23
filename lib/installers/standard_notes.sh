@@ -41,7 +41,7 @@ install_standard_notes() {
                 verify_download "$tmpfile" "deb" "Standard Notes" || return 1
                 github_verify_checksum "https://api.github.com/repos/standardnotes/app/releases/latest" \
                     "$(basename "$url")" "$tmpfile" || return 1
-                sudo apt install -y "$tmpfile"
+                pkg_install "$tmpfile"
                 return 0
             fi
             warn "No .deb found. Falling back to AppImage..."
@@ -106,10 +106,10 @@ uninstall_standard_notes() {
             sudo flatpak uninstall -y --system org.standardnotes.standardnotes
     else
         case "$DISTRO_FAMILY" in
-            debian)  sudo apt purge --autoremove -y standard-notes 2>/dev/null || true ;;
+            debian)  pkg_remove standard-notes 2>/dev/null || true ;;
             # standard-notes-bin is the dead AUR name, tried only so an
             # install predating the AppImage fallback still uninstalls.
-            arch)    sudo pacman -Rs --noconfirm standard-notes-bin 2>/dev/null || sudo pacman -Rs --noconfirm standard-notes 2>/dev/null || true ;;
+            arch)    pkg_remove standard-notes-bin 2>/dev/null || sudo pacman -Rs --noconfirm standard-notes 2>/dev/null || true ;;
         esac
     fi
     rm -f "$_SN_APPIMAGE"

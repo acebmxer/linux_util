@@ -9,23 +9,23 @@ install_btop() {
     info "Installing Btop++..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y btop
+            pkg_install btop
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y btop
+            pkg_install btop
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y btop 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install btop 2>/dev/null || {
                 warn "btop not in EPEL. Installing from GitHub release..."
                 _btop_install_binary
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm btop
+            pkg_install btop
             ;;
         suse)
-            sudo zypper install -y btop 2>/dev/null || {
+            pkg_install btop 2>/dev/null || {
                 warn "btop not in repos. Installing from GitHub release..."
                 _btop_install_binary
             }
@@ -66,10 +66,10 @@ _btop_install_binary() {
 uninstall_btop() {
     info "Uninstalling Btop++..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt purge --autoremove -y btop ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y btop 2>/dev/null || sudo rm -f /usr/local/bin/btop ;;
-        arch)    sudo pacman -Rs --noconfirm btop ;;
-        suse)    sudo zypper remove -y btop 2>/dev/null || sudo rm -f /usr/local/bin/btop ;;
+        debian)  pkg_remove btop ;;
+        fedora|rhel) pkg_remove btop 2>/dev/null || sudo rm -f /usr/local/bin/btop ;;
+        arch)    pkg_remove btop ;;
+        suse)    pkg_remove btop 2>/dev/null || sudo rm -f /usr/local/bin/btop ;;
     esac
     sudo rm -f /usr/local/bin/btop 2>/dev/null || true
     rm -rf "$HOME/.config/btop"
@@ -79,9 +79,9 @@ update_btop() {
     info "Updating Btop++..."
     case "$DISTRO_FAMILY" in
         debian)  sudo apt-get install -y --only-upgrade btop ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y btop 2>/dev/null || _btop_install_binary ;;
-        arch)    sudo pacman -S --noconfirm btop ;;
-        suse)    sudo zypper update -y btop 2>/dev/null || _btop_install_binary ;;
+        fedora|rhel) pkg_upgrade btop 2>/dev/null || _btop_install_binary ;;
+        arch)    pkg_upgrade btop ;;
+        suse)    pkg_upgrade btop 2>/dev/null || _btop_install_binary ;;
     esac
 }
 

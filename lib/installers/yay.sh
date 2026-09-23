@@ -18,7 +18,7 @@ install_yay() {
     fi
     # Some Arch derivatives (Manjaro, EndeavourOS) ship yay in their own repos.
     # Prefer that; otherwise build from the AUR with the shared aur_build helper.
-    if sudo pacman -S --noconfirm --needed yay 2>/dev/null; then
+    if pkg_install --needed yay 2>/dev/null; then
         info "yay installed from repository."
     elif aur_build yay; then
         info "yay built and installed from the AUR."
@@ -30,14 +30,12 @@ install_yay() {
 
 uninstall_yay() {
     info "Uninstalling yay..."
-    sudo pacman -Rs --noconfirm yay 2>/dev/null || true
+    pkg_remove yay 2>/dev/null || true
 }
 
 update_yay() {
     info "Updating yay..."
-    sudo pacman -S --noconfirm yay 2>/dev/null \
-        || yay -S --noconfirm yay 2>/dev/null \
-        || aur_build yay
+    pkg_upgrade yay 2>/dev/null || yay -S --noconfirm yay 2>/dev/null || aur_build yay
 }
 
 get_version_yay() {

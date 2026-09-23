@@ -13,7 +13,7 @@ check_unattended_upgrades() {
 
 uninstall_unattended_upgrades() {
     info "Removing unattended-upgrades..."
-    sudo apt purge --autoremove -y unattended-upgrades
+    pkg_remove unattended-upgrades
 }
 
 update_unattended_upgrades() {

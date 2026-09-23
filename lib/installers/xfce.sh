@@ -30,9 +30,7 @@ uninstall_xfce() {
     echo "Uninstalling Xfce Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y xfce4 xfce4-goodies xfwm4 \
-                xfdesktop4 xfce4-panel lightdm
-            sudo apt autoclean
+            pkg_remove xfce4 xfce4-goodies xfwm4 xfdesktop4 xfce4-panel lightdm
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group remove -y @xfce-desktop-environment 2>/dev/null || \
@@ -40,11 +38,10 @@ uninstall_xfce() {
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm xfce4 xfce4-goodies lightdm \
-                lightdm-gtk-greeter 2>/dev/null || true
+            pkg_remove xfce4 xfce4-goodies lightdm lightdm-gtk-greeter 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y -t pattern xfce
+            pkg_remove -t pattern xfce
             ;;
     esac
     rm -rf ~/.config/xfce4* ~/.config/Thunar 2>/dev/null || true
@@ -56,17 +53,17 @@ update_xfce() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade xfce4 xfce4-goodies
+            pkg_upgrade xfce4 xfce4-goodies
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @xfce-desktop-environment 2>/dev/null || \
-                sudo "$PKG_MGR" upgrade -y xfce4-session xfwm4 xfdesktop xfce4-panel
+                pkg_upgrade xfce4-session xfwm4 xfdesktop xfce4-panel
             ;;
         arch)
             sudo pacman -Syu --noconfirm xfce4 xfce4-goodies
             ;;
         suse)
-            sudo zypper update -y -t pattern xfce
+            pkg_upgrade -t pattern xfce
             ;;
     esac
 }

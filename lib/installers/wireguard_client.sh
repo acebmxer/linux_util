@@ -27,27 +27,27 @@ install_wireguard_client() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y wireguard wireguard-tools
+            pkg_install wireguard wireguard-tools
             if [[ "$use_nm" == true ]]; then
-                sudo apt install -y network-manager 2>/dev/null || true
+                pkg_install network-manager 2>/dev/null || true
             fi
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" install -y wireguard-tools
+            pkg_install wireguard-tools
             if [[ "$use_nm" == true ]]; then
-                sudo "$PKG_MGR" install -y NetworkManager 2>/dev/null || true
+                pkg_install NetworkManager 2>/dev/null || true
             fi
             ;;
         arch)
-            sudo pacman -S --noconfirm wireguard-tools
+            pkg_install wireguard-tools
             if [[ "$use_nm" == true ]]; then
-                sudo pacman -S --noconfirm networkmanager 2>/dev/null || true
+                pkg_install networkmanager 2>/dev/null || true
             fi
             ;;
         suse)
-            sudo zypper install -y wireguard-tools
+            pkg_install wireguard-tools
             if [[ "$use_nm" == true ]]; then
-                sudo zypper install -y NetworkManager 2>/dev/null || true
+                pkg_install NetworkManager 2>/dev/null || true
             fi
             ;;
         *)
@@ -238,16 +238,16 @@ uninstall_wireguard_client() {
     if (( remaining_confs == 0 )); then
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y wireguard wireguard-tools 2>/dev/null || true
+                pkg_remove wireguard wireguard-tools 2>/dev/null || true
                 ;;
             fedora|rhel)
-                sudo "$PKG_MGR" remove -y wireguard-tools 2>/dev/null || true
+                pkg_remove wireguard-tools 2>/dev/null || true
                 ;;
             arch)
-                sudo pacman -Rs --noconfirm wireguard-tools 2>/dev/null || true
+                pkg_remove wireguard-tools 2>/dev/null || true
                 ;;
             suse)
-                sudo zypper remove -y wireguard-tools 2>/dev/null || true
+                pkg_remove wireguard-tools 2>/dev/null || true
                 ;;
         esac
         sudo rmdir "$_WG_CLIENT_DIR" 2>/dev/null || true
@@ -262,9 +262,9 @@ update_wireguard_client() {
     info "Updating WireGuard Client..."
     case "$DISTRO_FAMILY" in
         debian)  sudo apt-get install -y --only-upgrade wireguard wireguard-tools ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y wireguard-tools ;;
-        arch)    sudo pacman -S --noconfirm wireguard-tools ;;
-        suse)    sudo zypper update -y wireguard-tools ;;
+        fedora|rhel) pkg_upgrade wireguard-tools ;;
+        arch)    pkg_upgrade wireguard-tools ;;
+        suse)    pkg_upgrade wireguard-tools ;;
     esac
 }
 

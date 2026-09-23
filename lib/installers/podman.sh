@@ -10,20 +10,20 @@ install_podman() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y podman
+            pkg_install podman
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y podman
+            pkg_install podman
             ;;
         rhel)
             # podman is in the AppStream repository on RHEL/Rocky/Alma/CentOS
-            sudo "$PKG_MGR" install -y podman
+            pkg_install podman
             ;;
         arch)
-            sudo pacman -S --noconfirm podman
+            pkg_install podman
             ;;
         suse)
-            sudo zypper install -y podman
+            pkg_install podman
             ;;
     esac
     info "Podman installed."
@@ -34,10 +34,10 @@ install_podman() {
 uninstall_podman() {
     info "Uninstalling Podman..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y podman ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y podman ;;
-        arch)        sudo pacman -Rs --noconfirm podman ;;
-        suse)        sudo zypper remove -y podman ;;
+        debian)      pkg_remove podman ;;
+        fedora|rhel) pkg_remove podman ;;
+        arch)        pkg_remove podman ;;
+        suse)        pkg_remove podman ;;
     esac
     rm -rf "$HOME/.config/containers" "$HOME/.local/share/containers"
 }
@@ -46,9 +46,9 @@ update_podman() {
     info "Updating Podman..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade podman ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y podman ;;
-        arch)        sudo pacman -S --noconfirm podman ;;
-        suse)        sudo zypper update -y podman ;;
+        fedora|rhel) pkg_upgrade podman ;;
+        arch)        pkg_upgrade podman ;;
+        suse)        pkg_upgrade podman ;;
     esac
 }
 

@@ -150,7 +150,7 @@ install_libation() {
             verify_download "$tmpfile" "deb" "Libation" || return 1
             github_verify_checksum "https://api.github.com/repos/rmcrackan/Libation/releases/latest" \
                 "$(basename "$url")" "$tmpfile" || return 1
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel|suse)
             local url
@@ -167,9 +167,9 @@ install_libation() {
             github_verify_checksum "https://api.github.com/repos/rmcrackan/Libation/releases/latest" \
                 "$(basename "$url")" "$tmpfile" || return 1
             if [[ "$DISTRO_FAMILY" == "suse" ]]; then
-                sudo zypper install -y --allow-unsigned-rpm "$tmpfile"
+                pkg_install --allow-unsigned-rpm "$tmpfile"
             else
-                sudo "$PKG_MGR" install -y "$tmpfile"
+                pkg_install "$tmpfile"
             fi
             ;;
         arch)
@@ -184,17 +184,17 @@ uninstall_libation() {
     info "Uninstalling Libation..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y libation
+            pkg_remove libation
             ;;
         fedora|rhel)
-            sudo "$PKG_MGR" remove -y libation
+            pkg_remove libation
             ;;
         suse)
-            sudo zypper remove -y libation
+            pkg_remove libation
             ;;
         arch)
             aur_remove libation 2>/dev/null || \
-                sudo pacman -Rs --noconfirm libation 2>/dev/null || true
+                pkg_remove libation 2>/dev/null || true
             ;;
     esac
     # ~/Libation and the Books folder hold the user's library database and

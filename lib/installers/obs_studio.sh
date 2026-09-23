@@ -15,7 +15,7 @@ install_obs_studio() {
                 sudo add-apt-repository -y ppa:obsproject/obs-studio
                 sudo apt update
             fi
-            sudo apt install -y obs-studio
+            pkg_install obs-studio
             ;;
         fedora)
             # OBS is in RPM Fusion free
@@ -24,11 +24,11 @@ install_obs_studio() {
                     "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
                 sudo "$PKG_MGR" makecache
             fi
-            sudo "$PKG_MGR" install -y obs-studio
+            pkg_install obs-studio
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y obs-studio 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install obs-studio 2>/dev/null || {
                 warn "obs-studio not in repos. Falling back to Flatpak..."
                 if has_flatpak; then
                     sudo flatpak install -y flathub com.obsproject.Studio
@@ -39,10 +39,10 @@ install_obs_studio() {
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm obs-studio
+            pkg_install obs-studio
             ;;
         suse)
-            sudo zypper install -y obs-studio 2>/dev/null || {
+            pkg_install obs-studio 2>/dev/null || {
                 if has_flatpak; then
                     sudo flatpak install -y flathub com.obsproject.Studio
                 else
@@ -63,12 +63,12 @@ uninstall_obs_studio() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y obs-studio
+                pkg_remove obs-studio
                 sudo add-apt-repository -y --remove ppa:obsproject/obs-studio 2>/dev/null || true
                 ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y obs-studio ;;
-            arch)        sudo pacman -Rs --noconfirm obs-studio ;;
-            suse)        sudo zypper remove -y obs-studio ;;
+            fedora|rhel) pkg_remove obs-studio ;;
+            arch)        pkg_remove obs-studio ;;
+            suse)        pkg_remove obs-studio ;;
         esac
     fi
     rm -rf "$HOME/.config/obs-studio"
@@ -82,9 +82,9 @@ update_obs_studio() {
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt-get install -y --only-upgrade obs-studio ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y obs-studio ;;
-            arch)    sudo pacman -S --noconfirm obs-studio ;;
-            suse)    sudo zypper update -y obs-studio ;;
+            fedora|rhel) pkg_upgrade obs-studio ;;
+            arch)    pkg_upgrade obs-studio ;;
+            suse)    pkg_upgrade obs-studio ;;
         esac
     fi
 }

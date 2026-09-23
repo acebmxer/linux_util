@@ -18,7 +18,7 @@ install_zoom() {
                 return 1
             fi
             verify_download "$tmpfile" "deb" "Zoom" || return 1
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel)
             local tmpfile
@@ -28,7 +28,7 @@ install_zoom() {
                 error "Failed to download Zoom .rpm package."
                 return 1
             fi
-            sudo "$PKG_MGR" install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         arch)
             flatpak_or_aur us.zoom.Zoom zoom
@@ -44,7 +44,7 @@ install_zoom() {
                     error "Failed to download Zoom .rpm package."
                     return 1
                 }
-                sudo zypper install -y --allow-unsigned-rpm "$tmpfile"
+                pkg_install --allow-unsigned-rpm "$tmpfile"
             fi
             ;;
     esac
@@ -58,13 +58,13 @@ uninstall_zoom() {
             sudo flatpak uninstall -y --system us.zoom.Zoom
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y zoom ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y zoom ;;
+            debian)      pkg_remove zoom ;;
+            fedora|rhel) pkg_remove zoom ;;
             arch)
                 aur_remove zoom 2>/dev/null || \
-                    sudo pacman -Rs --noconfirm zoom 2>/dev/null || true
+                    pkg_remove zoom 2>/dev/null || true
                 ;;
-            suse)        sudo zypper remove -y zoom 2>/dev/null || true ;;
+            suse)        pkg_remove zoom 2>/dev/null || true ;;
         esac
     fi
     rm -rf "$HOME/.zoom" "$HOME/.config/zoomus.conf"
@@ -79,7 +79,7 @@ update_zoom() {
         case "$DISTRO_FAMILY" in
             debian|fedora|rhel) install_zoom ;;
             arch)               repo_or_aur zoom ;;
-            suse)               sudo zypper update -y zoom 2>/dev/null || install_zoom ;;
+            suse)               pkg_upgrade zoom 2>/dev/null || install_zoom ;;
         esac
     fi
 }

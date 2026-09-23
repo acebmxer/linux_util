@@ -10,7 +10,7 @@ check_superfile() { _check_standard spf superfile ""; }
 install_superfile() {
     info "Installing Superfile..."
     case "$DISTRO_FAMILY" in
-        arch) sudo pacman -S --noconfirm superfile ;;
+        arch) pkg_install superfile ;;
         *)    ensure_tools; _install_superfile_binary ;;
     esac
     info "Superfile installed."
@@ -76,7 +76,7 @@ uninstall_superfile() {
 update_superfile() {
     info "Updating Superfile..."
     case "$DISTRO_FAMILY" in
-        arch) sudo pacman -S --noconfirm superfile ;;
+        arch) pkg_upgrade superfile ;;
         *)    _install_superfile_binary ;;
     esac
 }

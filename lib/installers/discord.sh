@@ -18,7 +18,7 @@ install_discord() {
                 return 1
             fi
             verify_download "$tmpfile" "deb" "Discord" || return 1
-            sudo apt install -y "$tmpfile"
+            pkg_install "$tmpfile"
             ;;
         fedora|rhel)
             if has_flatpak; then
@@ -40,7 +40,7 @@ install_discord() {
             fi
             ;;
         arch)
-            sudo pacman -S --noconfirm discord
+            pkg_install discord
             ;;
         suse)
             if has_flatpak; then
@@ -62,7 +62,7 @@ uninstall_discord() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y discord
+                pkg_remove discord
                 ;;
             fedora|rhel)
                 sudo rm -f /usr/local/bin/discord
@@ -70,7 +70,7 @@ uninstall_discord() {
                 sudo rm -f /usr/share/applications/discord.desktop
                 ;;
             arch)
-                sudo pacman -Rs --noconfirm discord
+                pkg_remove discord
                 ;;
         esac
     fi
@@ -86,7 +86,7 @@ update_discord() {
         case "$DISTRO_FAMILY" in
             debian)       install_discord ;;
             fedora|rhel)  install_discord ;;
-            arch)         sudo pacman -S --noconfirm discord ;;
+            arch)         pkg_upgrade discord ;;
         esac
     fi
 }

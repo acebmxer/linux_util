@@ -47,13 +47,13 @@ install_snapper() {
             ;;
         suse)
             # openSUSE ships snapper-zypp-plugin for automatic pre/post snapshots
-            sudo zypper install -y snapper snapper-zypp-plugin || return 1
+            pkg_install snapper snapper-zypp-plugin || return 1
             ;;
         debian)
-            sudo apt install -y snapper || return 1
+            pkg_install snapper || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y snapper || return 1
+            pkg_install snapper || return 1
             ;;
         *)
             warn "Snapper installation not supported for ${DISTRO_NAME}."
@@ -160,21 +160,20 @@ uninstall_snapper() {
         arch)
             sudo systemctl stop snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
             sudo systemctl disable snapper-timeline.timer snapper-cleanup.timer snapper-boot.service 2>/dev/null || true
-            sudo pacman -Rs --noconfirm snapper || true
+            pkg_remove snapper || true
             ;;
         suse)
-            sudo zypper remove -y snapper snapper-zypp-plugin || true
+            pkg_remove snapper snapper-zypp-plugin || true
             ;;
         debian)
             sudo systemctl stop snapper-timeline.timer snapper-cleanup.timer 2>/dev/null || true
             sudo systemctl disable snapper-timeline.timer snapper-cleanup.timer 2>/dev/null || true
-            sudo apt purge --autoremove -y snapper
-            sudo apt autoclean
+            pkg_remove snapper
             ;;
         fedora)
             sudo systemctl stop snapper-timeline.timer snapper-cleanup.timer 2>/dev/null || true
             sudo systemctl disable snapper-timeline.timer snapper-cleanup.timer 2>/dev/null || true
-            sudo "$PKG_MGR" remove -y snapper
+            pkg_remove snapper
             ;;
     esac
 }
@@ -186,7 +185,7 @@ update_snapper() {
             pkg_upgrade snapper
             ;;
         suse)
-            sudo zypper update -y snapper snapper-zypp-plugin || true
+            pkg_upgrade snapper snapper-zypp-plugin || true
             ;;
         debian)
             sudo apt-get install -y --only-upgrade snapper

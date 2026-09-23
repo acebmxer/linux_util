@@ -10,7 +10,7 @@ install_vlc() {
     ensure_tools
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y vlc
+            pkg_install vlc
             ;;
         fedora)
             # VLC requires RPM Fusion Free
@@ -18,15 +18,15 @@ install_vlc() {
                 sudo "$PKG_MGR" install -y \
                     "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
             fi
-            sudo "$PKG_MGR" install -y vlc
+            pkg_install vlc
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
+            pkg_install epel-release 2>/dev/null || true
             if ! rpm -q rpmfusion-free-release &>/dev/null; then
                 sudo "$PKG_MGR" install -y \
                     "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm" 2>/dev/null || true
             fi
-            sudo "$PKG_MGR" install -y vlc 2>/dev/null || {
+            pkg_install vlc 2>/dev/null || {
                 warn "VLC not found in repos. Falling back to Flatpak..."
                 if has_flatpak; then
                     sudo flatpak install -y flathub org.videolan.VLC
@@ -37,10 +37,10 @@ install_vlc() {
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm vlc
+            pkg_install vlc
             ;;
         suse)
-            sudo zypper install -y vlc 2>/dev/null || {
+            pkg_install vlc 2>/dev/null || {
                 if has_flatpak; then
                     sudo flatpak install -y flathub org.videolan.VLC
                 else
@@ -60,10 +60,10 @@ uninstall_vlc() {
             sudo flatpak uninstall -y --system org.videolan.VLC
     else
         case "$DISTRO_FAMILY" in
-            debian)      sudo apt purge --autoremove -y vlc ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y vlc ;;
-            arch)        sudo pacman -Rs --noconfirm vlc ;;
-            suse)        sudo zypper remove -y vlc ;;
+            debian)      pkg_remove vlc ;;
+            fedora|rhel) pkg_remove vlc ;;
+            arch)        pkg_remove vlc ;;
+            suse)        pkg_remove vlc ;;
         esac
     fi
     rm -rf "$HOME/.config/vlc"
@@ -77,9 +77,9 @@ update_vlc() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade vlc ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y vlc ;;
-            arch)        sudo pacman -S --noconfirm vlc ;;
-            suse)        sudo zypper update -y vlc ;;
+            fedora|rhel) pkg_upgrade vlc ;;
+            arch)        pkg_upgrade vlc ;;
+            suse)        pkg_upgrade vlc ;;
         esac
     fi
 }

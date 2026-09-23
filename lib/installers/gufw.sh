@@ -17,26 +17,26 @@ install_gufw() {
     fi
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y gufw || return 1
+            pkg_install gufw || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y gufw 2>/dev/null || {
+            pkg_install gufw 2>/dev/null || {
                 warn "Gufw is not packaged for Fedora. Use UFW from the command line, or install firewalld with the firewall-config GUI instead."
                 return 1
             }
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y gufw 2>/dev/null || {
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install gufw 2>/dev/null || {
                 warn "Gufw not available in repos for this RHEL-based distro."
                 return 1
             }
             ;;
         arch)
-            sudo pacman -S --noconfirm gufw || return 1
+            pkg_install gufw || return 1
             ;;
         suse)
-            sudo zypper install -y gufw 2>/dev/null || {
+            pkg_install gufw 2>/dev/null || {
                 warn "Gufw not available in default repos for this SUSE-based distro."
                 return 1
             }
@@ -48,10 +48,10 @@ install_gufw() {
 uninstall_gufw() {
     info "Uninstalling Gufw..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y gufw ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y gufw ;;
-        arch)        sudo pacman -Rs --noconfirm gufw ;;
-        suse)        sudo zypper remove -y gufw ;;
+        debian)      pkg_remove gufw ;;
+        fedora|rhel) pkg_remove gufw ;;
+        arch)        pkg_remove gufw ;;
+        suse)        pkg_remove gufw ;;
     esac
 }
 
@@ -59,9 +59,9 @@ update_gufw() {
     info "Updating Gufw..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade gufw ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y gufw ;;
-        arch)        sudo pacman -S --noconfirm gufw ;;
-        suse)        sudo zypper update -y gufw ;;
+        fedora|rhel) pkg_upgrade gufw ;;
+        arch)        pkg_upgrade gufw ;;
+        suse)        pkg_upgrade gufw ;;
     esac
 }
 

@@ -15,13 +15,13 @@ install_btrfs_assistant() {
             repo_or_aur btrfs-assistant || return 1
             ;;
         debian)
-            sudo apt install -y btrfs-assistant || return 1
+            pkg_install btrfs-assistant || return 1
             ;;
         fedora)
-            sudo "$PKG_MGR" install -y btrfs-assistant || return 1
+            pkg_install btrfs-assistant || return 1
             ;;
         suse)
-            sudo zypper install -y btrfs-assistant || return 1
+            pkg_install btrfs-assistant || return 1
             ;;
         *)
             warn "Btrfs Assistant is not available for ${DISTRO_NAME}."
@@ -36,17 +36,16 @@ uninstall_btrfs_assistant() {
     echo "Uninstalling Btrfs Assistant..."
     case "$DISTRO_FAMILY" in
         arch)
-            sudo pacman -Rs --noconfirm btrfs-assistant 2>/dev/null || true
+            pkg_remove btrfs-assistant 2>/dev/null || true
             ;;
         debian)
-            sudo apt purge --autoremove -y btrfs-assistant
-            sudo apt autoclean
+            pkg_remove btrfs-assistant
             ;;
         fedora)
-            sudo "$PKG_MGR" remove -y btrfs-assistant
+            pkg_remove btrfs-assistant
             ;;
         suse)
-            sudo zypper remove -y btrfs-assistant || true
+            pkg_remove btrfs-assistant || true
             ;;
     esac
 }
@@ -64,7 +63,7 @@ update_btrfs_assistant() {
             pkg_upgrade btrfs-assistant
             ;;
         suse)
-            sudo zypper update -y btrfs-assistant || true
+            pkg_upgrade btrfs-assistant || true
             ;;
     esac
 }

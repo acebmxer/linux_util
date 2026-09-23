@@ -8,10 +8,10 @@ check_midnight_commander() { _check_standard mc mc ""; }
 install_midnight_commander() {
     info "Installing Midnight Commander..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt install -y mc ;;
-        fedora|rhel) sudo "$PKG_MGR" install -y mc ;;
-        arch)        sudo pacman -S --noconfirm mc ;;
-        suse)        sudo zypper install -y mc ;;
+        debian)      pkg_install mc ;;
+        fedora|rhel) pkg_install mc ;;
+        arch)        pkg_install mc ;;
+        suse)        pkg_install mc ;;
     esac
     info "Midnight Commander installed."
 }
@@ -19,10 +19,10 @@ install_midnight_commander() {
 uninstall_midnight_commander() {
     info "Uninstalling Midnight Commander..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y mc ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y mc ;;
-        arch)        sudo pacman -Rs --noconfirm mc ;;
-        suse)        sudo zypper remove -y mc ;;
+        debian)      pkg_remove mc ;;
+        fedora|rhel) pkg_remove mc ;;
+        arch)        pkg_remove mc ;;
+        suse)        pkg_remove mc ;;
     esac
 }
 
@@ -30,9 +30,9 @@ update_midnight_commander() {
     info "Updating Midnight Commander..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade mc ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y mc ;;
-        arch)        sudo pacman -S --noconfirm mc ;;
-        suse)        sudo zypper update -y mc ;;
+        fedora|rhel) pkg_upgrade mc ;;
+        arch)        pkg_upgrade mc ;;
+        suse)        pkg_upgrade mc ;;
     esac
 }
 

@@ -8,14 +8,14 @@ check_gimp() { _check_standard gimp gimp org.gimp.GIMP; }
 install_gimp() {
     info "Installing GIMP..."
     case "$DISTRO_FAMILY" in
-        debian)  sudo apt install -y gimp ;;
-        fedora)  sudo "$PKG_MGR" install -y gimp ;;
+        debian)  pkg_install gimp ;;
+        fedora)  pkg_install gimp ;;
         rhel)
-            sudo "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            sudo "$PKG_MGR" install -y gimp
+            pkg_install epel-release 2>/dev/null || true
+            pkg_install gimp
             ;;
-        arch)    sudo pacman -S --noconfirm gimp ;;
-        suse)    sudo zypper install -y gimp ;;
+        arch)    pkg_install gimp ;;
+        suse)    pkg_install gimp ;;
     esac
     info "GIMP installed."
 }
@@ -27,10 +27,10 @@ uninstall_gimp() {
             sudo flatpak uninstall -y --system org.gimp.GIMP
     else
         case "$DISTRO_FAMILY" in
-            debian)  sudo apt purge --autoremove -y gimp ;;
-            fedora|rhel) sudo "$PKG_MGR" remove -y gimp ;;
-            arch)    sudo pacman -Rs --noconfirm gimp ;;
-            suse)    sudo zypper remove -y gimp ;;
+            debian)  pkg_remove gimp ;;
+            fedora|rhel) pkg_remove gimp ;;
+            arch)    pkg_remove gimp ;;
+            suse)    pkg_remove gimp ;;
         esac
     fi
     rm -rf "$HOME/.config/GIMP"
@@ -44,9 +44,9 @@ update_gimp() {
     else
         case "$DISTRO_FAMILY" in
             debian)  sudo apt-get install -y --only-upgrade gimp ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y gimp ;;
-            arch)    sudo pacman -S --noconfirm gimp ;;
-            suse)    sudo zypper update -y gimp ;;
+            fedora|rhel) pkg_upgrade gimp ;;
+            arch)    pkg_upgrade gimp ;;
+            suse)    pkg_upgrade gimp ;;
         esac
     fi
 }

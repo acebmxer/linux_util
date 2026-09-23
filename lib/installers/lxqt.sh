@@ -29,20 +29,18 @@ uninstall_lxqt() {
     echo "Uninstalling LXQt Desktop..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt purge --autoremove -y task-lxqt-desktop lubuntu-desktop \
-                lxqt lxqt-session sddm
-            sudo apt autoclean
+            pkg_remove task-lxqt-desktop lubuntu-desktop lxqt lxqt-session sddm
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group remove -y @lxqt 2>/dev/null || \
-                sudo "$PKG_MGR" remove -y lxqt-session lxqt-panel pcmanfm-qt
+                pkg_remove lxqt-session lxqt-panel pcmanfm-qt
             sudo "$PKG_MGR" autoremove -y
             ;;
         arch)
-            sudo pacman -Rs --noconfirm lxqt sddm 2>/dev/null || true
+            pkg_remove lxqt sddm 2>/dev/null || true
             ;;
         suse)
-            sudo zypper remove -y lxqt-session lxqt-panel sddm
+            pkg_remove lxqt-session lxqt-panel sddm
             ;;
     esac
     rm -rf ~/.config/lxqt 2>/dev/null || true
@@ -54,17 +52,17 @@ update_lxqt() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            sudo apt install -y --only-upgrade lxqt lxqt-session
+            pkg_upgrade lxqt lxqt-session
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" group update -y @lxqt 2>/dev/null || \
-                sudo "$PKG_MGR" upgrade -y lxqt-session lxqt-panel
+                pkg_upgrade lxqt-session lxqt-panel
             ;;
         arch)
             sudo pacman -Syu --noconfirm lxqt
             ;;
         suse)
-            sudo zypper update -y lxqt-session lxqt-panel
+            pkg_upgrade lxqt-session lxqt-panel
             ;;
     esac
 }

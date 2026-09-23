@@ -17,7 +17,7 @@ install_paru() {
     fi
     # EndeavourOS and some derivatives package paru directly; otherwise build
     # from the AUR. makepkg pulls in rust/cargo as a build dependency.
-    if sudo pacman -S --noconfirm --needed paru 2>/dev/null; then
+    if pkg_install --needed paru 2>/dev/null; then
         info "paru installed from repository."
     elif aur_build paru; then
         info "paru built and installed from the AUR."
@@ -29,14 +29,12 @@ install_paru() {
 
 uninstall_paru() {
     info "Uninstalling paru..."
-    sudo pacman -Rs --noconfirm paru 2>/dev/null || true
+    pkg_remove paru 2>/dev/null || true
 }
 
 update_paru() {
     info "Updating paru..."
-    sudo pacman -S --noconfirm paru 2>/dev/null \
-        || paru -S --noconfirm paru 2>/dev/null \
-        || aur_build paru
+    pkg_upgrade paru 2>/dev/null || paru -S --noconfirm paru 2>/dev/null || aur_build paru
 }
 
 get_version_paru() {

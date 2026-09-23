@@ -16,7 +16,7 @@ install_librewolf() {
     case "$DISTRO_FAMILY" in
         debian)
             # Official LibreWolf apt repository
-            sudo apt install -y wget gnupg lsb-release apt-transport-https ca-certificates
+            pkg_install wget gnupg lsb-release apt-transport-https ca-certificates
             wget -O- https://deb.librewolf.net/keyring.gpg | \
                 sudo gpg --dearmor -o /usr/share/keyrings/librewolf.gpg
             sudo tee /etc/apt/sources.list.d/librewolf.sources <<EOF
@@ -28,14 +28,14 @@ Architectures: amd64
 Signed-By: /usr/share/keyrings/librewolf.gpg
 EOF
             sudo apt update
-            sudo apt install -y librewolf
+            pkg_install librewolf
             ;;
         fedora)
             # COPR repository for LibreWolf on Fedora
-            sudo "$PKG_MGR" install -y 'dnf-command(copr)' 2>/dev/null || true
+            pkg_install 'dnf-command(copr)' 2>/dev/null || true
             sudo "$PKG_MGR" copr enable -y bgstack15/librewolf 2>/dev/null || \
                 sudo "$PKG_MGR" copr enable -y librewolf/librewolf 2>/dev/null || true
-            sudo "$PKG_MGR" install -y librewolf
+            pkg_install librewolf
             ;;
         rhel)
             if has_flatpak; then
@@ -75,12 +75,12 @@ uninstall_librewolf() {
     else
         case "$DISTRO_FAMILY" in
             debian)
-                sudo apt purge --autoremove -y librewolf
+                pkg_remove librewolf
                 sudo rm -f /etc/apt/sources.list.d/librewolf.sources
                 sudo rm -f /usr/share/keyrings/librewolf.gpg
                 ;;
             fedora)
-                sudo "$PKG_MGR" remove -y librewolf
+                pkg_remove librewolf
                 sudo "$PKG_MGR" copr disable -y bgstack15/librewolf 2>/dev/null || true
                 ;;
             arch)
@@ -89,7 +89,7 @@ uninstall_librewolf() {
                 pkg_check_installed librewolf && \
                     pkg_remove librewolf 2>/dev/null
                 pkg_check_installed librewolf-bin && \
-                    sudo pacman -Rs --noconfirm librewolf-bin 2>/dev/null
+                    pkg_remove librewolf-bin 2>/dev/null
                 true
                 ;;
         esac
@@ -105,9 +105,9 @@ update_librewolf() {
     else
         case "$DISTRO_FAMILY" in
             debian)      sudo apt-get install -y --only-upgrade librewolf ;;
-            fedora|rhel) sudo "$PKG_MGR" upgrade -y librewolf ;;
+            fedora|rhel) pkg_upgrade librewolf ;;
             arch)        pkg_install librewolf ;;
-            suse)        sudo zypper update -y librewolf ;;
+            suse)        pkg_upgrade librewolf ;;
         esac
     fi
 }

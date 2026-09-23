@@ -11,19 +11,19 @@ install_grub() {
     info "Installing GRUB bootloader..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y grub-efi-amd64 grub-pc-bin grub-common
+            pkg_install grub-efi-amd64 grub-pc-bin grub-common
             ;;
         fedora)
             sudo dnf install -y grub2-efi-x64 grub2-pc grub2-tools
             ;;
         rhel)
-            sudo "$PKG_MGR" install -y grub2-efi-x64 grub2-pc grub2-tools
+            pkg_install grub2-efi-x64 grub2-pc grub2-tools
             ;;
         arch)
-            sudo pacman -S --noconfirm grub efibootmgr
+            pkg_install grub efibootmgr
             ;;
         suse)
-            sudo zypper install -y grub2 grub2-x86_64-efi
+            pkg_install grub2 grub2-x86_64-efi
             ;;
         *)
             error "Unsupported distribution family: $DISTRO_FAMILY"
@@ -37,10 +37,10 @@ uninstall_grub() {
     warn "Removing GRUB may leave your system unbootable. Ensure another bootloader is configured first."
     info "Uninstalling GRUB..."
     case "$DISTRO_FAMILY" in
-        debian)      sudo apt purge --autoremove -y grub-efi-amd64 grub-pc grub-common ;;
-        fedora|rhel) sudo "$PKG_MGR" remove -y grub2-efi-x64 grub2-pc grub2-tools ;;
-        arch)        sudo pacman -Rs --noconfirm grub ;;
-        suse)        sudo zypper remove -y grub2 grub2-x86_64-efi ;;
+        debian)      pkg_remove grub-efi-amd64 grub-pc grub-common ;;
+        fedora|rhel) pkg_remove grub2-efi-x64 grub2-pc grub2-tools ;;
+        arch)        pkg_remove grub ;;
+        suse)        pkg_remove grub2 grub2-x86_64-efi ;;
     esac
     info "GRUB packages removed."
 }
@@ -49,9 +49,9 @@ update_grub() {
     info "Updating GRUB..."
     case "$DISTRO_FAMILY" in
         debian)      sudo apt-get install -y --only-upgrade grub-efi-amd64 grub-common ;;
-        fedora|rhel) sudo "$PKG_MGR" upgrade -y grub2-efi-x64 grub2-tools ;;
-        arch)        sudo pacman -S --noconfirm grub ;;
-        suse)        sudo zypper update -y grub2 grub2-x86_64-efi ;;
+        fedora|rhel) pkg_upgrade grub2-efi-x64 grub2-tools ;;
+        arch)        pkg_upgrade grub ;;
+        suse)        pkg_upgrade grub2 grub2-x86_64-efi ;;
     esac
     # Regenerate the GRUB config after upgrade
     if command -v update-grub &>/dev/null; then
