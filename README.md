@@ -2,8 +2,17 @@
 
 [![CI](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml/badge.svg)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/github/v/tag/acebmxer/linux_util?label=version&sort=semver&color=brightgreen)](CHANGELOG.md)
+[![Last commit](https://img.shields.io/github/last-commit/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/commits)
+[![Issues](https://img.shields.io/github/issues/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/issues)
+[![Stars](https://img.shields.io/github/stars/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/stargazers)
+[![Forks](https://img.shields.io/github/forks/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/forks)
+[![Unique cloners](https://img.shields.io/badge/unique%20cloners-121-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
+[![Tests](https://img.shields.io/badge/tests-373%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Distros tested](https://img.shields.io/badge/distros%20tested-6-informational)](#supported-distributions)
+[![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
 An interactive multi-select TUI for installing, uninstalling, and updating system
 tasks and utilities across all major Linux distributions. Over 100 utilities
