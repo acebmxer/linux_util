@@ -306,7 +306,10 @@ pkg_full_upgrade() {
                      printf "  Upgrading installed packages ...\n"
                      sudo apt full-upgrade 2>&1 | tee "$_apt_out"
                      local _apt_rc=${PIPESTATUS[0]}
-                     if grep -q "^Abort\.$" "$_apt_out"; then
+                     # tr '\r' '\n' first: a carriage-return-redrawn progress line
+                     # ending right before "Abort." would otherwise glue the two
+                     # together into one grep "line", hiding the match from ^.
+                     if tr '\r' '\n' < "$_apt_out" | grep -q "^Abort\.$"; then
                          printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
                          rm -f "$_apt_out"
                          return 2
@@ -332,7 +335,14 @@ pkg_full_upgrade() {
                      printf "  Upgrading installed packages ...\n"
                      sudo "$PKG_MGR" upgrade 2>&1 | tee "$_dnf_out"
                      local _dnf_rc=${PIPESTATUS[0]}
-                     if grep -q "^Operation aborted" "$_dnf_out" || (( _dnf_rc == 130 )); then
+                     # tr '\r' '\n' first: dnf5 redraws its progress/scriptlet output
+                     # with carriage returns even when kept attached to a live
+                     # terminal for interactivity, so the abort line can land right
+                     # after a \r instead of a real \n -- grep's ^ anchor would then
+                     # never see it as a line start and this check would silently
+                     # miss every decline, forcing pointless retries of a transaction
+                     # the user explicitly said no to.
+                     if tr '\r' '\n' < "$_dnf_out" | grep -q "^Operation aborted" || (( _dnf_rc == 130 )); then
                          printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
                          rm -f "$_dnf_out"
                          return 2

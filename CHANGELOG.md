@@ -75,6 +75,17 @@ when a release is cut.
   `Operation aborted` message (covering both dnf4's and dnf5's wording) or a
   SIGINT exit code (130, from Ctrl+C), and returns 2 in either case.
 
+  While testing this, found and fixed a real bug in the detection itself:
+  dnf5 redraws its transaction progress with carriage returns even while kept
+  attached to a live terminal for interactivity, so the `Operation aborted`
+  line could land right after a `\r` instead of a real `\n`. `grep`'s `^`
+  anchor only matches text that follows an actual newline, so on that
+  redraw pattern the check silently missed every decline and the run went on
+  retrying a transaction the user had already said no to. Both the dnf/yum
+  and apt branches now run their captured output through `tr '\r' '\n'`
+  before grepping, so a carriage-return-redrawn line can no longer hide the
+  match.
+
 - **dnf/dnf5's transaction confirmation ("Total size... / After this
   operation... / Is this ok [y/N]:") could render with stray leading
   whitespace, mid-line wraps, or missing lines when reached through the
