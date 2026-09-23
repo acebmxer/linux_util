@@ -37,6 +37,35 @@ when a release is cut.
 
 ### Fixed
 
+- **Declining or Ctrl+C-ing dnf/dnf5's own "Is this ok [y/N]:" prompt during
+  System Updates was treated as a failure and auto-retried up to
+  `retry_attempts` times.** `pkg_full_upgrade()`'s interactive (`direct`) mode
+  runs `dnf upgrade`/`dnf5 upgrade` with no `-y` so the user sees dnf's real
+  confirmation prompt, matching the apt branch alongside it. But unlike apt —
+  which already tees output and greps for `Abort.` to map a declined
+  transaction to exit code 2 ("Cancelled", which the runner never retries) —
+  the dnf/yum branch just returned dnf's raw exit code. Both dnf4 and dnf5
+  exit 1 for a declined transaction (`"Operation aborted."` /
+  `"Operation aborted by the user."`) exactly as they do for a genuine
+  failure, so the outer retry loop couldn't tell the two apart and kept
+  re-running `dnf upgrade` after the user had already said no. The dnf/yum
+  branch now tees output the same way apt does, matches dnf's own
+  `Operation aborted` message (covering both dnf4's and dnf5's wording) or a
+  SIGINT exit code (130, from Ctrl+C), and returns 2 in either case.
+
+- **dnf/dnf5's transaction confirmation ("Total size... / After this
+  operation... / Is this ok [y/N]:") could render with stray leading
+  whitespace, mid-line wraps, or missing lines when reached through the
+  menu, on some terminals/SSH clients — never when running the identical
+  `dnf` command by hand in the same session.** The menu leaves the
+  alternate screen buffer and hands off to the selected task's output in
+  the same breath (`lib/menu.sh`'s confirm-and-exit path). Some terminals
+  and SSH clients settle that screen-mode switch asynchronously, so the
+  very next bytes (the selected task's own output) could reach the
+  terminal before it finished that transition. Added a brief settle delay
+  (`sleep 0.15`) between leaving the alternate screen and returning control
+  to the selected task.
+
 - **System Updates could 404 against Docker's repo on Fedora even after the
   earlier `$releasever`-pinning fix (1.5.0-era), because that fix only ran
   inside `setup_install_docker`.** A `docker-ce.repo` reaches a machine

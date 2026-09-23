@@ -319,7 +319,32 @@ pkg_full_upgrade() {
                  else
                      "$_run" "Upgrading installed packages" sudo apt full-upgrade $_y
                  fi ;;
-        dnf|yum) "$_run" "Upgrading installed packages" sudo "$PKG_MGR" upgrade $_y ;;
+        dnf|yum) if [[ "$mode" == "direct" ]]; then
+                     # Interactive (no -y): tee output so we can detect dnf/dnf5's
+                     # "Operation aborted." / "Operation aborted by the user." (user
+                     # typed N). Both dnf and dnf5 exit 1 for this exactly like any
+                     # other failure, so the exit code alone can't tell a declined
+                     # transaction apart from a real error -- same problem the apt
+                     # branch above already works around. Exit code 2 signals
+                     # "Cancelled" to the runner, suppressing retries.
+                     local _dnf_out
+                     _dnf_out=$(mktemp)
+                     printf "  Upgrading installed packages ...\n"
+                     sudo "$PKG_MGR" upgrade 2>&1 | tee "$_dnf_out"
+                     local _dnf_rc=${PIPESTATUS[0]}
+                     if grep -q "^Operation aborted" "$_dnf_out" || (( _dnf_rc == 130 )); then
+                         printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
+                         rm -f "$_dnf_out"
+                         return 2
+                     fi
+                     [[ $_dnf_rc -eq 0 ]] \
+                         && printf "  ${GREEN}✓${RESET}  Upgrading installed packages\n" \
+                         || printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
+                     rm -f "$_dnf_out"
+                     return $_dnf_rc
+                 else
+                     "$_run" "Upgrading installed packages" sudo "$PKG_MGR" upgrade $_y
+                 fi ;;
         pacman)  if [[ "${AUR_ENABLED:-false}" == "true" ]] && command -v yay &>/dev/null; then
                      "$_run" "Upgrading installed packages (yay)"  yay  -Syu $_nc
                  elif [[ "${AUR_ENABLED:-false}" == "true" ]] && command -v paru &>/dev/null; then
