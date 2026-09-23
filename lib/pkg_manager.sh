@@ -309,7 +309,11 @@ pkg_full_upgrade() {
                      # tr '\r' '\n' first: a carriage-return-redrawn progress line
                      # ending right before "Abort." would otherwise glue the two
                      # together into one grep "line", hiding the match from ^.
-                     if tr '\r' '\n' < "$_apt_out" | grep -q "^Abort\.$"; then
+                     # No ^/$ anchors: apt's own "Continue? [Y/n]" prompt is
+                     # printed with no trailing newline, so a declined prompt
+                     # can glue "Abort." onto the end of that same line too --
+                     # anchoring to line-start/end missed that case entirely.
+                     if tr '\r' '\n' < "$_apt_out" | grep -q "Abort\."; then
                          printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
                          rm -f "$_apt_out"
                          return 2
@@ -342,7 +346,13 @@ pkg_full_upgrade() {
                      # never see it as a line start and this check would silently
                      # miss every decline, forcing pointless retries of a transaction
                      # the user explicitly said no to.
-                     if tr '\r' '\n' < "$_dnf_out" | grep -q "^Operation aborted" || (( _dnf_rc == 130 )); then
+                     # No ^ anchor: dnf's own "Is this ok [y/N]:" prompt is also
+                     # printed with no trailing newline, so a declined prompt
+                     # glues "Operation aborted..." onto the end of that same
+                     # line -- anchoring to line-start missed that case too,
+                     # which is what was still forcing retries after the \r fix
+                     # above.
+                     if tr '\r' '\n' < "$_dnf_out" | grep -q "Operation aborted" || (( _dnf_rc == 130 )); then
                          printf "  ${RED}✗${RESET}  Upgrading installed packages\n"
                          rm -f "$_dnf_out"
                          return 2

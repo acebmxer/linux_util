@@ -3645,6 +3645,63 @@ test_ordinary_utility_not_marked_full_upgrade
 test_preflight_scope_mixed_batch_upgrades
 
 echo ""
+echo "=== Interactive Upgrade Decline Detection Tests ==="
+
+# dnf5's own "Is this ok [y/N]:" prompt is printed with no trailing newline,
+# so on a declined prompt "Operation aborted by the user." lands glued onto
+# the end of that same line instead of starting a fresh one -- the user's
+# typed "n<Enter>" is echoed back by the terminal driver, never by dnf's own
+# piped stdout, so no newline from that keystroke ever reaches the captured
+# output. A grep anchored to line-start ("^Operation aborted") never matches
+# text glued onto the end of a preceding line, which is what kept forcing
+# retries of a transaction the user had already declined, even after the
+# earlier \r-redraw fix above.
+test_dnf_decline_glued_to_prompt_returns_cancelled() {
+    local out rc
+    out=$(
+        PKG_MGR=dnf
+        sudo() { "$@"; }
+        dnf() {
+            printf 'Is this ok [y/N]: Operation aborted by the user.\n'
+            return 1
+        }
+        pkg_full_upgrade direct
+        echo "RC:$?"
+    )
+    rc="${out##*RC:}"
+    assert_eq "2" "$rc" \
+        "a declined dnf prompt glued onto the same line as 'Operation aborted' returns 2 (Cancelled), not retried"
+}
+
+# Same glued-line shape can happen on the apt branch's "Continue? [Y/n]"
+# prompt, which the dnf branch's detection was deliberately written to mirror.
+test_apt_decline_glued_to_prompt_returns_cancelled() {
+    local out rc
+    out=$(
+        PKG_MGR=apt
+        sudo() { "$@"; }
+        run_direct() { shift; "$@"; }
+        apt() {
+            case "$1" in
+                --fix-broken) return 0 ;;
+                full-upgrade)
+                    printf 'Continue? [Y/n] Abort.\n'
+                    return 1
+                    ;;
+            esac
+        }
+        pkg_full_upgrade direct
+        echo "RC:$?"
+    )
+    rc="${out##*RC:}"
+    assert_eq "2" "$rc" \
+        "a declined apt prompt glued onto the same line as 'Abort.' returns 2 (Cancelled), not retried"
+}
+
+test_dnf_decline_glued_to_prompt_returns_cancelled
+test_apt_decline_glued_to_prompt_returns_cancelled
+
+echo ""
 echo "=== Prerelease Distro Upgrade Tests ==="
 
 # Opt-in beta/devel distro-version upgrade offer (PKG_ALLOW_PRERELEASE_UPGRADE /

@@ -37,6 +37,16 @@ when a release is cut.
 
 ### Fixed
 
+- **The "Cancelled" status line for a user-declined operation used `⊘`, a
+  symbol that appeared nowhere else in the project.** Every other completion
+  status in the codebase pairs `✓`/green for success and `✗`/red for failure
+  (`snapshot.sh`, `pkg_manager.sh`, `logging.sh`, and `linux_util.sh` itself),
+  with `⚠`/yellow already established as the symbol for a non-fatal, worth-
+  noting outcome. `⊘` was introduced as a one-off in the commit that first
+  added cancellation handling and never matched either convention. Replaced
+  both uses in `linux_util.sh` with `⚠`, reusing the existing warning symbol
+  and color instead of the invented one.
+
 - **Package installs on Fedora/RHEL could show garbled, repeated terminal
   output** — the same "Running %post scriptlet: ..." banner and progress line
   printed over and over during a single package's post-install scriptlets,
@@ -85,6 +95,20 @@ when a release is cut.
   and apt branches now run their captured output through `tr '\r' '\n'`
   before grepping, so a carriage-return-redrawn line can no longer hide the
   match.
+
+  Confirmed against a real run that the `\r` fix above still wasn't enough:
+  declining still retried three times every time. The actual cause is that
+  dnf's own `"Is this ok [y/N]:"` prompt is printed with no trailing newline,
+  and the user's typed `n`/Enter is echoed back by the terminal driver, never
+  by dnf's own piped stdout — so `Operation aborted by the user.` lands glued
+  onto the *end* of the prompt line, not at the start of a fresh one, and the
+  `^` anchor never matches text glued onto the end of a preceding line
+  either. Removed the `^`/`$` anchors from both the dnf/yum and apt checks
+  (matching `Operation aborted` / `Abort.` anywhere in the captured output is
+  specific enough on its own) and added regression tests
+  (`test_dnf_decline_glued_to_prompt_returns_cancelled`,
+  `test_apt_decline_glued_to_prompt_returns_cancelled`) that reproduce the
+  glued-line shape directly, rather than relying on a real prompt round-trip.
 
 - **dnf/dnf5's transaction confirmation ("Total size... / After this
   operation... / Is this ok [y/N]:") could render with stray leading

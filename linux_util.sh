@@ -459,7 +459,7 @@ process_selected() {
             if [[ $_exit_code -eq 2 ]]; then
                 local _duration=$(( SECONDS - _op_start ))
                 echo ""
-                echo "${YELLOW}⊘ Cancelled: $util${RESET} ${DIM}(${_duration}s)${RESET}"
+                echo "${YELLOW}⚠ Cancelled: $util${RESET} ${DIM}(${_duration}s)${RESET}"
                 log_info "Cancelled by user: $util"
                 rm -f "$_stderr_tmp"
             elif [[ $_exit_code -eq 0 || $_exit_code -eq 3 ]]; then
@@ -521,7 +521,7 @@ process_selected() {
                         # Same contract as the first attempt: 2 = cancelled by user,
                         # 3 = success with no changes. Neither is a failed retry.
                         if [[ $_retry_code -eq 2 ]]; then
-                            echo "${YELLOW}⊘ Cancelled: $util${RESET} ${DIM}(${_retry_dur}s)${RESET}"
+                            echo "${YELLOW}⚠ Cancelled: $util${RESET} ${DIM}(${_retry_dur}s)${RESET}"
                             log_info "Cancelled by user: $util"
                             rm -f "$_stderr_tmp"
                             return 0
