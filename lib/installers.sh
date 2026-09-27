@@ -166,6 +166,7 @@ register_utility "Docker"              setup_install_docker     check_docker    
 register_utility "Distrobox"           install_distrobox        check_distrobox        uninstall_distrobox        update_distrobox           get_version_distrobox
 register_utility "BoxBuddy"            install_boxbuddy         check_boxbuddy         uninstall_boxbuddy         update_boxbuddy            get_version_boxbuddy
 register_utility "DistroShelf"         install_distroshelf      check_distroshelf      uninstall_distroshelf      update_distroshelf         get_version_distroshelf
+register_utility "Kontainer"           install_kontainer        check_kontainer        uninstall_kontainer        update_kontainer           get_version_kontainer
 register_utility "Fastfetch"           install_fastfetch        check_fastfetch        uninstall_fastfetch        update_fastfetch           get_version_fastfetch
 register_utility "Feral Gamemode"      install_gamemode         check_gamemode         uninstall_gamemode         update_gamemode            get_version_gamemode
 register_utility "FileZilla"           install_filezilla        check_filezilla        uninstall_filezilla        update_filezilla           get_version_filezilla

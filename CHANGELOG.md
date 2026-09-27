@@ -12,6 +12,35 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **Kontainer** (Development → Distrobox subcategory), a native KDE
+  (Qt/QML + Kirigami) graphical front-end for Distrobox, alongside the
+  existing BoxBuddy and DistroShelf GTK front-ends. Installs via Flatpak
+  (`io.github.DenysMb.Kontainer`), following the same pattern as those two:
+  requires Flatpak Setup to have run first, and warns if Distrobox itself
+  isn't installed.
+
+### Fixed
+
+- **A Flatpak app installed through this project could fail to launch from
+  the desktop's application menu immediately after install**, with the menu
+  reporting "The name is not activatable" (confirmed on KDE Plasma, e.g.
+  after installing DistroShelf). Root cause: many GTK4/libadwaita Flatpak
+  apps ship `DBusActivatable=true` in their `.desktop` file, so desktop
+  launchers (KDE's kicker/krunner, GNOME Shell) start them via D-Bus
+  activation rather than running `Exec=` directly. The session D-Bus
+  (dbus-broker/dbus-daemon) only scans `$XDG_DATA_DIRS`'s `dbus-1/services`
+  directories for activatable names at startup, so a `.service` file a
+  Flatpak install drops in mid-session is invisible to it until the user
+  logs out and back in. Added `flatpak_refresh_dbus()` in `pkg_manager.sh`,
+  which calls `busctl --user call org.freedesktop.DBus / \
+  org.freedesktop.DBus ReloadConfig` to force an immediate rescan, and wired
+  it into `health_check()` in `utilities.sh` (the single post-install/update
+  hook every utility already runs through) right beside the existing
+  `hash -r` shell-cache refresh, so it applies to every Flatpak installer in
+  the project rather than one at a time.
+
 ## [1.7.0] - 2026-09-23
 
 ### Added

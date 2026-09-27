@@ -377,6 +377,9 @@ health_check() {
 
     # Refresh shell command hash table so newly installed binaries are found
     hash -r 2>/dev/null
+    # Refresh the session D-Bus's activatable-names cache so a freshly
+    # installed Flatpak app can be launched from the system menu immediately
+    flatpak_refresh_dbus
 
     local check_func="${CHECK_FUNCS[$util_name]:-}"
     # Skip health check for tasks with no meaningful installed state

@@ -129,6 +129,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Distrobox** | Run any Linux distro in an integrated terminal container (needs Podman/Docker) |
 | **BoxBuddy** | GTK4 graphical front-end for Distrobox (Flatpak) |
 | **DistroShelf** | GTK4 graphical manager for Distrobox containers (Flatpak) |
+| **Kontainer** | Kirigami/QML graphical manager for Distrobox containers, built for KDE Plasma (Flatpak) |
 | **Docker** | Container platform — official repos, adds user to `docker` group |
 | **GitHub CLI** | Official CLI for GitHub — repos, issues, PRs, and workflows |
 | **Go SDK** | Official Go programming language toolchain |
@@ -210,7 +211,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 
 | Utility | Description |
 |---------|-------------|
-| **Flatpak Setup** | Configures Flatpak and adds the Flathub repository — the install path for several utilities here (Bottles, BoxBuddy, DistroShelf, Boxflat, Duplicati, ProtonUp-Qt) |
+| **Flatpak Setup** | Configures Flatpak and adds the Flathub repository — the install path for several utilities here (Bottles, BoxBuddy, DistroShelf, Kontainer, Boxflat, Duplicati, ProtonUp-Qt) |
 | **Homebrew** | Linuxbrew — installs into your home directory and runs entirely in user space; newer CLI tools without root. Cannot be installed as root |
 | **Nix** | Purely-functional manager with reproducible, isolated, rollback-able installs, via the Determinate Systems installer |
 | **Snap (snapd)** | Canonical's sandboxed self-contained apps; enables the snapd socket and `/snap` path automatically |
