@@ -21,6 +21,12 @@ when a release is cut.
   requires Flatpak Setup to have run first, and warns if Distrobox itself
   isn't installed.
 
+  While adding this, found and fixed a real bug: Kontainer was registered as
+  a utility but never given a `UTILITY_CATEGORY` entry, so it fell back to
+  "System Tasks" instead of appearing in Development → Distrobox alongside
+  Distrobox, BoxBuddy, and DistroShelf. It was still reachable via search,
+  but not from its intended menu location.
+
 ### Fixed
 
 - **A Flatpak app installed through this project could fail to launch from
