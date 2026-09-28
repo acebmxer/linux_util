@@ -22,10 +22,12 @@ when a release is cut.
   isn't installed.
 
   While adding this, found and fixed a real bug: Kontainer was registered as
-  a utility but never given a `UTILITY_CATEGORY` entry, so it fell back to
-  "System Tasks" instead of appearing in Development → Distrobox alongside
-  Distrobox, BoxBuddy, and DistroShelf. It was still reachable via search,
-  but not from its intended menu location.
+  a utility but never given its `UTILITY_CATEGORY`, `UTILITY_SUBCATEGORY`,
+  `UTILITY_DISPLAY_NAME` or `UTILITY_DESCRIPTION` entries, so it fell back
+  to "System Tasks" instead of appearing in Development → Distrobox, showed
+  no description or "(Requires Flatpak)" label, and was retried on failure
+  unlike the other Flatpak-only utilities. Distrobox's post-install hint now
+  names Kontainer alongside BoxBuddy and DistroShelf.
 
 ### Fixed
 

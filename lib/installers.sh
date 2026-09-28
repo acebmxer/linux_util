@@ -115,6 +115,7 @@ NO_RETRY["Bottles"]=1
 NO_RETRY["Boxflat"]=1
 NO_RETRY["BoxBuddy"]=1
 NO_RETRY["DistroShelf"]=1
+NO_RETRY["Kontainer"]=1
 
 # --- Utilities (alphabetical order) ---
 register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   check_amd_chipset_drivers   uninstall_amd_chipset_drivers   update_amd_chipset_drivers   get_version_amd_chipset_drivers
@@ -438,7 +439,7 @@ NO_RETRY["SDDM Astronaut"]=1
 
 # --- Package Managers (additional / third-party — native managers untouched) ---
 # Cross-distro managers that run alongside the native package manager.
-# Flatpak is listed first: several utilities (Bottles, BoxBuddy, DistroShelf,
+# Flatpak is listed first: several utilities (Bottles, BoxBuddy, DistroShelf, Kontainer,
 # Boxflat, Duplicati, ProtonUp-Qt) install through it and need it set up first.
 register_utility "Flatpak Setup"       install_flatpak_setup    check_flatpak_setup    uninstall_flatpak_setup    update_flatpak_setup       get_version_flatpak_setup
 register_utility "Homebrew"            install_homebrew         check_homebrew         uninstall_homebrew         update_homebrew            get_version_homebrew
@@ -740,6 +741,7 @@ UTILITY_SUBCATEGORY["VSCodium"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Distrobox"]="Distrobox"
 UTILITY_SUBCATEGORY["BoxBuddy"]="Distrobox"
 UTILITY_SUBCATEGORY["DistroShelf"]="Distrobox"
+UTILITY_SUBCATEGORY["Kontainer"]="Distrobox"
 UTILITY_SUBCATEGORY["Steam App"]="Game Launchers"
 UTILITY_SUBCATEGORY["Lutris"]="Game Launchers"
 UTILITY_SUBCATEGORY["Heroic Games Launcher"]="Game Launchers"
@@ -818,6 +820,7 @@ UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["BoxBuddy"]="BoxBuddy (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["DistroShelf"]="DistroShelf (Requires Flatpak)"
+UTILITY_DISPLAY_NAME["Kontainer"]="Kontainer (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Zen Browser"]="Zen Browser (Beta)"
 
 # System Tasks: subcategory folders appear at the top, plain tasks keep their order.
@@ -912,6 +915,7 @@ UTILITY_DESCRIPTION["Docker"]="Container platform for building, shipping, and ru
 UTILITY_DESCRIPTION["Distrobox"]="Runs any Linux distribution inside your terminal, tightly integrated with the host (shared home, X11/Wayland, audio, and devices). Use it to run software from another distro without touching your base system. Installed from the native package where available (EPEL on RHEL), otherwise via the upstream rootless installer into ~/.local. Requires a container backend — Podman or Docker."
 UTILITY_DESCRIPTION["BoxBuddy"]="Simple GTK4/libadwaita graphical front-end for Distrobox. Create, enter, upgrade, and delete boxes, install packages, and export apps without memorising commands. Installed via Flatpak from Flathub; it does not bundle Distrobox, so install Distrobox first."
 UTILITY_DESCRIPTION["DistroShelf"]="Modern GTK4/libadwaita graphical manager for Distrobox containers — view status and details, install packages, manage exported applications, open terminal sessions, and clone or delete boxes. Installed via Flatpak from Flathub; requires Distrobox on the host."
+UTILITY_DESCRIPTION["Kontainer"]="Native KDE (Qt/QML + Kirigami) graphical manager for Distrobox containers — create, enter, upgrade, and delete boxes, install packages, and export apps. Installed via Flatpak from Flathub; requires Distrobox on the host."
 UTILITY_DESCRIPTION["GitHub CLI"]="Official command-line interface for GitHub — manage repos, issues, PRs, and workflows from the terminal."
 UTILITY_DESCRIPTION["Go SDK"]="Official Go programming language SDK with the compiler, standard library, and toolchain."
 UTILITY_DESCRIPTION["JetBrains Toolbox"]="Manager for installing and updating JetBrains IDEs such as IntelliJ, PyCharm, and WebStorm."

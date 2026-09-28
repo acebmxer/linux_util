@@ -45,7 +45,7 @@ install_distrobox() {
     fi
     info "Distrobox installed. Create your first box with:"
     info "  distrobox create --name mybox --image ubuntu:24.04"
-    info "Graphical front-ends are available in this subcategory: BoxBuddy and DistroShelf."
+    info "Graphical front-ends are available in this subcategory: BoxBuddy, DistroShelf and Kontainer."
 }
 
 uninstall_distrobox() {
