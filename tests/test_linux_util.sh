@@ -3765,6 +3765,18 @@ exit 1
 EOF
 chmod +x "$_PRERELEASE_FAKEBIN/dpkg"
 
+# Fake do-release-upgrade: reports no new stable release, matching the fake
+# curl's empty stable feeds. Without it, a host with the real tool (the
+# ubuntu-latest CI runner) answers -c with the live next release and the
+# devel fallback is never reached.
+cat > "$_PRERELEASE_FAKEBIN/do-release-upgrade" <<'EOF'
+#!/bin/bash
+echo "Checking for a new Ubuntu release"
+echo "No new release found."
+exit 1
+EOF
+chmod +x "$_PRERELEASE_FAKEBIN/do-release-upgrade"
+
 # Fake needs-restarting: always reports "no restart needed" so
 # pkg_distro_upgrade's Fedora case proceeds past that check.
 printf '#!/bin/bash\nexit 0\n' > "$_PRERELEASE_FAKEBIN/needs-restarting"
