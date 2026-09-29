@@ -14,6 +14,24 @@ when a release is cut.
 
 ### Added
 
+- **Firecracker** (Development), AWS's lightweight virtual machine monitor
+  for running KVM microVMs. Arch installs the `extra` package, which tracks
+  upstream; every other distro gets the upstream release tarball instead,
+  since Debian/Ubuntu don't package it and Fedora's package is several
+  releases behind. The `firecracker` and `jailer` binaries go to
+  `/usr/local/bin`, after the download is checked against the release's
+  published SHA256 checksum (a mismatch aborts the install). Warns
+  if `/dev/kvm` is missing or not readable and writable by the current user,
+  since Firecracker can't start a microVM without it. When `/dev/kvm` is
+  missing inside a virtual machine, the warning says so instead of pointing
+  at the BIOS: in a VM it takes nested virtualization on the hypervisor, and
+  a Xen VM (XCP-ng) is told outright that Xen doesn't support nested
+  virtualization, so Firecracker can't run there. Under WSL 2, where
+  `/dev/kvm` is controlled from Windows rather than inside the distro, the
+  warning instead points at the `nestedVirtualization` key under `[wsl2]` in
+  `%UserProfile%\.wslconfig` (Windows 11 only) and the `wsl --shutdown`
+  needed to apply it.
+
 - **Kontainer** (Development → Distrobox subcategory), a native KDE
   (Qt/QML + Kirigami) graphical front-end for Distrobox, alongside the
   existing BoxBuddy and DistroShelf GTK front-ends. Installs via Flatpak

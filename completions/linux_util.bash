@@ -34,6 +34,7 @@ Fastfetch
 Fedora Mainline Kernel
 Feral Gamemode
 FileZilla
+Firecracker
 Firefox
 Flatpak Setup
 Full System Upgrade/Update

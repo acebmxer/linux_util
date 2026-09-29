@@ -16,8 +16,8 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Incomplete:** 225 utilities and system tasks are registered in
-> `lib/installers.sh`; 192 are listed below. The **File Managers**, **Firewalls**,
+> **Incomplete:** 226 utilities and system tasks are registered in
+> `lib/installers.sh`; 193 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
 > Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
@@ -146,6 +146,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Rustup** | Rust toolchain installer and version manager |
 | **Terraform** | HashiCorp infrastructure-as-code tool |
 | **Virt-Manager** | GUI for managing KVM/QEMU virtual machines |
+| **Firecracker** | Lightweight KVM microVM monitor (AWS) — Arch package on Arch, otherwise the upstream `firecracker` and `jailer` binaries in `/usr/local/bin`; needs `/dev/kvm` access |
 | **Visual Studio Code** | Microsoft's extensible code editor |
 | **VSCodium** | Telemetry-free community build of VS Code (Open VSX extensions) |
 

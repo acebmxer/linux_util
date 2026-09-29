@@ -304,6 +304,7 @@ if [[ "$DISTRO_FAMILY" != "arch" ]]; then
 fi
 register_utility "Ventoy"              install_ventoy           check_ventoy           uninstall_ventoy           update_ventoy              get_version_ventoy
 register_utility "Virt-Manager"        install_virt_manager     check_virt_manager     uninstall_virt_manager     update_virt_manager        get_version_virt_manager
+register_utility "Firecracker"         install_firecracker      check_firecracker      uninstall_firecracker      update_firecracker         get_version_firecracker
 register_utility "Visual Studio Code"  install_vscode           check_vscode           uninstall_vscode           update_vscode              get_version_vscode
 register_utility "VSCodium"            install_vscodium         check_vscodium         uninstall_vscodium         update_vscodium            get_version_vscodium
 register_utility "Vorta"               install_vorta            check_vorta            uninstall_vorta            update_vorta               get_version_vorta
@@ -681,6 +682,7 @@ UTILITY_CATEGORY["UniFi Endpoint"]="Internet"
 UTILITY_CATEGORY["Ventoy"]="Disk Utilities"
 UTILITY_CATEGORY["GParted"]="Disk Utilities"
 UTILITY_CATEGORY["Virt-Manager"]="Development"
+UTILITY_CATEGORY["Firecracker"]="Development"
 UTILITY_CATEGORY["VLC"]="Productivity"
 UTILITY_CATEGORY["Zen Browser"]="Internet"
 UTILITY_CATEGORY["Zoom"]="Internet"
@@ -935,6 +937,7 @@ UTILITY_DESCRIPTION["pyenv"]="Python version manager for installing and switchin
 UTILITY_DESCRIPTION["Rustup"]="Official Rust toolchain installer and version manager for the Rust programming language."
 UTILITY_DESCRIPTION["Terraform"]="HashiCorp's infrastructure-as-code tool for provisioning and managing cloud resources with declarative HCL configs."
 UTILITY_DESCRIPTION["Virt-Manager"]="Graphical desktop tool for managing KVM/QEMU virtual machines with full libvirt integration."
+UTILITY_DESCRIPTION["Firecracker"]="Lightweight virtual machine monitor from AWS that boots minimal KVM microVMs in milliseconds, used to sandbox workloads with VM-level isolation (the engine behind AWS Lambda and Fargate). Installed from the Arch package on Arch; elsewhere the upstream release's firecracker and jailer binaries go to /usr/local/bin after verifying the published SHA256 checksum. Requires KVM and read/write access to /dev/kvm (kvm group) — so not inside a Xen/XCP-ng VM, which has no supported nested virtualization. Under WSL 2 it needs Windows 11 with nestedVirtualization enabled in .wslconfig. Command-line only — it is driven through its REST API socket, not a GUI."
 UTILITY_DESCRIPTION["Visual Studio Code"]="Microsoft's extensible code editor with a rich ecosystem of extensions and built-in Git support."
 UTILITY_DESCRIPTION["VSCodium"]="Community build of the VS Code source with Microsoft's telemetry, branding, and proprietary marketplace removed (extensions come from Open VSX). Installs side by side with Visual Studio Code — separate 'codium' binary, config, and extensions. On Arch it falls back to the project's own release tarball when the AUR is disabled."
 
