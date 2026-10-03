@@ -23,7 +23,8 @@ when a release is cut.
 - **Parallel Downloads** (System Tasks, Fedora/RHEL/Arch), sets dnf's
   `max_parallel_downloads` or pacman's `ParallelDownloads` to 10 (defaults: 3
   and 5). Backs up the config first; undoing it removes the dnf key or puts
-  pacman back to 5.
+  pacman back to 5. Takes effect on the next dnf/pacman run, so it does not
+  trigger the end-of-run reboot prompt.
 
 - **Toolbx** (Development), the Podman-based tool for containerized
   command-line environments that share the home directory, user and devices
