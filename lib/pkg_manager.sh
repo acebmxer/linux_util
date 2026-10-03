@@ -1851,6 +1851,21 @@ flatpak_is_installed() {
     has_flatpak && flatpak list 2>/dev/null | grep -qi "$1"
 }
 
+# The session D-Bus (dbus-broker/dbus-daemon) only scans $XDG_DATA_DIRS'
+# dbus-1/services directories for activatable names at startup. A Flatpak
+# app installed mid-session ships a new .service file there, but most
+# desktop launchers (KDE's kicker/krunner, GNOME Shell) start GUI apps via
+# D-Bus activation rather than Exec= when a .desktop file sets
+# DBusActivatable=true — common for GTK4/libadwaita apps. Without a reload,
+# clicking the freshly installed app fails with "The name is not
+# activatable" until the user logs out and back in.
+# Safe/cheap to call unconditionally: a no-op when nothing changed.
+flatpak_refresh_dbus() {
+    has_flatpak || return 0
+    command -v busctl &>/dev/null || return 0
+    busctl --user call org.freedesktop.DBus / org.freedesktop.DBus ReloadConfig &>/dev/null
+}
+
 # ─── WinApps stub filtering ──────────────────────────────────────────────────
 # WinApps installs a launcher into ~/.local/bin (or /usr/local/bin) for every
 # application it finds in the Windows VM — pwsh, cmd, explorer, msedge, and

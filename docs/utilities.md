@@ -16,8 +16,8 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Incomplete:** 225 utilities and system tasks are registered in
-> `lib/installers.sh`; 192 are listed below. The **File Managers**, **Firewalls**,
+> **Incomplete:** 229 utilities and system tasks are registered in
+> `lib/installers.sh`; 196 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
 > Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
@@ -41,6 +41,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Manage Share** | Update or unmount an existing linux_util-managed mount |
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
 | **Num Lock at Boot** | Enables Num Lock on TTY consoles and the display manager login screen |
+| **Parallel Downloads** | Raises parallel package downloads to 10 — `max_parallel_downloads` in `/etc/dnf/dnf.conf` or `ParallelDownloads` in `/etc/pacman.conf`; backs up the file first and is reversible *(Fedora/RHEL/Arch only)* |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
 | **GTK Window Fix** | Restores minimize/maximize/close on window title bars for GTK apps (GNOME/Cinnamon/MATE/Xfce); GNOME's default window-manager button layout omits them |
 | **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/KDE Neon only)* |
@@ -66,7 +67,8 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 
 | Utility | Description |
 |---------|-------------|
-| **AMD Drivers** | Installs open-source AMD GPU drivers (AMDGPU/Mesa) |
+| **AMD Drivers** | Installs open-source AMD GPU drivers (AMDGPU/Mesa) and VA-API video acceleration — full-codec `mesa-va-drivers-freeworld` from RPM Fusion on Fedora |
+| **Intel Drivers** | Installs open-source Intel GPU drivers (Mesa), Vulkan, and VA-API video acceleration — full-codec `intel-media-driver` from RPM Fusion on Fedora/RHEL |
 | **AMD CPU Microcode & Firmware** | Installs AMD CPU microcode updates and firmware packages |
 | **Intel CPU Microcode & Thermal** | Installs Intel CPU microcode updates and thermal management tools |
 | **LACT** | Linux AMDGPU Control Application — fan curves, power limits, overclocking |
@@ -129,6 +131,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Distrobox** | Run any Linux distro in an integrated terminal container (needs Podman/Docker) |
 | **BoxBuddy** | GTK4 graphical front-end for Distrobox (Flatpak) |
 | **DistroShelf** | GTK4 graphical manager for Distrobox containers (Flatpak) |
+| **Kontainer** | Kirigami/QML graphical manager for Distrobox containers, built for KDE Plasma (Flatpak) |
 | **Docker** | Container platform — official repos, adds user to `docker` group |
 | **GitHub CLI** | Official CLI for GitHub — repos, issues, PRs, and workflows |
 | **Go SDK** | Official Go programming language toolchain |
@@ -144,7 +147,9 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **pyenv** | Python version manager |
 | **Rustup** | Rust toolchain installer and version manager |
 | **Terraform** | HashiCorp infrastructure-as-code tool |
+| **Toolbx** | Containerized command-line environments on Podman, integrated with the host (not available on openSUSE) |
 | **Virt-Manager** | GUI for managing KVM/QEMU virtual machines |
+| **Firecracker** | Lightweight KVM microVM monitor (AWS) — Arch package on Arch, otherwise the upstream `firecracker` and `jailer` binaries in `/usr/local/bin`; needs `/dev/kvm` access |
 | **Visual Studio Code** | Microsoft's extensible code editor |
 | **VSCodium** | Telemetry-free community build of VS Code (Open VSX extensions) |
 
@@ -210,7 +215,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 
 | Utility | Description |
 |---------|-------------|
-| **Flatpak Setup** | Configures Flatpak and adds the Flathub repository — the install path for several utilities here (Bottles, BoxBuddy, DistroShelf, Boxflat, Duplicati, ProtonUp-Qt) |
+| **Flatpak Setup** | Configures Flatpak and adds the Flathub repository — the install path for several utilities here (Bottles, BoxBuddy, DistroShelf, Kontainer, Boxflat, Duplicati, ProtonUp-Qt) |
 | **Homebrew** | Linuxbrew — installs into your home directory and runs entirely in user space; newer CLI tools without root. Cannot be installed as root |
 | **Nix** | Purely-functional manager with reproducible, isolated, rollback-able installs, via the Determinate Systems installer |
 | **Snap (snapd)** | Canonical's sandboxed self-contained apps; enables the snapd socket and `/snap` path automatically |

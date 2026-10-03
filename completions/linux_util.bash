@@ -34,6 +34,7 @@ Fastfetch
 Fedora Mainline Kernel
 Feral Gamemode
 FileZilla
+Firecracker
 Firefox
 Flatpak Setup
 Full System Upgrade/Update
@@ -44,6 +45,7 @@ GNOME Desktop
 Google Chrome
 GTK Window Fix
 Heroic Games Launcher
+Intel Drivers
 JetBrains Toolbox
 Joplin Client
 Joplin Web Clipper
@@ -70,6 +72,7 @@ OpenSSH Server
 tmux
 tmux Resurrect
 Pantheon Desktop
+Parallel Downloads
 Pay Respects
 PIA VPN
 Postman
@@ -94,6 +97,7 @@ Thorium Browser
 Thunderbird
 Timeshift
 TMOG
+Toolbx
 Trojita
 Num Lock at Boot
 UFW Firewall

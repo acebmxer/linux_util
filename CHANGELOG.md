@@ -12,6 +12,93 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-03
+
+### Added
+
+- **Intel Drivers** (Drivers → GPU Drivers), the Intel counterpart of AMD
+  Drivers: Mesa, Vulkan, and VA-API video acceleration (Broadwell and newer).
+  Fedora and RHEL get RPM Fusion's full-codec `intel-media-driver`, enabling
+  RPM Fusion if needed; Debian/Ubuntu get the non-free driver, falling back to
+  the free one when non-free/multiverse is off.
+
+- **Parallel Downloads** (System Tasks, Fedora/RHEL/Arch), sets dnf's
+  `max_parallel_downloads` or pacman's `ParallelDownloads` to 10 (defaults: 3
+  and 5). Backs up the config first; undoing it removes the dnf key or puts
+  pacman back to 5. Takes effect on the next dnf/pacman run, so it does not
+  trigger the end-of-run reboot prompt.
+
+- **Toolbx** (Development), the Podman-based tool for containerized
+  command-line environments that share the home directory, user and devices
+  with the host. Installs the native package — `podman-toolbox` on
+  Debian/Ubuntu, `toolbox` on Fedora, RHEL (AppStream) and Arch — and warns
+  if Podman is missing. Not offered on openSUSE: there is no Toolbx package,
+  and openSUSE's own `toolbox` package is an unrelated tool
+  (microos-toolbox) that installs the same command. Uninstalling removes only
+  the package; existing toolboxes are Podman containers and are left alone.
+
+- **Firecracker** (Development), AWS's lightweight virtual machine monitor
+  for running KVM microVMs. Arch installs the `extra` package, which tracks
+  upstream; every other distro gets the upstream release tarball instead,
+  since Debian/Ubuntu don't package it and Fedora's package is several
+  releases behind. The `firecracker` and `jailer` binaries go to
+  `/usr/local/bin`, after the download is checked against the release's
+  published SHA256 checksum (a mismatch aborts the install). Warns
+  if `/dev/kvm` is missing or not readable and writable by the current user,
+  since Firecracker can't start a microVM without it. When `/dev/kvm` is
+  missing inside a virtual machine, the warning says so instead of pointing
+  at the BIOS: in a VM it takes nested virtualization on the hypervisor, and
+  a Xen VM (XCP-ng) is told outright that Xen doesn't support nested
+  virtualization, so Firecracker can't run there. Under WSL 2, where
+  `/dev/kvm` is controlled from Windows rather than inside the distro, the
+  warning instead points at the `nestedVirtualization` key under `[wsl2]` in
+  `%UserProfile%\.wslconfig` (Windows 11 only) and the `wsl --shutdown`
+  needed to apply it.
+
+- **Kontainer** (Development → Distrobox subcategory), a native KDE
+  (Qt/QML + Kirigami) graphical front-end for Distrobox, alongside the
+  existing BoxBuddy and DistroShelf GTK front-ends. Installs via Flatpak
+  (`io.github.DenysMb.Kontainer`), following the same pattern as those two:
+  requires Flatpak Setup to have run first, and warns if Distrobox itself
+  isn't installed.
+
+  While adding this, found and fixed a real bug: Kontainer was registered as
+  a utility but never given its `UTILITY_CATEGORY`, `UTILITY_SUBCATEGORY`,
+  `UTILITY_DISPLAY_NAME` or `UTILITY_DESCRIPTION` entries, so it fell back
+  to "System Tasks" instead of appearing in Development → Distrobox, showed
+  no description or "(Requires Flatpak)" label, and was retried on failure
+  unlike the other Flatpak-only utilities. Distrobox's post-install hint now
+  names Kontainer alongside BoxBuddy and DistroShelf.
+
+### Changed
+
+- **AMD Drivers now installs VA-API video acceleration** and `vainfo`. On
+  Fedora that is RPM Fusion's full-codec `mesa-va-drivers-freeworld` (Fedora's
+  own Mesa leaves out H.264/H.265/VC-1), enabling RPM Fusion free if needed; it
+  installs beside Fedora's Mesa and libva uses it first, so no `dnf swap` is
+  involved. Debian/Ubuntu add `mesa-va-drivers`, openSUSE `Mesa-libva`; Arch's
+  `mesa` already had it.
+
+### Fixed
+
+- **A Flatpak app installed through this project could fail to launch from
+  the desktop's application menu immediately after install**, with the menu
+  reporting "The name is not activatable" (confirmed on KDE Plasma, e.g.
+  after installing DistroShelf). Root cause: many GTK4/libadwaita Flatpak
+  apps ship `DBusActivatable=true` in their `.desktop` file, so desktop
+  launchers (KDE's kicker/krunner, GNOME Shell) start them via D-Bus
+  activation rather than running `Exec=` directly. The session D-Bus
+  (dbus-broker/dbus-daemon) only scans `$XDG_DATA_DIRS`'s `dbus-1/services`
+  directories for activatable names at startup, so a `.service` file a
+  Flatpak install drops in mid-session is invisible to it until the user
+  logs out and back in. Added `flatpak_refresh_dbus()` in `pkg_manager.sh`,
+  which calls `busctl --user call org.freedesktop.DBus / \
+  org.freedesktop.DBus ReloadConfig` to force an immediate rescan, and wired
+  it into `health_check()` in `utilities.sh` (the single post-install/update
+  hook every utility already runs through) right beside the existing
+  `hash -r` shell-cache refresh, so it applies to every Flatpak installer in
+  the project rather than one at a time.
+
 ## [1.7.0] - 2026-09-23
 
 ### Added

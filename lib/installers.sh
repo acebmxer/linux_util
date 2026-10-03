@@ -61,6 +61,7 @@ register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_gu
 register_utility "Enable RDP"             install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
 register_utility "OpenRSAT"               install_openrsat        check_openrsat        uninstall_openrsat        update_openrsat           get_version_openrsat
 register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
+register_utility "Intel Drivers"          install_intel_drivers   check_intel_drivers   uninstall_intel_drivers   update_intel_drivers      get_version_intel_drivers
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 # Fully interactive prompt flow — re-running the menu after a failure only asks again
@@ -96,6 +97,11 @@ register_system_task "Delete Default Cloud-Init User" delete_cloud_init_user che
 # Remote-access fixes (all distros)
 register_system_task "Fix RDP Kerberos Delay" install_fix_rdp_kerberos check_fix_rdp_kerberos uninstall_fix_rdp_kerberos update_fix_rdp_kerberos get_version_fix_rdp_kerberos
 
+# dnf / pacman only — apt and zypper have no parallel-download setting
+if [[ "$PKG_MGR" == "dnf" || "$PKG_MGR" == "pacman" ]]; then
+    register_system_task "Parallel Downloads" install_parallel_downloads check_parallel_downloads uninstall_parallel_downloads update_parallel_downloads get_version_parallel_downloads
+fi
+
 # Package repair tasks (all distros) — kept at the end of the System Tasks section
 register_system_task "Fix Broken Packages"   setup_fix_broken_packages check_always_false noop_function setup_fix_broken_packages
 register_system_task "Fix Package Repos"      setup_fix_repos           check_always_false noop_function setup_fix_repos
@@ -115,6 +121,7 @@ NO_RETRY["Bottles"]=1
 NO_RETRY["Boxflat"]=1
 NO_RETRY["BoxBuddy"]=1
 NO_RETRY["DistroShelf"]=1
+NO_RETRY["Kontainer"]=1
 
 # --- Utilities (alphabetical order) ---
 register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   check_amd_chipset_drivers   uninstall_amd_chipset_drivers   update_amd_chipset_drivers   get_version_amd_chipset_drivers
@@ -166,6 +173,7 @@ register_utility "Docker"              setup_install_docker     check_docker    
 register_utility "Distrobox"           install_distrobox        check_distrobox        uninstall_distrobox        update_distrobox           get_version_distrobox
 register_utility "BoxBuddy"            install_boxbuddy         check_boxbuddy         uninstall_boxbuddy         update_boxbuddy            get_version_boxbuddy
 register_utility "DistroShelf"         install_distroshelf      check_distroshelf      uninstall_distroshelf      update_distroshelf         get_version_distroshelf
+register_utility "Kontainer"           install_kontainer        check_kontainer        uninstall_kontainer        update_kontainer           get_version_kontainer
 register_utility "Fastfetch"           install_fastfetch        check_fastfetch        uninstall_fastfetch        update_fastfetch           get_version_fastfetch
 register_utility "Feral Gamemode"      install_gamemode         check_gamemode         uninstall_gamemode         update_gamemode            get_version_gamemode
 register_utility "FileZilla"           install_filezilla        check_filezilla        uninstall_filezilla        update_filezilla           get_version_filezilla
@@ -252,6 +260,10 @@ register_utility "Tailscale"           install_tailscale        check_tailscale 
 register_utility "Telegram Desktop"    install_telegram         check_telegram         uninstall_telegram         update_telegram            get_version_telegram
 register_utility "Termius SSH Client"  install_termius          check_termius          uninstall_termius          update_termius             get_version_termius
 register_utility "Terraform"           install_terraform        check_terraform        uninstall_terraform        update_terraform           get_version_terraform
+# Toolbx: openSUSE has no package (its "toolbox" package is a different tool)
+if [[ "$DISTRO_FAMILY" != "suse" ]]; then
+    register_utility "Toolbx"          install_toolbx           check_toolbx           uninstall_toolbx           update_toolbx              get_version_toolbx
+fi
 register_utility "Thermalright TRCC"   install_trcc             check_trcc             uninstall_trcc             update_trcc                get_version_trcc
 register_utility "Thorium Browser"     install_thorium          check_thorium          uninstall_thorium          update_thorium             get_version_thorium
 register_utility "Thunderbird"         install_thunderbird      check_thunderbird      uninstall_thunderbird      update_thunderbird         get_version_thunderbird
@@ -302,6 +314,7 @@ if [[ "$DISTRO_FAMILY" != "arch" ]]; then
 fi
 register_utility "Ventoy"              install_ventoy           check_ventoy           uninstall_ventoy           update_ventoy              get_version_ventoy
 register_utility "Virt-Manager"        install_virt_manager     check_virt_manager     uninstall_virt_manager     update_virt_manager        get_version_virt_manager
+register_utility "Firecracker"         install_firecracker      check_firecracker      uninstall_firecracker      update_firecracker         get_version_firecracker
 register_utility "Visual Studio Code"  install_vscode           check_vscode           uninstall_vscode           update_vscode              get_version_vscode
 register_utility "VSCodium"            install_vscodium         check_vscodium         uninstall_vscodium         update_vscodium            get_version_vscodium
 register_utility "Vorta"               install_vorta            check_vorta            uninstall_vorta            update_vorta               get_version_vorta
@@ -437,7 +450,7 @@ NO_RETRY["SDDM Astronaut"]=1
 
 # --- Package Managers (additional / third-party — native managers untouched) ---
 # Cross-distro managers that run alongside the native package manager.
-# Flatpak is listed first: several utilities (Bottles, BoxBuddy, DistroShelf,
+# Flatpak is listed first: several utilities (Bottles, BoxBuddy, DistroShelf, Kontainer,
 # Boxflat, Duplicati, ProtonUp-Qt) install through it and need it set up first.
 register_utility "Flatpak Setup"       install_flatpak_setup    check_flatpak_setup    uninstall_flatpak_setup    update_flatpak_setup       get_version_flatpak_setup
 register_utility "Homebrew"            install_homebrew         check_homebrew         uninstall_homebrew         update_homebrew            get_version_homebrew
@@ -486,6 +499,7 @@ UTILITY_CATEGORY["Catppuccin GRUB Theme"]="Bootloaders"
 UTILITY_CATEGORY["HyperFluent GRUB Theme"]="Bootloaders"
 UTILITY_CATEGORY["AMD CPU Microcode & Firmware"]="Drivers"
 UTILITY_CATEGORY["AMD Drivers"]="Drivers"
+UTILITY_CATEGORY["Intel Drivers"]="Drivers"
 UTILITY_CATEGORY["Intel CPU Microcode & Thermal"]="Drivers"
 UTILITY_CATEGORY["LACT"]="Drivers"
 UTILITY_CATEGORY["NVIDIA Drivers"]="Drivers"
@@ -562,6 +576,7 @@ UTILITY_CATEGORY["Docker"]="Development"
 UTILITY_CATEGORY["Distrobox"]="Development"
 UTILITY_CATEGORY["BoxBuddy"]="Development"
 UTILITY_CATEGORY["DistroShelf"]="Development"
+UTILITY_CATEGORY["Kontainer"]="Development"
 UTILITY_CATEGORY["Fastfetch"]="System Tools"
 UTILITY_CATEGORY["Feral Gamemode"]="Gaming"
 UTILITY_CATEGORY["FileZilla"]="Internet"
@@ -673,11 +688,13 @@ UTILITY_CATEGORY["OpenRSAT"]="Remote Admin Tools"
 UTILITY_CATEGORY["Rustup"]="Development"
 UTILITY_CATEGORY["Slack"]="Internet"
 UTILITY_CATEGORY["Terraform"]="Development"
+UTILITY_CATEGORY["Toolbx"]="Development"
 UTILITY_CATEGORY["Tor Browser"]="Internet"
 UTILITY_CATEGORY["UniFi Endpoint"]="Internet"
 UTILITY_CATEGORY["Ventoy"]="Disk Utilities"
 UTILITY_CATEGORY["GParted"]="Disk Utilities"
 UTILITY_CATEGORY["Virt-Manager"]="Development"
+UTILITY_CATEGORY["Firecracker"]="Development"
 UTILITY_CATEGORY["VLC"]="Productivity"
 UTILITY_CATEGORY["Zen Browser"]="Internet"
 UTILITY_CATEGORY["Zoom"]="Internet"
@@ -738,6 +755,7 @@ UTILITY_SUBCATEGORY["VSCodium"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Distrobox"]="Distrobox"
 UTILITY_SUBCATEGORY["BoxBuddy"]="Distrobox"
 UTILITY_SUBCATEGORY["DistroShelf"]="Distrobox"
+UTILITY_SUBCATEGORY["Kontainer"]="Distrobox"
 UTILITY_SUBCATEGORY["Steam App"]="Game Launchers"
 UTILITY_SUBCATEGORY["Lutris"]="Game Launchers"
 UTILITY_SUBCATEGORY["Heroic Games Launcher"]="Game Launchers"
@@ -774,6 +792,7 @@ UTILITY_SUBCATEGORY["Vorta"]="File Backup"
 UTILITY_SUBCATEGORY["Duplicati"]="File Backup"
 UTILITY_SUBCATEGORY["AMD CPU Microcode & Firmware"]="CPU Microcode"
 UTILITY_SUBCATEGORY["AMD Drivers"]="GPU Drivers"
+UTILITY_SUBCATEGORY["Intel Drivers"]="GPU Drivers"
 UTILITY_SUBCATEGORY["Intel CPU Microcode & Thermal"]="CPU Microcode"
 UTILITY_SUBCATEGORY["LACT"]="GPU Drivers"
 UTILITY_SUBCATEGORY["NVIDIA Drivers"]="GPU Drivers"
@@ -816,6 +835,7 @@ UTILITY_DISPLAY_NAME["ProtonUp-Qt"]="ProtonUp-Qt (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Duplicati"]="Duplicati (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["BoxBuddy"]="BoxBuddy (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["DistroShelf"]="DistroShelf (Requires Flatpak)"
+UTILITY_DISPLAY_NAME["Kontainer"]="Kontainer (Requires Flatpak)"
 UTILITY_DISPLAY_NAME["Zen Browser"]="Zen Browser (Beta)"
 
 # System Tasks: subcategory folders appear at the top, plain tasks keep their order.
@@ -881,13 +901,15 @@ UTILITY_DESCRIPTION["Enable RDP"]="Enables Remote Desktop Protocol access to thi
 UTILITY_DESCRIPTION["OpenRSAT"]="Cross-platform Active Directory management console from Tranquil IT (a modern Microsoft RSAT-like tool) for managing users, groups, OUs, and DNS records. Installs the latest GitHub release: a .deb on Debian/Ubuntu, an .rpm on Fedora/RHEL (x86_64), or the standalone Linux binary on openSUSE. Not available on Arch."
 UTILITY_DESCRIPTION["AMD CPU Microcode & Firmware"]="Installs AMD CPU microcode updates and linux-firmware blobs (PSP/SMU, Wi-Fi, Bluetooth, and other device firmware) for Ryzen, Threadripper, and EPYC platforms."
 UTILITY_DESCRIPTION["Intel CPU Microcode & Thermal"]="Installs Intel CPU microcode updates and the thermald thermal management daemon for 10th Gen through Core Ultra (Arrow Lake) platforms."
-UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance."
+UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance, with VA-API video acceleration — RPM Fusion's full-codec mesa-va-drivers-freeworld on Fedora."
+UTILITY_DESCRIPTION["Intel Drivers"]="Installs open-source Intel GPU drivers (Mesa) with Vulkan support and VA-API video acceleration (Broadwell and newer) — RPM Fusion's full-codec intel-media-driver on Fedora/RHEL, the non-free driver on Debian/Ubuntu."
 UTILITY_DESCRIPTION["LACT"]="Linux AMDGPU Top — graphical tool for overclocking, undervolting, and monitoring AMD GPUs. Provides fan control, power limit adjustments, and real-time sensor readings. A reboot is required after installation before changes can be applied."
 UTILITY_DESCRIPTION["Flatpak Setup"]="Configures the Flatpak package manager and adds the Flathub repository for sandboxed applications."
 UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firewall with sensible default rules (deny incoming, allow outgoing, allow SSH). Disables firewalld first if it is active — only one firewall manager should run at a time."
 UTILITY_DESCRIPTION["Gufw (Firewall GUI)"]="Graphical frontend for UFW to view status, toggle the firewall, and manage rules and app profiles. Installs UFW first if it is not already present."
 UTILITY_DESCRIPTION["firewalld"]="Dynamic zone-based firewall daemon, the default on Fedora, RHEL, and openSUSE. Managed with firewall-cmd or the firewall-config GUI. Disables UFW first if it is active — only one firewall manager should run at a time."
 UTILITY_DESCRIPTION["firewall-config (GUI)"]="Graphical configuration tool for firewalld to manage zones, services, ports, and rich rules. Installs firewalld first if it is not already present."
+UTILITY_DESCRIPTION["Parallel Downloads"]="Lets the package manager download 10 packages at once instead of the default (3 for dnf, 5 in Arch's stock pacman.conf) by setting max_parallel_downloads in /etc/dnf/dnf.conf or ParallelDownloads in /etc/pacman.conf. Backs up the file first; undoing it restores the default. Fedora, RHEL and Arch-based systems only."
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["GTK Window Fix"]="Restores the minimize, maximize, and close buttons on GTK app title bars (GNOME, Cinnamon, MATE, Xfce) — GNOME's default window-manager button layout omits minimize/maximize, leaving only a close button on apps like Nautilus and Remmina. Sets the per-user window-manager button-layout preference; KDE shows all three by default and is skipped."
@@ -910,6 +932,7 @@ UTILITY_DESCRIPTION["Docker"]="Container platform for building, shipping, and ru
 UTILITY_DESCRIPTION["Distrobox"]="Runs any Linux distribution inside your terminal, tightly integrated with the host (shared home, X11/Wayland, audio, and devices). Use it to run software from another distro without touching your base system. Installed from the native package where available (EPEL on RHEL), otherwise via the upstream rootless installer into ~/.local. Requires a container backend — Podman or Docker."
 UTILITY_DESCRIPTION["BoxBuddy"]="Simple GTK4/libadwaita graphical front-end for Distrobox. Create, enter, upgrade, and delete boxes, install packages, and export apps without memorising commands. Installed via Flatpak from Flathub; it does not bundle Distrobox, so install Distrobox first."
 UTILITY_DESCRIPTION["DistroShelf"]="Modern GTK4/libadwaita graphical manager for Distrobox containers — view status and details, install packages, manage exported applications, open terminal sessions, and clone or delete boxes. Installed via Flatpak from Flathub; requires Distrobox on the host."
+UTILITY_DESCRIPTION["Kontainer"]="Native KDE (Qt/QML + Kirigami) graphical manager for Distrobox containers — create, enter, upgrade, and delete boxes, install packages, and export apps. Installed via Flatpak from Flathub; requires Distrobox on the host."
 UTILITY_DESCRIPTION["GitHub CLI"]="Official command-line interface for GitHub — manage repos, issues, PRs, and workflows from the terminal."
 UTILITY_DESCRIPTION["Go SDK"]="Official Go programming language SDK with the compiler, standard library, and toolchain."
 UTILITY_DESCRIPTION["JetBrains Toolbox"]="Manager for installing and updating JetBrains IDEs such as IntelliJ, PyCharm, and WebStorm."
@@ -928,7 +951,9 @@ UTILITY_DESCRIPTION["PowerShell"]="Microsoft's cross-platform task automation sh
 UTILITY_DESCRIPTION["pyenv"]="Python version manager for installing and switching between multiple Python versions per-project."
 UTILITY_DESCRIPTION["Rustup"]="Official Rust toolchain installer and version manager for the Rust programming language."
 UTILITY_DESCRIPTION["Terraform"]="HashiCorp's infrastructure-as-code tool for provisioning and managing cloud resources with declarative HCL configs."
+UTILITY_DESCRIPTION["Toolbx"]="Creates and enters containerized command-line environments ('toolboxes') on Podman, sharing your home directory, user and devices with the host — install development tools and libraries without touching the base system. Built for Fedora Atomic desktops but works on any supported distro. Installed from the native package (podman-toolbox on Debian/Ubuntu, toolbox elsewhere). Requires Podman. Not available on openSUSE, whose 'toolbox' package is a different tool — use Distrobox there."
 UTILITY_DESCRIPTION["Virt-Manager"]="Graphical desktop tool for managing KVM/QEMU virtual machines with full libvirt integration."
+UTILITY_DESCRIPTION["Firecracker"]="Lightweight virtual machine monitor from AWS that boots minimal KVM microVMs in milliseconds, used to sandbox workloads with VM-level isolation (the engine behind AWS Lambda and Fargate). Installed from the Arch package on Arch; elsewhere the upstream release's firecracker and jailer binaries go to /usr/local/bin after verifying the published SHA256 checksum. Requires KVM and read/write access to /dev/kvm (kvm group) — so not inside a Xen/XCP-ng VM, which has no supported nested virtualization. Under WSL 2 it needs Windows 11 with nestedVirtualization enabled in .wslconfig. Command-line only — it is driven through its REST API socket, not a GUI."
 UTILITY_DESCRIPTION["Visual Studio Code"]="Microsoft's extensible code editor with a rich ecosystem of extensions and built-in Git support."
 UTILITY_DESCRIPTION["VSCodium"]="Community build of the VS Code source with Microsoft's telemetry, branding, and proprietary marketplace removed (extensions come from Open VSX). Installs side by side with Visual Studio Code — separate 'codium' binary, config, and extensions. On Arch it falls back to the project's own release tarball when the AUR is disabled."
 

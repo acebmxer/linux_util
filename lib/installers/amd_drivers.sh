@@ -15,7 +15,7 @@ check_amd_drivers() {
 }
 
 install_amd_drivers() {
-    info "Installing AMD GPU drivers and Vulkan support..."
+    info "Installing AMD GPU drivers, Vulkan and video acceleration support..."
     ensure_tools
 
     # Check that an AMD GPU is present before proceeding
@@ -27,8 +27,8 @@ install_amd_drivers() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            # Mesa open-source driver stack + Vulkan
-            pkg_install mesa-vulkan-drivers mesa-utils libgl1-mesa-dri libglx-mesa0 vulkan-tools libvulkan1
+            # Mesa open-source driver stack + Vulkan + VA-API video acceleration
+            pkg_install mesa-vulkan-drivers mesa-utils libgl1-mesa-dri libglx-mesa0 vulkan-tools libvulkan1 mesa-va-drivers vainfo
 
             # 32-bit Vulkan support for Steam/Wine (best-effort)
             sudo dpkg --add-architecture i386 2>/dev/null || true
@@ -39,7 +39,15 @@ install_amd_drivers() {
             pkg_install firmware-amd-graphics 2>/dev/null || true
             ;;
         fedora)
-            pkg_install mesa-dri-drivers mesa-vulkan-drivers vulkan-tools vulkan-loader xorg-x11-drv-amdgpu
+            # RPM Fusion free carries mesa-va-drivers-freeworld: Fedora's own Mesa
+            # leaves out H.264/H.265/VC-1 video acceleration. It installs beside
+            # Fedora's Mesa (/usr/lib64/dri-freeworld), which libva searches first.
+            if ! rpm -q rpmfusion-free-release &>/dev/null; then
+                sudo "$PKG_MGR" install -y \
+                    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
+            fi
+            pkg_install mesa-dri-drivers mesa-vulkan-drivers vulkan-tools vulkan-loader xorg-x11-drv-amdgpu \
+                mesa-va-drivers-freeworld libva-utils
 
             # RPM Fusion provides 32-bit Mesa (lib32-mesa) for Steam
             if rpm -q rpmfusion-free-release &>/dev/null; then
@@ -51,7 +59,7 @@ install_amd_drivers() {
             pkg_install mesa-dri-drivers mesa-vulkan-drivers vulkan-tools vulkan-loader 2>/dev/null || true
             ;;
         arch)
-            pkg_install mesa vulkan-radeon libva-mesa-driver mesa-vdpau xf86-video-amdgpu
+            pkg_install mesa vulkan-radeon libva-mesa-driver mesa-vdpau xf86-video-amdgpu libva-utils
 
             # 32-bit support (multilib)
             if grep -q "^\[multilib\]" /etc/pacman.conf; then
@@ -59,7 +67,7 @@ install_amd_drivers() {
             fi
             ;;
         suse)
-            pkg_install Mesa Mesa-libGL1 Mesa-dri libvulkan1 vulkan-tools xf86-video-amdgpu 2>/dev/null || true
+            pkg_install Mesa Mesa-libGL1 Mesa-dri libvulkan1 vulkan-tools xf86-video-amdgpu Mesa-libva libva-utils 2>/dev/null || true
             ;;
     esac
 
@@ -78,16 +86,19 @@ update_amd_drivers() {
     case "$DISTRO_FAMILY" in
         debian)
             sudo apt update
-            pkg_upgrade mesa-vulkan-drivers libgl1-mesa-dri libglx-mesa0 mesa-utils 2>/dev/null || true
+            pkg_upgrade mesa-vulkan-drivers libgl1-mesa-dri libglx-mesa0 mesa-utils mesa-va-drivers 2>/dev/null || true
             ;;
-        fedora|rhel)
+        fedora)
+            pkg_upgrade mesa-dri-drivers mesa-vulkan-drivers mesa-va-drivers-freeworld 2>/dev/null || true
+            ;;
+        rhel)
             pkg_upgrade mesa-dri-drivers mesa-vulkan-drivers 2>/dev/null || true
             ;;
         arch)
             pkg_upgrade mesa vulkan-radeon 2>/dev/null || true
             ;;
         suse)
-            pkg_upgrade Mesa Mesa-libGL1 libvulkan1 2>/dev/null || true
+            pkg_upgrade Mesa Mesa-libGL1 libvulkan1 Mesa-libva 2>/dev/null || true
             ;;
     esac
     info "AMD drivers updated."
