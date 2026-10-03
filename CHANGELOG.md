@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-03
+
 ### Added
 
 - **Intel Drivers** (Drivers → GPU Drivers), the Intel counterpart of AMD
