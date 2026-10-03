@@ -95,6 +95,7 @@ Thorium Browser
 Thunderbird
 Timeshift
 TMOG
+Toolbx
 Trojita
 Num Lock at Boot
 UFW Firewall

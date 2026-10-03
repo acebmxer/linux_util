@@ -97,6 +97,7 @@ _linux_util_utilities=(
     'Thunderbird'
     'Timeshift'
     'TMOG'
+    'Toolbx'
     'Trojita'
     'UFW Firewall'
     'Visual Studio Code'

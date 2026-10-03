@@ -145,6 +145,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **pyenv** | Python version manager |
 | **Rustup** | Rust toolchain installer and version manager |
 | **Terraform** | HashiCorp infrastructure-as-code tool |
+| **Toolbx** | Containerized command-line environments on Podman, integrated with the host (not available on openSUSE) |
 | **Virt-Manager** | GUI for managing KVM/QEMU virtual machines |
 | **Firecracker** | Lightweight KVM microVM monitor (AWS) — Arch package on Arch, otherwise the upstream `firecracker` and `jailer` binaries in `/usr/local/bin`; needs `/dev/kvm` access |
 | **Visual Studio Code** | Microsoft's extensible code editor |

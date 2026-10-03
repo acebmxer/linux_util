@@ -14,6 +14,15 @@ when a release is cut.
 
 ### Added
 
+- **Toolbx** (Development), the Podman-based tool for containerized
+  command-line environments that share the home directory, user and devices
+  with the host. Installs the native package — `podman-toolbox` on
+  Debian/Ubuntu, `toolbox` on Fedora, RHEL (AppStream) and Arch — and warns
+  if Podman is missing. Not offered on openSUSE: there is no Toolbx package,
+  and openSUSE's own `toolbox` package is an unrelated tool
+  (microos-toolbox) that installs the same command. Uninstalling removes only
+  the package; existing toolboxes are Podman containers and are left alone.
+
 - **Firecracker** (Development), AWS's lightweight virtual machine monitor
   for running KVM microVMs. Arch installs the `extra` package, which tracks
   upstream; every other distro gets the upstream release tarball instead,

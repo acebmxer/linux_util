@@ -254,6 +254,10 @@ register_utility "Tailscale"           install_tailscale        check_tailscale 
 register_utility "Telegram Desktop"    install_telegram         check_telegram         uninstall_telegram         update_telegram            get_version_telegram
 register_utility "Termius SSH Client"  install_termius          check_termius          uninstall_termius          update_termius             get_version_termius
 register_utility "Terraform"           install_terraform        check_terraform        uninstall_terraform        update_terraform           get_version_terraform
+# Toolbx: openSUSE has no package (its "toolbox" package is a different tool)
+if [[ "$DISTRO_FAMILY" != "suse" ]]; then
+    register_utility "Toolbx"          install_toolbx           check_toolbx           uninstall_toolbx           update_toolbx              get_version_toolbx
+fi
 register_utility "Thermalright TRCC"   install_trcc             check_trcc             uninstall_trcc             update_trcc                get_version_trcc
 register_utility "Thorium Browser"     install_thorium          check_thorium          uninstall_thorium          update_thorium             get_version_thorium
 register_utility "Thunderbird"         install_thunderbird      check_thunderbird      uninstall_thunderbird      update_thunderbird         get_version_thunderbird
@@ -677,6 +681,7 @@ UTILITY_CATEGORY["OpenRSAT"]="Remote Admin Tools"
 UTILITY_CATEGORY["Rustup"]="Development"
 UTILITY_CATEGORY["Slack"]="Internet"
 UTILITY_CATEGORY["Terraform"]="Development"
+UTILITY_CATEGORY["Toolbx"]="Development"
 UTILITY_CATEGORY["Tor Browser"]="Internet"
 UTILITY_CATEGORY["UniFi Endpoint"]="Internet"
 UTILITY_CATEGORY["Ventoy"]="Disk Utilities"
@@ -936,6 +941,7 @@ UTILITY_DESCRIPTION["PowerShell"]="Microsoft's cross-platform task automation sh
 UTILITY_DESCRIPTION["pyenv"]="Python version manager for installing and switching between multiple Python versions per-project."
 UTILITY_DESCRIPTION["Rustup"]="Official Rust toolchain installer and version manager for the Rust programming language."
 UTILITY_DESCRIPTION["Terraform"]="HashiCorp's infrastructure-as-code tool for provisioning and managing cloud resources with declarative HCL configs."
+UTILITY_DESCRIPTION["Toolbx"]="Creates and enters containerized command-line environments ('toolboxes') on Podman, sharing your home directory, user and devices with the host — install development tools and libraries without touching the base system. Built for Fedora Atomic desktops but works on any supported distro. Installed from the native package (podman-toolbox on Debian/Ubuntu, toolbox elsewhere). Requires Podman. Not available on openSUSE, whose 'toolbox' package is a different tool — use Distrobox there."
 UTILITY_DESCRIPTION["Virt-Manager"]="Graphical desktop tool for managing KVM/QEMU virtual machines with full libvirt integration."
 UTILITY_DESCRIPTION["Firecracker"]="Lightweight virtual machine monitor from AWS that boots minimal KVM microVMs in milliseconds, used to sandbox workloads with VM-level isolation (the engine behind AWS Lambda and Fargate). Installed from the Arch package on Arch; elsewhere the upstream release's firecracker and jailer binaries go to /usr/local/bin after verifying the published SHA256 checksum. Requires KVM and read/write access to /dev/kvm (kvm group) — so not inside a Xen/XCP-ng VM, which has no supported nested virtualization. Under WSL 2 it needs Windows 11 with nestedVirtualization enabled in .wslconfig. Command-line only — it is driven through its REST API socket, not a GUI."
 UTILITY_DESCRIPTION["Visual Studio Code"]="Microsoft's extensible code editor with a rich ecosystem of extensions and built-in Git support."
