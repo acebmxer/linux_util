@@ -45,6 +45,7 @@ GNOME Desktop
 Google Chrome
 GTK Window Fix
 Heroic Games Launcher
+Intel Drivers
 JetBrains Toolbox
 Joplin Client
 Joplin Web Clipper
@@ -71,6 +72,7 @@ OpenSSH Server
 tmux
 tmux Resurrect
 Pantheon Desktop
+Parallel Downloads
 Pay Respects
 PIA VPN
 Postman

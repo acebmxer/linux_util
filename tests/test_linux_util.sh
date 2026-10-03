@@ -3892,6 +3892,112 @@ test_ubuntu_devel_skips_lts_prompt_and_adds_flag
 
 rm -rf "$_PRERELEASE_FAKEBIN"
 
+# ============================================================================
+# Parallel Downloads Tests
+# ============================================================================
+echo ""
+echo "=== Parallel Downloads Tests ==="
+
+# Only defines functions and a readonly constant, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/parallel_downloads.sh"
+
+_PARDL_TEST_DIR=$(mktemp -d)
+
+test_pardl_set_adds_key_under_main() {
+    local out
+    out=$(printf '%s\n' '# see `man dnf.conf`' '' '[main]' 'tsflags=nodocs' \
+        | _pardl_set_awk main "max_parallel_downloads=10" max_parallel_downloads)
+    assert_eq $'# see `man dnf.conf`\n\n[main]\nmax_parallel_downloads=10\ntsflags=nodocs' "$out" \
+        "_pardl_set_awk adds max_parallel_downloads under [main] and keeps the other lines"
+}
+
+test_pardl_set_replaces_existing_value() {
+    local out
+    out=$(printf '%s\n' '[main]' 'max_parallel_downloads = 3' 'gpgcheck=1' \
+        | _pardl_set_awk main "max_parallel_downloads=10" max_parallel_downloads)
+    assert_eq $'[main]\nmax_parallel_downloads=10\ngpgcheck=1' "$out" \
+        "_pardl_set_awk replaces an existing value instead of adding a second key"
+}
+
+test_pardl_set_pacman_leaves_other_sections_and_comments() {
+    local out
+    out=$(printf '%s\n' '[options]' '#ParallelDownloads = 3' 'ParallelDownloads = 5' '' '[core]' 'ParallelDownloads = 5' \
+        | _pardl_set_awk options "ParallelDownloads = 10" ParallelDownloads)
+    assert_eq $'[options]\nParallelDownloads = 10\n#ParallelDownloads = 3\n\n[core]\nParallelDownloads = 5' "$out" \
+        "_pardl_set_awk only touches the active key in [options]"
+}
+
+test_pardl_set_creates_missing_section() {
+    assert_eq $'[main]\nmax_parallel_downloads=10' \
+        "$(_pardl_set_awk main "max_parallel_downloads=10" max_parallel_downloads < /dev/null)" \
+        "_pardl_set_awk creates [main] when the file is empty"
+}
+
+test_pardl_remove_only_in_section() {
+    local out
+    out=$(printf '%s\n' '[main]' 'max_parallel_downloads=10' 'gpgcheck=1' '[other]' 'max_parallel_downloads=2' \
+        | _pardl_remove_awk main max_parallel_downloads)
+    assert_eq $'[main]\ngpgcheck=1\n[other]\nmax_parallel_downloads=2' "$out" \
+        "_pardl_remove_awk removes the key from [main] only"
+}
+
+test_pardl_check_threshold() {
+    local saved_conf
+    saved_conf=$(declare -f _pardl_conf)
+    _pardl_conf() { printf '%s\n' "${_PARDL_TEST_DIR}/dnf.conf" main max_parallel_downloads "="; }
+
+    printf '[main]\nmax_parallel_downloads=3\n' > "${_PARDL_TEST_DIR}/dnf.conf"
+    assert_false "check_parallel_downloads fails at the dnf default of 3" check_parallel_downloads
+    printf '[main]\nmax_parallel_downloads = 10\n' > "${_PARDL_TEST_DIR}/dnf.conf"
+    assert_true "check_parallel_downloads passes at 10" check_parallel_downloads
+    assert_eq "10" "$(get_version_parallel_downloads)" "get_version_parallel_downloads reports the configured value"
+    printf '[main]\nmax_parallel_downloads=20\n' > "${_PARDL_TEST_DIR}/dnf.conf"
+    assert_true "check_parallel_downloads passes above 10 (a higher value is never lowered)" check_parallel_downloads
+    printf '[main]\ngpgcheck=1\n' > "${_PARDL_TEST_DIR}/dnf.conf"
+    assert_false "check_parallel_downloads fails when the key is unset" check_parallel_downloads
+
+    eval "$saved_conf"
+}
+
+test_pardl_conf_unsupported_pkg_mgr() {
+    local saved="$PKG_MGR"
+    PKG_MGR=apt
+    assert_false "_pardl_conf has no config for apt" _pardl_conf
+    assert_false "check_parallel_downloads fails for apt" check_parallel_downloads
+    PKG_MGR="$saved"
+}
+
+test_pardl_set_adds_key_under_main
+test_pardl_set_replaces_existing_value
+test_pardl_set_pacman_leaves_other_sections_and_comments
+test_pardl_set_creates_missing_section
+test_pardl_remove_only_in_section
+test_pardl_check_threshold
+test_pardl_conf_unsupported_pkg_mgr
+
+rm -rf "$_PARDL_TEST_DIR"
+
+# ============================================================================
+# Intel Drivers Tests
+# ============================================================================
+echo ""
+echo "=== Intel Drivers Tests ==="
+
+# Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/intel_drivers.sh"
+
+test_intel_gpu_present() {
+    lspci() { echo '00:02.0 VGA compatible controller: Intel Corporation Alder Lake-S GT1 [UHD Graphics 770] (rev 0c)'; }
+    assert_true "_intel_gpu_present finds an Intel GPU" _intel_gpu_present
+    # An Intel chipset device that is not a GPU, beside an AMD GPU
+    lspci() { printf '%s\n' '00:1f.3 Audio device: Intel Corporation Alder Lake-S HD Audio Controller' \
+        '03:00.0 VGA compatible controller: Advanced Micro Devices, Inc. [AMD/ATI] Navi 31 [Radeon RX 7900 XT]'; }
+    assert_false "_intel_gpu_present ignores non-GPU Intel devices" _intel_gpu_present
+    unset -f lspci
+}
+
+test_intel_gpu_present
+
 echo ""
 echo "════════════════════════════════════════════════════════════════"
 echo "Test Results: ${_TESTS_PASSED} passed, ${_TESTS_FAILED} failed, ${_TESTS_SKIPPED} skipped"

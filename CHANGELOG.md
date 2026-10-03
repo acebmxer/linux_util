@@ -14,6 +14,17 @@ when a release is cut.
 
 ### Added
 
+- **Intel Drivers** (Drivers → GPU Drivers), the Intel counterpart of AMD
+  Drivers: Mesa, Vulkan, and VA-API video acceleration (Broadwell and newer).
+  Fedora and RHEL get RPM Fusion's full-codec `intel-media-driver`, enabling
+  RPM Fusion if needed; Debian/Ubuntu get the non-free driver, falling back to
+  the free one when non-free/multiverse is off.
+
+- **Parallel Downloads** (System Tasks, Fedora/RHEL/Arch), sets dnf's
+  `max_parallel_downloads` or pacman's `ParallelDownloads` to 10 (defaults: 3
+  and 5). Backs up the config first; undoing it removes the dnf key or puts
+  pacman back to 5.
+
 - **Toolbx** (Development), the Podman-based tool for containerized
   command-line environments that share the home directory, user and devices
   with the host. Installs the native package — `podman-toolbox` on
@@ -55,6 +66,15 @@ when a release is cut.
   no description or "(Requires Flatpak)" label, and was retried on failure
   unlike the other Flatpak-only utilities. Distrobox's post-install hint now
   names Kontainer alongside BoxBuddy and DistroShelf.
+
+### Changed
+
+- **AMD Drivers now installs VA-API video acceleration** and `vainfo`. On
+  Fedora that is RPM Fusion's full-codec `mesa-va-drivers-freeworld` (Fedora's
+  own Mesa leaves out H.264/H.265/VC-1), enabling RPM Fusion free if needed; it
+  installs beside Fedora's Mesa and libva uses it first, so no `dnf swap` is
+  involved. Debian/Ubuntu add `mesa-va-drivers`, openSUSE `Mesa-libva`; Arch's
+  `mesa` already had it.
 
 ### Fixed
 

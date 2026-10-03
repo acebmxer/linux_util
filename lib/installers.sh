@@ -61,6 +61,7 @@ register_utility "XEN Guest Utilities"    setup_xen_guest_utilities check_xen_gu
 register_utility "Enable RDP"             install_enable_rdp      check_enable_rdp      uninstall_enable_rdp      update_enable_rdp         get_version_enable_rdp
 register_utility "OpenRSAT"               install_openrsat        check_openrsat        uninstall_openrsat        update_openrsat           get_version_openrsat
 register_utility "AMD Drivers"            install_amd_drivers     check_amd_drivers     uninstall_amd_drivers     update_amd_drivers        get_version_amd_drivers
+register_utility "Intel Drivers"          install_intel_drivers   check_intel_drivers   uninstall_intel_drivers   update_intel_drivers      get_version_intel_drivers
 register_system_task "Num Lock at Boot"   install_numlock_boot    check_numlock_boot    uninstall_numlock_boot    update_numlock_boot       get_version_numlock_boot
 register_system_task "Local Time Zone / Locale" setup_timezone_locale check_always_false noop_function setup_timezone_locale get_version_timezone_locale
 # Fully interactive prompt flow — re-running the menu after a failure only asks again
@@ -95,6 +96,11 @@ register_system_task "Delete Default Cloud-Init User" delete_cloud_init_user che
 
 # Remote-access fixes (all distros)
 register_system_task "Fix RDP Kerberos Delay" install_fix_rdp_kerberos check_fix_rdp_kerberos uninstall_fix_rdp_kerberos update_fix_rdp_kerberos get_version_fix_rdp_kerberos
+
+# dnf / pacman only — apt and zypper have no parallel-download setting
+if [[ "$PKG_MGR" == "dnf" || "$PKG_MGR" == "pacman" ]]; then
+    register_system_task "Parallel Downloads" install_parallel_downloads check_parallel_downloads uninstall_parallel_downloads update_parallel_downloads get_version_parallel_downloads
+fi
 
 # Package repair tasks (all distros) — kept at the end of the System Tasks section
 register_system_task "Fix Broken Packages"   setup_fix_broken_packages check_always_false noop_function setup_fix_broken_packages
@@ -493,6 +499,7 @@ UTILITY_CATEGORY["Catppuccin GRUB Theme"]="Bootloaders"
 UTILITY_CATEGORY["HyperFluent GRUB Theme"]="Bootloaders"
 UTILITY_CATEGORY["AMD CPU Microcode & Firmware"]="Drivers"
 UTILITY_CATEGORY["AMD Drivers"]="Drivers"
+UTILITY_CATEGORY["Intel Drivers"]="Drivers"
 UTILITY_CATEGORY["Intel CPU Microcode & Thermal"]="Drivers"
 UTILITY_CATEGORY["LACT"]="Drivers"
 UTILITY_CATEGORY["NVIDIA Drivers"]="Drivers"
@@ -785,6 +792,7 @@ UTILITY_SUBCATEGORY["Vorta"]="File Backup"
 UTILITY_SUBCATEGORY["Duplicati"]="File Backup"
 UTILITY_SUBCATEGORY["AMD CPU Microcode & Firmware"]="CPU Microcode"
 UTILITY_SUBCATEGORY["AMD Drivers"]="GPU Drivers"
+UTILITY_SUBCATEGORY["Intel Drivers"]="GPU Drivers"
 UTILITY_SUBCATEGORY["Intel CPU Microcode & Thermal"]="CPU Microcode"
 UTILITY_SUBCATEGORY["LACT"]="GPU Drivers"
 UTILITY_SUBCATEGORY["NVIDIA Drivers"]="GPU Drivers"
@@ -893,13 +901,15 @@ UTILITY_DESCRIPTION["Enable RDP"]="Enables Remote Desktop Protocol access to thi
 UTILITY_DESCRIPTION["OpenRSAT"]="Cross-platform Active Directory management console from Tranquil IT (a modern Microsoft RSAT-like tool) for managing users, groups, OUs, and DNS records. Installs the latest GitHub release: a .deb on Debian/Ubuntu, an .rpm on Fedora/RHEL (x86_64), or the standalone Linux binary on openSUSE. Not available on Arch."
 UTILITY_DESCRIPTION["AMD CPU Microcode & Firmware"]="Installs AMD CPU microcode updates and linux-firmware blobs (PSP/SMU, Wi-Fi, Bluetooth, and other device firmware) for Ryzen, Threadripper, and EPYC platforms."
 UTILITY_DESCRIPTION["Intel CPU Microcode & Thermal"]="Installs Intel CPU microcode updates and the thermald thermal management daemon for 10th Gen through Core Ultra (Arrow Lake) platforms."
-UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance."
+UTILITY_DESCRIPTION["AMD Drivers"]="Installs open-source AMD GPU drivers (AMDGPU/Mesa) for optimal graphics performance, with VA-API video acceleration — RPM Fusion's full-codec mesa-va-drivers-freeworld on Fedora."
+UTILITY_DESCRIPTION["Intel Drivers"]="Installs open-source Intel GPU drivers (Mesa) with Vulkan support and VA-API video acceleration (Broadwell and newer) — RPM Fusion's full-codec intel-media-driver on Fedora/RHEL, the non-free driver on Debian/Ubuntu."
 UTILITY_DESCRIPTION["LACT"]="Linux AMDGPU Top — graphical tool for overclocking, undervolting, and monitoring AMD GPUs. Provides fan control, power limit adjustments, and real-time sensor readings. A reboot is required after installation before changes can be applied."
 UTILITY_DESCRIPTION["Flatpak Setup"]="Configures the Flatpak package manager and adds the Flathub repository for sandboxed applications."
 UTILITY_DESCRIPTION["UFW Firewall"]="Installs and configures Uncomplicated Firewall with sensible default rules (deny incoming, allow outgoing, allow SSH). Disables firewalld first if it is active — only one firewall manager should run at a time."
 UTILITY_DESCRIPTION["Gufw (Firewall GUI)"]="Graphical frontend for UFW to view status, toggle the firewall, and manage rules and app profiles. Installs UFW first if it is not already present."
 UTILITY_DESCRIPTION["firewalld"]="Dynamic zone-based firewall daemon, the default on Fedora, RHEL, and openSUSE. Managed with firewall-cmd or the firewall-config GUI. Disables UFW first if it is active — only one firewall manager should run at a time."
 UTILITY_DESCRIPTION["firewall-config (GUI)"]="Graphical configuration tool for firewalld to manage zones, services, ports, and rich rules. Installs firewalld first if it is not already present."
+UTILITY_DESCRIPTION["Parallel Downloads"]="Lets the package manager download 10 packages at once instead of the default (3 for dnf, 5 in Arch's stock pacman.conf) by setting max_parallel_downloads in /etc/dnf/dnf.conf or ParallelDownloads in /etc/pacman.conf. Backs up the file first; undoing it restores the default. Fedora, RHEL and Arch-based systems only."
 UTILITY_DESCRIPTION["Num Lock at Boot"]="Enables Num Lock automatically on all TTY consoles and the display manager login screen at boot."
 UTILITY_DESCRIPTION["Local Time Zone / Locale"]="Lets you interactively set your system time zone, locale, or both in one task."
 UTILITY_DESCRIPTION["GTK Window Fix"]="Restores the minimize, maximize, and close buttons on GTK app title bars (GNOME, Cinnamon, MATE, Xfce) — GNOME's default window-manager button layout omits minimize/maximize, leaving only a close button on apps like Nautilus and Remmina. Sets the per-user window-manager button-layout preference; KDE shows all three by default and is skipped."
