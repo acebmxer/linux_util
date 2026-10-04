@@ -121,7 +121,6 @@ setup_install_kde() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable sddm || warn "Failed to enable sddm"
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         dnf|yum)
@@ -172,7 +171,6 @@ setup_install_kde() {
             info "Enabling display manager..."
             run_as_root systemctl enable sddm || warn "Failed to enable sddm"
             run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         zypper)
@@ -202,7 +200,6 @@ setup_install_kde() {
             info "Enabling display manager..."
             run_as_root systemctl enable sddm || warn "Failed to enable sddm"
             run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         pacman)
@@ -231,7 +228,6 @@ setup_install_kde() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable sddm
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         *)

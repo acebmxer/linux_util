@@ -113,8 +113,6 @@ setup_install_gnome() {
             info "Enabling display manager..."
             run_as_root systemctl enable gdm3 2>/dev/null || \
                 run_as_root systemctl enable gdm || warn "Failed to enable gdm"
-            run_as_root systemctl start gdm3 2>/dev/null || \
-                run_as_root systemctl start gdm || warn "Failed to start gdm"
             ;;
 
         dnf|yum)
@@ -160,7 +158,6 @@ setup_install_gnome() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable gdm || run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start gdm || warn "Failed to start gdm"
             ;;
 
         zypper)
@@ -191,7 +188,6 @@ setup_install_gnome() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable gdm || run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start gdm || warn "Failed to start gdm"
             ;;
 
         pacman)
@@ -221,7 +217,6 @@ setup_install_gnome() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable gdm
-            run_as_root systemctl start gdm || warn "Failed to start gdm"
             ;;
 
         *)

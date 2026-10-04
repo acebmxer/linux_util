@@ -120,7 +120,6 @@ setup_install_lxqt() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable sddm || warn "Failed to enable sddm"
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         dnf|yum)
@@ -164,7 +163,6 @@ setup_install_lxqt() {
             info "Enabling display manager..."
             run_as_root systemctl enable sddm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         pacman)
@@ -198,7 +196,6 @@ setup_install_lxqt() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable sddm
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         zypper)
@@ -233,7 +230,6 @@ setup_install_lxqt() {
             info "Enabling display manager..."
             run_as_root systemctl enable sddm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
         *)

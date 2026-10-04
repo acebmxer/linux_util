@@ -76,7 +76,6 @@ setup_install_pantheon() {
             fi
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
             ;;
 
         zypper)
@@ -89,7 +88,6 @@ setup_install_pantheon() {
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
             ;;
 
         *)

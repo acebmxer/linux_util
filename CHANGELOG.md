@@ -22,6 +22,13 @@ when a release is cut.
 
 ### Fixed
 
+- **Installing a desktop environment switched the screen to its login screen
+  before the installer had finished.** KDE Plasma, GNOME, Xfce, Cinnamon,
+  MATE, LXQt, Budgie, Deepin and Pantheon all ran `systemctl start` on their
+  display manager straight after install, which takes over the console
+  mid-run (and would end an SSH session). They now only enable it, matching
+  the Display Managers installers; the desktop starts on the next reboot.
+
 - **KDE Plasma on Fedora/RHEL and openSUSE could boot to a text login
   instead of the desktop.** The installer only ran `systemctl set-default
   graphical.target` if enabling sddm *failed*, so on a system defaulting to

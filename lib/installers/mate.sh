@@ -110,7 +110,6 @@ setup_install_mate() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm || warn "Failed to enable lightdm"
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
             ;;
 
         dnf|yum)
@@ -156,7 +155,6 @@ setup_install_mate() {
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
             ;;
 
         zypper)
@@ -194,7 +192,6 @@ setup_install_mate() {
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm 2>/dev/null || \
                 run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
             ;;
 
         pacman)
@@ -218,7 +215,6 @@ setup_install_mate() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable lightdm
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
             ;;
 
         *)
