@@ -397,6 +397,92 @@ _rebuild_filtered() {
 }
 
 # ============================================================================
+# PROFILE PREVIEW
+# ============================================================================
+
+# Parallel arrays describing the right-panel rows shown while the profiles
+# section is focused:
+#   _PROFILE_PREVIEW_KIND — "heading" | "item"
+#   _PROFILE_PREVIEW_TEXT — "Category" or "Category > Subcategory" for a
+#                           heading; the utility name for an item
+declare -a _PROFILE_PREVIEW_KIND=()
+declare -a _PROFILE_PREVIEW_TEXT=()
+
+# Rebuild the preview rows for profile <index>: every utility the profile
+# selects that is registered on this system, grouped under its category (in
+# tab order), then under its subcategory (SUBCATEGORY_ORDER first, then the
+# order the profile lists them). Names not registered here are left out —
+# apply_profile skips them too.
+# Usage: _build_profile_preview <index>
+_build_profile_preview() {
+    _PROFILE_PREVIEW_KIND=()
+    _PROFILE_PREVIEW_TEXT=()
+
+    local -a _names=()
+    mapfile -t _names < <(profile_utility_names "$1")
+
+    declare -A _registered=()
+    local _u
+    for _u in "${UTILITIES[@]}"; do _registered["$_u"]=1; done
+    declare -A _is_task=()
+    for _u in "${SYSTEM_TASKS[@]}"; do _is_task["$_u"]=1; done
+
+    local _cat _name _sc
+    declare -A _sc_seen=()
+    for _cat in "${_TAB_NAMES[@]}"; do
+        local -a _plain=() _subcats=()
+        _sc_seen=()
+        for _name in "${_names[@]}"; do
+            [[ -n "${_registered[$_name]:-}" ]] || continue
+            local _item_cat="${UTILITY_CATEGORY[$_name]:-}"
+            [[ -n "${_is_task[$_name]:-}" ]] && _item_cat="System Tasks"
+            [[ "$_item_cat" == "$_cat" ]] || continue
+            _sc="${UTILITY_SUBCATEGORY[$_name]:-}"
+            if [[ -z "$_sc" ]]; then
+                _plain+=("$_name")
+            elif [[ -z "${_sc_seen[$_sc]:-}" ]]; then
+                _sc_seen["$_sc"]=1
+                _subcats+=("$_sc")
+            fi
+        done
+
+        # Order subcategories the same way the category view lists them
+        if [[ -n "${SUBCATEGORY_ORDER[$_cat]:-}" ]] && (( ${#_subcats[@]} > 1 )); then
+            local -a _explicit=() _ordered=()
+            IFS='|' read -ra _explicit <<< "${SUBCATEGORY_ORDER[$_cat]}"
+            for _sc in "${_explicit[@]}"; do
+                [[ -n "${_sc_seen[$_sc]:-}" ]] && _ordered+=("$_sc") && _sc_seen["$_sc"]=2
+            done
+            for _sc in "${_subcats[@]}"; do
+                [[ "${_sc_seen[$_sc]}" == "1" ]] && _ordered+=("$_sc")
+            done
+            _subcats=("${_ordered[@]}")
+        fi
+
+        if (( ${#_plain[@]} > 0 )); then
+            _PROFILE_PREVIEW_KIND+=("heading")
+            _PROFILE_PREVIEW_TEXT+=("$_cat")
+            for _name in "${_plain[@]}"; do
+                _PROFILE_PREVIEW_KIND+=("item")
+                _PROFILE_PREVIEW_TEXT+=("$_name")
+            done
+        fi
+        for _sc in "${_subcats[@]}"; do
+            _PROFILE_PREVIEW_KIND+=("heading")
+            _PROFILE_PREVIEW_TEXT+=("${_cat} > ${_sc}")
+            for _name in "${_names[@]}"; do
+                [[ -n "${_registered[$_name]:-}" ]] || continue
+                local _item_cat="${UTILITY_CATEGORY[$_name]:-}"
+                [[ -n "${_is_task[$_name]:-}" ]] && _item_cat="System Tasks"
+                [[ "$_item_cat" == "$_cat" && "${UTILITY_SUBCATEGORY[$_name]:-}" == "$_sc" ]] || continue
+                _PROFILE_PREVIEW_KIND+=("item")
+                _PROFILE_PREVIEW_TEXT+=("$_name")
+            done
+        done
+    done
+}
+
+# ============================================================================
 # SYSTEM INFO GATHERER
 # ============================================================================
 
@@ -1024,6 +1110,39 @@ _render_left() {
 # Content is padded to fill inner_w (= _RIGHT_W - 1), then the outer │ is appended.
 # The left divider │ is provided by the left panel's trailing character.
 declare -a _RIGHT_LINES=()
+# Append exactly _ITEMS_H rows to _RIGHT_LINES listing what the highlighted
+# profile selects, grouped by category / subcategory (see
+# _build_profile_preview). Rows that do not fit are cut off with a ▼ marker.
+# Usage: _render_profile_preview <inner_w>
+_render_profile_preview() {
+    local inner_w="$1"
+    _build_profile_preview "$_PROFILES_CURSOR"
+
+    local total=${#_PROFILE_PREVIEW_KIND[@]}
+    local v
+    for (( v=0; v<_ITEMS_H; v++ )); do
+        local line_content=""
+        if (( total == 0 && v == 0 )); then
+            line_content="  ${DIM}Nothing in this profile is available on this system.${RESET}"
+        elif (( v < total )); then
+            local text="${_PROFILE_PREVIEW_TEXT[$v]}"
+            if [[ "${_PROFILE_PREVIEW_KIND[$v]}" == "heading" ]]; then
+                line_content="  ${BOLD}${CYAN}${text}${RESET}"
+            else
+                line_content="    ${UTILITY_DISPLAY_NAME[$text]:-$text}"
+            fi
+        fi
+
+        if (( v == _ITEMS_H - 1 && total > _ITEMS_H )); then
+            _pad_or_truncate " ${line_content}" "$(( inner_w - 1 ))"
+            _RIGHT_LINES+=("${_POT_RESULT}${DIM}▼${RESET}${CYAN}${_BD_V}${RESET}")
+        else
+            _pad_or_truncate " ${line_content}" "$inner_w"
+            _RIGHT_LINES+=("${_POT_RESULT}${CYAN}${_BD_V}${RESET}")
+        fi
+    done
+}
+
 _render_right() {
     _RIGHT_LINES=()
     local inner_w=$(( _RIGHT_W - 1 ))  # content width; outer │ appended separately
@@ -1032,11 +1151,20 @@ _render_right() {
 
     local outer_bc="${CYAN}"  # outer frame always full color
 
+    # While the profiles section is focused, the items area lists what the
+    # highlighted profile selects instead of the active category's items.
+    local _profile_preview=false
+    if [[ "$_FOCUS" == "profiles" ]] && (( ${#PROFILES[@]} > 0 )); then
+        _profile_preview=true
+    fi
+
     # --- Category label header (1 line) ---
     # Show "Category > Subcategory" breadcrumb when inside a subcategory.
     local active_subcat="${_TAB_SUBCAT[$_ACTIVE_TAB]:-}"
     local header_label
-    if [[ -n "$active_subcat" ]]; then
+    if [[ "$_profile_preview" == true ]]; then
+        header_label=" Profile: ${PROFILES[$_PROFILES_CURSOR]} "
+    elif [[ -n "$active_subcat" ]]; then
         header_label=" ${_TAB_NAMES[$_ACTIVE_TAB]} > ${active_subcat} "
     else
         header_label=" ${_TAB_NAMES[$_ACTIVE_TAB]} "
@@ -1059,7 +1187,14 @@ _render_right() {
     (( scroll > 0 )) && show_up_arrow=true
     (( scroll + _ITEMS_H < total_items )) && show_down_arrow=true
 
-    for (( v=0; v<_ITEMS_H; v++ )); do
+    local _item_rows=$_ITEMS_H
+    if [[ "$_profile_preview" == true ]]; then
+        _render_profile_preview "$inner_w"
+        (( row += _ITEMS_H ))
+        _item_rows=0
+    fi
+
+    for (( v=0; v<_item_rows; v++ )); do
         local item_idx=$(( scroll + v ))
         local line_content=""
         local scroll_indicator=""
@@ -1206,13 +1341,11 @@ _render_right() {
 
     # When the profiles section is focused, show the selected profile's
     # description instead of the highlighted right-panel item description.
-    if [[ "$_FOCUS" == "profiles" ]] && (( ${#PROFILES[@]} > 0 )); then
-        desc_text="${PROFILE_DESC[$_PROFILES_CURSOR]:-}"
-    fi
-
-    # Determine what is currently highlighted
     local _cur_pos=${_TAB_CURSOR[$_ACTIVE_TAB]}
-    if (( ${#_SEARCH_FILTERED[@]} > 0 && _cur_pos < ${#_SEARCH_FILTERED[@]} )); then
+    if [[ "$_profile_preview" == true ]]; then
+        desc_text="${PROFILE_DESC[$_PROFILES_CURSOR]:-}"
+    elif (( ${#_SEARCH_FILTERED[@]} > 0 && _cur_pos < ${#_SEARCH_FILTERED[@]} )); then
+        # Determine what is currently highlighted
         local _cur_type="${_SEARCH_ITEM_TYPE[$_cur_pos]:-utility}"
         if [[ "$_cur_type" == "utility" ]]; then
             local _cur_idx=${_SEARCH_FILTERED[$_cur_pos]}

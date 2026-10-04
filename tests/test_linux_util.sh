@@ -1020,11 +1020,13 @@ test_profile_select_unknown_noop() {
 test_profile_apply_resets_and_selects() {
     # Start with everything selected
     SELECTED=(1 1 1 1 1); UPDATE_SELECTED=(1 1 1 1 1); INSTALLED=(0 0 0 0 0)
-    # Profile 0 = "Run Me First" → selects only Timeshift (index 3)
+    # Profile 0 = "Default VM Server Profile" → selects Btop (index 2) and
+    # Zsh + Oh My Zsh (index 4); XEN Guest Utilities is not in the fixture
     apply_profile 0
     assert_eq "0" "${SELECTED[0]}"        "apply_profile resets Docker SELECTED"
     assert_eq "0" "${UPDATE_SELECTED[0]}" "apply_profile resets Docker UPDATE_SELECTED"
-    assert_eq "1" "${SELECTED[3]}"        "apply_profile (Run Me First) selects Timeshift"
+    assert_eq "0" "${SELECTED[3]}"        "apply_profile resets Timeshift SELECTED"
+    assert_eq "1" "${SELECTED[2]}"        "apply_profile (Default VM Server Profile) selects Btop"
 }
 
 test_profile_register_count() {
@@ -1290,13 +1292,13 @@ test_export_profile_all() {
 test_export_profile_named() {
     local tmpfile
     tmpfile=$(mktemp /tmp/test_export_named_XXXXXX.json)
-    _run_cli --export-profile "Run Me First" "$tmpfile"
+    _run_cli --export-profile "Default VM Server Profile" "$tmpfile"
     local rc=$?
     assert_eq "0" "$rc" "--export-profile <name> exits with code 0"
     local content
     content=$(cat "$tmpfile" 2>/dev/null)
-    assert_contains "$content" "Run Me First" "--export-profile <name> output contains profile label"
-    assert_contains "$content" "Timeshift" "--export-profile includes Timeshift in Run Me First"
+    assert_contains "$content" "Default VM Server Profile" "--export-profile <name> output contains profile label"
+    assert_contains "$content" "Btop" "--export-profile includes Btop in Default VM Server Profile"
     rm -f "$tmpfile"
 }
 
@@ -1337,7 +1339,7 @@ test_import_profile_invalid_file_exits_nonzero() {
 test_dry_run_import_profile() {
     local exportfile
     exportfile=$(mktemp /tmp/test_dry_import_XXXXXX.json)
-    _run_cli --export-profile "Run Me First" "$exportfile"
+    _run_cli --export-profile "Default VM Server Profile" "$exportfile"
     _run_cli --dry-run --import-profile "$exportfile"
     local rc=$?
     assert_eq "0" "$rc" "--dry-run --import-profile exits with code 0"
@@ -3997,6 +3999,113 @@ test_intel_gpu_present() {
 }
 
 test_intel_gpu_present
+
+# ----------------------------------------------------------------------------
+# Profile preview in the menu's right panel (lib/menu.sh, lib/profiles.sh)
+# ----------------------------------------------------------------------------
+# Each test runs in a subshell so the fixture registry never leaks into the
+# rest of the suite.
+echo ""
+echo "=== Profile Preview Tests ==="
+
+# Builds a small registry and one profile, then prints the preview rows as
+# "kind|text" lines. The profile lists items out of category order, includes
+# a name that is not registered, and spans two Internet subcategories whose
+# SUBCATEGORY_ORDER is the reverse of the order the profile lists them.
+_profile_preview_rows() {
+    UTILITIES=("Num Lock at Boot" "GitHub CLI" "Visual Studio Code"
+               "Bitwarden Extension" "Brave Browser" "Btop")
+    SYSTEM_TASKS=("Num Lock at Boot")
+    UTILITY_CATEGORY=()
+    UTILITY_SUBCATEGORY=()
+    SUBCATEGORY_ORDER=()
+    UTILITY_CATEGORY["GitHub CLI"]="Development"
+    UTILITY_CATEGORY["Visual Studio Code"]="Development"
+    UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
+    UTILITY_CATEGORY["Bitwarden Extension"]="Internet"
+    UTILITY_SUBCATEGORY["Bitwarden Extension"]="Web Browser Extensions"
+    UTILITY_CATEGORY["Brave Browser"]="Internet"
+    UTILITY_SUBCATEGORY["Brave Browser"]="Web Browsers"
+    UTILITY_CATEGORY["Btop"]="System Tools"
+    SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Extensions"
+    _TAB_NAMES=("System Tasks" "Development" "Internet" "System Tools")
+    _fixture_profile() {
+        _profile_select_for_install "Btop"
+        _profile_select_for_install "Bitwarden Extension"
+        _profile_select_for_install "Not Registered Here"
+        _profile_select_for_install "Visual Studio Code"
+        _profile_select_for_install "Brave Browser"
+        _profile_select_task        "Num Lock at Boot"
+        _profile_select_for_install "GitHub CLI"
+    }
+    PROFILES=("Fixture")
+    PROFILE_FUNCS=("_fixture_profile")
+    PROFILE_DESC=("Fixture profile.")
+    _build_profile_preview 0
+    local i
+    for (( i=0; i<${#_PROFILE_PREVIEW_KIND[@]}; i++ )); do
+        printf '%s|%s\n' "${_PROFILE_PREVIEW_KIND[$i]}" "${_PROFILE_PREVIEW_TEXT[$i]}"
+    done
+}
+
+test_profile_preview_groups_by_category_and_subcategory() {
+    local expected out
+    expected="heading|System Tasks
+item|Num Lock at Boot
+heading|Development
+item|GitHub CLI
+heading|Development > IDEs & Editors
+item|Visual Studio Code
+heading|Internet > Web Browsers
+item|Brave Browser
+heading|Internet > Web Browser Extensions
+item|Bitwarden Extension
+heading|System Tools
+item|Btop"
+    out=$(_profile_preview_rows)
+    assert_eq "$expected" "$out" \
+        "_build_profile_preview groups by category tab order, then SUBCATEGORY_ORDER, and drops unregistered names"
+}
+
+test_profile_preview_leaves_selection_untouched() {
+    local out
+    out=$(
+        _profile_preview_rows >/dev/null
+        SELECTED=(0 0 0 0 0 0)
+        UPDATE_SELECTED=(0 0 0 0 0 0)
+        _build_profile_preview 0
+        printf '%s' "${SELECTED[*]}|${UPDATE_SELECTED[*]}"
+    )
+    assert_eq "0 0 0 0 0 0|0 0 0 0 0 0" "$out" \
+        "_build_profile_preview does not change SELECTED or UPDATE_SELECTED"
+}
+
+test_profile_preview_empty_when_nothing_registered() {
+    local out
+    out=$(
+        _profile_preview_rows >/dev/null
+        UTILITIES=("Something Else")
+        SYSTEM_TASKS=()
+        _build_profile_preview 0
+        printf '%s' "${#_PROFILE_PREVIEW_KIND[@]}"
+    )
+    assert_eq "0" "$out" "_build_profile_preview yields no rows when none of the profile is registered"
+}
+
+test_profile_utility_names_lists_in_profile_order() {
+    local out
+    out=$(
+        _profile_preview_rows >/dev/null
+        profile_utility_names 0 | paste -sd,
+    )
+    assert_eq "Btop,Bitwarden Extension,Not Registered Here,Visual Studio Code,Brave Browser,Num Lock at Boot,GitHub CLI" \
+        "$out" "profile_utility_names prints every name the profile lists, in order"
+}
+
+test_profile_preview_groups_by_category_and_subcategory
+test_profile_preview_leaves_selection_untouched
+test_profile_preview_empty_when_nothing_registered
+test_profile_utility_names_lists_in_profile_order
 
 echo ""
 echo "════════════════════════════════════════════════════════════════"

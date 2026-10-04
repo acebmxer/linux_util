@@ -14,13 +14,32 @@ when a release is cut.
 
 ### Added
 
+- **Profile preview in the menu.** Highlighting a profile in the `PROFILES`
+  section now lists everything it selects in the main panel, grouped under
+  each item's category and subcategory (e.g. `Internet > Web Browsers`),
+  instead of leaving the last category's items on screen. Items the profile
+  names that are not available on the current distro are left out, as they
+  are when the profile is applied. The description pane now shows the
+  profile's description while a profile is highlighted; before, it showed the
+  description of whichever category item was last highlighted.
+
 - **KDiskMark** (Disk Utilities), the HDD/SSD benchmark tool — a GUI over
   fio for sequential and random read/write tests. Installs the native package
   (Debian 13, Ubuntu 24.04, Fedora, RHEL via EPEL, Arch, Tumbleweed, Leap 16)
   and falls back to the Flathub build where the distro does not package it
   (Debian 12, Ubuntu 22.04, Leap 15).
 
+### Removed
+
+- **The "Run Me First" profile.** It only installed Timeshift, which is still
+  available on its own under Backup. `--export-profile "Run Me First"` now
+  fails with the usual unknown-profile error.
+
 ### Fixed
+
+- **`docs/menu.md` said applying a profile skips items that are already
+  installed.** It queues them for update (`[U]`) instead, as
+  `_profile_select_for_install` always has; the docs now say so.
 
 - **Installing a desktop environment switched the screen to its login screen
   before the installer had finished.** KDE Plasma, GNOME, Xfce, Cinnamon,

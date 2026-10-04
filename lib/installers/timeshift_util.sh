@@ -73,8 +73,8 @@ install_timeshift() {
     timeshift_init
 
     # Offer to take an initial snapshot right after setup.
-    # Having a restore point before any further installations is the whole
-    # point of running "Run Me First", so this prompt appears automatically.
+    # Having a restore point before any further installations is the main
+    # reason to install Timeshift first, so this prompt appears automatically.
     # The snapshot is optional — pressing N skips it without any side-effects.
     # Skipped in dry-run mode since no actual installation occurred.
     if [[ "${TIMESHIFT_AVAILABLE:-false}" == "true" && "${DRY_RUN:-false}" == "false" ]]; then

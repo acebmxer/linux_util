@@ -93,6 +93,23 @@ apply_profile() {
     fi
 }
 
+# Print the utility/task names a profile selects, one per line, in the order
+# the profile function lists them. The profile function runs in a subshell
+# with stub helpers that echo each name, so the live SELECTED[] and
+# UPDATE_SELECTED[] state is untouched. Shared by profile_export and the
+# menu's profile preview — do not add a second copy of this.
+# Usage: profile_utility_names <index>
+profile_utility_names() {
+    local func="${PROFILE_FUNCS[$1]:-}"
+    [[ -n "$func" ]] && declare -f "$func" &>/dev/null || return 0
+    (
+        _profile_select_for_install() { echo "$1"; }
+        _profile_select_for_update()  { echo "$1"; }
+        _profile_select_task()        { echo "$1"; }
+        "$func"
+    )
+}
+
 # ============================================================================
 # Helper Functions
 # ----------------------------------------------------------------------------
@@ -163,31 +180,7 @@ _profile_select_task() {
 # ============================================================================
 
 # ----------------------------------------------------------------------------
-# Profile 1 — Run Me First
-#
-# Intended as the very first action on a freshly installed system. Installs
-# Timeshift so a restore point exists before any other changes are made.
-# After installation, the Timeshift installer will offer to create an initial
-# snapshot immediately.
-#
-# DISTRO NOTE:
-#   Timeshift is available on all supported distros:
-#     • Debian/Ubuntu  — installed via apt
-#     • Fedora         — installed via dnf/yum
-#     • RHEL/Alma/Rocky — installed via EPEL (enabled automatically)
-#     • Arch/Manjaro   — installed via pacman; resolves Snapper conflict on
-#                        CachyOS if present
-#     • openSUSE       — installed via zypper
-# ----------------------------------------------------------------------------
-_profile_run_me_first() {
-    _profile_select_for_install "Timeshift"
-}
-register_profile "Run Me First" \
-    _profile_run_me_first \
-    "Fresh system starting point: installs Timeshift so you have a restore point before making any other changes."
-
-# ----------------------------------------------------------------------------
-# Profile 2 — Default VM Server Profile
+# Profile 1 — Default VM Server Profile
 #
 # Lightweight profile for virtual machines running under a Xen hypervisor.
 # Installs Xen Guest Utilities (or updates them if already present), plus
@@ -212,7 +205,7 @@ register_profile "Default VM Server Profile" \
     "Xen VM guest setup: marks Xen Guest Utilities for upgrade, installs Btop and Zsh + Oh My Zsh."
 
 # ----------------------------------------------------------------------------
-# Profile 3 — Default Physical PC
+# Profile 2 — Default Physical PC
 #
 # Complete desktop workstation profile covering daily-driver essentials:
 # system visibility tools, development, productivity, remote access, and
@@ -250,14 +243,14 @@ register_profile "Default Physical PC" \
     "Desktop workstation: Num Lock, VSCode, GitHub CLI, Steam, Brave, Devolutions RDM, Termius, Bitwarden Extension, Joplin, Joplin Web Clipper, SponsorBlock Extension, Btop, Zsh + Oh My Zsh, Fastfetch."
 
 # ----------------------------------------------------------------------------
-# Profile 4 — Developer Workstation
+# Profile 3 — Developer Workstation
 #
 # Developer Workstation — targets a software-developer desktop: firewall,
 # SSH server, containers, editor, version control tooling, API testing,
 # database GUI, password manager, and a polished shell environment.
 #
 # AVAILABLE HELPERS:
-#   _profile_select_for_install "Name"  — mark for install (skipped if installed)
+#   _profile_select_for_install "Name"  — mark for install (update if installed)
 #   _profile_select_for_update  "Name"  — mark for update  (skipped if not installed)
 #   _profile_select_task        "Name"  — mark a system task (e.g. "Num Lock at Boot")
 #
@@ -283,7 +276,7 @@ register_profile "Developer Workstation" \
     "Developer workstation: UFW, OpenSSH Server, Docker, VSCode, GitHub CLI, NVM, Postman, DBeaver, Bitwarden Client, Btop, Zsh + Oh My Zsh, Fastfetch."
 
 # ----------------------------------------------------------------------------
-# Profile 5 — Home Desktop
+# Profile 4 — Home Desktop
 #
 # Home Desktop — privacy- and productivity-focused daily-driver profile:
 # open-source browser, email, messaging, office suite, image editor,
@@ -364,10 +357,8 @@ profile_export() {
     fi
 
     # Build JSON — pure bash, no external deps required.
-    # For each profile, utility names are captured by running the profile
-    # function in a process-substitution subshell with stub helpers that
-    # simply echo each name to stdout. The parent shell's functions and
-    # arrays are unaffected.
+    # Utility names come from profile_utility_names, which leaves the live
+    # selection state unaffected.
     local json
     json="{\n"
     json+="  \"linux_util_profile_export\": true,\n"
@@ -379,19 +370,9 @@ profile_export() {
     for idx in "${indices[@]}"; do
         local label="${PROFILES[$idx]}"
         local desc="${PROFILE_DESC[$idx]:-}"
-        local func="${PROFILE_FUNCS[$idx]:-}"
 
-        # Collect utility names by running the profile function in a subshell
-        # with stub helpers — zero side effects on the live selection state.
         local -a _util_names=()
-        if [[ -n "$func" ]] && declare -f "$func" &>/dev/null; then
-            mapfile -t _util_names < <(
-                _profile_select_for_install() { echo "$1"; }
-                _profile_select_for_update()  { echo "$1"; }
-                _profile_select_task()        { echo "$1"; }
-                "$func"
-            )
-        fi
+        mapfile -t _util_names < <(profile_utility_names "$idx")
 
         [[ "$first_profile" == "true" ]] || json+=",\n"
         first_profile=false

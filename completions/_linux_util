@@ -147,7 +147,6 @@ _linux_util() {
             # First arg after --export-profile may be a profile name or a file
             local profiles=(
                 'All Profiles'
-                'Run Me First'
                 'Default VM Server Profile'
                 'Default Physical PC'
                 'Developer Workstation'

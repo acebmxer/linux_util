@@ -78,8 +78,7 @@ scripting and automation.
 ├─────────────────────────────────┤                                                                │
 │ PROFILES                        │                                                                │
 ├─────────────────────────────────┤                                                                │
-│ > Run Me First                  │                                                                │
-│   Default VM Server Profile     │                                                                │
+│ > Default VM Server Profile     │                                                                │
 │   Default Physical PC           │                                                                │
 │   Developer Workstation         │                                                                │
 │   Home Desktop                  │                                                                │
@@ -106,7 +105,8 @@ quits. A ticked item that is already installed is *uninstalled* — the checkbox
 means "change this", not "install this".
 
 Subcategories (marked `[D]`) group related items — press Enter to drill in.
-**Profiles** in the left sidebar queue a curated set in one step. Full key list,
+**Profiles** in the left sidebar queue a curated set in one step; highlighting
+one lists what it selects, grouped by category. Full key list,
 selection rules and the profile table: [docs/menu.md](docs/menu.md).
 
 ---

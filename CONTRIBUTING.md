@@ -27,7 +27,7 @@ lib/
   installers.sh            # Registers all utilities; sources lib/installers/*.sh
   installers/              # One file per utility (brave.sh, docker.sh, …)
   menu.sh                  # TUI rendering
-  profiles.sh              # Install profiles (Run Me First, Developer Workstation, …)
+  profiles.sh              # Install profiles (Default VM Server Profile, Developer Workstation, …)
   snapshot.sh              # Timeshift / Snapper integration
   system.sh                # Health checks, dependency resolution
   utilities.sh             # register_utility / register_system_task
