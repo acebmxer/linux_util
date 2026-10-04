@@ -132,7 +132,7 @@ setup_install_kde() {
                 minimal)
                     info "Installing KDE Plasma (Minimal/Core)..."
                     run_as_root "$PKG_MGR" install -y plasma-desktop plasma-workspace plasma-workspace-wayland sddm \
-                        kscreen plasma-nm kde-settings-plasma xdg-desktop-portal-kde || {
+                        kscreen plasma-nm kde-settings-plasma xdg-desktop-portal-kde konsole dolphin || {
                         error "Failed to install KDE Plasma (Minimal/Core)"
                         return 1
                     }
@@ -170,7 +170,8 @@ setup_install_kde() {
                     ;;
             esac
             info "Enabling display manager..."
-            run_as_root systemctl enable sddm || run_as_root systemctl set-default graphical.target
+            run_as_root systemctl enable sddm || warn "Failed to enable sddm"
+            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 
@@ -199,7 +200,8 @@ setup_install_kde() {
                     ;;
             esac
             info "Enabling display manager..."
-            run_as_root systemctl enable sddm || run_as_root systemctl set-default graphical.target
+            run_as_root systemctl enable sddm || warn "Failed to enable sddm"
+            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             run_as_root systemctl start sddm || warn "Failed to start sddm"
             ;;
 

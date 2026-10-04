@@ -20,6 +20,18 @@ when a release is cut.
   and falls back to the Flathub build where the distro does not package it
   (Debian 12, Ubuntu 22.04, Leap 15).
 
+### Fixed
+
+- **KDE Plasma on Fedora/RHEL and openSUSE could boot to a text login
+  instead of the desktop.** The installer only ran `systemctl set-default
+  graphical.target` if enabling sddm *failed*, so on a system defaulting to
+  `multi-user.target` (e.g. a Fedora "Custom Operating System" install) sddm
+  started right after install but not after a reboot. It now always sets
+  `graphical.target` as the default.
+
+- **KDE Plasma's Minimal/Core tier on Fedora/RHEL left no terminal or file
+  manager on the desktop.** It now also installs `konsole` and `dolphin`.
+
 ## [1.8.0] - 2026-10-03
 
 ### Added
