@@ -34,10 +34,30 @@ when a release is cut.
   graphical.target` if enabling sddm *failed*, so on a system defaulting to
   `multi-user.target` (e.g. a Fedora "Custom Operating System" install) sddm
   started right after install but not after a reboot. It now always sets
-  `graphical.target` as the default.
+  `graphical.target` as the default, on every distro. On openSUSE, where
+  `systemctl enable sddm` always fails (the login screen is started through
+  openSUSE's own `display-manager.service`), SDDM is now selected through the
+  `default-displaymanager` alternative instead.
 
-- **KDE Plasma's Minimal/Core tier on Fedora/RHEL left no terminal or file
-  manager on the desktop.** It now also installs `konsole` and `dolphin`.
+- **KDE Plasma's Minimal/Core tier failed outright on Debian 13**, which
+  dropped the `plasma-workspace-wayland` package the tier asked for (the
+  Wayland session is now part of `plasma-workspace`). The package is now only
+  requested where it still exists.
+
+- **KDE Plasma's Minimal/Core tier left out basics the full desktop has.**
+  On every distro it now includes Konsole, Dolphin, the distro's Breeze login
+  screen and System Settings' Login Screen page; on Arch it also adds the
+  network, sound and display-settings applets, and on Ubuntu 22.04 and Leap
+  16 the network applet. Previously Fedora/RHEL and Arch showed SDDM's plain built-in login
+  screen, and no distro had a terminal or file manager.
+
+- **SDDM Breeze Theme failed on Fedora/RHEL** with "Breeze theme files not
+  found": the theme ships there as its own package, `sddm-breeze`, which only
+  the Debian/Ubuntu path installed. It is now installed on Fedora/RHEL too.
+  While fixing this, found the installed SDDM theme was read from config
+  files in the wrong order, so on Fedora the menu did not show Breeze as
+  active and Uninstall did not revert it; files are now read in SDDM's own
+  order.
 
 ## [1.8.0] - 2026-10-03
 

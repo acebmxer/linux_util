@@ -95,9 +95,19 @@ setup_install_kde() {
             case "$tier" in
                 minimal)
                     info "Installing KDE Plasma (Minimal/Core)..."
-                    # plasma-desktop ships only the X11 session; plasma-workspace-wayland
-                    # adds kwin-wayland and the Plasma (Wayland) SDDM session entry.
-                    run_as_root apt-get install -y plasma-desktop plasma-workspace-wayland sddm || {
+                    # On Debian 12 / Ubuntu, plasma-desktop ships only the X11 session and
+                    # plasma-workspace-wayland adds the Plasma (Wayland) session. Debian 13+
+                    # folded it into plasma-workspace and dropped the package, so naming it
+                    # there would fail the whole install.
+                    local -a _kde_pkgs=(plasma-desktop sddm sddm-theme-breeze kde-config-sddm
+                                        kscreen plasma-nm konsole dolphin)
+                    # `apt-cache show` succeeds for a name another package merely refers to,
+                    # so check for an installable candidate instead. Capture first: piping
+                    # straight into `grep -q` trips SIGPIPE under pipefail.
+                    local _pww_policy
+                    _pww_policy=$(apt-cache policy plasma-workspace-wayland 2>/dev/null)
+                    grep -q 'Candidate: [^(]' <<<"$_pww_policy" && _kde_pkgs+=(plasma-workspace-wayland)
+                    run_as_root apt-get install -y "${_kde_pkgs[@]}" || {
                         error "Failed to install KDE Plasma (Minimal/Core)"
                         return 1
                     }
@@ -121,6 +131,7 @@ setup_install_kde() {
             esac
             info "Enabling display manager..."
             run_as_root systemctl enable sddm || warn "Failed to enable sddm"
+            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             ;;
 
         dnf|yum)
@@ -131,6 +142,7 @@ setup_install_kde() {
                 minimal)
                     info "Installing KDE Plasma (Minimal/Core)..."
                     run_as_root "$PKG_MGR" install -y plasma-desktop plasma-workspace plasma-workspace-wayland sddm \
+                        sddm-breeze kde-settings-sddm sddm-kcm \
                         kscreen plasma-nm kde-settings-plasma xdg-desktop-portal-kde konsole dolphin || {
                         error "Failed to install KDE Plasma (Minimal/Core)"
                         return 1
@@ -181,6 +193,13 @@ setup_install_kde() {
                         error "Failed to install KDE Plasma (Minimal/Core)"
                         return 1
                     }
+                    # The pattern leaves out Konsole on Leap 15 and the network applet on
+                    # Leap 16. The applet is plasma6-nm on Plasma 6, plasma-nm5 on Leap 15.
+                    run_as_root zypper install -y konsole dolphin plasma6-nm 2>/dev/null || \
+                        run_as_root zypper install -y konsole dolphin plasma-nm5 || {
+                        error "Failed to install KDE Plasma (Minimal/Core)"
+                        return 1
+                    }
                     ;;
                 full)
                     info "Installing KDE Plasma (Full Suite)..."
@@ -198,7 +217,11 @@ setup_install_kde() {
                     ;;
             esac
             info "Enabling display manager..."
-            run_as_root systemctl enable sddm || warn "Failed to enable sddm"
+            # openSUSE starts its login screen through display-manager.service, which
+            # launches whatever the default-displaymanager alternative points at;
+            # `systemctl enable sddm` fails there because that unit name is taken.
+            run_as_root update-alternatives --set default-displaymanager /usr/lib/X11/displaymanagers/sddm || \
+                warn "Failed to set sddm as the default display manager"
             run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             ;;
 
@@ -206,10 +229,15 @@ setup_install_kde() {
             case "$tier" in
                 minimal)
                     info "Installing KDE Plasma (Minimal/Core)..."
-                    run_as_root pacman -S --noconfirm plasma-desktop sddm || {
+                    run_as_root pacman -S --noconfirm plasma-desktop sddm sddm-kcm \
+                        kscreen plasma-nm plasma-pa konsole dolphin || {
                         error "Failed to install KDE Plasma (Minimal/Core)"
                         return 1
                     }
+                    # Arch's sddm sets no theme (Current= is empty), so SDDM falls back to
+                    # its built-in one. Breeze ships with plasma-desktop; use it unless a
+                    # theme is already configured.
+                    [[ -n "$(_sddm_active_theme)" ]] || _set_sddm_theme "breeze"
                     ;;
                 full)
                     info "Installing KDE Plasma (Full Suite)..."
@@ -227,7 +255,8 @@ setup_install_kde() {
                     ;;
             esac
             info "Enabling display manager..."
-            run_as_root systemctl enable sddm
+            run_as_root systemctl enable sddm || warn "Failed to enable sddm"
+            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             ;;
 
         *)
