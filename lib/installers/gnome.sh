@@ -113,14 +113,18 @@ setup_install_gnome() {
             info "Enabling display manager..."
             run_as_root systemctl enable gdm3 2>/dev/null || \
                 run_as_root systemctl enable gdm || warn "Failed to enable gdm"
+            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             ;;
 
         dnf|yum)
             case "$tier" in
                 minimal)
                     info "Installing GNOME (Minimal/Core)..."
+                    # RHEL 10 dropped GNOME Terminal in favour of Ptyxis.
+                    local _gnome_terminal=gnome-terminal
+                    [[ "$DISTRO_FAMILY" == "rhel" && "${DISTRO_VERSION_ID%%.*}" -ge 10 ]] && _gnome_terminal=ptyxis
                     run_as_root "$PKG_MGR" install -y gnome-shell gnome-session gdm \
-                        gnome-terminal nautilus gnome-control-center \
+                        "$_gnome_terminal" nautilus gnome-control-center \
                         xdg-desktop-portal-gnome || {
                         error "Failed to install GNOME (Minimal/Core)"
                         return 1
@@ -156,8 +160,7 @@ setup_install_gnome() {
                     fi
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable gdm || run_as_root systemctl set-default graphical.target
+            _enable_desktop_login gdm
             ;;
 
         zypper)
@@ -186,8 +189,7 @@ setup_install_gnome() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable gdm || run_as_root systemctl set-default graphical.target
+            _enable_desktop_login gdm
             ;;
 
         pacman)
@@ -215,8 +217,7 @@ setup_install_gnome() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable gdm
+            _enable_desktop_login gdm
             ;;
 
         *)

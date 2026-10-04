@@ -359,8 +359,12 @@ if [[ "$DISTRO_ID" != "elementary" ]] && \
     register_utility "Budgie Desktop"      install_budgie           check_budgie           uninstall_budgie           update_budgie              get_version_budgie
 fi
 
-# Cinnamon: available on Debian, Ubuntu, Fedora, Arch, openSUSE — not elementary
-if [[ "$DISTRO_ID" != "elementary" ]]; then
+# Cinnamon, MATE, Xfce: EPEL carries them for RHEL 9 but not RHEL 10 (nor LightDM,
+# their login screen there), so they are hidden on RHEL 10+. Not on elementary.
+_rhel10_plus=false
+[[ "$DISTRO_FAMILY" == "rhel" && "${DISTRO_VERSION_ID%%.*}" -ge 10 ]] && _rhel10_plus=true
+
+if [[ "$DISTRO_ID" != "elementary" && "$_rhel10_plus" == "false" ]]; then
     register_utility "Cinnamon Desktop"    install_cinnamon         check_cinnamon         uninstall_cinnamon         update_cinnamon            get_version_cinnamon
 fi
 
@@ -384,7 +388,7 @@ if [[ "$DISTRO_FAMILY" != "debian" ]] && \
     register_utility "Deepin Desktop"      install_deepin           check_deepin           uninstall_deepin           update_deepin              get_version_deepin
 fi
 
-# GNOME, KDE, MATE, Xfce: available on all supported distros except elementary
+# GNOME, KDE: available on all supported distros except elementary
 if [[ "$DISTRO_ID" != "elementary" ]]; then
     register_utility "GNOME Desktop"       install_gnome            check_gnome            uninstall_gnome            update_gnome               get_version_gnome
     register_utility "KDE Desktop"         install_kde              check_kde              uninstall_kde              update_kde                 get_version_kde
@@ -397,7 +401,7 @@ if [[ "$DISTRO_ID" != "elementary" ]] && \
     register_utility "LXQt Desktop"        install_lxqt             check_lxqt             uninstall_lxqt             update_lxqt                get_version_lxqt
 fi
 
-if [[ "$DISTRO_ID" != "elementary" ]]; then
+if [[ "$DISTRO_ID" != "elementary" && "$_rhel10_plus" == "false" ]]; then
     register_utility "MATE Desktop"        install_mate             check_mate             uninstall_mate             update_mate                get_version_mate
 fi
 
@@ -408,7 +412,7 @@ if [[ "$DISTRO_FAMILY" == "arch" ]] || [[ "$DISTRO_ID" == "opensuse-tumbleweed" 
     register_utility "Pantheon Desktop"    install_pantheon         check_pantheon         uninstall_pantheon         update_pantheon            get_version_pantheon
 fi
 
-if [[ "$DISTRO_ID" != "elementary" ]]; then
+if [[ "$DISTRO_ID" != "elementary" && "$_rhel10_plus" == "false" ]]; then
     register_utility "Xfce Desktop"        install_xfce             check_xfce             uninstall_xfce             update_xfce                get_version_xfce
 fi
 

@@ -108,8 +108,7 @@ setup_install_mate() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm || warn "Failed to enable lightdm"
+            _enable_desktop_login lightdm
             ;;
 
         dnf|yum)
@@ -152,9 +151,7 @@ setup_install_mate() {
                     fi
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
+            _enable_desktop_login lightdm
             ;;
 
         zypper)
@@ -189,16 +186,14 @@ setup_install_mate() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
+            _enable_desktop_login lightdm
             ;;
 
         pacman)
             case "$tier" in
                 minimal)
                     info "Installing MATE (Minimal/Core)..."
-                    run_as_root pacman -S --noconfirm mate lightdm lightdm-gtk-greeter || {
+                    run_as_root pacman -S --noconfirm mate mate-terminal lightdm lightdm-gtk-greeter || {
                         error "Failed to install MATE (Minimal/Core)"
                         return 1
                     }
@@ -213,8 +208,7 @@ setup_install_mate() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm
+            _enable_desktop_login lightdm
             ;;
 
         *)

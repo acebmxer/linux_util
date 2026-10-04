@@ -74,8 +74,7 @@ setup_install_pantheon() {
                 sudo sed -i 's/^#\?greeter-session=.*/greeter-session=io.elementary.greeter/' \
                     /etc/lightdm/lightdm.conf
             fi
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm
+            _enable_desktop_login lightdm
             ;;
 
         zypper)
@@ -85,9 +84,7 @@ setup_install_pantheon() {
                 error "Failed to install Pantheon Desktop Environment"
                 return 1
             }
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
+            _enable_desktop_login lightdm
             ;;
 
         *)

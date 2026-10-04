@@ -129,9 +129,7 @@ setup_install_kde() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm || warn "Failed to enable sddm"
-            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
+            _enable_desktop_login sddm
             ;;
 
         dnf|yum)
@@ -180,9 +178,7 @@ setup_install_kde() {
                     fi
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm || warn "Failed to enable sddm"
-            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
+            _enable_desktop_login sddm
             ;;
 
         zypper)
@@ -216,13 +212,7 @@ setup_install_kde() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            # openSUSE starts its login screen through display-manager.service, which
-            # launches whatever the default-displaymanager alternative points at;
-            # `systemctl enable sddm` fails there because that unit name is taken.
-            run_as_root update-alternatives --set default-displaymanager /usr/lib/X11/displaymanagers/sddm || \
-                warn "Failed to set sddm as the default display manager"
-            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
+            _enable_desktop_login sddm
             ;;
 
         pacman)
@@ -254,9 +244,7 @@ setup_install_kde() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm || warn "Failed to enable sddm"
-            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
+            _enable_desktop_login sddm
             ;;
 
         *)

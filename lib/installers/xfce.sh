@@ -81,7 +81,7 @@ setup_install_xfce() {
             case "$tier" in
                 minimal)
                     info "Installing Xfce (Minimal/Core)..."
-                    run_as_root apt-get install -y xfce4 lightdm lightdm-gtk-greeter || {
+                    run_as_root apt-get install -y xfce4 xfce4-terminal lightdm lightdm-gtk-greeter || {
                         error "Failed to install Xfce (Minimal/Core)"
                         return 1
                     }
@@ -104,8 +104,7 @@ setup_install_xfce() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm || warn "Failed to enable lightdm"
+            _enable_desktop_login lightdm
             ;;
 
         dnf|yum)
@@ -152,9 +151,7 @@ setup_install_xfce() {
                     fi
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
+            _enable_desktop_login lightdm
             ;;
 
         zypper)
@@ -182,9 +179,7 @@ setup_install_xfce() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
+            _enable_desktop_login lightdm
             ;;
 
         pacman)
@@ -206,8 +201,7 @@ setup_install_xfce() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm
+            _enable_desktop_login lightdm
             ;;
 
         *)

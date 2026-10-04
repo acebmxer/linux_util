@@ -29,15 +29,16 @@ when a release is cut.
   mid-run (and would end an SSH session). They now only enable it, matching
   the Display Managers installers; the desktop starts on the next reboot.
 
-- **KDE Plasma on Fedora/RHEL and openSUSE could boot to a text login
-  instead of the desktop.** The installer only ran `systemctl set-default
-  graphical.target` if enabling sddm *failed*, so on a system defaulting to
-  `multi-user.target` (e.g. a Fedora "Custom Operating System" install) sddm
-  started right after install but not after a reboot. It now always sets
-  `graphical.target` as the default, on every distro. On openSUSE, where
-  `systemctl enable sddm` always fails (the login screen is started through
-  openSUSE's own `display-manager.service`), SDDM is now selected through the
-  `default-displaymanager` alternative instead.
+- **Desktop environments on Fedora/RHEL could boot to a text login instead
+  of the desktop.** Every desktop installer only ran `systemctl set-default
+  graphical.target` if enabling its display manager *failed*, so on a system
+  defaulting to `multi-user.target` (e.g. a Fedora "Custom Operating System"
+  install) the login screen never started after a reboot. All of them now
+  always set `graphical.target`, on every distro. On openSUSE, where
+  `systemctl enable` on a display manager always fails (the login screen is
+  started through openSUSE's own `display-manager.service`), the desktop's
+  display manager is now selected through the `default-displaymanager`
+  alternative instead.
 
 - **KDE Plasma's Minimal/Core tier failed outright on Debian 13**, which
   dropped the `plasma-workspace-wayland` package the tier asked for (the
@@ -48,8 +49,21 @@ when a release is cut.
   On every distro it now includes Konsole, Dolphin, the distro's Breeze login
   screen and System Settings' Login Screen page; on Arch it also adds the
   network, sound and display-settings applets, and on Ubuntu 22.04 and Leap
-  16 the network applet. Previously Fedora/RHEL and Arch showed SDDM's plain built-in login
-  screen, and no distro had a terminal or file manager.
+  16 the network applet. Previously Fedora/RHEL and Arch showed SDDM's plain
+  built-in login screen, and no distro had a terminal or file manager.
+
+- **Other desktops' Minimal/Core tiers left out a terminal or file
+  manager on some distros.** Budgie now includes Nemo and GNOME Terminal,
+  Cinnamon GNOME Terminal (Fedora/RHEL, Arch), LXQt QTerminal (Arch,
+  openSUSE), MATE MATE Terminal (Arch) and Xfce Xfce Terminal
+  (Debian/Ubuntu) — the same apps their Standard tiers already use.
+
+- **GNOME's Minimal/Core tier failed on RHEL 10**, which dropped GNOME
+  Terminal; it installs Ptyxis there instead.
+
+- **Xfce, Cinnamon and MATE were offered on RHEL 10 but could not install**:
+  EPEL 10 does not package them, or LightDM. They are now hidden on RHEL 10
+  and later, as Budgie and LXQt already are on RHEL.
 
 - **SDDM Breeze Theme failed on Fedora/RHEL** with "Breeze theme files not
   found": the theme ships there as its own package, `sddm-breeze`, which only
