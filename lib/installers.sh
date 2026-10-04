@@ -205,6 +205,7 @@ register_utility "Joplin Client"              install_joplin                    
 register_utility "Joplin Web Clipper"         install_joplin_webclipper_extension  check_joplin_webclipper_extension  uninstall_joplin_webclipper_extension  update_joplin_webclipper_extension   get_version_joplin_webclipper_extension
 register_utility "k9s"                 install_k9s              check_k9s              uninstall_k9s              update_k9s                 get_version_k9s
 register_utility "Kdenlive"            install_kdenlive         check_kdenlive         uninstall_kdenlive         update_kdenlive            get_version_kdenlive
+register_utility "KDiskMark"           install_kdiskmark        check_kdiskmark        uninstall_kdiskmark        update_kdiskmark           get_version_kdiskmark
 register_utility "KMail"                      install_kmail                        check_kmail                        uninstall_kmail                        update_kmail                         get_version_kmail
 register_utility "Krita"               install_krita            check_krita            uninstall_krita            update_krita               get_version_krita
 register_utility "kubectl"             install_kubectl          check_kubectl          uninstall_kubectl          update_kubectl             get_version_kubectl
@@ -693,6 +694,7 @@ UTILITY_CATEGORY["Tor Browser"]="Internet"
 UTILITY_CATEGORY["UniFi Endpoint"]="Internet"
 UTILITY_CATEGORY["Ventoy"]="Disk Utilities"
 UTILITY_CATEGORY["GParted"]="Disk Utilities"
+UTILITY_CATEGORY["KDiskMark"]="Disk Utilities"
 UTILITY_CATEGORY["Virt-Manager"]="Development"
 UTILITY_CATEGORY["Firecracker"]="Development"
 UTILITY_CATEGORY["VLC"]="Productivity"
@@ -1055,6 +1057,7 @@ UTILITY_DESCRIPTION["ClamAV"]="Open-source antivirus engine for detecting trojan
 UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyboard and mouse across multiple computers on your local network."
 UTILITY_DESCRIPTION["Ventoy"]="Bootable USB solution for loading multiple ISO images from a single drive — just copy ISOs and boot."
 UTILITY_DESCRIPTION["GParted"]="Graphical partition editor for creating, resizing, moving, copying, and deleting disk partitions. Supports ext2/3/4, btrfs, xfs, ntfs, fat32, and more — ideal for managing drives and preparing disks."
+UTILITY_DESCRIPTION["KDiskMark"]="HDD and SSD benchmark tool with a graphical interface over fio (Flexible I/O Tester) — measures sequential and random read/write speeds with configurable block size, queue depth and thread count, and can generate a text report. Installed from the native package; falls back to Flathub where the distro does not package it (Debian 12, Ubuntu 22.04, openSUSE Leap 15)."
 UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written in C, displaying OS, hardware, and software details."
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
 UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS. Install this first to enable Create, Restore, and Delete Snapshot."

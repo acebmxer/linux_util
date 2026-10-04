@@ -12,6 +12,14 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **KDiskMark** (Disk Utilities), the HDD/SSD benchmark tool — a GUI over
+  fio for sequential and random read/write tests. Installs the native package
+  (Debian 13, Ubuntu 24.04, Fedora, RHEL via EPEL, Arch, Tumbleweed, Leap 16)
+  and falls back to the Flathub build where the distro does not package it
+  (Debian 12, Ubuntu 22.04, Leap 15).
+
 ## [1.8.0] - 2026-10-03
 
 ### Added

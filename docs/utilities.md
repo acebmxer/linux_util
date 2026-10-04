@@ -115,6 +115,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 |---------|-------------|
 | **GParted** | Graphical partition editor — create, resize, move, and delete partitions |
 | **Ventoy** | Bootable USB tool — boot multiple ISOs from one drive |
+| **KDiskMark** | HDD/SSD benchmark (GUI for fio) — Flathub build where the distro has no package |
 | **Btrfs Assistant** | GUI for managing Btrfs subvolumes and Snapper snapshots *(Btrfs Tools)* |
 | **btrfsmaintenance** | Automates scheduled Btrfs scrub, balance, trim, and defrag *(Btrfs Tools)* |
 | **btrbk** | Btrfs snapshot and backup tool with remote send/receive *(Btrfs Tools)* |

@@ -50,6 +50,7 @@ JetBrains Toolbox
 Joplin Client
 Joplin Web Clipper
 KDE Desktop
+KDiskMark
 KMail
 LibreOffice
 linux-tkg
