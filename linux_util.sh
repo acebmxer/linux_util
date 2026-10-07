@@ -160,6 +160,10 @@ load_config
 source "${SCRIPT_DIR}/lib/logging.sh" || { echo "Error: Failed to source logging.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/pkg_manager.sh" || { echo "Error: Failed to source pkg_manager.sh"; exit 1; }
 
+# Under WSL, hide programs installed on Windows so only the Linux side is
+# detected, versioned and updated.
+_strip_windows_path
+
 # Initialize performance metrics tracking
 metrics_init
 

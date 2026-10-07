@@ -2257,6 +2257,66 @@ test_winapps_launcher_alone_is_not_installed
 test_winapps_launcher_is_never_executed
 
 # ============================================================================
+# Test: WSL — programs installed on Windows are not detected
+# ============================================================================
+echo ""
+echo "=== WSL Windows PATH Filtering Tests ==="
+
+# WSL appends the Windows PATH, so a Windows install (VS Code's 'code' shim)
+# was detected as installed in the Linux distro. The fixture fakes a Windows
+# drive mount and a Linux dir, each holding a 'code'.
+_WSL_DIR=$(mktemp -d /tmp/linux_util_test_wsl_XXXXXX)
+mkdir -p "$_WSL_DIR/win drive/Programs/VS Code/bin" "$_WSL_DIR/winother/bin" "$_WSL_DIR/linux"
+printf '#!/bin/sh\necho windows\n' > "$_WSL_DIR/win drive/Programs/VS Code/bin/code"
+printf '#!/bin/sh\necho linux\n'   > "$_WSL_DIR/linux/code"
+chmod +x "$_WSL_DIR/win drive/Programs/VS Code/bin/code" "$_WSL_DIR/linux/code"
+# WSL 2 (9p, aname=drvfs) and WSL 1 (drvfs) mount lines; the space in the
+# first mount point is octal-escaped exactly as /proc/mounts writes it.
+printf '%s\n' \
+    "C:\\134 ${_WSL_DIR}/win\\040drive 9p rw,noatime,aname=drvfs;path=C:\\;uid=1000 0 0" \
+    "D: ${_WSL_DIR}/winother drvfs rw,noatime 0 0" \
+    "drivers /usr/lib/wsl/drivers 9p ro,aname=drivers 0 0" \
+    > "$_WSL_DIR/mounts_wsl"
+printf '%s\n' "proc /proc proc rw 0 0" > "$_WSL_DIR/mounts_plain"
+
+# Run an expression with the helpers loaded and PATH holding only the fixture
+# dirs (plus /usr/bin:/bin), after filtering against the given mounts file.
+_wsl_probe() {
+    local _mounts="$1" _expr="$2"
+    (
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh"
+        PATH="${_WSL_DIR}/win drive/Programs/VS Code/bin:${_WSL_DIR}/winother/bin:/usr/bin:/bin"
+        [[ "${_WITH_LINUX:-0}" == 1 ]] && PATH="$PATH:${_WSL_DIR}/linux"
+        _strip_windows_path "$_mounts"
+        eval "$_expr"
+    ) 2>/dev/null
+}
+
+test_wsl_windows_program_not_detected() {
+    assert_eq "no" "$(_wsl_probe "$_WSL_DIR/mounts_wsl" '_have_cmd code && echo yes || echo no')" \
+        "a program only installed on Windows is not detected under WSL"
+    assert_eq "no" "$(_wsl_probe "$_WSL_DIR/mounts_wsl" 'command -v code >/dev/null && echo yes || echo no')" \
+        "plain command -v lookups no longer see Windows programs either"
+    assert_eq "/usr/bin:/bin" "$(_wsl_probe "$_WSL_DIR/mounts_wsl" 'printf %s "$PATH"')" \
+        "both WSL 2 (9p/drvfs) and WSL 1 (drvfs) drive mounts are removed from PATH"
+}
+
+test_wsl_linux_program_still_detected() {
+    assert_eq "linux" "$(_WITH_LINUX=1 _wsl_probe "$_WSL_DIR/mounts_wsl" '_run_native code')" \
+        "the Linux install is found and run, not the Windows one ahead of it"
+}
+
+test_wsl_filter_is_noop_without_windows_mounts() {
+    assert_eq "yes" "$(_wsl_probe "$_WSL_DIR/mounts_plain" '_have_cmd code && echo yes || echo no')" \
+        "PATH is left untouched when no Windows drive is mounted (non-WSL)"
+}
+
+test_wsl_windows_program_not_detected
+test_wsl_linux_program_still_detected
+test_wsl_filter_is_noop_without_windows_mounts
+rm -rf "$_WSL_DIR"
+
+# ============================================================================
 # Test: Euro-Office source build (tag selection and artifact picking)
 # ============================================================================
 echo ""

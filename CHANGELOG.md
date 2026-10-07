@@ -37,6 +37,13 @@ when a release is cut.
 
 ### Fixed
 
+- **Under WSL, programs installed on Windows showed as installed.** WSL adds
+  the Windows PATH to Linux's, so Visual Studio Code installed on Windows was
+  listed with its Windows version, and an update did nothing to it. At startup
+  the script now drops Windows drive directories (drvfs mounts) from its PATH,
+  so only what is installed in the WSL distro is detected, versioned and
+  updated. No effect outside WSL.
+
 - **`docs/menu.md` said applying a profile skips items that are already
   installed.** It queues them for update (`[U]`) instead, as
   `_profile_select_for_install` always has; the docs now say so.
