@@ -16,6 +16,7 @@ CachyOS Kernel Manager
 Chromium
 Cinnamon Desktop
 Claude Code
+Claude Desktop
 Claws Mail
 Cockpit
 Command-Not-Found Prompt

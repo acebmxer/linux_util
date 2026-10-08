@@ -127,6 +127,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 |---------|-------------|
 | **Ansible** | IT automation and configuration management tool |
 | **Claude Code** | Anthropic's AI coding assistant for the terminal |
+| **Claude Desktop** | Anthropic's Claude desktop app — Chat, Cowork and Claude Code (Linux beta). Native on Debian/Ubuntu; on other distros it runs in an Ubuntu 26.04 distrobox and appears in the app menu |
 | **Cursor IDE** | AI-powered code editor built on VS Code |
 | **DBeaver** | Universal database management tool |
 | **Distrobox** | Run any Linux distro in an integrated terminal container (needs Podman/Docker) |

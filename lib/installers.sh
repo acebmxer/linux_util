@@ -153,6 +153,8 @@ register_utility "Chromium"            install_chromium         check_chromium  
 register_utility "ClamAV"              install_clamav           check_clamav           uninstall_clamav           update_clamav              get_version_clamav
 register_utility "Claws Mail"          install_claws_mail       check_claws_mail       uninstall_claws_mail       update_claws_mail          get_version_claws_mail
 register_utility "Claude Code"         install_claude_code      check_claude_code      uninstall_claude_code      update_claude_code
+# Claude Desktop: native on Debian/Ubuntu, in an Ubuntu distrobox everywhere else
+register_utility "Claude Desktop"      install_claude_desktop   check_claude_desktop   uninstall_claude_desktop   update_claude_desktop      get_version_claude_desktop
 register_utility "Cockpit"             install_cockpit          check_cockpit          uninstall_cockpit          update_cockpit             get_version_cockpit
 register_utility "Cursor IDE"          install_cursor           check_cursor           uninstall_cursor           update_cursor              get_version_cursor
 register_utility "DBeaver"             install_dbeaver          check_dbeaver          uninstall_dbeaver          update_dbeaver             get_version_dbeaver
@@ -571,6 +573,7 @@ UTILITY_CATEGORY["Brave Origin"]="Internet"
 UTILITY_CATEGORY["Btop"]="System Tools"
 UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
+UTILITY_CATEGORY["Claude Desktop"]="Development"
 UTILITY_CATEGORY["Claws Mail"]="Internet"
 UTILITY_CATEGORY["Cockpit"]="Remote Admin Tools"
 UTILITY_CATEGORY["Cursor IDE"]="Development"
@@ -754,6 +757,7 @@ UTILITY_SUBCATEGORY["Obsidian"]="Notes"
 UTILITY_SUBCATEGORY["Standard Notes"]="Notes"
 UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
 UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Claude Desktop"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
@@ -932,6 +936,7 @@ UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshot
 # Development
 UTILITY_DESCRIPTION["Ansible"]="IT automation tool for provisioning, configuration management, and application deployment using agentless SSH-based playbooks."
 UTILITY_DESCRIPTION["Claude Code"]="Anthropic's AI coding assistant that runs in the terminal for code generation, editing, and analysis."
+UTILITY_DESCRIPTION["Claude Desktop"]="Anthropic's Claude desktop app with Chat, Cowork, and Claude Code (Linux beta). Installed from Anthropic's apt repository — natively on Debian/Ubuntu, inside an Ubuntu 26.04 distrobox on other distros (Distrobox is installed first if missing)."
 UTILITY_DESCRIPTION["Cursor IDE"]="AI-powered code editor built on VS Code with deeply integrated AI features for code completion and chat."
 UTILITY_DESCRIPTION["DBeaver"]="Universal database management tool supporting PostgreSQL, MySQL, SQLite, Oracle, and many more."
 UTILITY_DESCRIPTION["Docker"]="Container platform for building, shipping, and running applications in isolated environments."
@@ -1163,7 +1168,8 @@ mark_upstream_binary \
     "Mark Text=$HOME/.local/share/marktext" \
     "Standard Notes=$HOME/.local/share/standard-notes/standard-notes.AppImage" \
     "PowerShell=/opt/microsoft/powershell" \
-    "Libation=/usr/lib/libation"
+    "Libation=/usr/lib/libation" \
+    "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1173,7 +1179,8 @@ mark_upstream_binary \
 # report in advance that an update is waiting.
 mark_upstream_latest \
     "Visual Studio Code=_vscode_latest_version" \
-    "Libation=_libation_latest_version"
+    "Libation=_libation_latest_version" \
+    "Claude Desktop=_claude_desktop_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

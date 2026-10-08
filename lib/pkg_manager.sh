@@ -2069,12 +2069,15 @@ _ver_from_snap() {
 #   KEYRING_PATH     — full destination path for the keyring (sudo-created)
 #   SOURCES_LINE     — complete "deb [signed-by=...] ..." line
 #   SOURCES_LIST_PATH — full path of the .list file under /etc/apt/sources.list.d/
+#   KEY_FINGERPRINT  — optional; when the vendor publishes the key's fingerprint,
+#                      the downloaded key must match it or nothing is written
 # Runs "sudo apt update" after writing the repo.
 _add_apt_repo() {
     local key_url="$1"
     local keyring_path="$2"
     local sources_line="$3"
     local sources_list_path="$4"
+    local key_fingerprint="${5:-}"
 
     sudo install -d -m 0755 "$(dirname "$keyring_path")"
 
@@ -2086,6 +2089,19 @@ _add_apt_repo() {
         rm -f "$_tmpkey"
         error "Failed to download GPG key from: $key_url"
         return 1
+    fi
+    if [[ -n "$key_fingerprint" ]]; then
+        # Throwaway GNUPGHOME so reading the key never creates ~/.gnupg.
+        local _gnupghome _fprs
+        _gnupghome=$(mktemp -d)
+        _fprs=$(GNUPGHOME="$_gnupghome" gpg --show-keys --with-colons "$_tmpkey" 2>/dev/null |
+            awk -F: '$1 == "fpr" { print $10 }')
+        rm -rf "$_gnupghome"
+        if ! grep -qx "$key_fingerprint" <<< "$_fprs"; then
+            rm -f "$_tmpkey"
+            error "GPG key from $key_url does not match fingerprint $key_fingerprint"
+            return 1
+        fi
     fi
     if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "$_tmpkey" 2>/dev/null; then
         gpg --dearmor < "$_tmpkey" | sudo tee "$keyring_path" > /dev/null

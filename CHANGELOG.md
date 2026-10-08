@@ -14,6 +14,25 @@ when a release is cut.
 
 ### Added
 
+- **Claude Desktop** (Development > IDEs & Editors), Anthropic's desktop app
+  with Chat, Cowork and Claude Code. Installs `claude-desktop` from
+  Anthropic's apt repository after checking the signing key against its
+  published fingerprint, and updates through apt. Anthropic's Linux beta is
+  built for Debian and Ubuntu only (amd64/arm64), so on every other distro it
+  is installed the same way inside an Ubuntu 26.04 distrobox named
+  `claude-desktop` and exported to the application menu; Podman and
+  Distrobox are installed first when missing. System Updates refreshes the
+  distrobox copy and counts it as pending when Anthropic publishes a newer
+  version. Uninstalling there removes the menu entries and the whole box.
+
+  The box shares the home directory, and its font library wrote its caches
+  into the host's `~/.cache/fontconfig`; host Electron apps such as Termius
+  then found no usable fonts there and crashed on launch. The box now keeps
+  its font cache in `~/.cache/fontconfig-claude-desktop-box` instead, which
+  uninstall also removes.
+  `_add_apt_repo` gained an optional fingerprint argument for this; existing
+  callers are unchanged.
+
 - **Profile preview in the menu.** Highlighting a profile in the `PROFILES`
   section now lists everything it selects in the main panel, grouped under
   each item's category and subcategory (e.g. `Internet > Web Browsers`),
