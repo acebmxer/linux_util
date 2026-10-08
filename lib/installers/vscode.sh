@@ -216,5 +216,10 @@ get_version_vscode() {
         v=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$_VSCODE_DIR/resources/app/package.json" | head -1)
         [[ -n "$v" ]] && { printf '%s\n' "$v"; return 0; }
     fi
-    _run_native code --version 2>/dev/null | head -1 || echo ""
+    # DONT_PROMPT_WSL_INSTALL silences the upstream `code` launcher's own "you're
+    # running Linux VS Code inside WSL" prompt; </dev/null backs that up in case
+    # some other build still asks something. Without both, that prompt goes to
+    # stderr (dropped by 2>/dev/null below) while its `read` blocks forever on
+    # stdin, hanging check_installed_utilities with no visible cause.
+    DONT_PROMPT_WSL_INSTALL=1 _run_native code --version </dev/null 2>/dev/null | head -1 || echo ""
 }
