@@ -58,6 +58,21 @@ _claude_desktop_box_font_cache() {
         sudo tee /etc/fonts/conf.d/00-linux-util-cachedir.conf >/dev/null
 }
 
+# Runs inside the box (shipped with declare -f). Exports, or with --delete
+# removes, exactly the launchers the claude-desktop package ships. Passing the
+# name "claude-desktop" to distrobox-export instead matched every launcher whose
+# Name or Exec contains it -- including the box's own "Claude-desktop" terminal
+# launcher in the shared ~/.local/share/applications, which was re-exported as a
+# menu entry that ran distrobox inside the box and closed at once.
+_claude_desktop_box_export() {
+    local f found=1
+    while IFS= read -r f; do
+        distrobox-export --app "$f" "$@" || return 1
+        found=0
+    done < <(dpkg -L claude-desktop 2>/dev/null | grep -E '^/usr/share/applications/[^/]+\.desktop$')
+    return $found
+}
+
 # Every distrobox call goes through here with the script's lock fd (9) closed.
 # Starting a box leaves its conmon process running after this script exits; it
 # inherited fd 9, so it kept the lock held and every later linux_util run
@@ -69,7 +84,7 @@ _claude_desktop_dbx() { distrobox "$@" 9>&-; }
 _claude_desktop_box_run() {
     _claude_desktop_dbx enter "$_CLAUDE_DESKTOP_BOX" -- bash -c "
 $(declare -p _CLAUDE_DESKTOP_KEYRING _CLAUDE_DESKTOP_LIST _CLAUDE_DESKTOP_BOX_FONT_CACHE)
-$(declare -f _claude_desktop_box_font_cache)
+$(declare -f _claude_desktop_box_font_cache _claude_desktop_box_export)
 $(declare -f error _add_apt_repo _claude_desktop_add_repo)
 $1"
 }
@@ -142,7 +157,7 @@ _claude_desktop_box_font_cache &&
 sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y curl gnupg &&
 _claude_desktop_add_repo &&
 sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y claude-desktop &&
-distrobox-export --app claude-desktop' || {
+_claude_desktop_box_export' || {
         error "Installing Claude Desktop inside the distrobox failed (see output above)."
         return 1
     }
@@ -181,7 +196,7 @@ uninstall_claude_desktop() {
     if _claude_desktop_uses_box; then
         if _have_cmd distrobox; then
             # Remove the menu entry while the box still exists, then the whole box.
-            _claude_desktop_dbx enter "$_CLAUDE_DESKTOP_BOX" -- distrobox-export --app claude-desktop --delete 2>/dev/null || true
+            _claude_desktop_box_run '_claude_desktop_box_export --delete' 2>/dev/null || true
             _claude_desktop_dbx rm --force "$_CLAUDE_DESKTOP_BOX" || {
                 error "Could not remove the '${_CLAUDE_DESKTOP_BOX}' distrobox."
                 return 1

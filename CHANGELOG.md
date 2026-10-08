@@ -29,7 +29,10 @@ when a release is cut.
   into the host's `~/.cache/fontconfig`; host Electron apps such as Termius
   then found no usable fonts there and crashed on launch. The box now keeps
   its font cache in `~/.cache/fontconfig-claude-desktop-box` instead, which
-  uninstall also removes.
+  uninstall also removes. Only the launchers the `claude-desktop` package
+  ships are exported to the menu; exporting by name had also exported the
+  box's own terminal launcher as a "Claude-desktop (on claude-desktop)" entry
+  that closed immediately.
   `_add_apt_repo` gained an optional fingerprint argument for this; existing
   callers are unchanged.
 
