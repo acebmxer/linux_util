@@ -582,8 +582,11 @@ _gather_sysinfo() {
 
     # GPU model — three-tier detection (no drivers required for tiers 2 & 3)
     # Tier 1: nvidia-smi (drivers installed, gives clean name)
+    # Bounded: on WSL, nvidia-smi can hang indefinitely instead of failing fast
+    # when the GPU passthrough bridge to the Windows host driver is in a bad
+    # state, which froze the menu at startup for every WSL user hitting it.
     if command -v nvidia-smi &>/dev/null; then
-        _SYSINFO_GPU="$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)"
+        _SYSINFO_GPU="$(timeout 5 nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)"
     fi
     # Tier 2: lspci (pciutils, reads hardware directly — no drivers needed)
     if [[ -z "$_SYSINFO_GPU" ]] && command -v lspci &>/dev/null; then
