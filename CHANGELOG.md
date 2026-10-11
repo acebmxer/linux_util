@@ -77,6 +77,14 @@ when a release is cut.
 
 ### Fixed
 
+- **Node.js reported success when nothing was installed.** On a minimal system
+  without `xz` (WSL Fedora), the archive failed to unpack but the installer
+  still printed "installed" and succeeded. It now installs `xz` first and
+  stops with an error if unpacking or copying fails.
+  Uninstalling or updating Node.js also removes a distro-installed Node.js
+  through the package manager instead of deleting its files, so the package
+  no longer stays registered as installed.
+
 - **Under WSL, programs installed on Windows showed as installed.** WSL adds
   the Windows PATH to Linux's, so Visual Studio Code installed on Windows was
   listed with its Windows version, and an update did nothing to it. At startup
