@@ -230,6 +230,8 @@ Additional, cross-distro managers that run alongside the native package manager 
 
 | Utility | Description |
 |---------|-------------|
+| **ArtCraft Launcher** *(ArtCraft folder)* | The launcher app that installs and updates the Craft apps — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
+| **CADCraft, DeckCraft, DesignCraft, EffectCraft, FilmCraft, GridCraft, LightCraft, PdfCraft, PhotoCraft, SoundCraft, VectorCraft, WordCraft** *(ArtCraft folder)* | The open-source Craft App Suite, each installed on its own from its latest GitHub release — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
 | **Audacity** | Open-source audio editor and recorder |
 | **Bitwarden Client** | Open-source password manager — `.deb` / `.rpm` / AUR / snap / flatpak |
 | **Euro-Office** | European community fork of ONLYOFFICE — **built from source**, since upstream ships no desktop binaries. Runs their `docker buildx bake` build and installs the resulting `.deb`/`.rpm` (AUR on Arch). Needs Docker + Buildx; the compile takes hours and tens of GB |

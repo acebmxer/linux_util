@@ -4167,6 +4167,51 @@ test_profile_preview_leaves_selection_untouched
 test_profile_preview_empty_when_nothing_registered
 test_profile_utility_names_lists_in_profile_order
 
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== ArtCraft / Craft apps ==="
+
+test_craft_apps_registered_in_artcraft_subcategory() {
+    local name fn slug gaps=0
+    for name in "ArtCraft Launcher" CADCraft DeckCraft DesignCraft EffectCraft FilmCraft GridCraft \
+                LightCraft PdfCraft PhotoCraft SoundCraft VectorCraft WordCraft; do
+        slug=$(printf '%s' "${name%% Launcher}" | tr '[:upper:]' '[:lower:]')
+        grep -q "^register_utility \"${name}\" install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+        grep -q "^UTILITY_CATEGORY\[\"${name}\"\]=\"Productivity\"" "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+        grep -q "^UTILITY_SUBCATEGORY\[\"${name}\"\]=\"ArtCraft\"" "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+        grep -q "^UTILITY_DESCRIPTION\[\"${name}\"\]=" "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+        for fn in install check uninstall update; do
+            grep -qE "^${fn}_${slug}\(\)|^${fn}_${slug}[[:space:]]*\(\)" \
+                "${SCRIPT_DIR}/lib/installers/artcraft.sh" "${SCRIPT_DIR}/lib/installers/craft_apps.sh" 2>/dev/null || gaps=1
+        done
+    done
+    assert_eq "0" "$gaps" "all 13 ArtCraft entries are registered with category, subcategory, description and functions"
+}
+
+test_craft_asset_url_picks_package_not_sidecar() {
+    local out
+    out=$(
+        error() { :; }
+        source "${SCRIPT_DIR}/lib/installers/artcraft.sh"
+        curl() {
+            printf '%s\n' \
+                '"browser_download_url": "https://x/r/pdfcraft-0.5.0-linux-x86_64.AppImage.zsync"' \
+                '"browser_download_url": "https://x/r/pdfcraft-cli-0.5.0-linux-x86_64.tar.gz"' \
+                '"browser_download_url": "https://x/r/pdfcraft-0.5.0-linux-aarch64.rpm"' \
+                '"browser_download_url": "https://x/r/pdfcraft-0.5.0-linux-x86_64.rpm"' \
+                '"browser_download_url": "https://x/r/pdfcraft-0.5.0-linux-x86_64.AppImage"'
+        }
+        uname() { echo x86_64; }
+        _craft_asset_url pdfcraft rpm
+        _craft_asset_url pdfcraft AppImage
+    )
+    assert_eq $'https://x/r/pdfcraft-0.5.0-linux-x86_64.rpm\nhttps://x/r/pdfcraft-0.5.0-linux-x86_64.AppImage' \
+        "$out" "_craft_asset_url selects the exact package for this architecture, not a sidecar or the CLI tarball"
+}
+
+test_craft_apps_registered_in_artcraft_subcategory
+test_craft_asset_url_picks_package_not_sidecar
+
 echo ""
 echo "════════════════════════════════════════════════════════════════"
 echo "Test Results: ${_TESTS_PASSED} passed, ${_TESTS_FAILED} failed, ${_TESTS_SKIPPED} skipped"

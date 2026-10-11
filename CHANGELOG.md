@@ -14,6 +14,24 @@ when a release is cut.
 
 ### Added
 
+- **ArtCraft Launcher** (Productivity > ArtCraft), with the Craft App Suite as
+  separate entries beside it: CADCraft, DeckCraft, DesignCraft, EffectCraft, FilmCraft,
+  GridCraft, LightCraft, PdfCraft, PhotoCraft, SoundCraft, VectorCraft and
+  WordCraft. ArtCraft Launcher installs and updates the Craft apps; each app
+  can also be installed on its own. All of them
+  come from the latest release in their `storytold` GitHub repository, checked
+  against that release's `SHA256SUMS.txt`: the `.deb` on Debian/Ubuntu and the
+  `.rpm` on Fedora, RHEL and openSUSE. Nothing is packaged for Arch, so there the
+  release AppImage goes to `~/Applications` with a command in `~/.local/bin` and
+  an application-menu entry and icon taken from the AppImage itself, and System
+  Updates refreshes it. Uninstalling leaves the apps' settings and
+  documents alone.
+
+  ArtCraft Launcher run from an AppImage the user downloaded themselves, in
+  `~/Downloads` or anywhere else, was not detected as installed. The AppImage
+  records its location only in its own menu entry, so the check now reads that
+  entry and takes the version from the file name.
+
 - **Claude Desktop** (Development > IDEs & Editors), Anthropic's desktop app
   with Chat, Cowork and Claude Code. Installs `claude-desktop` from
   Anthropic's apt repository after checking the signing key against its

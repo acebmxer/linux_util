@@ -128,6 +128,20 @@ register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   c
 register_utility "Angry IP Scanner"    install_angry_ip_scanner check_angry_ip_scanner uninstall_angry_ip_scanner update_angry_ip_scanner    get_version_angry_ip_scanner
 register_utility "Ansible"             install_ansible          check_ansible          uninstall_ansible          update_ansible             get_version_ansible
 register_utility "AnyDesk"             install_anydesk          check_anydesk          uninstall_anydesk          update_anydesk             get_version_anydesk
+# ArtCraft launcher and the Craft apps: one entry each, in the "ArtCraft" folder
+register_utility "ArtCraft Launcher" install_artcraft check_artcraft uninstall_artcraft update_artcraft get_version_artcraft
+register_utility "CADCraft" install_cadcraft check_cadcraft uninstall_cadcraft update_cadcraft get_version_cadcraft
+register_utility "DeckCraft" install_deckcraft check_deckcraft uninstall_deckcraft update_deckcraft get_version_deckcraft
+register_utility "DesignCraft" install_designcraft check_designcraft uninstall_designcraft update_designcraft get_version_designcraft
+register_utility "EffectCraft" install_effectcraft check_effectcraft uninstall_effectcraft update_effectcraft get_version_effectcraft
+register_utility "FilmCraft" install_filmcraft check_filmcraft uninstall_filmcraft update_filmcraft get_version_filmcraft
+register_utility "GridCraft" install_gridcraft check_gridcraft uninstall_gridcraft update_gridcraft get_version_gridcraft
+register_utility "LightCraft" install_lightcraft check_lightcraft uninstall_lightcraft update_lightcraft get_version_lightcraft
+register_utility "PdfCraft" install_pdfcraft check_pdfcraft uninstall_pdfcraft update_pdfcraft get_version_pdfcraft
+register_utility "PhotoCraft" install_photocraft check_photocraft uninstall_photocraft update_photocraft get_version_photocraft
+register_utility "SoundCraft" install_soundcraft check_soundcraft uninstall_soundcraft update_soundcraft get_version_soundcraft
+register_utility "VectorCraft" install_vectorcraft check_vectorcraft uninstall_vectorcraft update_vectorcraft get_version_vectorcraft
+register_utility "WordCraft" install_wordcraft check_wordcraft uninstall_wordcraft update_wordcraft get_version_wordcraft
 register_utility "Audacity"            install_audacity         check_audacity         uninstall_audacity         update_audacity            get_version_audacity
 register_utility "Bitwarden Client"       install_bitwarden           check_bitwarden           uninstall_bitwarden           update_bitwarden              get_version_bitwarden
 register_utility "GRUB"                install_grub             check_grub             uninstall_grub             update_grub                get_version_grub
@@ -662,6 +676,19 @@ UTILITY_CATEGORY["Pay Respects"]="System Tools"
 UTILITY_CATEGORY["Ansible"]="Development"
 UTILITY_CATEGORY["AnyDesk"]="Remote Admin Tools"
 UTILITY_CATEGORY["Audacity"]="Productivity"
+UTILITY_CATEGORY["ArtCraft Launcher"]="Productivity"
+UTILITY_CATEGORY["CADCraft"]="Productivity"
+UTILITY_CATEGORY["DeckCraft"]="Productivity"
+UTILITY_CATEGORY["DesignCraft"]="Productivity"
+UTILITY_CATEGORY["EffectCraft"]="Productivity"
+UTILITY_CATEGORY["FilmCraft"]="Productivity"
+UTILITY_CATEGORY["GridCraft"]="Productivity"
+UTILITY_CATEGORY["LightCraft"]="Productivity"
+UTILITY_CATEGORY["PdfCraft"]="Productivity"
+UTILITY_CATEGORY["PhotoCraft"]="Productivity"
+UTILITY_CATEGORY["SoundCraft"]="Productivity"
+UTILITY_CATEGORY["VectorCraft"]="Productivity"
+UTILITY_CATEGORY["WordCraft"]="Productivity"
 UTILITY_CATEGORY["ClamAV"]="System Tools"
 UTILITY_CATEGORY["Element (Matrix)"]="Internet"
 UTILITY_CATEGORY["Euro-Office"]="Productivity"
@@ -753,6 +780,19 @@ UTILITY_SUBCATEGORY["WireGuard Server"]="VPN"
 UTILITY_SUBCATEGORY["LibreOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["OnlyOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["WPS Office"]="Office Suites"
+UTILITY_SUBCATEGORY["ArtCraft Launcher"]="ArtCraft"
+UTILITY_SUBCATEGORY["CADCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["DeckCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["DesignCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["EffectCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["FilmCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["GridCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["LightCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["PdfCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["PhotoCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["SoundCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["VectorCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["WordCraft"]="ArtCraft"
 UTILITY_SUBCATEGORY["Obsidian"]="Notes"
 UTILITY_SUBCATEGORY["Standard Notes"]="Notes"
 UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
@@ -1030,6 +1070,19 @@ UTILITY_DESCRIPTION["WireGuard Server"]="Sets up a WireGuard VPN server for secu
 UTILITY_DESCRIPTION["Zoom"]="Video conferencing platform for meetings, webinars, and team collaboration."
 
 # Productivity
+UTILITY_DESCRIPTION["ArtCraft Launcher"]="The ArtCraft Launcher app: one place to install, update, and open the Craft App Suite (PhotoCraft, PdfCraft, and the rest). The Craft apps below can also be installed on their own."
+UTILITY_DESCRIPTION["CADCraft"]="Open-source, clean-room AutoCAD-style computer-aided design and drafting app, written in Rust."
+UTILITY_DESCRIPTION["DeckCraft"]="Open-source, clean-room PowerPoint-style presentation app, written in Rust."
+UTILITY_DESCRIPTION["DesignCraft"]="Open-source page layout and publishing app (InDesign-style), written in Rust."
+UTILITY_DESCRIPTION["EffectCraft"]="Open-source motion graphics and visual effects app (After Effects-style), written in Rust."
+UTILITY_DESCRIPTION["FilmCraft"]="Open-source video editor (Premiere Pro-style), written in Rust."
+UTILITY_DESCRIPTION["GridCraft"]="Open-source, clean-room Excel-style spreadsheet, written in Rust."
+UTILITY_DESCRIPTION["LightCraft"]="Open-source photo library and raw developer (Lightroom-style), written in Rust."
+UTILITY_DESCRIPTION["PdfCraft"]="Open-source PDF workbench (Acrobat-style) for reading, organizing, combining, splitting, and securing PDFs, written in Rust."
+UTILITY_DESCRIPTION["PhotoCraft"]="Open-source image editor (Photoshop-style), written in Rust."
+UTILITY_DESCRIPTION["SoundCraft"]="Open-source, clean-room Pro Tools-style audio workstation, written in Rust."
+UTILITY_DESCRIPTION["VectorCraft"]="Open-source vector illustration app (Illustrator-style), written in Rust."
+UTILITY_DESCRIPTION["WordCraft"]="Open-source, clean-room Word-style word processor, written in Rust."
 UTILITY_DESCRIPTION["Audacity"]="Free, open-source multi-track audio editor and recorder for recording, editing, and exporting audio files."
 UTILITY_DESCRIPTION["Bitwarden Client"]="Open-source password manager for securely storing and auto-filling credentials."
 UTILITY_DESCRIPTION["Flameshot"]="Powerful, customizable screenshot tool with built-in annotation and markup capabilities."
@@ -1169,6 +1222,19 @@ mark_upstream_binary \
     "Standard Notes=$HOME/.local/share/standard-notes/standard-notes.AppImage" \
     "PowerShell=/opt/microsoft/powershell" \
     "Libation=/usr/lib/libation" \
+    "ArtCraft Launcher=$HOME/Applications/artcraft-launcher.AppImage" \
+    "CADCraft=$HOME/Applications/cadcraft.AppImage" \
+    "DeckCraft=$HOME/Applications/deckcraft.AppImage" \
+    "DesignCraft=$HOME/Applications/designcraft.AppImage" \
+    "EffectCraft=$HOME/Applications/effectcraft.AppImage" \
+    "FilmCraft=$HOME/Applications/filmcraft.AppImage" \
+    "GridCraft=$HOME/Applications/gridcraft.AppImage" \
+    "LightCraft=$HOME/Applications/lightcraft.AppImage" \
+    "PdfCraft=$HOME/Applications/pdfcraft.AppImage" \
+    "PhotoCraft=$HOME/Applications/photocraft.AppImage" \
+    "SoundCraft=$HOME/Applications/soundcraft.AppImage" \
+    "VectorCraft=$HOME/Applications/vectorcraft.AppImage" \
+    "WordCraft=$HOME/Applications/wordcraft.AppImage" \
     "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE"
 
 # Where the current upstream version can be read for those installs. Registered
