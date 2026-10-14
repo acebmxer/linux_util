@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-14
+
 ### Added
 
 - `--list --json` now includes each utility's `category` and `subcategory`
