@@ -1889,6 +1889,43 @@ _is_winapps_stub() {
     [[ $_head == '#!'*"/winapps "*'"$@"'* ]]
 }
 
+# ─── WSL: Windows programs on PATH ───────────────────────────────────────────
+# WSL appends the Windows PATH to Linux's, so programs installed on Windows
+# (VS Code's 'code' shim, for one) are found by every command lookup and would
+# be reported as installed in WSL, with their Windows version. This tool only
+# manages the Linux side and never runs a Windows program, so the Windows
+# directories are dropped from PATH for the whole run.
+#
+# Windows drives are identified by their mount, not by a /mnt/ prefix: the
+# automount root is configurable in /etc/wsl.conf. WSL 1 mounts them as type
+# drvfs; WSL 2 as 9p with aname=drvfs in the options.
+# Usage: _strip_windows_path [mounts_file]   (defaults to /proc/mounts)
+_strip_windows_path() {
+    local _mounts_file="${1:-/proc/mounts}" _src _mnt _type _opts _rest _dir _root _keep
+    local -a _roots=() _dirs=() _kept=()
+    [[ -r "$_mounts_file" ]] || return 0
+    while read -r _src _mnt _type _opts _rest; do
+        if [[ "$_type" == "drvfs" || "$_opts" == *"aname=drvfs"* ]]; then
+            # /proc/mounts escapes spaces and the like as octal (\040).
+            _roots+=("$(printf '%b' "$_mnt")")
+        fi
+    done < "$_mounts_file"
+    (( ${#_roots[@]} )) || return 0
+    IFS=: read -ra _dirs <<< "$PATH"
+    for _dir in "${_dirs[@]}"; do
+        _keep=1
+        for _root in "${_roots[@]}"; do
+            if [[ "$_dir" == "$_root" || "$_dir" == "$_root"/* ]]; then
+                _keep=0
+                break
+            fi
+        done
+        (( _keep )) && _kept+=("$_dir")
+    done
+    PATH=$(IFS=:; printf '%s' "${_kept[*]}")
+    export PATH
+}
+
 # Print the path of the first executable named $1 on PATH that is not a
 # WinApps launcher, so a launcher cannot hide a real install behind it.
 # Returns 1 when nothing but launchers (or nothing at all) matches.
@@ -2032,12 +2069,15 @@ _ver_from_snap() {
 #   KEYRING_PATH     — full destination path for the keyring (sudo-created)
 #   SOURCES_LINE     — complete "deb [signed-by=...] ..." line
 #   SOURCES_LIST_PATH — full path of the .list file under /etc/apt/sources.list.d/
+#   KEY_FINGERPRINT  — optional; when the vendor publishes the key's fingerprint,
+#                      the downloaded key must match it or nothing is written
 # Runs "sudo apt update" after writing the repo.
 _add_apt_repo() {
     local key_url="$1"
     local keyring_path="$2"
     local sources_line="$3"
     local sources_list_path="$4"
+    local key_fingerprint="${5:-}"
 
     sudo install -d -m 0755 "$(dirname "$keyring_path")"
 
@@ -2049,6 +2089,19 @@ _add_apt_repo() {
         rm -f "$_tmpkey"
         error "Failed to download GPG key from: $key_url"
         return 1
+    fi
+    if [[ -n "$key_fingerprint" ]]; then
+        # Throwaway GNUPGHOME so reading the key never creates ~/.gnupg.
+        local _gnupghome _fprs
+        _gnupghome=$(mktemp -d)
+        _fprs=$(GNUPGHOME="$_gnupghome" gpg --show-keys --with-colons "$_tmpkey" 2>/dev/null |
+            awk -F: '$1 == "fpr" { print $10 }')
+        rm -rf "$_gnupghome"
+        if ! grep -qx "$key_fingerprint" <<< "$_fprs"; then
+            rm -f "$_tmpkey"
+            error "GPG key from $key_url does not match fingerprint $key_fingerprint"
+            return 1
+        fi
     fi
     if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "$_tmpkey" 2>/dev/null; then
         gpg --dearmor < "$_tmpkey" | sudo tee "$keyring_path" > /dev/null

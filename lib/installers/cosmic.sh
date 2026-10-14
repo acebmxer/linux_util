@@ -81,6 +81,7 @@ setup_install_cosmic() {
                 info "Enabling COSMIC greeter..."
                 run_as_root systemctl enable cosmic-greeter 2>/dev/null || \
                     warn "cosmic-greeter service not found; a reboot may be required to switch DMs"
+                run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             else
                 # Fallback: Try adding System76 PPA on Ubuntu
                 if command -v add-apt-repository &>/dev/null && \
@@ -97,6 +98,7 @@ setup_install_cosmic() {
                         return 1
                     }
                     run_as_root systemctl enable cosmic-greeter 2>/dev/null || true
+                    run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
                 else
                     error "COSMIC is not available in your current repositories."
                     error "It requires Ubuntu 24.10+ or Debian Trixie/Sid."
@@ -112,8 +114,8 @@ setup_install_cosmic() {
                run_as_root "$PKG_MGR" install -y cosmic-session cosmic-comp \
                    cosmic-panel cosmic-applets cosmic-settings cosmic-greeter 2>/dev/null; then
                 info "Enabling COSMIC greeter..."
-                run_as_root systemctl enable cosmic-greeter 2>/dev/null || \
-                    run_as_root systemctl set-default graphical.target
+                run_as_root systemctl enable cosmic-greeter 2>/dev/null || warn "Failed to enable cosmic-greeter"
+                run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             else
                 error "COSMIC Desktop not found. It requires Fedora 42 or newer."
                 return 1
@@ -124,8 +126,8 @@ setup_install_cosmic() {
             info "Installing COSMIC Desktop Environment..."
             if run_as_root zypper install -y cosmic-session cosmic-comp \
                 cosmic-panel cosmic-settings cosmic-greeter 2>/dev/null; then
-                run_as_root systemctl enable cosmic-greeter 2>/dev/null || \
-                    run_as_root systemctl set-default graphical.target
+                run_as_root systemctl enable cosmic-greeter 2>/dev/null || warn "Failed to enable cosmic-greeter"
+                run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             else
                 error "COSMIC Desktop packages not found in openSUSE repositories."
                 return 1
@@ -144,6 +146,7 @@ setup_install_cosmic() {
             info "Enabling COSMIC greeter..."
             run_as_root systemctl enable cosmic-greeter 2>/dev/null || \
                 warn "cosmic-greeter not available; configure a display manager manually"
+            run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
             ;;
 
         *)

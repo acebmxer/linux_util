@@ -204,6 +204,25 @@ _prompt_de_tier() {
     esac
 }
 
+# Make a desktop's display manager start at boot and boot to the graphical target.
+# $1 = display manager service name (sddm, gdm, lightdm).
+# openSUSE starts its login screen through its own display-manager.service, which
+# launches whatever the default-displaymanager alternative points at, so
+# `systemctl enable <dm>` always fails there. The graphical target is set
+# unconditionally: a minimal install defaults to multi-user.target, where no
+# display manager starts.
+_enable_desktop_login() {
+    local dm="$1"
+    info "Enabling display manager..."
+    if [[ "$PKG_MGR" == "zypper" ]]; then
+        run_as_root update-alternatives --set default-displaymanager "/usr/lib/X11/displaymanagers/${dm}" || \
+            warn "Failed to set ${dm} as the default display manager"
+    else
+        run_as_root systemctl enable "$dm" || warn "Failed to enable ${dm}"
+    fi
+    run_as_root systemctl set-default graphical.target || warn "Failed to set graphical.target as default"
+}
+
 # Parse a multi-select string (e.g. "1,3-5") into deduplicated indices (input order preserved).
 # Prints one index per line; returns 1 on invalid input.
 _parse_multi_selection() {

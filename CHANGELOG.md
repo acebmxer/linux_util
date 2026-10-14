@@ -12,6 +12,147 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-14
+
+### Added
+
+- `--list --json` now includes each utility's `category` and `subcategory`
+  (`null` when it has none), the same grouping the menu uses; system tasks
+  are in the "System Tasks" category.
+
+- **ArtCraft Launcher** (Productivity > ArtCraft), with the Craft App Suite as
+  separate entries beside it: CADCraft, DeckCraft, DesignCraft, EffectCraft, FilmCraft,
+  GridCraft, LightCraft, PdfCraft, PhotoCraft, SoundCraft, VectorCraft and
+  WordCraft. ArtCraft Launcher installs and updates the Craft apps; each app
+  can also be installed on its own. All of them
+  come from the latest release in their `storytold` GitHub repository, checked
+  against that release's `SHA256SUMS.txt`: the `.deb` on Debian/Ubuntu and the
+  `.rpm` on Fedora, RHEL and openSUSE. Nothing is packaged for Arch, so there the
+  release AppImage goes to `~/Applications` with a command in `~/.local/bin` and
+  an application-menu entry and icon taken from the AppImage itself, and System
+  Updates refreshes it. Uninstalling leaves the apps' settings and
+  documents alone.
+
+  ArtCraft Launcher run from an AppImage the user downloaded themselves, in
+  `~/Downloads` or anywhere else, was not detected as installed. The AppImage
+  records its location only in its own menu entry, so the check now reads that
+  entry and takes the version from the file name.
+
+- **Claude Desktop** (Development > IDEs & Editors), Anthropic's desktop app
+  with Chat, Cowork and Claude Code. Installs `claude-desktop` from
+  Anthropic's apt repository after checking the signing key against its
+  published fingerprint, and updates through apt. Anthropic's Linux beta is
+  built for Debian and Ubuntu only (amd64/arm64), so on every other distro it
+  is installed the same way inside an Ubuntu 26.04 distrobox named
+  `claude-desktop` and exported to the application menu; Podman and
+  Distrobox are installed first when missing. System Updates refreshes the
+  distrobox copy and counts it as pending when Anthropic publishes a newer
+  version. Uninstalling there removes the menu entries and the whole box.
+
+  The box shares the home directory, and its font library wrote its caches
+  into the host's `~/.cache/fontconfig`; host Electron apps such as Termius
+  then found no usable fonts there and crashed on launch. The box now keeps
+  its font cache in `~/.cache/fontconfig-claude-desktop-box` instead, which
+  uninstall also removes. Only the launchers the `claude-desktop` package
+  ships are exported to the menu; exporting by name had also exported the
+  box's own terminal launcher as a "Claude-desktop (on claude-desktop)" entry
+  that closed immediately.
+  `_add_apt_repo` gained an optional fingerprint argument for this; existing
+  callers are unchanged.
+
+- **Profile preview in the menu.** Highlighting a profile in the `PROFILES`
+  section now lists everything it selects in the main panel, grouped under
+  each item's category and subcategory (e.g. `Internet > Web Browsers`),
+  instead of leaving the last category's items on screen. Items the profile
+  names that are not available on the current distro are left out, as they
+  are when the profile is applied. The description pane now shows the
+  profile's description while a profile is highlighted; before, it showed the
+  description of whichever category item was last highlighted.
+
+- **KDiskMark** (Disk Utilities), the HDD/SSD benchmark tool — a GUI over
+  fio for sequential and random read/write tests. Installs the native package
+  (Debian 13, Ubuntu 24.04, Fedora, RHEL via EPEL, Arch, Tumbleweed, Leap 16)
+  and falls back to the Flathub build where the distro does not package it
+  (Debian 12, Ubuntu 22.04, Leap 15).
+
+### Removed
+
+- **The "Run Me First" profile.** It only installed Timeshift, which is still
+  available on its own under Backup. `--export-profile "Run Me First"` now
+  fails with the usual unknown-profile error.
+
+### Fixed
+
+- **Node.js reported success when nothing was installed.** On a minimal system
+  without `xz` (WSL Fedora), the archive failed to unpack but the installer
+  still printed "installed" and succeeded. It now installs `xz` first and
+  stops with an error if unpacking or copying fails.
+  Uninstalling or updating Node.js also removes a distro-installed Node.js
+  through the package manager instead of deleting its files, so the package
+  no longer stays registered as installed.
+
+- **Under WSL, programs installed on Windows showed as installed.** WSL adds
+  the Windows PATH to Linux's, so Visual Studio Code installed on Windows was
+  listed with its Windows version, and an update did nothing to it. At startup
+  the script now drops Windows drive directories (drvfs mounts) from its PATH,
+  so only what is installed in the WSL distro is detected, versioned and
+  updated. No effect outside WSL.
+
+- **`docs/menu.md` said applying a profile skips items that are already
+  installed.** It queues them for update (`[U]`) instead, as
+  `_profile_select_for_install` always has; the docs now say so.
+
+- **Installing a desktop environment switched the screen to its login screen
+  before the installer had finished.** KDE Plasma, GNOME, Xfce, Cinnamon,
+  MATE, LXQt, Budgie, Deepin and Pantheon all ran `systemctl start` on their
+  display manager straight after install, which takes over the console
+  mid-run (and would end an SSH session). They now only enable it, matching
+  the Display Managers installers; the desktop starts on the next reboot.
+
+- **Desktop environments on Fedora/RHEL could boot to a text login instead
+  of the desktop.** Every desktop installer only ran `systemctl set-default
+  graphical.target` if enabling its display manager *failed*, so on a system
+  defaulting to `multi-user.target` (e.g. a Fedora "Custom Operating System"
+  install) the login screen never started after a reboot. All of them now
+  always set `graphical.target`, on every distro. On openSUSE, where
+  `systemctl enable` on a display manager always fails (the login screen is
+  started through openSUSE's own `display-manager.service`), the desktop's
+  display manager is now selected through the `default-displaymanager`
+  alternative instead.
+
+- **KDE Plasma's Minimal/Core tier failed outright on Debian 13**, which
+  dropped the `plasma-workspace-wayland` package the tier asked for (the
+  Wayland session is now part of `plasma-workspace`). The package is now only
+  requested where it still exists.
+
+- **KDE Plasma's Minimal/Core tier left out basics the full desktop has.**
+  On every distro it now includes Konsole, Dolphin, the distro's Breeze login
+  screen and System Settings' Login Screen page; on Arch it also adds the
+  network, sound and display-settings applets, and on Ubuntu 22.04 and Leap
+  16 the network applet. Previously Fedora/RHEL and Arch showed SDDM's plain
+  built-in login screen, and no distro had a terminal or file manager.
+
+- **Other desktops' Minimal/Core tiers left out a terminal or file
+  manager on some distros.** Budgie now includes Nemo and GNOME Terminal,
+  Cinnamon GNOME Terminal (Fedora/RHEL, Arch), LXQt QTerminal (Arch,
+  openSUSE), MATE MATE Terminal (Arch) and Xfce Xfce Terminal
+  (Debian/Ubuntu) — the same apps their Standard tiers already use.
+
+- **GNOME's Minimal/Core tier failed on RHEL 10**, which dropped GNOME
+  Terminal; it installs Ptyxis there instead.
+
+- **Xfce, Cinnamon and MATE were offered on RHEL 10 but could not install**:
+  EPEL 10 does not package them, or LightDM. They are now hidden on RHEL 10
+  and later, as Budgie and LXQt already are on RHEL.
+
+- **SDDM Breeze Theme failed on Fedora/RHEL** with "Breeze theme files not
+  found": the theme ships there as its own package, `sddm-breeze`, which only
+  the Debian/Ubuntu path installed. It is now installed on Fedora/RHEL too.
+  While fixing this, found the installed SDDM theme was read from config
+  files in the wrong order, so on Fedora the menu did not show Breeze as
+  active and Uninstall did not revert it; files are now read in SDDM's own
+  order.
+
 ## [1.8.0] - 2026-10-03
 
 ### Added

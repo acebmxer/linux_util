@@ -115,6 +115,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 |---------|-------------|
 | **GParted** | Graphical partition editor — create, resize, move, and delete partitions |
 | **Ventoy** | Bootable USB tool — boot multiple ISOs from one drive |
+| **KDiskMark** | HDD/SSD benchmark (GUI for fio) — Flathub build where the distro has no package |
 | **Btrfs Assistant** | GUI for managing Btrfs subvolumes and Snapper snapshots *(Btrfs Tools)* |
 | **btrfsmaintenance** | Automates scheduled Btrfs scrub, balance, trim, and defrag *(Btrfs Tools)* |
 | **btrbk** | Btrfs snapshot and backup tool with remote send/receive *(Btrfs Tools)* |
@@ -126,6 +127,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 |---------|-------------|
 | **Ansible** | IT automation and configuration management tool |
 | **Claude Code** | Anthropic's AI coding assistant for the terminal |
+| **Claude Desktop** | Anthropic's Claude desktop app — Chat, Cowork and Claude Code (Linux beta). Native on Debian/Ubuntu; on other distros it runs in an Ubuntu 26.04 distrobox and appears in the app menu |
 | **Cursor IDE** | AI-powered code editor built on VS Code |
 | **DBeaver** | Universal database management tool |
 | **Distrobox** | Run any Linux distro in an integrated terminal container (needs Podman/Docker) |
@@ -228,6 +230,8 @@ Additional, cross-distro managers that run alongside the native package manager 
 
 | Utility | Description |
 |---------|-------------|
+| **ArtCraft Launcher** *(ArtCraft folder)* | The launcher app that installs and updates the Craft apps — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
+| **CADCraft, DeckCraft, DesignCraft, EffectCraft, FilmCraft, GridCraft, LightCraft, PdfCraft, PhotoCraft, SoundCraft, VectorCraft, WordCraft** *(ArtCraft folder)* | The open-source Craft App Suite, each installed on its own from its latest GitHub release — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
 | **Audacity** | Open-source audio editor and recorder |
 | **Bitwarden Client** | Open-source password manager — `.deb` / `.rpm` / AUR / snap / flatpak |
 | **Euro-Office** | European community fork of ONLYOFFICE — **built from source**, since upstream ships no desktop binaries. Runs their `docker buildx bake` build and installs the resulting `.deb`/`.rpm` (AUR on Arch). Needs Docker + Buildx; the compile takes hours and tens of GB |

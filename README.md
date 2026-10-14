@@ -78,8 +78,7 @@ scripting and automation.
 ├─────────────────────────────────┤                                                                │
 │ PROFILES                        │                                                                │
 ├─────────────────────────────────┤                                                                │
-│ > Run Me First                  │                                                                │
-│   Default VM Server Profile     │                                                                │
+│ > Default VM Server Profile     │                                                                │
 │   Default Physical PC           │                                                                │
 │   Developer Workstation         │                                                                │
 │   Home Desktop                  │                                                                │
@@ -106,7 +105,8 @@ quits. A ticked item that is already installed is *uninstalled* — the checkbox
 means "change this", not "install this".
 
 Subcategories (marked `[D]`) group related items — press Enter to drill in.
-**Profiles** in the left sidebar queue a curated set in one step. Full key list,
+**Profiles** in the left sidebar queue a curated set in one step; highlighting
+one lists what it selects, grouped by category. Full key list,
 selection rules and the profile table: [docs/menu.md](docs/menu.md).
 
 ---
@@ -120,12 +120,12 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Drivers** | NVIDIA, AMD and Intel GPU (with video acceleration), Intel and AMD microcode, LACT, OpenLogi, Thermalright TRCC, XEN guest tools |
 | **Desktop Environments** | KDE Plasma, GNOME, Xfce, Cinnamon, MATE, LXQt, Budgie, COSMIC, Deepin, Pantheon |
 | **Backup** | Timeshift and Snapper (create/restore/delete), Déjà Dup, Kup, Vorta, Duplicati |
-| **Disk Utilities** | GParted, Ventoy, and a Btrfs toolset (Assistant, btrfsmaintenance, btrbk, duperemove) |
-| **Development** | Docker, Podman, Distrobox, Toolbx, VS Code, VSCodium, Cursor, Claude Code, Node/NVM, Go, Rust, pyenv, Terraform, OpenTofu, Ansible, kubectl, k9s, DBeaver, Virt-Manager, Firecracker |
+| **Disk Utilities** | GParted, Ventoy, KDiskMark, and a Btrfs toolset (Assistant, btrfsmaintenance, btrbk, duperemove) |
+| **Development** | Docker, Podman, Distrobox, Toolbx, VS Code, VSCodium, Cursor, Claude Code, Claude Desktop, Node/NVM, Go, Rust, pyenv, Terraform, OpenTofu, Ansible, kubectl, k9s, DBeaver, Virt-Manager, Firecracker |
 | **Gaming** | Steam, Lutris, Heroic, Bottles, Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat |
 | **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, LibreWolf, Zen, Thorium, Tor), email clients, messaging, and VPNs (ProtonVPN, PIA, Tailscale, WireGuard) |
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
-| **Productivity** | LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Obsidian, Joplin, Logseq, Bitwarden, Nextcloud, WinApps |
+| **Productivity** | ArtCraft Launcher and the Craft App Suite, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Obsidian, Joplin, Logseq, Bitwarden, Nextcloud, WinApps |
 | **Remote Admin** | Cockpit, XRDP, OpenSSH, Remmina, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
 | **File Managers** | Nautilus, Dolphin, Thunar, Nemo, Caja, PCManFM-Qt, Krusader, and the terminal managers (Midnight Commander, Ranger, nnn, Superfile) |
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |

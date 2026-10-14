@@ -128,6 +128,20 @@ register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   c
 register_utility "Angry IP Scanner"    install_angry_ip_scanner check_angry_ip_scanner uninstall_angry_ip_scanner update_angry_ip_scanner    get_version_angry_ip_scanner
 register_utility "Ansible"             install_ansible          check_ansible          uninstall_ansible          update_ansible             get_version_ansible
 register_utility "AnyDesk"             install_anydesk          check_anydesk          uninstall_anydesk          update_anydesk             get_version_anydesk
+# ArtCraft launcher and the Craft apps: one entry each, in the "ArtCraft" folder
+register_utility "ArtCraft Launcher" install_artcraft check_artcraft uninstall_artcraft update_artcraft get_version_artcraft
+register_utility "CADCraft" install_cadcraft check_cadcraft uninstall_cadcraft update_cadcraft get_version_cadcraft
+register_utility "DeckCraft" install_deckcraft check_deckcraft uninstall_deckcraft update_deckcraft get_version_deckcraft
+register_utility "DesignCraft" install_designcraft check_designcraft uninstall_designcraft update_designcraft get_version_designcraft
+register_utility "EffectCraft" install_effectcraft check_effectcraft uninstall_effectcraft update_effectcraft get_version_effectcraft
+register_utility "FilmCraft" install_filmcraft check_filmcraft uninstall_filmcraft update_filmcraft get_version_filmcraft
+register_utility "GridCraft" install_gridcraft check_gridcraft uninstall_gridcraft update_gridcraft get_version_gridcraft
+register_utility "LightCraft" install_lightcraft check_lightcraft uninstall_lightcraft update_lightcraft get_version_lightcraft
+register_utility "PdfCraft" install_pdfcraft check_pdfcraft uninstall_pdfcraft update_pdfcraft get_version_pdfcraft
+register_utility "PhotoCraft" install_photocraft check_photocraft uninstall_photocraft update_photocraft get_version_photocraft
+register_utility "SoundCraft" install_soundcraft check_soundcraft uninstall_soundcraft update_soundcraft get_version_soundcraft
+register_utility "VectorCraft" install_vectorcraft check_vectorcraft uninstall_vectorcraft update_vectorcraft get_version_vectorcraft
+register_utility "WordCraft" install_wordcraft check_wordcraft uninstall_wordcraft update_wordcraft get_version_wordcraft
 register_utility "Audacity"            install_audacity         check_audacity         uninstall_audacity         update_audacity            get_version_audacity
 register_utility "Bitwarden Client"       install_bitwarden           check_bitwarden           uninstall_bitwarden           update_bitwarden              get_version_bitwarden
 register_utility "GRUB"                install_grub             check_grub             uninstall_grub             update_grub                get_version_grub
@@ -153,6 +167,8 @@ register_utility "Chromium"            install_chromium         check_chromium  
 register_utility "ClamAV"              install_clamav           check_clamav           uninstall_clamav           update_clamav              get_version_clamav
 register_utility "Claws Mail"          install_claws_mail       check_claws_mail       uninstall_claws_mail       update_claws_mail          get_version_claws_mail
 register_utility "Claude Code"         install_claude_code      check_claude_code      uninstall_claude_code      update_claude_code
+# Claude Desktop: native on Debian/Ubuntu, in an Ubuntu distrobox everywhere else
+register_utility "Claude Desktop"      install_claude_desktop   check_claude_desktop   uninstall_claude_desktop   update_claude_desktop      get_version_claude_desktop
 register_utility "Cockpit"             install_cockpit          check_cockpit          uninstall_cockpit          update_cockpit             get_version_cockpit
 register_utility "Cursor IDE"          install_cursor           check_cursor           uninstall_cursor           update_cursor              get_version_cursor
 register_utility "DBeaver"             install_dbeaver          check_dbeaver          uninstall_dbeaver          update_dbeaver             get_version_dbeaver
@@ -205,6 +221,7 @@ register_utility "Joplin Client"              install_joplin                    
 register_utility "Joplin Web Clipper"         install_joplin_webclipper_extension  check_joplin_webclipper_extension  uninstall_joplin_webclipper_extension  update_joplin_webclipper_extension   get_version_joplin_webclipper_extension
 register_utility "k9s"                 install_k9s              check_k9s              uninstall_k9s              update_k9s                 get_version_k9s
 register_utility "Kdenlive"            install_kdenlive         check_kdenlive         uninstall_kdenlive         update_kdenlive            get_version_kdenlive
+register_utility "KDiskMark"           install_kdiskmark        check_kdiskmark        uninstall_kdiskmark        update_kdiskmark           get_version_kdiskmark
 register_utility "KMail"                      install_kmail                        check_kmail                        uninstall_kmail                        update_kmail                         get_version_kmail
 register_utility "Krita"               install_krita            check_krita            uninstall_krita            update_krita               get_version_krita
 register_utility "kubectl"             install_kubectl          check_kubectl          uninstall_kubectl          update_kubectl             get_version_kubectl
@@ -358,8 +375,12 @@ if [[ "$DISTRO_ID" != "elementary" ]] && \
     register_utility "Budgie Desktop"      install_budgie           check_budgie           uninstall_budgie           update_budgie              get_version_budgie
 fi
 
-# Cinnamon: available on Debian, Ubuntu, Fedora, Arch, openSUSE — not elementary
-if [[ "$DISTRO_ID" != "elementary" ]]; then
+# Cinnamon, MATE, Xfce: EPEL carries them for RHEL 9 but not RHEL 10 (nor LightDM,
+# their login screen there), so they are hidden on RHEL 10+. Not on elementary.
+_rhel10_plus=false
+[[ "$DISTRO_FAMILY" == "rhel" && "${DISTRO_VERSION_ID%%.*}" -ge 10 ]] && _rhel10_plus=true
+
+if [[ "$DISTRO_ID" != "elementary" && "$_rhel10_plus" == "false" ]]; then
     register_utility "Cinnamon Desktop"    install_cinnamon         check_cinnamon         uninstall_cinnamon         update_cinnamon            get_version_cinnamon
 fi
 
@@ -383,7 +404,7 @@ if [[ "$DISTRO_FAMILY" != "debian" ]] && \
     register_utility "Deepin Desktop"      install_deepin           check_deepin           uninstall_deepin           update_deepin              get_version_deepin
 fi
 
-# GNOME, KDE, MATE, Xfce: available on all supported distros except elementary
+# GNOME, KDE: available on all supported distros except elementary
 if [[ "$DISTRO_ID" != "elementary" ]]; then
     register_utility "GNOME Desktop"       install_gnome            check_gnome            uninstall_gnome            update_gnome               get_version_gnome
     register_utility "KDE Desktop"         install_kde              check_kde              uninstall_kde              update_kde                 get_version_kde
@@ -396,7 +417,7 @@ if [[ "$DISTRO_ID" != "elementary" ]] && \
     register_utility "LXQt Desktop"        install_lxqt             check_lxqt             uninstall_lxqt             update_lxqt                get_version_lxqt
 fi
 
-if [[ "$DISTRO_ID" != "elementary" ]]; then
+if [[ "$DISTRO_ID" != "elementary" && "$_rhel10_plus" == "false" ]]; then
     register_utility "MATE Desktop"        install_mate             check_mate             uninstall_mate             update_mate                get_version_mate
 fi
 
@@ -407,7 +428,7 @@ if [[ "$DISTRO_FAMILY" == "arch" ]] || [[ "$DISTRO_ID" == "opensuse-tumbleweed" 
     register_utility "Pantheon Desktop"    install_pantheon         check_pantheon         uninstall_pantheon         update_pantheon            get_version_pantheon
 fi
 
-if [[ "$DISTRO_ID" != "elementary" ]]; then
+if [[ "$DISTRO_ID" != "elementary" && "$_rhel10_plus" == "false" ]]; then
     register_utility "Xfce Desktop"        install_xfce             check_xfce             uninstall_xfce             update_xfce                get_version_xfce
 fi
 
@@ -566,6 +587,7 @@ UTILITY_CATEGORY["Brave Origin"]="Internet"
 UTILITY_CATEGORY["Btop"]="System Tools"
 UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
+UTILITY_CATEGORY["Claude Desktop"]="Development"
 UTILITY_CATEGORY["Claws Mail"]="Internet"
 UTILITY_CATEGORY["Cockpit"]="Remote Admin Tools"
 UTILITY_CATEGORY["Cursor IDE"]="Development"
@@ -654,6 +676,19 @@ UTILITY_CATEGORY["Pay Respects"]="System Tools"
 UTILITY_CATEGORY["Ansible"]="Development"
 UTILITY_CATEGORY["AnyDesk"]="Remote Admin Tools"
 UTILITY_CATEGORY["Audacity"]="Productivity"
+UTILITY_CATEGORY["ArtCraft Launcher"]="Productivity"
+UTILITY_CATEGORY["CADCraft"]="Productivity"
+UTILITY_CATEGORY["DeckCraft"]="Productivity"
+UTILITY_CATEGORY["DesignCraft"]="Productivity"
+UTILITY_CATEGORY["EffectCraft"]="Productivity"
+UTILITY_CATEGORY["FilmCraft"]="Productivity"
+UTILITY_CATEGORY["GridCraft"]="Productivity"
+UTILITY_CATEGORY["LightCraft"]="Productivity"
+UTILITY_CATEGORY["PdfCraft"]="Productivity"
+UTILITY_CATEGORY["PhotoCraft"]="Productivity"
+UTILITY_CATEGORY["SoundCraft"]="Productivity"
+UTILITY_CATEGORY["VectorCraft"]="Productivity"
+UTILITY_CATEGORY["WordCraft"]="Productivity"
 UTILITY_CATEGORY["ClamAV"]="System Tools"
 UTILITY_CATEGORY["Element (Matrix)"]="Internet"
 UTILITY_CATEGORY["Euro-Office"]="Productivity"
@@ -693,6 +728,7 @@ UTILITY_CATEGORY["Tor Browser"]="Internet"
 UTILITY_CATEGORY["UniFi Endpoint"]="Internet"
 UTILITY_CATEGORY["Ventoy"]="Disk Utilities"
 UTILITY_CATEGORY["GParted"]="Disk Utilities"
+UTILITY_CATEGORY["KDiskMark"]="Disk Utilities"
 UTILITY_CATEGORY["Virt-Manager"]="Development"
 UTILITY_CATEGORY["Firecracker"]="Development"
 UTILITY_CATEGORY["VLC"]="Productivity"
@@ -744,10 +780,24 @@ UTILITY_SUBCATEGORY["WireGuard Server"]="VPN"
 UTILITY_SUBCATEGORY["LibreOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["OnlyOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["WPS Office"]="Office Suites"
+UTILITY_SUBCATEGORY["ArtCraft Launcher"]="ArtCraft"
+UTILITY_SUBCATEGORY["CADCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["DeckCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["DesignCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["EffectCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["FilmCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["GridCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["LightCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["PdfCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["PhotoCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["SoundCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["VectorCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["WordCraft"]="ArtCraft"
 UTILITY_SUBCATEGORY["Obsidian"]="Notes"
 UTILITY_SUBCATEGORY["Standard Notes"]="Notes"
 UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
 UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Claude Desktop"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
@@ -926,6 +976,7 @@ UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshot
 # Development
 UTILITY_DESCRIPTION["Ansible"]="IT automation tool for provisioning, configuration management, and application deployment using agentless SSH-based playbooks."
 UTILITY_DESCRIPTION["Claude Code"]="Anthropic's AI coding assistant that runs in the terminal for code generation, editing, and analysis."
+UTILITY_DESCRIPTION["Claude Desktop"]="Anthropic's Claude desktop app with Chat, Cowork, and Claude Code (Linux beta). Installed from Anthropic's apt repository — natively on Debian/Ubuntu, inside an Ubuntu 26.04 distrobox on other distros (Distrobox is installed first if missing)."
 UTILITY_DESCRIPTION["Cursor IDE"]="AI-powered code editor built on VS Code with deeply integrated AI features for code completion and chat."
 UTILITY_DESCRIPTION["DBeaver"]="Universal database management tool supporting PostgreSQL, MySQL, SQLite, Oracle, and many more."
 UTILITY_DESCRIPTION["Docker"]="Container platform for building, shipping, and running applications in isolated environments."
@@ -1019,6 +1070,19 @@ UTILITY_DESCRIPTION["WireGuard Server"]="Sets up a WireGuard VPN server for secu
 UTILITY_DESCRIPTION["Zoom"]="Video conferencing platform for meetings, webinars, and team collaboration."
 
 # Productivity
+UTILITY_DESCRIPTION["ArtCraft Launcher"]="The ArtCraft Launcher app: one place to install, update, and open the Craft App Suite (PhotoCraft, PdfCraft, and the rest). The Craft apps below can also be installed on their own."
+UTILITY_DESCRIPTION["CADCraft"]="Open-source, clean-room AutoCAD-style computer-aided design and drafting app, written in Rust."
+UTILITY_DESCRIPTION["DeckCraft"]="Open-source, clean-room PowerPoint-style presentation app, written in Rust."
+UTILITY_DESCRIPTION["DesignCraft"]="Open-source page layout and publishing app (InDesign-style), written in Rust."
+UTILITY_DESCRIPTION["EffectCraft"]="Open-source motion graphics and visual effects app (After Effects-style), written in Rust."
+UTILITY_DESCRIPTION["FilmCraft"]="Open-source video editor (Premiere Pro-style), written in Rust."
+UTILITY_DESCRIPTION["GridCraft"]="Open-source, clean-room Excel-style spreadsheet, written in Rust."
+UTILITY_DESCRIPTION["LightCraft"]="Open-source photo library and raw developer (Lightroom-style), written in Rust."
+UTILITY_DESCRIPTION["PdfCraft"]="Open-source PDF workbench (Acrobat-style) for reading, organizing, combining, splitting, and securing PDFs, written in Rust."
+UTILITY_DESCRIPTION["PhotoCraft"]="Open-source image editor (Photoshop-style), written in Rust."
+UTILITY_DESCRIPTION["SoundCraft"]="Open-source, clean-room Pro Tools-style audio workstation, written in Rust."
+UTILITY_DESCRIPTION["VectorCraft"]="Open-source vector illustration app (Illustrator-style), written in Rust."
+UTILITY_DESCRIPTION["WordCraft"]="Open-source, clean-room Word-style word processor, written in Rust."
 UTILITY_DESCRIPTION["Audacity"]="Free, open-source multi-track audio editor and recorder for recording, editing, and exporting audio files."
 UTILITY_DESCRIPTION["Bitwarden Client"]="Open-source password manager for securely storing and auto-filling credentials."
 UTILITY_DESCRIPTION["Flameshot"]="Powerful, customizable screenshot tool with built-in annotation and markup capabilities."
@@ -1055,6 +1119,7 @@ UTILITY_DESCRIPTION["ClamAV"]="Open-source antivirus engine for detecting trojan
 UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyboard and mouse across multiple computers on your local network."
 UTILITY_DESCRIPTION["Ventoy"]="Bootable USB solution for loading multiple ISO images from a single drive — just copy ISOs and boot."
 UTILITY_DESCRIPTION["GParted"]="Graphical partition editor for creating, resizing, moving, copying, and deleting disk partitions. Supports ext2/3/4, btrfs, xfs, ntfs, fat32, and more — ideal for managing drives and preparing disks."
+UTILITY_DESCRIPTION["KDiskMark"]="HDD and SSD benchmark tool with a graphical interface over fio (Flexible I/O Tester) — measures sequential and random read/write speeds with configurable block size, queue depth and thread count, and can generate a text report. Installed from the native package; falls back to Flathub where the distro does not package it (Debian 12, Ubuntu 22.04, openSUSE Leap 15)."
 UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written in C, displaying OS, hardware, and software details."
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
 UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS. Install this first to enable Create, Restore, and Delete Snapshot."
@@ -1102,7 +1167,7 @@ UTILITY_DESCRIPTION["GDM"]="GNOME Display Manager — the GTK login screen used 
 UTILITY_DESCRIPTION["LightDM"]="Lightweight, cross-desktop display manager used by Xfce, MATE, Cinnamon, and Budgie. Installs LightDM plus a GTK greeter so a login form renders, and enables it when no login screen is active (otherwise asks first). Themeable via the Slick greeter below. Reboot to use it."
 UTILITY_DESCRIPTION["ly"]="Minimal TUI (text-mode) display manager that runs on the console — no X/Wayland greeter needed. Ideal for window-manager users who want a tiny login screen. Packaged on Arch and openSUSE; the install fails cleanly where it is not available. Reboot to use it."
 UTILITY_DESCRIPTION["LXDM"]="Lightweight GTK display manager from the LXDE project. A small, fast login screen suited to low-resource systems and minimal desktops. Installs LXDM and enables it when no login screen is active, or asks before replacing the current one. Reboot to use it."
-UTILITY_DESCRIPTION["SDDM Breeze Theme"]="Sets the upstream KDE Breeze theme as the SDDM login screen via an /etc/sddm.conf.d drop-in (overrides distro defaults such as the Kubuntu theme). Breeze ships with KDE Plasma; on Debian/Ubuntu the standalone sddm-theme-breeze package is pulled in if needed. Requires SDDM."
+UTILITY_DESCRIPTION["SDDM Breeze Theme"]="Sets the upstream KDE Breeze theme as the SDDM login screen via an /etc/sddm.conf.d drop-in (overrides distro defaults such as the Kubuntu theme). Breeze ships with KDE Plasma; on Debian/Ubuntu and Fedora/RHEL its standalone package is pulled in if needed. Requires SDDM."
 UTILITY_DESCRIPTION["SDDM Sugar Candy"]="Popular, highly configurable QtQuick SDDM theme with a clean blurred-background login. Downloaded from GitHub into /usr/share/sddm/themes and set as the active SDDM theme; pulls in the QtQuick runtime it needs. Requires SDDM and an internet connection."
 UTILITY_DESCRIPTION["SDDM Astronaut"]="Modern QtQuick SDDM theme bundle (multiple sci-fi styles) downloaded from GitHub into /usr/share/sddm/themes and set as the active SDDM theme; pulls in the QtQuick runtime it needs. Requires SDDM and an internet connection."
 UTILITY_DESCRIPTION["LightDM Slick Greeter"]="Installs the Slick greeter (the themeable GTK greeter used by Linux Mint) and selects it for LightDM via an /etc/lightdm/lightdm.conf.d drop-in. Customise background, GTK theme, and icons in /etc/lightdm/slick-greeter.conf. Requires LightDM; not packaged on every distro."
@@ -1156,7 +1221,21 @@ mark_upstream_binary \
     "Mark Text=$HOME/.local/share/marktext" \
     "Standard Notes=$HOME/.local/share/standard-notes/standard-notes.AppImage" \
     "PowerShell=/opt/microsoft/powershell" \
-    "Libation=/usr/lib/libation"
+    "Libation=/usr/lib/libation" \
+    "ArtCraft Launcher=$HOME/Applications/artcraft-launcher.AppImage" \
+    "CADCraft=$HOME/Applications/cadcraft.AppImage" \
+    "DeckCraft=$HOME/Applications/deckcraft.AppImage" \
+    "DesignCraft=$HOME/Applications/designcraft.AppImage" \
+    "EffectCraft=$HOME/Applications/effectcraft.AppImage" \
+    "FilmCraft=$HOME/Applications/filmcraft.AppImage" \
+    "GridCraft=$HOME/Applications/gridcraft.AppImage" \
+    "LightCraft=$HOME/Applications/lightcraft.AppImage" \
+    "PdfCraft=$HOME/Applications/pdfcraft.AppImage" \
+    "PhotoCraft=$HOME/Applications/photocraft.AppImage" \
+    "SoundCraft=$HOME/Applications/soundcraft.AppImage" \
+    "VectorCraft=$HOME/Applications/vectorcraft.AppImage" \
+    "WordCraft=$HOME/Applications/wordcraft.AppImage" \
+    "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1166,7 +1245,8 @@ mark_upstream_binary \
 # report in advance that an update is waiting.
 mark_upstream_latest \
     "Visual Studio Code=_vscode_latest_version" \
-    "Libation=_libation_latest_version"
+    "Libation=_libation_latest_version" \
+    "Claude Desktop=_claude_desktop_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

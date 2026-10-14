@@ -21,7 +21,6 @@ The TUI uses a two-panel layout: a left sidebar with category tabs and system in
 ├──────────────────────┤                                                  │
 │ PROFILES             │                                                  │
 ├──────────────────────┤                                                  │
-│   Run Me First       │                                                  │
 │   Default VM Server  │                                                  │
 │   Default Phys. PC   │                                                  │
 │  Developer Workstat. │                                                  │
@@ -72,11 +71,12 @@ Subcategories (marked `[D]`) group related items — press Enter to drill in, `.
 
 Profiles are curated presets that pre-populate the install/update queue in one step. They appear in the left sidebar below `CATEGORIES` — press `Tab` to focus `PROFILES`, then `↑`/`↓` to navigate and `Enter` to apply.
 
-Applying a profile clears all current selections and queues the profile's items. Items already installed are skipped; items unavailable on the current distro are silently ignored.
+While a profile is highlighted, the right panel lists every item it selects, grouped under its category and subcategory (e.g. `Internet > Web Browsers`), with the profile's description below. Items not available on the current distro are left out of the list. Moving focus back to the categories or items returns the normal category view.
+
+Applying a profile clears all current selections and queues the profile's items. Items already installed are queued for update (`[U]`) instead of install; items unavailable on the current distro are silently ignored.
 
 | Profile | Description |
 |---------|-------------|
-| **Run Me First** | Installs Timeshift for a restore point before any other changes |
 | **Default VM Server Profile** | Xen Guest Utilities, Btop, Zsh + Oh My Zsh |
 | **Default Physical PC** | Desktop essentials — VSCode, GitHub CLI, Steam, Brave, and more |
 | **Developer Workstation** | UFW, OpenSSH Server, Docker, VSCode, GitHub CLI, NVM, Postman, DBeaver, Bitwarden Client, Btop, Zsh + Oh My Zsh, Fastfetch |

@@ -4,6 +4,7 @@
 _linux_util_utilities() {
     cat <<'EOF'
 AMD Drivers
+ArtCraft Launcher
 Betterbird
 Bitwarden Client
 Bitwarden Extension
@@ -13,9 +14,11 @@ Brave Browser
 Btop
 Budgie Desktop
 CachyOS Kernel Manager
+CADCraft
 Chromium
 Cinnamon Desktop
 Claude Code
+Claude Desktop
 Claws Mail
 Cockpit
 Command-Not-Found Prompt
@@ -23,10 +26,13 @@ COSMIC Desktop
 Create Snapshot
 Cursor IDE
 DBeaver
+DeckCraft
 Deepin Desktop
+DesignCraft
 Devolutions RDM
 Discord
 Docker
+EffectCraft
 Enable RDP
 Euro-Office
 Evolution
@@ -34,6 +40,7 @@ Fastfetch
 Fedora Mainline Kernel
 Feral Gamemode
 FileZilla
+FilmCraft
 Firecracker
 Firefox
 Flatpak Setup
@@ -43,6 +50,7 @@ GIMP
 GitHub CLI
 GNOME Desktop
 Google Chrome
+GridCraft
 GTK Window Fix
 Heroic Games Launcher
 Intel Drivers
@@ -50,8 +58,10 @@ JetBrains Toolbox
 Joplin Client
 Joplin Web Clipper
 KDE Desktop
+KDiskMark
 KMail
 LibreOffice
+LightCraft
 linux-tkg
 Local Time Zone / Locale
 LocalSend
@@ -69,6 +79,9 @@ Obsidian
 OnlyOffice
 OpenLogi
 OpenSSH Server
+PdfCraft
+PhotoCraft
+SoundCraft
 tmux
 tmux Resurrect
 Pantheon Desktop
@@ -101,6 +114,7 @@ Toolbx
 Trojita
 Num Lock at Boot
 UFW Firewall
+VectorCraft
 Visual Studio Code
 VSCodium
 Vivaldi Browser
@@ -108,6 +122,7 @@ WinApps
 Wine
 WireGuard Client
 WireGuard Server
+WordCraft
 WPS Office
 XEN Guest Utilities
 Xfce Desktop

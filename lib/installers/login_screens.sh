@@ -181,10 +181,17 @@ _set_sddm_theme() {
     _dedupe_ubuntu_sddm_theme
 }
 
-# Echo the currently configured SDDM theme name (last Current= wins).
+# Echo the currently configured SDDM theme name. Files are read in SDDM's own
+# precedence order (lowest first), so the last Current= is the one SDDM uses:
+# /usr/lib/sddm/sddm.conf.d/*, then /etc/sddm.conf.d/*, then /etc/sddm.conf.
 _sddm_active_theme() {
-    grep -rhoP '^\s*Current\s*=\s*\K\S+' \
-        /etc/sddm.conf /etc/sddm.conf.d/ /usr/lib/sddm/sddm.conf.d/ 2>/dev/null | tail -1
+    local -a files=()
+    local f
+    for f in /usr/lib/sddm/sddm.conf.d/*.conf /etc/sddm.conf.d/*.conf /etc/sddm.conf; do
+        [[ -f "$f" ]] && files+=("$f")
+    done
+    (( ${#files[@]} )) || return 0
+    grep -hoP '^\s*Current\s*=\s*\K\S+' "${files[@]}" 2>/dev/null | tail -1
 }
 
 # Ubuntu registers its SDDM theme packages (sddm-theme-breeze, sddm-theme-maya, …)
@@ -320,9 +327,12 @@ install_sddmtheme_breeze() {
         error "SDDM is not installed. Install the SDDM login screen first (Login Screens > SDDM)."
         return 1
     fi
-    # On Debian/Ubuntu the theme ships as a small standalone package; elsewhere it
-    # comes with Plasma, so we only pull it where it exists on its own.
-    [[ "$PKG_MGR" == "apt" ]] && { pkg_install sddm-theme-breeze || true; }
+    # Debian/Ubuntu and Fedora/RHEL ship the theme as a small standalone package;
+    # on Arch and openSUSE it comes with plasma-desktop, so there is nothing to pull.
+    case "$PKG_MGR" in
+        apt)     pkg_install sddm-theme-breeze || true ;;
+        dnf|yum) pkg_install sddm-breeze || true ;;
+    esac
     if [[ ! -d "${SDDM_THEMES_DIR}/breeze" ]]; then
         error "Breeze theme files not found. Breeze is part of KDE Plasma — install the"
         error "KDE Desktop (or its breeze components) to get it."

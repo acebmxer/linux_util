@@ -160,6 +160,10 @@ load_config
 source "${SCRIPT_DIR}/lib/logging.sh" || { echo "Error: Failed to source logging.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/pkg_manager.sh" || { echo "Error: Failed to source pkg_manager.sh"; exit 1; }
 
+# Under WSL, hide programs installed on Windows so only the Linux side is
+# detected, versioned and updated.
+_strip_windows_path
+
 # Initialize performance metrics tracking
 metrics_init
 
@@ -825,8 +829,17 @@ EOF
                             fi
                         fi
                         [[ "$_first" == "true" ]] && _first=false || printf ',\n'
-                        printf '    {"name": "%s", "installed": %s, "version": %s}' \
-                            "$(_json_str "$util")" "$_installed" "$_vjson"
+                        local _cjson="null" _sjson="null" _st
+                        if [[ -n "${UTILITY_CATEGORY[$util]:-}" ]]; then
+                            _cjson="\"$(_json_str "${UTILITY_CATEGORY[$util]}")\""
+                        else
+                            for _st in "${SYSTEM_TASKS[@]}"; do
+                                [[ "$_st" == "$util" ]] && _cjson='"System Tasks"' && break
+                            done
+                        fi
+                        [[ -n "${UTILITY_SUBCATEGORY[$util]:-}" ]] && _sjson="\"$(_json_str "${UTILITY_SUBCATEGORY[$util]}")\""
+                        printf '    {"name": "%s", "category": %s, "subcategory": %s, "installed": %s, "version": %s}' \
+                            "$(_json_str "$util")" "$_cjson" "$_sjson" "$_installed" "$_vjson"
                     done
                     printf '\n  ]\n}\n'
                     exit 0

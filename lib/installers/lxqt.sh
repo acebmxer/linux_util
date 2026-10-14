@@ -118,9 +118,7 @@ setup_install_lxqt() {
                     fi
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm || warn "Failed to enable sddm"
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
+            _enable_desktop_login sddm
             ;;
 
         dnf|yum)
@@ -161,10 +159,7 @@ setup_install_lxqt() {
                     fi
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
+            _enable_desktop_login sddm
             ;;
 
         pacman)
@@ -172,7 +167,7 @@ setup_install_lxqt() {
                 minimal)
                     info "Installing LXQt (Minimal/Core)..."
                     run_as_root pacman -S --noconfirm lxqt-session lxqt-panel \
-                        lxqt-runner lxqt-config pcmanfm-qt sddm || {
+                        lxqt-runner lxqt-config pcmanfm-qt qterminal sddm || {
                         error "Failed to install LXQt (Minimal/Core)"
                         return 1
                     }
@@ -196,9 +191,7 @@ setup_install_lxqt() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
+            _enable_desktop_login sddm
             ;;
 
         zypper)
@@ -206,7 +199,7 @@ setup_install_lxqt() {
                 minimal)
                     info "Installing LXQt (Minimal/Core)..."
                     run_as_root zypper install -y lxqt-session lxqt-panel lxqt-runner \
-                        lxqt-config pcmanfm-qt sddm || {
+                        lxqt-config pcmanfm-qt qterminal sddm || {
                         error "Failed to install LXQt (Minimal/Core)"
                         return 1
                     }
@@ -230,10 +223,7 @@ setup_install_lxqt() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
+            _enable_desktop_login sddm
             ;;
 
         *)

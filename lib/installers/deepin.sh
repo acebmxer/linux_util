@@ -84,10 +84,7 @@ setup_install_deepin() {
                     return 1
                 }
             fi
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
+            _enable_desktop_login lightdm
             ;;
 
         pacman)
@@ -97,9 +94,7 @@ setup_install_deepin() {
                 error "Failed to install Deepin Desktop Environment"
                 return 1
             }
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
+            _enable_desktop_login sddm
             ;;
 
         zypper)
@@ -125,10 +120,7 @@ setup_install_deepin() {
                 error "Failed to install Deepin Desktop Environment"
                 return 1
             }
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
+            _enable_desktop_login sddm
             ;;
 
         *)

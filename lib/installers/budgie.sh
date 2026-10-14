@@ -72,7 +72,7 @@ setup_install_budgie() {
             case "$tier" in
                 minimal)
                     info "Installing Budgie (Minimal/Core)..."
-                    run_as_root apt-get install -y budgie-desktop lightdm lightdm-gtk-greeter || {
+                    run_as_root apt-get install -y budgie-desktop nemo gnome-terminal lightdm lightdm-gtk-greeter || {
                         error "Failed to install Budgie (Minimal/Core)"
                         return 1
                     }
@@ -99,9 +99,7 @@ setup_install_budgie() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm || warn "Failed to enable lightdm"
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
+            _enable_desktop_login lightdm
             ;;
 
         dnf|yum)
@@ -109,7 +107,7 @@ setup_install_budgie() {
                 minimal)
                     info "Installing Budgie (Minimal/Core)..."
                     run_as_root "$PKG_MGR" install -y budgie-desktop budgie-session \
-                        lightdm lightdm-gtk || {
+                        nemo gnome-terminal lightdm lightdm-gtk || {
                         error "Failed to install Budgie (Minimal/Core)"
                         return 1
                     }
@@ -135,17 +133,14 @@ setup_install_budgie() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
+            _enable_desktop_login lightdm
             ;;
 
         pacman)
             case "$tier" in
                 minimal)
                     info "Installing Budgie (Minimal/Core)..."
-                    run_as_root pacman -S --noconfirm budgie-desktop sddm || {
+                    run_as_root pacman -S --noconfirm budgie-desktop nemo gnome-terminal sddm || {
                         error "Failed to install Budgie (Minimal/Core)"
                         return 1
                     }
@@ -169,9 +164,7 @@ setup_install_budgie() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable sddm
-            run_as_root systemctl start sddm || warn "Failed to start sddm"
+            _enable_desktop_login sddm
             ;;
 
         zypper)
@@ -193,10 +186,7 @@ setup_install_budgie() {
                     }
                     ;;
             esac
-            info "Enabling display manager..."
-            run_as_root systemctl enable lightdm 2>/dev/null || \
-                run_as_root systemctl set-default graphical.target
-            run_as_root systemctl start lightdm || warn "Failed to start lightdm"
+            _enable_desktop_login lightdm
             ;;
 
         *)

@@ -104,7 +104,10 @@ check_nvidia_drivers() {
 }
 get_version_nvidia_drivers() {
     local ver
-    if ver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null); then
+    # Bounded: on WSL, nvidia-smi can hang indefinitely instead of failing fast
+    # when the GPU passthrough bridge to the Windows host driver is in a bad
+    # state, which froze the menu at startup for every WSL user hitting it.
+    if ver=$(timeout 5 nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null); then
         echo "$ver" | head -1
     else
         echo ""
