@@ -14,6 +14,10 @@ when a release is cut.
 
 ### Added
 
+- `--list --json` now includes each utility's `category` and `subcategory`
+  (`null` when it has none), the same grouping the menu uses; system tasks
+  are in the "System Tasks" category.
+
 - **ArtCraft Launcher** (Productivity > ArtCraft), with the Craft App Suite as
   separate entries beside it: CADCraft, DeckCraft, DesignCraft, EffectCraft, FilmCraft,
   GridCraft, LightCraft, PdfCraft, PhotoCraft, SoundCraft, VectorCraft and
