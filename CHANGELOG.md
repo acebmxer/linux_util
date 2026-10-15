@@ -12,6 +12,12 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- `--list --json` now includes each utility's `description` (`null` when it has
+  none), the same text the menu shows in its description pane, so front ends
+  such as Linux_Util Desktop can show it without reading `lib/installers.sh`.
+
 ## [1.9.0] - 2026-10-14
 
 ### Added
