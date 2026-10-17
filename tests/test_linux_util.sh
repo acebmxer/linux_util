@@ -3255,6 +3255,11 @@ test_reboot_arch_check_is_family_gated() {
 test_reboot_arch_fires_on_replaced_kernel() {
     # pacman deletes /usr/lib/modules/<release> when it upgrades the kernel, so a
     # running release with no module tree means the running kernel is stale.
+    # The check only runs where a modules directory exists (not in a bare container).
+    if [[ ! -d /usr/lib/modules && ! -d /lib/modules ]]; then
+        _skip "_reboot_required_arch fires when the running kernel's module tree is gone (no /lib/modules here)"
+        return
+    fi
     local out
     out=$(
         DISTRO_FAMILY=arch
@@ -3311,6 +3316,11 @@ test_reboot_stale_files_status_under_pipefail() {
 }
 
 test_reboot_arch_quiet_on_clean_system() {
+    # Needs the running kernel's real module tree, which a container lacks.
+    if [[ ! -d "/usr/lib/modules/$(uname -r)" && ! -d "/lib/modules/$(uname -r)" ]]; then
+        _skip "_reboot_required_arch stays quiet with a current kernel (no module tree for $(uname -r) here)"
+        return
+    fi
     local out
     out=$(
         DISTRO_FAMILY=arch
