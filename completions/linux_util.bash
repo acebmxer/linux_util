@@ -73,6 +73,7 @@ MATE Desktop
 NeoMutt
 Nextcloud Desktop
 NVIDIA Drivers
+NVIDIA PAIR
 NVM
 OBS Studio
 Obsidian

@@ -4169,6 +4169,37 @@ test_profile_utility_names_lists_in_profile_order
 
 # ----------------------------------------------------------------------------
 echo ""
+echo "=== NVIDIA PAIR ==="
+
+test_nvidia_pair_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "NVIDIA PAIR"[[:space:]]+install_nvidia_pair ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["NVIDIA PAIR"\]="Productivity"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["NVIDIA PAIR"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_nvidia_pair()" "${SCRIPT_DIR}/lib/installers/nvidia_pair.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "NVIDIA PAIR is registered with category, description and all five functions"
+}
+
+test_nvidia_pair_version_strips_build_suffix() {
+    local out
+    out=$(
+        pkg_check_installed() { return 1; }
+        source "${SCRIPT_DIR}/lib/installers/nvidia_pair.sh"
+        f=$(mktemp); echo "1.0.0-85" > "$f"
+        _PAIR_VERSION_FILE="$f"
+        get_version_nvidia_pair
+        rm -f "$f"
+    )
+    assert_eq "1.0.0" "$out" "PAIR version drops the .deb build suffix"
+}
+
+test_nvidia_pair_registered
+test_nvidia_pair_version_strips_build_suffix
+
+# ----------------------------------------------------------------------------
+echo ""
 echo "=== ArtCraft / Craft apps ==="
 
 test_craft_apps_registered_in_artcraft_subcategory() {
