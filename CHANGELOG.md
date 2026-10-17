@@ -26,6 +26,12 @@ when a release is cut.
   none), the same text the menu shows in its description pane, so front ends
   such as Linux_Util Desktop can show it without reading `lib/installers.sh`.
 
+### Fixed
+
+- The test suite's `--json --list` checks for the `schema` and `utilities` keys
+  failed intermittently with a broken pipe now that the output is larger; the
+  shared `assert_contains` helper no longer pipes the output into `grep -q`.
+
 ## [1.9.0] - 2026-10-14
 
 ### Added

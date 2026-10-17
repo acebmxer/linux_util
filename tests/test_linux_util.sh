@@ -79,7 +79,7 @@ assert_file_exists() {
 
 assert_contains() {
     local haystack="$1" needle="$2" msg="$3"
-    if echo "$haystack" | grep -qE "$needle" 2>/dev/null; then
+    if grep -qE "$needle" 2>/dev/null <<<"$haystack"; then
         _pass "$msg"
     else
         _fail "$msg (pattern '$needle' not found in output)"
