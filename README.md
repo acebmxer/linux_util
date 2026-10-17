@@ -155,6 +155,7 @@ run `./linux_util.sh --list`.
       --dry-run           Preview actions without making any changes
       --verbose           Extra status messages
       --debug             Internal state details
+      --json              Machine-readable JSON output (with --list or --check)
       --no-color          Disable coloured output
       --setup-logrotate   Install logrotate config for linux_util logs
 ```
