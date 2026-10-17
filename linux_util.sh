@@ -838,8 +838,10 @@ EOF
                             done
                         fi
                         [[ -n "${UTILITY_SUBCATEGORY[$util]:-}" ]] && _sjson="\"$(_json_str "${UTILITY_SUBCATEGORY[$util]}")\""
-                        printf '    {"name": "%s", "category": %s, "subcategory": %s, "installed": %s, "version": %s}' \
-                            "$(_json_str "$util")" "$_cjson" "$_sjson" "$_installed" "$_vjson"
+                        local _djson="null"
+                        [[ -n "${UTILITY_DESCRIPTION[$util]:-}" ]] && _djson="\"$(_json_str "${UTILITY_DESCRIPTION[$util]}")\""
+                        printf '    {"name": "%s", "category": %s, "subcategory": %s, "description": %s, "installed": %s, "version": %s}' \
+                            "$(_json_str "$util")" "$_cjson" "$_sjson" "$_djson" "$_installed" "$_vjson"
                     done
                     printf '\n  ]\n}\n'
                     exit 0

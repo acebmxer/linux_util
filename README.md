@@ -10,7 +10,7 @@
 [![Unique cloners](https://img.shields.io/badge/unique%20cloners-141-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
-[![Tests](https://img.shields.io/badge/tests-387%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-399%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 [![Distros tested](https://img.shields.io/badge/distros%20tested-6-informational)](#supported-distributions)
 [![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
@@ -125,7 +125,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Gaming** | Steam, Lutris, Heroic, Bottles, Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat |
 | **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, LibreWolf, Zen, Thorium, Tor), email clients, messaging, and VPNs (ProtonVPN, PIA, Tailscale, WireGuard) |
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
-| **Productivity** | ArtCraft Launcher and the Craft App Suite, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Obsidian, Joplin, Logseq, Bitwarden, Nextcloud, WinApps |
+| **Productivity** | ArtCraft Launcher and the Craft App Suite, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Obsidian, Joplin, Logseq, Bitwarden, Nextcloud, NVIDIA PAIR, WinApps |
 | **Remote Admin** | Cockpit, XRDP, OpenSSH, Remmina, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
 | **File Managers** | Nautilus, Dolphin, Thunar, Nemo, Caja, PCManFM-Qt, Krusader, and the terminal managers (Midnight Commander, Ranger, nnn, Superfile) |
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
@@ -155,6 +155,7 @@ run `./linux_util.sh --list`.
       --dry-run           Preview actions without making any changes
       --verbose           Extra status messages
       --debug             Internal state details
+      --json              Machine-readable JSON output (with --list or --check)
       --no-color          Disable coloured output
       --setup-logrotate   Install logrotate config for linux_util logs
 ```

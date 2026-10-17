@@ -246,6 +246,7 @@ register_utility "Node.js"             install_nodejs           check_nodejs    
 register_utility "OBS Studio"          install_obs_studio       check_obs_studio       uninstall_obs_studio       update_obs_studio          get_version_obs_studio
 # OCCT has no version function by design — see the note in installers/occt.sh.
 register_utility "OCCT"                install_occt             check_occt             uninstall_occt             update_occt
+register_utility "NVIDIA PAIR"         install_nvidia_pair      check_nvidia_pair      uninstall_nvidia_pair      update_nvidia_pair         get_version_nvidia_pair
 register_utility "Obsidian"            install_obsidian         check_obsidian         uninstall_obsidian         update_obsidian            get_version_obsidian
 register_utility "OnlyOffice"          install_onlyoffice       check_onlyoffice       uninstall_onlyoffice       update_onlyoffice          get_version_onlyoffice
 register_utility "OpenLogi"            install_openlogi         check_openlogi         uninstall_openlogi         update_openlogi            get_version_openlogi
@@ -620,6 +621,7 @@ UTILITY_CATEGORY["Nextcloud Desktop"]="Productivity"
 UTILITY_CATEGORY["NVM"]="Development"
 UTILITY_CATEGORY["OBS Studio"]="Productivity"
 UTILITY_CATEGORY["OCCT"]="System Tools"
+UTILITY_CATEGORY["NVIDIA PAIR"]="Productivity"
 UTILITY_CATEGORY["Obsidian"]="Productivity"
 UTILITY_CATEGORY["OnlyOffice"]="Productivity"
 UTILITY_CATEGORY["OpenSSH Server"]="Remote Admin Tools"
@@ -1102,6 +1104,7 @@ UTILITY_DESCRIPTION["LibreOffice"]="Full-featured open-source office suite compa
 UTILITY_DESCRIPTION["Nextcloud Desktop"]="Desktop sync client for Nextcloud, providing self-hosted cloud file storage and sharing."
 UTILITY_DESCRIPTION["OBS Studio"]="Open-source software for video recording and live streaming with scene composition."
 UTILITY_DESCRIPTION["OCCT"]="Stability and stress-testing suite for CPU, RAM, GPU, and PSU, with live hardware monitoring — widely used to validate overclocks and diagnose unstable hardware. Installs the free Personal edition as a self-contained x86_64 binary from ocbase.com (no upstream repo or checksum). Installed per-user under ~/.local/share/occt, since OCCT stores its imported license alongside its own executable and must be able to write there. Launch from the application menu or run 'occt'."
+UTILITY_DESCRIPTION["NVIDIA PAIR"]="NVIDIA's Personal AI Router: links the computers on your home network into one local AI inference cluster and routes requests from Ollama, llama.cpp and LM Studio across them. Upstream ships a .deb only, so it is unpacked into /opt/PAIR on other distros."
 UTILITY_DESCRIPTION["Obsidian"]="Markdown-based knowledge base and note-taking app with linking, graphs, and plugins."
 UTILITY_DESCRIPTION["OnlyOffice"]="Office suite with strong Microsoft Office format compatibility and real-time collaboration."
 UTILITY_DESCRIPTION["Standard Notes"]="End-to-end encrypted note-taking app with cross-platform sync and extensible editors."

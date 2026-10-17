@@ -75,6 +75,7 @@ _linux_util_utilities=(
     'Nextcloud Desktop'
     'Num Lock at Boot'
     'NVIDIA Drivers'
+    'NVIDIA PAIR'
     'NVM'
     'OBS Studio'
     'Obsidian'

@@ -16,7 +16,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Incomplete:** 229 utilities and system tasks are registered in
+> **Incomplete:** 241 utilities and system tasks are registered in
 > `lib/installers.sh`; 196 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
@@ -232,6 +232,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 |---------|-------------|
 | **ArtCraft Launcher** *(ArtCraft folder)* | The launcher app that installs and updates the Craft apps — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
 | **CADCraft, DeckCraft, DesignCraft, EffectCraft, FilmCraft, GridCraft, LightCraft, PdfCraft, PhotoCraft, SoundCraft, VectorCraft, WordCraft** *(ArtCraft folder)* | The open-source Craft App Suite, each installed on its own from its latest GitHub release — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
+| **NVIDIA PAIR** | NVIDIA's Personal AI Router, which links home-network machines into one local AI inference cluster (Ollama, llama.cpp, LM Studio). Upstream ships a `.deb` only: installed as-is on Debian/Ubuntu, unpacked into `/opt/PAIR` elsewhere |
 | **Audacity** | Open-source audio editor and recorder |
 | **Bitwarden Client** | Open-source password manager — `.deb` / `.rpm` / AUR / snap / flatpak |
 | **Euro-Office** | European community fork of ONLYOFFICE — **built from source**, since upstream ships no desktop binaries. Runs their `docker buildx bake` build and installs the resulting `.deb`/`.rpm` (AUR on Arch). Needs Docker + Buildx; the compile takes hours and tens of GB |

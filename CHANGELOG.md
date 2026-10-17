@@ -12,6 +12,28 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-17
+
+### Added
+
+- **NVIDIA PAIR** (Productivity), NVIDIA's Personal AI Router, which links the
+  computers on a home network into one local AI inference cluster. NVIDIA
+  publishes a `.deb` only, so Debian and Ubuntu install it directly and Fedora,
+  RHEL, openSUSE and Arch unpack it into `/opt/PAIR` with its `nvpair` terminal
+  command, menu entry and setuid sandbox helper, installing the runtime
+  libraries it needs. Uninstalling leaves PAIR's settings and downloaded models
+  alone.
+
+- `--list --json` now includes each utility's `description` (`null` when it has
+  none), the same text the menu shows in its description pane, so front ends
+  such as Linux_Util Desktop can show it without reading `lib/installers.sh`.
+
+### Fixed
+
+- The test suite's `--json --list` checks for the `schema` and `utilities` keys
+  failed intermittently with a broken pipe now that the output is larger; the
+  shared `assert_contains` helper no longer pipes the output into `grep -q`.
+
 ## [1.9.0] - 2026-10-14
 
 ### Added

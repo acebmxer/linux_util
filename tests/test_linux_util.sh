@@ -79,7 +79,7 @@ assert_file_exists() {
 
 assert_contains() {
     local haystack="$1" needle="$2" msg="$3"
-    if echo "$haystack" | grep -qE "$needle" 2>/dev/null; then
+    if grep -qE "$needle" 2>/dev/null <<<"$haystack"; then
         _pass "$msg"
     else
         _fail "$msg (pattern '$needle' not found in output)"
@@ -3255,6 +3255,11 @@ test_reboot_arch_check_is_family_gated() {
 test_reboot_arch_fires_on_replaced_kernel() {
     # pacman deletes /usr/lib/modules/<release> when it upgrades the kernel, so a
     # running release with no module tree means the running kernel is stale.
+    # The check only runs where a modules directory exists (not in a bare container).
+    if [[ ! -d /usr/lib/modules && ! -d /lib/modules ]]; then
+        _skip "_reboot_required_arch fires when the running kernel's module tree is gone (no /lib/modules here)"
+        return
+    fi
     local out
     out=$(
         DISTRO_FAMILY=arch
@@ -3311,6 +3316,11 @@ test_reboot_stale_files_status_under_pipefail() {
 }
 
 test_reboot_arch_quiet_on_clean_system() {
+    # Needs the running kernel's real module tree, which a container lacks.
+    if [[ ! -d "/usr/lib/modules/$(uname -r)" && ! -d "/lib/modules/$(uname -r)" ]]; then
+        _skip "_reboot_required_arch stays quiet with a current kernel (no module tree for $(uname -r) here)"
+        return
+    fi
     local out
     out=$(
         DISTRO_FAMILY=arch
@@ -4166,6 +4176,37 @@ test_profile_preview_groups_by_category_and_subcategory
 test_profile_preview_leaves_selection_untouched
 test_profile_preview_empty_when_nothing_registered
 test_profile_utility_names_lists_in_profile_order
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== NVIDIA PAIR ==="
+
+test_nvidia_pair_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "NVIDIA PAIR"[[:space:]]+install_nvidia_pair ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["NVIDIA PAIR"\]="Productivity"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["NVIDIA PAIR"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_nvidia_pair()" "${SCRIPT_DIR}/lib/installers/nvidia_pair.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "NVIDIA PAIR is registered with category, description and all five functions"
+}
+
+test_nvidia_pair_version_strips_build_suffix() {
+    local out
+    out=$(
+        pkg_check_installed() { return 1; }
+        source "${SCRIPT_DIR}/lib/installers/nvidia_pair.sh"
+        f=$(mktemp); echo "1.0.0-85" > "$f"
+        _PAIR_VERSION_FILE="$f"
+        get_version_nvidia_pair
+        rm -f "$f"
+    )
+    assert_eq "1.0.0" "$out" "PAIR version drops the .deb build suffix"
+}
+
+test_nvidia_pair_registered
+test_nvidia_pair_version_strips_build_suffix
 
 # ----------------------------------------------------------------------------
 echo ""
