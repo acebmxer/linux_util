@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-17
+
 ### Added
 
 - **NVIDIA PAIR** (Productivity), NVIDIA's Personal AI Router, which links the
