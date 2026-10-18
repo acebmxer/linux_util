@@ -379,6 +379,33 @@ _xrdp_install_from_source() {
     return 0
 }
 
+# --- Fedora/RHEL: KDE Plasma X11 session ---
+#
+# Fedora KDE ships Wayland-only: /usr/share/xsessions is empty and
+# startplasma-x11 is absent, so xrdp's Xsession chain finds nothing to exec and
+# the session dies immediately after login. On a system with updates pending,
+# installing the X11 session also upgrades the whole Plasma stack, and that
+# transaction has been seen to stop without installing anything. The result is
+# therefore checked, both dnf's exit code and the file itself, so a failure
+# stops the install instead of leaving xrdp running with no session to start.
+# $1 = path to startplasma-x11 (overridable for tests).
+_xrdp_ensure_kde_x11_session() {
+    local startplasma="${1:-/usr/bin/startplasma-x11}"
+
+    [[ -x "$startplasma" ]] && return 0
+    command -v plasmashell >/dev/null 2>&1 || return 0
+
+    info "KDE detected without an X11 session — installing Plasma X11 packages..."
+    if run_as_root "$PKG_MGR" install -y plasma-workspace-x11 kwin-x11 && [[ -x "$startplasma" ]]; then
+        return 0
+    fi
+
+    error "Could not install the KDE Plasma X11 session (plasma-workspace-x11, kwin-x11)."
+    error "xrdp needs it: without it every RDP login ends right after sign-in."
+    error "Install pending updates (sudo ${PKG_MGR} upgrade --refresh), then run this again."
+    return 1
+}
+
 install_xrdp() {
     info "Installing xrdp..."
     ensure_tools
@@ -391,7 +418,11 @@ install_xrdp() {
             # Kubuntu 26.04+ ships without X11 by default — install KDE X11 packages
             if [[ "$DISTRO_ID" == "kubuntu" ]] && dpkg --compare-versions "${DISTRO_VERSION_ID}" ge "26.04" 2>/dev/null; then
                 info "Kubuntu ${DISTRO_VERSION_ID} detected — installing KDE X11 session packages..."
-                run_as_root apt-get install -y kwin-x11 plasma-session-x11
+                if ! run_as_root apt-get install -y kwin-x11 plasma-session-x11; then
+                    error "Could not install the KDE Plasma X11 session (kwin-x11, plasma-session-x11)."
+                    error "xrdp needs it: without it every RDP login ends right after sign-in."
+                    return 1
+                fi
 
                 info "Configuring xrdp to launch KDE Plasma X11 session..."
                 run_as_root sed -i '/^test -x \/etc\/X11\/Xsession/d; /^exec \/bin\/sh \/etc\/X11\/Xsession/d' /etc/xrdp/startwm.sh
@@ -411,13 +442,7 @@ install_xrdp() {
             # is only a weak dep, so install it explicitly too.
             run_as_root "$PKG_MGR" install -y xrdp xorgxrdp xrdp-selinux
 
-            # Fedora KDE ships Wayland-only: /usr/share/xsessions is empty and
-            # startplasma-x11 is absent, so xrdp's Xsession chain finds nothing
-            # to exec and the session dies immediately after login.
-            if [[ ! -x /usr/bin/startplasma-x11 ]] && command -v plasmashell >/dev/null 2>&1; then
-                info "KDE detected without an X11 session — installing Plasma X11 packages..."
-                run_as_root "$PKG_MGR" install -y plasma-workspace-x11 kwin-x11
-            fi
+            _xrdp_ensure_kde_x11_session || return 1
 
             run_as_root firewall-cmd --add-port=3389/tcp --permanent 2>/dev/null || true
             run_as_root firewall-cmd --reload 2>/dev/null || true

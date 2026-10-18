@@ -2494,12 +2494,92 @@ test_xrdp_pam_add_needs_both_anchors() {
     rm -f "$_f"
 }
 
+# _xrdp_ensure_kde_x11_session: run_as_root and plasmashell are stubbed, and the
+# startplasma-x11 path points into a temp dir so no real package is touched.
+test_xrdp_kde_x11_skips_when_session_present() {
+    local _d _calls
+    _d=$(mktemp -d); _calls="$_d/calls"
+    touch "$_d/startplasma-x11"; chmod +x "$_d/startplasma-x11"
+    (
+        run_as_root() { echo "$*" >> "$_calls"; }
+        plasmashell() { :; }
+        _xrdp_ensure_kde_x11_session "$_d/startplasma-x11"
+    )
+    assert_true "_xrdp_ensure_kde_x11_session installs nothing when startplasma-x11 exists" \
+        test ! -e "$_calls"
+    rm -rf "$_d"
+}
+
+test_xrdp_kde_x11_skips_without_kde() {
+    local _d _calls
+    _d=$(mktemp -d); _calls="$_d/calls"
+    (
+        run_as_root() { echo "$*" >> "$_calls"; }
+        unset -f plasmashell
+        PATH=/nonexistent
+        _xrdp_ensure_kde_x11_session "$_d/startplasma-x11"
+    )
+    assert_true "_xrdp_ensure_kde_x11_session installs nothing when KDE is absent" \
+        test ! -e "$_calls"
+    rm -rf "$_d"
+}
+
+test_xrdp_kde_x11_installs_and_succeeds() {
+    local _d
+    _d=$(mktemp -d)
+    assert_true "_xrdp_ensure_kde_x11_session succeeds once the install provides startplasma-x11" \
+        bash -c '
+            source "$1"
+            info() { :; }; error() { :; }; PKG_MGR=dnf
+            _dir="$2"
+            run_as_root() { touch "$_dir/startplasma-x11"; chmod +x "$_dir/startplasma-x11"; }
+            plasmashell() { :; }
+            _xrdp_ensure_kde_x11_session "$2/startplasma-x11"
+        ' _ "${SCRIPT_DIR}/lib/installers/xrdp.sh" "$_d"
+    rm -rf "$_d"
+}
+
+test_xrdp_kde_x11_fails_when_install_fails() {
+    local _d
+    _d=$(mktemp -d)
+    assert_false "_xrdp_ensure_kde_x11_session fails when the package install fails" \
+        bash -c '
+            source "$1"
+            info() { :; }; error() { :; }; PKG_MGR=dnf
+            run_as_root() { return 1; }
+            plasmashell() { :; }
+            _xrdp_ensure_kde_x11_session "$2/startplasma-x11"
+        ' _ "${SCRIPT_DIR}/lib/installers/xrdp.sh" "$_d"
+    rm -rf "$_d"
+}
+
+# The case seen on a real Fedora 44 KDE system: dnf's transaction stopped
+# without installing anything, so the file is checked, not only the exit code.
+test_xrdp_kde_x11_fails_when_session_still_missing() {
+    local _d
+    _d=$(mktemp -d)
+    assert_false "_xrdp_ensure_kde_x11_session fails when startplasma-x11 is still missing after install" \
+        bash -c '
+            source "$1"
+            info() { :; }; error() { :; }; PKG_MGR=dnf
+            run_as_root() { return 0; }
+            plasmashell() { :; }
+            _xrdp_ensure_kde_x11_session "$2/startplasma-x11"
+        ' _ "${SCRIPT_DIR}/lib/installers/xrdp.sh" "$_d"
+    rm -rf "$_d"
+}
+
 test_xrdp_pam_add_converts_include_to_substack
 test_xrdp_pam_add_orders_auth_line_after_the_include
 test_xrdp_pam_fix_include_repairs_an_unreachable_module
 test_xrdp_pam_fix_include_is_a_no_op_when_already_correct
 test_xrdp_pam_fix_include_ignores_a_stack_without_kwallet
 test_xrdp_pam_add_needs_both_anchors
+test_xrdp_kde_x11_skips_when_session_present
+test_xrdp_kde_x11_skips_without_kde
+test_xrdp_kde_x11_installs_and_succeeds
+test_xrdp_kde_x11_fails_when_install_fails
+test_xrdp_kde_x11_fails_when_session_still_missing
 
 # ============================================================================
 # LocalSend Tests

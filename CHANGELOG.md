@@ -12,6 +12,15 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Enable RDP → xrdp** on KDE (Fedora, RHEL, Kubuntu 26.04+) now stops with an
+  error when the Plasma X11 session can't be installed, instead of starting
+  xrdp anyway and reporting success. Without that session every RDP login ended
+  right after sign-in. On Fedora the check also confirms `startplasma-x11` is
+  actually present afterwards, and the error suggests installing pending
+  updates first.
+
 ## [1.10.0] - 2026-10-17
 
 ### Added
