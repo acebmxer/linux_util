@@ -7,6 +7,22 @@ check_xrdp() {
         systemctl is-active --quiet xrdp 2>/dev/null
 }
 
+# True while anyone is connected over RDP. Every session runs its own
+# xrdp-chansrv (xrdp 0.9 and 0.10) and, from 0.10, its own xrdp-sesexec.
+_xrdp_sessions_open() {
+    grep -qxE 'xrdp-(sesexec|chansrv)' /proc/[0-9]*/comm 2>/dev/null
+}
+
+# Restarting xrdp ends every open RDP session, including the one this run may
+# be in. While anyone is connected, skip it and say how to do it later.
+_xrdp_restart() {
+    if _xrdp_sessions_open; then
+        warn "Skipped 'systemctl restart xrdp': RDP sessions are open and would be ended. Restart it later, after logging out: sudo systemctl restart xrdp"
+        return 0
+    fi
+    run_as_root systemctl restart xrdp
+}
+
 # Group whose members get the polkit exemption below. Debian keeps network
 # control in netdev; the rpm, Arch and SUSE families have no netdev group and
 # use wheel for the same purpose.
@@ -433,7 +449,7 @@ install_xrdp() {
             fi
 
             run_as_root systemctl enable xrdp
-            run_as_root systemctl restart xrdp
+            _xrdp_restart
             ;;
         fedora)
             # Unlike Debian, Fedora's xrdp package does not pull in xorgxrdp —
@@ -507,6 +523,13 @@ install_xrdp() {
 
 uninstall_xrdp() {
     info "Uninstalling xrdp..."
+    # Removing the package stops xrdp too (its removal scripts do), so skipping
+    # only our own stop would not keep anyone connected.
+    if _xrdp_sessions_open; then
+        error "RDP sessions are open. Uninstalling xrdp stops it, which ends them, including this one if you are connected over RDP."
+        error "Log out of every RDP session, then run this again from a local login or over SSH."
+        return 1
+    fi
     run_as_root systemctl stop xrdp 2>/dev/null || true
     run_as_root systemctl disable xrdp 2>/dev/null || true
 
@@ -555,7 +578,7 @@ update_xrdp() {
             run_as_root zypper update -y xrdp
             ;;
     esac
-    run_as_root systemctl restart xrdp
+    _xrdp_restart
 }
 
 get_version_xrdp() {

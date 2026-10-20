@@ -196,6 +196,16 @@ _init_deps_map
 # silently skipped by the apply_profile() helper functions at runtime.
 source "${SCRIPT_DIR}/lib/profiles.sh" || { echo "Error: Failed to source profiles.sh"; exit 1; }
 
+# A front end (Linux_Util Desktop) sets LINUX_UTIL_GUI=1 to be told when a
+# question is waiting -- see lib/front_end.sh. Skipped when read() is already a
+# function: that is the front end's own wrapper, and loading a second would
+# send every signal twice.
+if [[ "${LINUX_UTIL_GUI:-0}" == "1" ]] && ! declare -F read >/dev/null; then
+    LINUX_UTIL_FRONT_END_LIB="${SCRIPT_DIR}/lib/front_end.sh"
+    source "$LINUX_UTIL_FRONT_END_LIB" || { echo "Error: Failed to source front_end.sh"; exit 1; }
+    export -f read
+fi
+
 # Setup traps for cleanup and error handling
 trap cleanup_on_exit EXIT
 trap 'echo ""; echo "Interrupted."; exit 130' INT TERM
@@ -755,11 +765,15 @@ _cli_op() {
         _snap_msg="linux_util: Before ${_op}ing ${_util}"
     fi
     timeshift_prompt_create_snapshot "$_snap_msg"
-    if $_func; then
-        echo "${_op^}ed: ${_util}"; exit 0
-    else
-        echo "Failed: ${_util}"; exit 1
-    fi
+    # Exit codes: 0 done, 3 ran fine but had nothing to change (System Updates
+    # with no package changes, a repair with nothing to repair), 1 failed.
+    local _rc=0 _done
+    $_func || _rc=$?
+    case "$_rc" in
+        0) _done="${_op%e}"; echo "${_done^}ed: ${_util}"; exit 0 ;;
+        3) echo "No changes: ${_util}"; exit 3 ;;
+        *) echo "Failed: ${_util}"; exit 1 ;;
+    esac
 }
 
 # ============================================================================

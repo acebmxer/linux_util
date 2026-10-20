@@ -163,6 +163,10 @@ run `./linux_util.sh --list`.
 Utility names are matched case-insensitively and support partial matches.
 `--dry-run` can be combined with any action flag.
 
+`--install`, `--uninstall` and `--update` exit 0 on success, 1 on failure,
+and 3 (printing `No changes: <name>`) when the run went fine but had nothing
+to change, such as System Updates with no package updates.
+
 ```bash
 ./linux_util.sh --list
 ./linux_util.sh --check "Docker"

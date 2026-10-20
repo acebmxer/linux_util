@@ -12,7 +12,31 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- `LINUX_UTIL_GUI=1` makes linux_util tell a front end such as Linux_Util
+  Desktop when a question is waiting and what kind of answer it takes (a
+  line, a single key, or hidden input), with a private terminal code, including
+  for steps run through `sudo bash`. Terminal runs without it are unchanged.
+  See [docs/configuration.md](docs/configuration.md#front-ends).
+
+### Changed
+
+- `--install`, `--uninstall` and `--update` now exit 3 and print
+  `No changes: <name>` when the run had nothing to change (System Updates with
+  no package updates, a repair with nothing to repair), instead of
+  `Failed: <name>` and exit 1.
+
+- **Enable RDP → xrdp** no longer restarts xrdp on install or update while
+  anyone is connected over RDP, since a restart ends every open session,
+  including the one linux_util may be running in. It warns instead and says
+  how to restart later. Uninstalling stops with an error while sessions are
+  open, because removing the package stops xrdp anyway.
+
 ### Fixed
+
+- `--update <name>` printed `Updateed: <name>` on success; it now prints
+  `Updated: <name>`.
 
 - **Enable RDP → xrdp** on KDE (Fedora, RHEL, Kubuntu 26.04+) now stops with an
   error when the Plasma X11 session can't be installed, instead of starting

@@ -51,6 +51,18 @@ changes before committing, without a `git pull` overwriting them — set
 LINUX_UTIL_NO_SELF_UPDATE=1 ./linux_util.sh
 ```
 
+### Front ends
+
+A program that runs linux_util on a terminal of its own (such as Linux_Util
+Desktop) can set `LINUX_UTIL_GUI=1` to be told when a question is waiting.
+Just before an installer reads an answer from the terminal, linux_util writes
+`ESC ] 7701 ; wait ; <mode> ; <hidden> BEL` there, and `ESC ] 7701 ; done BEL`
+once it is answered. `<mode>` is `key` when a fixed number of keys is read
+without Enter, `line` otherwise; `<hidden>` is `1` when the answer is not
+echoed (a password), `0` otherwise. Steps run as `sudo bash <script>` send them
+too. Reads that are not from the terminal send nothing. Without
+`LINUX_UTIL_GUI=1` nothing is written.
+
 ## Logging
 
 Every run creates timestamped log files in `logs/`:
