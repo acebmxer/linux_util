@@ -14,6 +14,16 @@ when a release is cut.
 
 ### Added
 
+- **Xodus Nexus** (Gaming), an unofficial Xbox-inspired launcher built on
+  Xodus for playing Microsoft Store PC games you own or have through Game Pass.
+  Upstream publishes an x86_64 AppImage only, so every distro gets the same
+  per-user install in `~/.local/opt/xodus-nexus` (the paths upstream's own
+  installer uses), checked against the published SHA-512, with a menu entry,
+  the `xodus-nexus` command and the libraries it needs. Its in-app updater
+  keeps working, and System Updates refreshes it too. The backend, runtime and
+  sign-in are set up inside the app. Uninstalling leaves its settings and
+  installed games alone.
+
 - `LINUX_UTIL_GUI=1` makes linux_util tell a front end such as Linux_Util
   Desktop when a question is waiting and what kind of answer it takes (a
   line, a single key, or hidden input), with a private terminal code, including

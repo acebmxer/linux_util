@@ -4368,6 +4368,68 @@ test_nvidia_pair_version_strips_build_suffix
 
 # ----------------------------------------------------------------------------
 echo ""
+echo "=== Xodus Nexus ==="
+
+test_xodus_nexus_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "Xodus Nexus"[[:space:]]+install_xodus_nexus ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["Xodus Nexus"\]="Gaming"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Xodus Nexus"\]="Game Launchers"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["Xodus Nexus"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"Xodus Nexus=\$_XN_APPIMAGE"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"Xodus Nexus=_xn_latest_version"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_xodus_nexus()" "${SCRIPT_DIR}/lib/installers/xodus_nexus.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "Xodus Nexus is registered with category, subcategory, description, upstream-binary marks and all five functions"
+}
+
+# The repository mixes launcher, backend-* and runtime-* releases, and GitHub's
+# "latest" can be any of them, so the newest stable vX.Y.Z tag must be picked.
+test_xodus_nexus_latest_skips_backend_runtime_and_prerelease() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/xodus_nexus.sh"
+        printf '%s\n' '[' \
+            '{"tag_name": "runtime-11.0-20261020-g8411926d", "draft": false, "prerelease": false, "assets": [{"name": "a"}]},' \
+            '{"tag_name": "v0.4.0", "draft": false, "prerelease": true, "assets": []},' \
+            '{"tag_name": "v0.3.10", "draft": false, "prerelease": false, "assets": []},' \
+            '{"tag_name": "backend-v0.2.9", "draft": false, "prerelease": false, "assets": []},' \
+            '{"tag_name": "v0.3.9", "draft": false, "prerelease": false, "assets": []}' \
+            ']' | _xn_pick_latest
+    )
+    assert_eq "0.3.10" "$out" "Xodus Nexus latest version ignores backend/runtime tags and pre-releases, and sorts 0.3.10 above 0.3.9"
+}
+
+# The in-app updater replaces the AppImage, so the cached version must be
+# dropped as soon as the file changes.
+test_xodus_nexus_version_cache_follows_the_appimage() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/xodus_nexus.sh"
+        d=$(mktemp -d)
+        _XN_APPIMAGE="$d/Xodus-Nexus.AppImage"
+        _XN_VERSION_CACHE="$d/cache/xodus-nexus.version"
+        printf 'old' > "$_XN_APPIMAGE"; chmod +x "$_XN_APPIMAGE"
+        _xn_appimage_version() { echo "0.3.8"; }
+        a=$(get_version_xodus_nexus)
+        _xn_appimage_version() { echo "SHOULD-NOT-RUN"; }
+        b=$(get_version_xodus_nexus)
+        printf 'newer file' > "$_XN_APPIMAGE"; touch -d '+1 minute' "$_XN_APPIMAGE"
+        _xn_appimage_version() { echo "0.3.9"; }
+        c=$(get_version_xodus_nexus)
+        rm -rf "$d"
+        echo "$a $b $c"
+    )
+    assert_eq "0.3.8 0.3.8 0.3.9" "$out" "Xodus Nexus version is cached per AppImage file and re-read after the file changes"
+}
+
+test_xodus_nexus_registered
+test_xodus_nexus_latest_skips_backend_runtime_and_prerelease
+test_xodus_nexus_version_cache_follows_the_appimage
+
+# ----------------------------------------------------------------------------
+echo ""
 echo "=== ArtCraft / Craft apps ==="
 
 test_craft_apps_registered_in_artcraft_subcategory() {
