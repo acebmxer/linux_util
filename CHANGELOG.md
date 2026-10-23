@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-23
+
 ### Added
 
 - **Xodus Nexus** (Gaming), an unofficial Xbox-inspired launcher built on
