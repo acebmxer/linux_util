@@ -257,3 +257,50 @@ _parse_multi_selection() {
     # Deduplicate while preserving the user's input order
     printf '%s\n' "${indices[@]}" | awk '!seen[$0]++'
 }
+
+# Install FUSE 2, which the runtime of a type-2 AppImage needs to mount itself.
+# The package name differs by distro family. Shared by every installer that
+# puts an AppImage on the system (Joplin, Xodus Nexus); do not add a copy.
+ensure_appimage_fuse() {
+    case "$DISTRO_FAMILY" in
+        arch)
+            if ! pkg_check_installed fuse2; then
+                info "Installing fuse2 (required for AppImage support)..."
+                pkg_install fuse2
+            fi
+            ;;
+        debian)
+            # Ubuntu 22.04 uses libfuse2; Ubuntu 24.04+ renamed it libfuse2t64
+            local fuse2_pkg="libfuse2"
+            if [[ "$DISTRO_ID" == "ubuntu" ]] && [[ "${DISTRO_VERSION_ID%%.*}" -ge 24 ]]; then
+                fuse2_pkg="libfuse2t64"
+            fi
+            if ! pkg_check_installed "$fuse2_pkg"; then
+                info "Installing ${fuse2_pkg} (required for AppImage support)..."
+                pkg_install "$fuse2_pkg"
+            fi
+            ;;
+        fedora|rhel)
+            # `fuse` only ships the fusermount utilities and does NOT depend on
+            # `fuse-libs`, which provides libfuse.so.2 — the AppImage runtime
+            # needs both, so check and install each individually.
+            local fuse_pkg
+            for fuse_pkg in fuse fuse-libs; do
+                if ! pkg_check_installed "$fuse_pkg"; then
+                    info "Installing ${fuse_pkg} (required for AppImage support)..."
+                    pkg_install "$fuse_pkg"
+                fi
+            done
+            ;;
+        suse)
+            # Same split as Fedora: `fuse` has the utilities, `libfuse2` the library.
+            local fuse_pkg
+            for fuse_pkg in fuse libfuse2; do
+                if ! pkg_check_installed "$fuse_pkg"; then
+                    info "Installing ${fuse_pkg} (required for AppImage support)..."
+                    pkg_install "$fuse_pkg"
+                fi
+            done
+            ;;
+    esac
+}

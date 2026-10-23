@@ -12,6 +12,51 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-23
+
+### Added
+
+- **Xodus Nexus** (Gaming), an unofficial Xbox-inspired launcher built on
+  Xodus for playing Microsoft Store PC games you own or have through Game Pass.
+  Upstream publishes an x86_64 AppImage only, so every distro gets the same
+  per-user install in `~/.local/opt/xodus-nexus` (the paths upstream's own
+  installer uses), checked against the published SHA-512, with a menu entry,
+  the `xodus-nexus` command and the libraries it needs. Its in-app updater
+  keeps working, and System Updates refreshes it too. The backend, runtime and
+  sign-in are set up inside the app. Uninstalling leaves its settings and
+  installed games alone.
+
+- `LINUX_UTIL_GUI=1` makes linux_util tell a front end such as Linux_Util
+  Desktop when a question is waiting and what kind of answer it takes (a
+  line, a single key, or hidden input), with a private terminal code, including
+  for steps run through `sudo bash`. Terminal runs without it are unchanged.
+  See [docs/configuration.md](docs/configuration.md#front-ends).
+
+### Changed
+
+- `--install`, `--uninstall` and `--update` now exit 3 and print
+  `No changes: <name>` when the run had nothing to change (System Updates with
+  no package updates, a repair with nothing to repair), instead of
+  `Failed: <name>` and exit 1.
+
+- **Enable RDP → xrdp** no longer restarts xrdp on install or update while
+  anyone is connected over RDP, since a restart ends every open session,
+  including the one linux_util may be running in. It warns instead and says
+  how to restart later. Uninstalling stops with an error while sessions are
+  open, because removing the package stops xrdp anyway.
+
+### Fixed
+
+- `--update <name>` printed `Updateed: <name>` on success; it now prints
+  `Updated: <name>`.
+
+- **Enable RDP → xrdp** on KDE (Fedora, RHEL, Kubuntu 26.04+) now stops with an
+  error when the Plasma X11 session can't be installed, instead of starting
+  xrdp anyway and reporting success. Without that session every RDP login ended
+  right after sign-in. On Fedora the check also confirms `startplasma-x11` is
+  actually present afterwards, and the error suggests installing pending
+  updates first.
+
 ## [1.10.0] - 2026-10-17
 
 ### Added

@@ -127,6 +127,7 @@ WordCraft
 WPS Office
 XEN Guest Utilities
 Xfce Desktop
+Xodus Nexus
 Zsh + Oh My Zsh
 EOF
 }

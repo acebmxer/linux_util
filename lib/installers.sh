@@ -343,6 +343,7 @@ register_utility "Wine"               install_wine             check_wine       
 register_utility "WireGuard Client"    install_wireguard_client check_wireguard_client uninstall_wireguard_client update_wireguard_client    get_version_wireguard_client
 register_utility "WireGuard Server"    install_wireguard_server check_wireguard_server uninstall_wireguard_server update_wireguard_server    get_version_wireguard_server
 register_utility "WPS Office"          install_wps_office       check_wps_office       uninstall_wps_office       update_wps_office          get_version_wps_office
+register_utility "Xodus Nexus"         install_xodus_nexus      check_xodus_nexus      uninstall_xodus_nexus      update_xodus_nexus         get_version_xodus_nexus
 register_utility "Zen Browser"         install_zen_browser      check_zen_browser      uninstall_zen_browser      update_zen_browser         get_version_zen_browser
 register_utility "Zoom"                install_zoom             check_zoom             uninstall_zoom             update_zoom                get_version_zoom
 register_utility "Zotero"              install_zotero           check_zotero           uninstall_zotero           update_zotero              get_version_zotero
@@ -673,6 +674,7 @@ UTILITY_CATEGORY["Wine"]="Gaming"
 UTILITY_CATEGORY["WireGuard Client"]="Internet"
 UTILITY_CATEGORY["WireGuard Server"]="Internet"
 UTILITY_CATEGORY["WPS Office"]="Productivity"
+UTILITY_CATEGORY["Xodus Nexus"]="Gaming"
 UTILITY_CATEGORY["Zsh + Oh My Zsh"]="System Tools"
 UTILITY_CATEGORY["Pay Respects"]="System Tools"
 UTILITY_CATEGORY["Ansible"]="Development"
@@ -812,6 +814,7 @@ UTILITY_SUBCATEGORY["Steam App"]="Game Launchers"
 UTILITY_SUBCATEGORY["Lutris"]="Game Launchers"
 UTILITY_SUBCATEGORY["Heroic Games Launcher"]="Game Launchers"
 UTILITY_SUBCATEGORY["Bottles"]="Game Launchers"
+UTILITY_SUBCATEGORY["Xodus Nexus"]="Game Launchers"
 UTILITY_SUBCATEGORY["Boxflat"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["Feral Gamemode"]="Gaming Utilities"
 UTILITY_SUBCATEGORY["MangoHud"]="Gaming Utilities"
@@ -1020,6 +1023,7 @@ UTILITY_DESCRIPTION["MangoHud"]="Vulkan and OpenGL overlay for monitoring FPS, f
 UTILITY_DESCRIPTION["ProtonUp-Qt"]="Graphical tool for managing Proton-GE and Wine-GE compatibility layers for Steam and Lutris. Requires Flatpak — run 'Flatpak Setup' from the Package Managers category first on non-Arch systems."
 UTILITY_DESCRIPTION["Steam App"]="Valve's gaming platform for purchasing, downloading, and playing PC games on Linux."
 UTILITY_DESCRIPTION["Wine"]="Compatibility layer that enables Windows applications and games to run natively on Linux without a virtual machine."
+UTILITY_DESCRIPTION["Xodus Nexus"]="Unofficial Xbox-inspired launcher built on Xodus for playing Microsoft Store PC games you own or have through a subscription (Game Pass) on Linux. Installs upstream's x86_64 AppImage per user in ~/.local/opt/xodus-nexus after checking its published SHA-512, with a menu entry and the 'xodus-nexus' command. The Nexus backend, Nexus runtime and Microsoft sign-in are set up inside the app, in Settings. Needs a running keyring (KDE Wallet or GNOME Keyring). Uninstalling leaves its settings and installed games."
 
 # Internet
 UTILITY_DESCRIPTION["Bitwarden Extension"]="Deploys Bitwarden browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, LibreWolf, Thorium, Vivaldi). The extension is force-installed on next browser launch."
@@ -1238,7 +1242,8 @@ mark_upstream_binary \
     "SoundCraft=$HOME/Applications/soundcraft.AppImage" \
     "VectorCraft=$HOME/Applications/vectorcraft.AppImage" \
     "WordCraft=$HOME/Applications/wordcraft.AppImage" \
-    "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE"
+    "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE" \
+    "Xodus Nexus=$_XN_APPIMAGE"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1249,7 +1254,8 @@ mark_upstream_binary \
 mark_upstream_latest \
     "Visual Studio Code=_vscode_latest_version" \
     "Libation=_libation_latest_version" \
-    "Claude Desktop=_claude_desktop_latest_version"
+    "Claude Desktop=_claude_desktop_latest_version" \
+    "Xodus Nexus=_xn_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

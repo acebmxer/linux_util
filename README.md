@@ -10,7 +10,7 @@
 [![Unique cloners](https://img.shields.io/badge/unique%20cloners-141-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
-[![Tests](https://img.shields.io/badge/tests-399%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-428%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 [![Distros tested](https://img.shields.io/badge/distros%20tested-6-informational)](#supported-distributions)
 [![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
@@ -122,7 +122,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Backup** | Timeshift and Snapper (create/restore/delete), Déjà Dup, Kup, Vorta, Duplicati |
 | **Disk Utilities** | GParted, Ventoy, KDiskMark, and a Btrfs toolset (Assistant, btrfsmaintenance, btrbk, duperemove) |
 | **Development** | Docker, Podman, Distrobox, Toolbx, VS Code, VSCodium, Cursor, Claude Code, Claude Desktop, Node/NVM, Go, Rust, pyenv, Terraform, OpenTofu, Ansible, kubectl, k9s, DBeaver, Virt-Manager, Firecracker |
-| **Gaming** | Steam, Lutris, Heroic, Bottles, Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat |
+| **Gaming** | Steam, Lutris, Heroic, Bottles, Xodus Nexus, Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat |
 | **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, LibreWolf, Zen, Thorium, Tor), email clients, messaging, and VPNs (ProtonVPN, PIA, Tailscale, WireGuard) |
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
 | **Productivity** | ArtCraft Launcher and the Craft App Suite, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Obsidian, Joplin, Logseq, Bitwarden, Nextcloud, NVIDIA PAIR, WinApps |
@@ -162,6 +162,10 @@ run `./linux_util.sh --list`.
 
 Utility names are matched case-insensitively and support partial matches.
 `--dry-run` can be combined with any action flag.
+
+`--install`, `--uninstall` and `--update` exit 0 on success, 1 on failure,
+and 3 (printing `No changes: <name>`) when the run went fine but had nothing
+to change, such as System Updates with no package updates.
 
 ```bash
 ./linux_util.sh --list

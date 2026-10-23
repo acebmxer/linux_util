@@ -2494,12 +2494,170 @@ test_xrdp_pam_add_needs_both_anchors() {
     rm -f "$_f"
 }
 
+# _xrdp_ensure_kde_x11_session: run_as_root and plasmashell are stubbed, and the
+# startplasma-x11 path points into a temp dir so no real package is touched.
+test_xrdp_kde_x11_skips_when_session_present() {
+    local _d _calls
+    _d=$(mktemp -d); _calls="$_d/calls"
+    touch "$_d/startplasma-x11"; chmod +x "$_d/startplasma-x11"
+    (
+        run_as_root() { echo "$*" >> "$_calls"; }
+        plasmashell() { :; }
+        _xrdp_ensure_kde_x11_session "$_d/startplasma-x11"
+    )
+    assert_true "_xrdp_ensure_kde_x11_session installs nothing when startplasma-x11 exists" \
+        test ! -e "$_calls"
+    rm -rf "$_d"
+}
+
+test_xrdp_kde_x11_skips_without_kde() {
+    local _d _calls
+    _d=$(mktemp -d); _calls="$_d/calls"
+    (
+        run_as_root() { echo "$*" >> "$_calls"; }
+        unset -f plasmashell
+        PATH=/nonexistent
+        _xrdp_ensure_kde_x11_session "$_d/startplasma-x11"
+    )
+    assert_true "_xrdp_ensure_kde_x11_session installs nothing when KDE is absent" \
+        test ! -e "$_calls"
+    rm -rf "$_d"
+}
+
+test_xrdp_kde_x11_installs_and_succeeds() {
+    local _d
+    _d=$(mktemp -d)
+    assert_true "_xrdp_ensure_kde_x11_session succeeds once the install provides startplasma-x11" \
+        bash -c '
+            source "$1"
+            info() { :; }; error() { :; }; PKG_MGR=dnf
+            _dir="$2"
+            run_as_root() { touch "$_dir/startplasma-x11"; chmod +x "$_dir/startplasma-x11"; }
+            plasmashell() { :; }
+            _xrdp_ensure_kde_x11_session "$2/startplasma-x11"
+        ' _ "${SCRIPT_DIR}/lib/installers/xrdp.sh" "$_d"
+    rm -rf "$_d"
+}
+
+test_xrdp_kde_x11_fails_when_install_fails() {
+    local _d
+    _d=$(mktemp -d)
+    assert_false "_xrdp_ensure_kde_x11_session fails when the package install fails" \
+        bash -c '
+            source "$1"
+            info() { :; }; error() { :; }; PKG_MGR=dnf
+            run_as_root() { return 1; }
+            plasmashell() { :; }
+            _xrdp_ensure_kde_x11_session "$2/startplasma-x11"
+        ' _ "${SCRIPT_DIR}/lib/installers/xrdp.sh" "$_d"
+    rm -rf "$_d"
+}
+
+# The case seen on a real Fedora 44 KDE system: dnf's transaction stopped
+# without installing anything, so the file is checked, not only the exit code.
+test_xrdp_kde_x11_fails_when_session_still_missing() {
+    local _d
+    _d=$(mktemp -d)
+    assert_false "_xrdp_ensure_kde_x11_session fails when startplasma-x11 is still missing after install" \
+        bash -c '
+            source "$1"
+            info() { :; }; error() { :; }; PKG_MGR=dnf
+            run_as_root() { return 0; }
+            plasmashell() { :; }
+            _xrdp_ensure_kde_x11_session "$2/startplasma-x11"
+        ' _ "${SCRIPT_DIR}/lib/installers/xrdp.sh" "$_d"
+    rm -rf "$_d"
+}
+
+# A process named like a session's channel server makes the check true; it is
+# a copy of sleep, so the name in /proc/<pid>/comm is the only thing faked.
+test_xrdp_sessions_open_sees_a_session_process() {
+    local _d _pid
+    _d=$(mktemp -d)
+    cp "$(command -v sleep)" "$_d/xrdp-chansrv"
+    "$_d/xrdp-chansrv" 30 &
+    _pid=$!
+    sleep 0.2
+    assert_true "_xrdp_sessions_open is true while an xrdp-chansrv process runs" _xrdp_sessions_open
+    kill "$_pid" 2>/dev/null; wait "$_pid" 2>/dev/null
+    if grep -qxE 'xrdp-(sesexec|chansrv)' /proc/[0-9]*/comm 2>/dev/null; then
+        _skip "_xrdp_sessions_open is false with no session processes (real RDP sessions on this machine)"
+    else
+        assert_false "_xrdp_sessions_open is false with no session processes" _xrdp_sessions_open
+    fi
+    rm -rf "$_d"
+}
+
+test_xrdp_restart_skipped_while_sessions_open() {
+    local _out
+    _out=$(
+        source "${SCRIPT_DIR}/lib/installers/xrdp.sh"
+        _xrdp_sessions_open() { return 0; }
+        run_as_root() { echo "RAN: $*"; }
+        warn() { echo "WARN: $*"; }
+        _xrdp_restart; echo "rc=$?"
+    )
+    assert_eq $'WARN: Skipped \'systemctl restart xrdp\': RDP sessions are open and would be ended. Restart it later, after logging out: sudo systemctl restart xrdp\nrc=0' \
+        "$_out" "_xrdp_restart skips the restart and warns while RDP sessions are open"
+}
+
+test_xrdp_restart_runs_without_sessions() {
+    local _out
+    _out=$(
+        source "${SCRIPT_DIR}/lib/installers/xrdp.sh"
+        _xrdp_sessions_open() { return 1; }
+        run_as_root() { echo "RAN: $*"; }
+        warn() { echo "WARN: $*"; }
+        _xrdp_restart; echo "rc=$?"
+    )
+    assert_eq $'RAN: systemctl restart xrdp\nrc=0' "$_out" "_xrdp_restart restarts xrdp when nobody is connected"
+}
+
+test_xrdp_update_does_not_restart_under_a_session() {
+    local _out
+    _out=$(
+        source "${SCRIPT_DIR}/lib/installers/xrdp.sh"
+        DISTRO_FAMILY=fedora PKG_MGR=dnf
+        _xrdp_sessions_open() { return 0; }
+        run_as_root() { echo "RAN: $*"; }
+        info() { :; }; warn() { echo "WARN"; }
+        update_xrdp; echo "rc=$?"
+    )
+    assert_eq $'RAN: dnf upgrade -y xrdp\nWARN\nrc=0' "$_out" "update_xrdp upgrades but does not restart xrdp while RDP sessions are open"
+}
+
+# Removing the package stops xrdp from its own scripts, so uninstall refuses
+# rather than skipping only the stop.
+test_xrdp_uninstall_refuses_while_sessions_open() {
+    local _out
+    _out=$(
+        source "${SCRIPT_DIR}/lib/installers/xrdp.sh"
+        DISTRO_FAMILY=fedora PKG_MGR=dnf
+        _xrdp_sessions_open() { return 0; }
+        run_as_root() { echo "RAN: $*"; }
+        run_as_root_sh() { echo "RAN: $*"; }
+        info() { :; }; error() { echo "ERROR"; }
+        uninstall_xrdp; echo "rc=$?"
+    )
+    assert_eq $'ERROR\nERROR\nrc=1' "$_out" "uninstall_xrdp changes nothing and fails while RDP sessions are open"
+}
+
 test_xrdp_pam_add_converts_include_to_substack
 test_xrdp_pam_add_orders_auth_line_after_the_include
 test_xrdp_pam_fix_include_repairs_an_unreachable_module
 test_xrdp_pam_fix_include_is_a_no_op_when_already_correct
 test_xrdp_pam_fix_include_ignores_a_stack_without_kwallet
 test_xrdp_pam_add_needs_both_anchors
+test_xrdp_kde_x11_skips_when_session_present
+test_xrdp_kde_x11_skips_without_kde
+test_xrdp_kde_x11_installs_and_succeeds
+test_xrdp_kde_x11_fails_when_install_fails
+test_xrdp_kde_x11_fails_when_session_still_missing
+test_xrdp_sessions_open_sees_a_session_process
+test_xrdp_restart_skipped_while_sessions_open
+test_xrdp_restart_runs_without_sessions
+test_xrdp_update_does_not_restart_under_a_session
+test_xrdp_uninstall_refuses_while_sessions_open
 
 # ============================================================================
 # LocalSend Tests
@@ -4210,6 +4368,68 @@ test_nvidia_pair_version_strips_build_suffix
 
 # ----------------------------------------------------------------------------
 echo ""
+echo "=== Xodus Nexus ==="
+
+test_xodus_nexus_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "Xodus Nexus"[[:space:]]+install_xodus_nexus ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["Xodus Nexus"\]="Gaming"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Xodus Nexus"\]="Game Launchers"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["Xodus Nexus"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"Xodus Nexus=\$_XN_APPIMAGE"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"Xodus Nexus=_xn_latest_version"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_xodus_nexus()" "${SCRIPT_DIR}/lib/installers/xodus_nexus.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "Xodus Nexus is registered with category, subcategory, description, upstream-binary marks and all five functions"
+}
+
+# The repository mixes launcher, backend-* and runtime-* releases, and GitHub's
+# "latest" can be any of them, so the newest stable vX.Y.Z tag must be picked.
+test_xodus_nexus_latest_skips_backend_runtime_and_prerelease() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/xodus_nexus.sh"
+        printf '%s\n' '[' \
+            '{"tag_name": "runtime-11.0-20261020-g8411926d", "draft": false, "prerelease": false, "assets": [{"name": "a"}]},' \
+            '{"tag_name": "v0.4.0", "draft": false, "prerelease": true, "assets": []},' \
+            '{"tag_name": "v0.3.10", "draft": false, "prerelease": false, "assets": []},' \
+            '{"tag_name": "backend-v0.2.9", "draft": false, "prerelease": false, "assets": []},' \
+            '{"tag_name": "v0.3.9", "draft": false, "prerelease": false, "assets": []}' \
+            ']' | _xn_pick_latest
+    )
+    assert_eq "0.3.10" "$out" "Xodus Nexus latest version ignores backend/runtime tags and pre-releases, and sorts 0.3.10 above 0.3.9"
+}
+
+# The in-app updater replaces the AppImage, so the cached version must be
+# dropped as soon as the file changes.
+test_xodus_nexus_version_cache_follows_the_appimage() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/xodus_nexus.sh"
+        d=$(mktemp -d)
+        _XN_APPIMAGE="$d/Xodus-Nexus.AppImage"
+        _XN_VERSION_CACHE="$d/cache/xodus-nexus.version"
+        printf 'old' > "$_XN_APPIMAGE"; chmod +x "$_XN_APPIMAGE"
+        _xn_appimage_version() { echo "0.3.8"; }
+        a=$(get_version_xodus_nexus)
+        _xn_appimage_version() { echo "SHOULD-NOT-RUN"; }
+        b=$(get_version_xodus_nexus)
+        printf 'newer file' > "$_XN_APPIMAGE"; touch -d '+1 minute' "$_XN_APPIMAGE"
+        _xn_appimage_version() { echo "0.3.9"; }
+        c=$(get_version_xodus_nexus)
+        rm -rf "$d"
+        echo "$a $b $c"
+    )
+    assert_eq "0.3.8 0.3.8 0.3.9" "$out" "Xodus Nexus version is cached per AppImage file and re-read after the file changes"
+}
+
+test_xodus_nexus_registered
+test_xodus_nexus_latest_skips_backend_runtime_and_prerelease
+test_xodus_nexus_version_cache_follows_the_appimage
+
+# ----------------------------------------------------------------------------
+echo ""
 echo "=== ArtCraft / Craft apps ==="
 
 test_craft_apps_registered_in_artcraft_subcategory() {
@@ -4252,6 +4472,144 @@ test_craft_asset_url_picks_package_not_sidecar() {
 
 test_craft_apps_registered_in_artcraft_subcategory
 test_craft_asset_url_picks_package_not_sidecar
+
+# ============================================================================
+# CLI exit codes: "no changes" (3) kept apart from failure (1)
+# ============================================================================
+echo ""
+echo "=== CLI Exit Code Tests ==="
+
+# _cli_op is taken from linux_util.sh as written and run with its helpers
+# stubbed, so no package manager or snapshot code runs.
+_cli_op_run() {
+    local _out _rc
+    _out=$(
+        eval "$(sed -n '/^_cli_op() {/,/^}/p' "${SCRIPT_DIR}/linux_util.sh")"
+        utility_performs_full_upgrade() { return 1; }
+        pkg_refresh() { :; }
+        timeshift_prompt_create_snapshot() { :; }
+        DRY_RUN=false
+        _fake_util() { return "$1"; }
+        _cli_op "$2" "Demo Tool" "_fake_util $1"
+    )
+    _rc=$?
+    printf '%s|%s' "$_out" "$_rc"
+}
+
+test_cli_op_success() {
+    assert_eq "Installed: Demo Tool|0" "$(_cli_op_run 0 install)" "_cli_op exits 0 with 'Installed:' on success"
+    assert_eq "Uninstalled: Demo Tool|0" "$(_cli_op_run 0 uninstall)" "_cli_op prints 'Uninstalled:' after an uninstall"
+    assert_eq "Updated: Demo Tool|0" "$(_cli_op_run 0 update)" "_cli_op prints 'Updated:' (not 'Updateed:') after an update"
+}
+
+test_cli_op_no_changes() {
+    assert_eq "No changes: Demo Tool|3" "$(_cli_op_run 3 update)" "_cli_op exits 3 with 'No changes:' when the function returns 3"
+}
+
+test_cli_op_failure() {
+    assert_eq "Failed: Demo Tool|1" "$(_cli_op_run 1 install)" "_cli_op exits 1 with 'Failed:' on failure"
+    assert_eq "Failed: Demo Tool|1" "$(_cli_op_run 2 install)" "_cli_op exits 1 with 'Failed:' for any other non-zero code"
+}
+
+test_cli_op_success
+test_cli_op_no_changes
+test_cli_op_failure
+
+# ============================================================================
+# Front-end signals (lib/front_end.sh, loaded with LINUX_UTIL_GUI=1)
+# ============================================================================
+echo ""
+echo "=== Front-End Signal Tests ==="
+
+# Runs a bash snippet with lib/front_end.sh loaded on a real pseudo-terminal
+# (util-linux `script`), feeding it the given input. Prints what reached the
+# terminal with ESC shown as "<E>" and BEL as "<B>", so the signals are visible.
+# The input waits half a second so it arrives after the read has started, as
+# a typed answer does; sent earlier, the terminal would echo it before read -s
+# turns echo off.
+_fe_on_pty() {
+    local _input="$1" _snippet="$2" _out
+    _out=$({ sleep 0.5; printf '%s' "$_input"; } | timeout -k 2 10 script -qefc \
+        "bash -c 'source \"\$0\"; $_snippet' '${SCRIPT_DIR}/lib/front_end.sh'" /dev/null 2>/dev/null)
+    printf '%s' "$_out" | tr -d '\r' | sed -e $'s/\033/<E>/g' -e $'s/\007/<B>/g'
+}
+
+test_front_end_line_question() {
+    if ! command -v script &>/dev/null; then _skip "front_end read: line question (no util-linux script)"; return; fi
+    local _out
+    _out=$(_fe_on_pty $'hello\n' 'read -rp "Name? " a </dev/tty; echo "got=$a"')
+    assert_contains "$_out" '<E>\]7701;wait;line;0<B>Name\? ' "front_end read: a line question sends wait;line;0 before the prompt"
+    assert_contains "$_out" '<E>\]7701;done<B>got=hello' "front_end read: done is sent after the answer, which reaches the script unchanged"
+}
+
+test_front_end_single_key_question() {
+    if ! command -v script &>/dev/null; then _skip "front_end read: single key (no util-linux script)"; return; fi
+    local _out
+    _out=$(_fe_on_pty 'y' 'read -rn 1 a </dev/tty; echo "got=$a"')
+    assert_contains "$_out" '<E>\]7701;wait;key;0<B>' "front_end read: read -n 1 sends wait;key;0"
+    assert_contains "$_out" 'got=y' "front_end read: the single key reaches the script"
+}
+
+test_front_end_hidden_question() {
+    if ! command -v script &>/dev/null; then _skip "front_end read: hidden input (no util-linux script)"; return; fi
+    local _out
+    _out=$(_fe_on_pty $'s3cret\n' 'read -rsp "Password: " a </dev/tty; echo "len=${#a}"')
+    assert_contains "$_out" '<E>\]7701;wait;line;1<B>' "front_end read: read -s sends wait;line;1"
+    assert_contains "$_out" 'len=6' "front_end read: the hidden answer reaches the script"
+    if [[ "$_out" == *s3cret* ]]; then
+        _fail "front_end read: hidden input is not echoed"
+    else
+        _pass "front_end read: hidden input is not echoed"
+    fi
+}
+
+test_front_end_quiet_reads() {
+    if ! command -v script &>/dev/null; then _skip "front_end read: quiet reads (no util-linux script)"; return; fi
+    local _out
+    _out=$(_fe_on_pty '' 'read -rsn1 -t 0.05 a </dev/tty; echo x | { read b; echo "pipe=$b"; }')
+    assert_contains "$_out" 'pipe=x' "front_end read: piped read still works"
+    if [[ "$_out" == *7701* ]]; then
+        _fail "front_end read: short timed reads and piped reads send nothing (got: $_out)"
+    else
+        _pass "front_end read: short timed reads and piped reads send nothing"
+    fi
+}
+
+# sudo drops exported functions; `sudo bash <script>` must still have read().
+# The fake sudo clears the environment the way sudo's env_reset does.
+test_front_end_sudo_bash_keeps_read() {
+    local _d _out
+    _d=$(mktemp -d)
+    printf '#!/bin/bash\nwhile [[ "$1" == -* ]]; do shift; done\nexec env -i PATH="%s" "$@"\n' "$PATH" > "$_d/sudo"
+    chmod +x "$_d/sudo"
+    printf 'declare -F read >/dev/null && echo has-read || echo no-read\necho "args=$*"\n' > "$_d/child.sh"
+    _out=$(
+        PATH="$_d:$PATH"
+        LINUX_UTIL_FRONT_END_LIB="${SCRIPT_DIR}/lib/front_end.sh"
+        source "$LINUX_UTIL_FRONT_END_LIB"
+        export -f read
+        sudo bash "$_d/child.sh" one "two words"
+        sudo -E bash "$_d/child.sh"
+        sudo sh -c 'echo plain'
+    )
+    assert_eq $'has-read\nargs=one two words\nhas-read\nargs=\nplain' "$_out" \
+        "front_end sudo: 'sudo [-E] bash <script>' keeps read(); other sudo calls pass through"
+    rm -rf "$_d"
+}
+
+# Loaded only with LINUX_UTIL_GUI=1, and not over a front end's own read().
+test_front_end_gate_in_main_script() {
+    local _gate
+    _gate=$(grep -c 'LINUX_UTIL_GUI:-0}" == "1" ]] && ! declare -F read' "${SCRIPT_DIR}/linux_util.sh")
+    assert_eq "1" "$_gate" "linux_util.sh loads front_end.sh only with LINUX_UTIL_GUI=1 and no existing read()"
+}
+
+test_front_end_line_question
+test_front_end_single_key_question
+test_front_end_hidden_question
+test_front_end_quiet_reads
+test_front_end_sudo_bash_keeps_read
+test_front_end_gate_in_main_script
 
 echo ""
 echo "════════════════════════════════════════════════════════════════"
