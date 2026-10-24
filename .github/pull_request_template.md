@@ -16,6 +16,7 @@
 
 ## Checklist
 
+- [ ] This pull request targets the `dev` branch (not `main`)
 - [ ] `bash tests/test_linux_util.sh` passes with **0 failures**
 - [ ] ShellCheck reports no errors (`shellcheck -x linux_util.sh lib/**/*.sh lib/installers/*.sh`)
 - [ ] New/changed installer handles all four distro families (`debian`, `fedora|rhel`, `arch`, `suse`) or has a `*)` fallback with a helpful message

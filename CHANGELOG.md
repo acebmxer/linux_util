@@ -12,6 +12,16 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Changed
+
+- **Under WSL 2, every run that changed something now offers to restart
+  WSL at the end**, not only System Tasks, Docker and Drivers: apps
+  installed, updated or removed in the distro show correctly in the Windows
+  Start menu only after WSL restarts. The prompt reads "Restart WSL now so
+  the Windows Start menu shows the changes?"; after answering Y, press Enter
+  in the terminal window when it says the process exited, and WSL starts
+  again. Items that changed nothing still don't ask. No effect outside WSL.
+
 ## [1.11.0] - 2026-10-23
 
 ### Added
