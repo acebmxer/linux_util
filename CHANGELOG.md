@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-10-23
+
 ### Changed
 
 - **Under WSL 2, every run that changed something now offers to restart
