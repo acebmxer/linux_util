@@ -262,6 +262,29 @@ CACHED_PINNED_VERSION=""
 # PROCESS SELECTED UTILITIES & SYSTEM TASKS
 # ============================================================================
 
+# Whether an item that just succeeded should end the run with the reboot offer.
+# $1 = utility name, $2 = "true" for a System Task, $3 = its exit code
+# (3 = ran fine but changed nothing, which never asks for a reboot).
+_task_wants_reboot() {
+    local util="$1" is_system_task="$2" rc="$3"
+    [[ "$rc" -eq 3 ]] && return 1
+
+    # These tasks do not require a reboot after successful completion
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1 ["Configure Syncthing Folders"]=1 ["Parallel Downloads"]=1)
+
+    # Reboot required for system tasks (except no-reboot list), Docker, and Drivers
+    if [[ -z "${NO_REBOOT[$util]:-}" ]]; then
+        if [[ "$is_system_task" == "true" || "$util" == "Docker" || "${UTILITY_CATEGORY[$util]:-}" == "Drivers" ]]; then
+            return 0
+        fi
+    fi
+
+    # Under WSL 2, apps installed, updated or removed in the distro show up
+    # correctly in the Windows Start menu only after WSL restarts, so anything
+    # that changed something offers that restart.
+    _is_wsl2
+}
+
 process_selected() {
     local total=${#UTILITIES[@]}
     local system_tasks=${#SYSTEM_TASKS[@]}
@@ -279,9 +302,6 @@ process_selected() {
     # later run silently skips pkg_refresh entirely and resolves against
     # whatever package metadata was cached the first time, however stale.
     _PKG_REFRESHED=""
-
-    # These tasks do not require a reboot after successful completion
-    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1 ["Configure Syncthing Folders"]=1 ["Parallel Downloads"]=1)
 
     # Categorize utilities based on selection and installed state
     for ((i=0; i<total; i++)); do
@@ -490,12 +510,8 @@ process_selected() {
 
                 (( success_count += 1 ))
 
-                # Reboot required for system tasks (except no-reboot list), Docker, and Drivers
-                # Exit code 3 = success with no changes — skip reboot prompt
-                if [[ $_exit_code -ne 3 && -z "${NO_REBOOT[$util]:-}" ]]; then
-                    if [[ "$_is_system_task" == "true" || "$util" == "Docker" || "${UTILITY_CATEGORY[$util]:-}" == "Drivers" ]]; then
-                        needs_reboot=true
-                    fi
+                if _task_wants_reboot "$util" "$_is_system_task" "$_exit_code"; then
+                    needs_reboot=true
                 fi
 
                 # Do not switch shells during batch/profile runs; defer to end-of-run notice.
@@ -671,9 +687,16 @@ process_selected() {
         fi
     fi
 
-    # Offer reboot (System Tasks, Docker, Drivers, or an OS-flagged pending reboot)
+    # Offer reboot (System Tasks, Docker, Drivers, anything changed under WSL 2,
+    # or an OS-flagged pending reboot)
     if [[ "$needs_reboot" == "true" ]]; then
-        local _reboot_prompt="Reboot now? (y/N) "
+        local _reboot_prompt="Reboot now? (y/N) " _is_wsl=false
+        # Under WSL a reboot restarts the distro, not Windows. The terminal
+        # tab then stops and offers Enter to start it again.
+        if _is_wsl2; then
+            _is_wsl=true
+            _reboot_prompt="Restart WSL now so the Windows Start menu shows the changes? (y/N) "
+        fi
         while true; do
             read -n 1 -rp "$_reboot_prompt" REBOOT_CHOICE < /dev/tty
             echo
@@ -681,7 +704,11 @@ process_selected() {
             REBOOT_CHOICE=${REBOOT_CHOICE:-N}
             case "$REBOOT_CHOICE" in
                 y|Y)
-                    info "Rebooting…"
+                    if [[ "$_is_wsl" == "true" ]]; then
+                        info "Restarting WSL… When this window says the process exited, press Enter to start it again."
+                    else
+                        info "Rebooting…"
+                    fi
                     printf '\n\n'
                     exec 9>&-  # release lock fd before the system goes down
                     do_reboot
@@ -697,7 +724,11 @@ process_selected() {
             esac
             break
         done
-        info "Remember to reboot later if needed."
+        if [[ "$_is_wsl" == "true" ]]; then
+            info "Restart WSL later (run 'wsl --shutdown' in Windows PowerShell) to see the changes in the Start menu."
+        else
+            info "Remember to reboot later if needed."
+        fi
         while true; do
             read -n 1 -rp "Reload script (Y) or exit (N)? " _RELOAD_CHOICE < /dev/tty
             echo

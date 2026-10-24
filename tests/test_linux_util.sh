@@ -2317,6 +2317,61 @@ test_wsl_filter_is_noop_without_windows_mounts
 rm -rf "$_WSL_DIR"
 
 # ============================================================================
+# Test: WSL — every change offers the WSL restart
+# ============================================================================
+echo ""
+echo "=== WSL Restart Offer Tests ==="
+
+# The Windows Start menu shows apps added or removed in a WSL 2 distro only
+# after WSL restarts, so under WSL 2 any item that changed something sets the
+# end-of-run reboot offer, not just System Tasks, Docker and Drivers.
+_WSLR_DIR=$(mktemp -d /tmp/linux_util_test_wslr_XXXXXX)
+echo "Linux version 6.6.87.2-microsoft-standard-WSL2 (root@x) #1 SMP" > "$_WSLR_DIR/version_wsl2"
+echo "Linux version 4.4.0-19041-Microsoft (Microsoft@Microsoft.com) #1 SMP" > "$_WSLR_DIR/version_wsl1"
+echo "Linux version 6.17.1-300.fc43.x86_64 (mockbuild@x) #1 SMP" > "$_WSLR_DIR/version_plain"
+
+test_is_wsl2_reads_kernel_version() {
+    local _f
+    assert_true "_is_wsl2 detects a WSL 2 kernel" \
+        bash -c 'source "$1/lib/installers/_shared.sh"; _is_wsl2 "$2"' _ "$SCRIPT_DIR" "$_WSLR_DIR/version_wsl2"
+    for _f in version_wsl1 version_plain missing; do
+        assert_false "_is_wsl2 is false for ${_f}" \
+            bash -c 'source "$1/lib/installers/_shared.sh"; _is_wsl2 "$2"' _ "$SCRIPT_DIR" "$_WSLR_DIR/$_f"
+    done
+}
+
+# Ask _task_wants_reboot (taken from linux_util.sh as written) about one item.
+# $1 = 1 to run as WSL 2, $2 utility, $3 "true" for a System Task, $4 exit code.
+_wslr_probe() {
+    (
+        eval "$(sed -n '/^_task_wants_reboot() {/,/^}/p' "${SCRIPT_DIR}/linux_util.sh")"
+        declare -A UTILITY_CATEGORY=(["NVIDIA Drivers"]="Drivers" ["Remmina"]="Remote Access")
+        if [[ "$1" == 1 ]]; then _is_wsl2() { return 0; }; else _is_wsl2() { return 1; }; fi
+        _task_wants_reboot "$2" "$3" "$4" && echo yes || echo no
+    )
+}
+
+test_task_wants_reboot_outside_wsl_unchanged() {
+    assert_eq "yes" "$(_wslr_probe 0 "System Updates" true 0)" "a System Task offers a reboot"
+    assert_eq "yes" "$(_wslr_probe 0 Docker false 0)" "Docker offers a reboot"
+    assert_eq "yes" "$(_wslr_probe 0 "NVIDIA Drivers" false 0)" "a Drivers item offers a reboot"
+    assert_eq "no" "$(_wslr_probe 0 Remmina false 0)" "an app install offers no reboot outside WSL"
+    assert_eq "no" "$(_wslr_probe 0 "Create Snapshot" true 0)" "a no-reboot System Task offers no reboot outside WSL"
+    assert_eq "no" "$(_wslr_probe 0 "System Updates" true 3)" "exit 3 (nothing changed) offers no reboot"
+}
+
+test_task_wants_reboot_under_wsl2() {
+    assert_eq "yes" "$(_wslr_probe 1 Remmina false 0)" "an app install offers the WSL restart under WSL 2"
+    assert_eq "yes" "$(_wslr_probe 1 "Create Snapshot" true 0)" "a no-reboot System Task offers the WSL restart under WSL 2"
+    assert_eq "no" "$(_wslr_probe 1 Remmina false 3)" "exit 3 (nothing changed) offers no WSL restart"
+}
+
+test_is_wsl2_reads_kernel_version
+test_task_wants_reboot_outside_wsl_unchanged
+test_task_wants_reboot_under_wsl2
+rm -rf "$_WSLR_DIR"
+
+# ============================================================================
 # Test: Euro-Office source build (tag selection and artifact picking)
 # ============================================================================
 echo ""

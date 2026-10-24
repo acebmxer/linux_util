@@ -251,10 +251,12 @@ When adding a new utility, consider adding tests for at minimum:
 
 ## Submitting a pull request
 
-1. Fork the repository and create a branch from `main`.
+All work lands on the `dev` branch first. `main` only receives release pull requests from `dev`, which the maintainer opens, so please never target `main`.
+
+1. Fork the repository and create a branch from `dev`.
 2. Make your changes following the guidelines above.
 3. Ensure `bash tests/test_linux_util.sh` exits 0.
-4. Open a pull request using the PR template and fill in every section.
+4. Open a pull request against `dev` (choose `dev` as the base branch on GitHub), using the PR template and filling in every section. A pull request opened against `main` will be retargeted to `dev` before it is merged.
 5. Be responsive to review feedback — the maintainer aims to review PRs within a week.
 
 For larger changes (new feature, new profile, refactor) it is worth opening an issue first to discuss the approach before investing significant time in implementation.

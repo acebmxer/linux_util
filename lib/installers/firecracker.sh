@@ -64,7 +64,7 @@ _firecracker_kvm_hint() {
         # controlled from Windows by the [wsl2] nestedVirtualization key in
         # %UserProfile%\.wslconfig (Windows 11 only, on by default), not by
         # anything inside the distro.
-        if _firecracker_is_wsl2; then
+        if _is_wsl2; then
             warn "/dev/kvm is missing: this is WSL 2 without nested virtualization. It needs"
             warn "Windows 11. In %UserProfile%\\.wslconfig on Windows, under [wsl2], set"
             warn "nestedVirtualization=true (or remove a =false line), then run 'wsl --shutdown'"
@@ -91,12 +91,6 @@ _firecracker_kvm_hint() {
         warn "No read/write access to /dev/kvm. Add yourself to the kvm group:"
         warn "  sudo usermod -aG kvm \$USER   (then log out and back in)"
     fi
-}
-
-# WSL 2 kernels carry a "-microsoft-standard-WSL2" release suffix. /proc/version
-# is read rather than $WSL_DISTRO_NAME, which sudo strips from the environment.
-_firecracker_is_wsl2() {
-    grep -q 'WSL2' /proc/version 2>/dev/null
 }
 
 uninstall_firecracker() {

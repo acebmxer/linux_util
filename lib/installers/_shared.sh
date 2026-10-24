@@ -47,6 +47,13 @@ _repair_gate() {
     return 1
 }
 
+# WSL 2 kernels carry a "-microsoft-standard-WSL2" release suffix. /proc/version
+# is read rather than $WSL_DISTRO_NAME, which sudo strips from the environment.
+# Usage: _is_wsl2 [version_file]   (defaults to /proc/version)
+_is_wsl2() {
+    grep -q 'WSL2' "${1:-/proc/version}" 2>/dev/null
+}
+
 # True only when the system has actually flagged that a reboot is required.
 # Repair-style tasks (repo/package fixes) use this so the orchestrator's reboot
 # prompt is offered only when a real restart is pending — e.g. a kernel pulled in
