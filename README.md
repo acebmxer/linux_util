@@ -248,7 +248,8 @@ sessions — are covered in
 
 Project layout, how to add a new utility installer, code style, and the test
 suite are in [CONTRIBUTING.md](CONTRIBUTING.md). Pull requests go to the
-`dev` branch, not `main`.
+`dev` branch, not `main`. Everyone taking part follows the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ```bash
 bash tests/test_linux_util.sh
