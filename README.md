@@ -198,6 +198,10 @@ Tab-completion for bash and zsh ships in `completions/` — setup is in
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then
 by auto-detecting the available package manager.
 
+CI checks distro detection on every release of Debian, Ubuntu, Fedora and Rocky
+Linux that is still supported, plus Arch Linux and openSUSE Tumbleweed (see the
+`distro-smoke` job in [ci.yml](.github/workflows/ci.yml)).
+
 ---
 
 ## Automatic snapshots
