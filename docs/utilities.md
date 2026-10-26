@@ -265,7 +265,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **AnyDesk** | Remote desktop application *(Remote Access)* |
 | **Cockpit** | Web-based server management console at `https://<host>:9090`; enables `cockpit.socket` and opens the firewall port *(Remote Access)* |
 | **Devolutions RDM** | Remote Desktop Manager — Cloudsmith repo / AUR / flatpak / snap *(Remote Access)* |
-| **Enable RDP** | Enables Remote Desktop Protocol access via XRDP server; also installs a polkit rule so seatless RDP sessions can manage NetworkManager without a password prompt *(Remote Access)* |
+| **Enable RDP** | Enables Remote Desktop Protocol access with xrdp or krdp (KDE's own server; the only one that works on Plasma 6.8+, which removed the X11 session xrdp needs). Uninstall can switch to the other server instead. With xrdp it also installs a polkit rule so seatless RDP sessions can manage NetworkManager without a password prompt *(Remote Access)* |
 | **OpenSSH Server** | Secure Shell server for remote access *(Remote Access)* |
 | **tmux** | Terminal multiplexer; SSH sessions survive dropped connections *(Remote Access)* |
 | **tmux Resurrect** | Saves and restores tmux session layout across reboots *(Remote Access)* |

@@ -42,21 +42,58 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Every release still supported by its distro (https://endoflife.date),
+        # so keep this list current: add a release when it ships, drop it at
+        # end of life. Arch and Tumbleweed are rolling, so one image each.
         include:
+          - image: debian:13
+            name: Debian 13
+            family: debian
+            pkg_mgr: apt
           - image: debian:12
             name: Debian 12
+            family: debian
+            pkg_mgr: apt
+          - image: ubuntu:26.10
+            name: Ubuntu 26.10
+            family: debian
+            pkg_mgr: apt
+          - image: ubuntu:26.04
+            name: Ubuntu 26.04
             family: debian
             pkg_mgr: apt
           - image: ubuntu:24.04
             name: Ubuntu 24.04
             family: debian
             pkg_mgr: apt
-          - image: fedora:41
-            name: Fedora 41
+          - image: ubuntu:22.04
+            name: Ubuntu 22.04
+            family: debian
+            pkg_mgr: apt
+          - image: fedora:45
+            name: Fedora 45
             family: fedora
+            pkg_mgr: dnf
+          - image: fedora:44
+            name: Fedora 44
+            family: fedora
+            pkg_mgr: dnf
+          - image: fedora:43
+            name: Fedora 43
+            family: fedora
+            pkg_mgr: dnf
+          # Rocky 10 is published only under rockylinux/rockylinux, not the
+          # Docker Official Images name used for Rocky 8 and 9.
+          - image: rockylinux/rockylinux:10
+            name: Rocky Linux 10
+            family: rhel
             pkg_mgr: dnf
           - image: rockylinux:9
             name: Rocky Linux 9
+            family: rhel
+            pkg_mgr: dnf
+          - image: rockylinux:8
+            name: Rocky Linux 8
             family: rhel
             pkg_mgr: dnf
           - image: archlinux:base

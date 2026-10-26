@@ -32,7 +32,7 @@ assignees: ''
 
 | Field | Value |
 |-------|-------|
-| Distro & version | <!-- e.g. Ubuntu 24.04, Arch 2026-03, Fedora 41 --> |
+| Distro & version | <!-- e.g. Ubuntu 26.04, Arch 2026-10, Fedora 45 --> |
 | linux_util version | <!-- output of `./linux_util.sh --version` --> |
 | Shell | <!-- e.g. bash 5.2, zsh 5.9 --> |
 | Utility affected | <!-- e.g. Docker, Brave Browser, or "TUI menu" --> |
