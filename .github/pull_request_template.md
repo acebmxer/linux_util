@@ -30,7 +30,7 @@
 ## Testing done
 
 <!-- Describe how you tested the change. -->
-<!-- e.g. "Tested install/uninstall on Ubuntu 24.04 and Arch 2026-03" -->
+<!-- e.g. "Tested install/uninstall on Ubuntu 26.04 and Arch 2026-10" -->
 <!-- For CI-only changes or docs, note that the test suite was sufficient. -->
 
 ## Related issues
