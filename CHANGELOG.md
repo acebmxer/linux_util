@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.11.2] - 2026-10-25
+
 ### Changed
 
 - README: a note near the top now points desktop users to
