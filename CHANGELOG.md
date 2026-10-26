@@ -14,6 +14,10 @@ when a release is cut.
 
 ### Changed
 
+- README: a note near the top now points desktop users to
+  [Linux_Util Desktop](https://github.com/acebmxer/linux_util_desktop), the app
+  that runs linux_util in a window.
+
 - **Enable RDP** on KDE Plasma 6.8 and newer now recommends krdp and says why
   xrdp can't start KDE there. Its menu and the krdp install also say that krdp
   does not resize to the client window yet (KDE bug 519498), and that the way

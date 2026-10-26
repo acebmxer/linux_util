@@ -19,6 +19,12 @@ tasks and utilities across all major Linux distributions. Over 100 utilities
 organized by category, automatic pre-operation snapshots, and full CLI automation
 for unattended use.
 
+> **Prefer a desktop app?** [Linux_Util Desktop](https://github.com/acebmxer/linux_util_desktop)
+> runs linux_util in a window: pick utilities from a list, click install,
+> uninstall or update, and watch the output, without opening a terminal. Get
+> the AppImage, `.deb` or `.rpm` from its
+> [latest release](https://github.com/acebmxer/linux_util_desktop/releases/latest).
+
 ```bash
 git clone https://github.com/acebmxer/linux_util.git
 cd linux_util
