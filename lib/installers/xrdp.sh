@@ -422,8 +422,58 @@ _xrdp_ensure_kde_x11_session() {
     return 1
 }
 
+# --- KDE Plasma 6.8+: no X11 session at all ---
+#
+# Plasma 6.8 is Wayland-only. On Fedora the 6.8 plasma-workspace and kwin
+# packages Obsolete plasma-workspace-x11 and kwin-x11 (< 6.7.90) and no 6.8
+# build of either exists, so `dnf install plasma-workspace-x11 kwin-x11` says
+# "Nothing to do" and startplasma-x11 never appears. xrdp needs that X11
+# session to show a KDE desktop, so on these systems it cannot work at all.
+
+# Print the installed Plasma version (e.g. 6.8.1), or nothing. Fedora, Debian
+# and Arch call the package plasma-workspace; openSUSE calls it
+# plasma6-workspace. A Debian epoch ("4:") and revision are stripped.
+_plasma_version() {
+    local pkg v=""
+    for pkg in plasma-workspace plasma6-workspace; do
+        v=$(rpm -q --qf '%{VERSION}' "$pkg" 2>/dev/null) || v=""
+        # dpkg still knows removed-but-not-purged packages, so check the status.
+        if [[ -z "$v" ]]; then
+            v=$(dpkg-query -W -f='${Status}|${Version}' "$pkg" 2>/dev/null) || v=""
+            if [[ "$v" == "install ok installed|"* ]]; then v="${v#*|}"; else v=""; fi
+        fi
+        [[ -z "$v" ]] && v=$(pacman -Q "$pkg" 2>/dev/null | awk '{print $2}') || true
+        v=$(printf '%s' "${v#*:}" | grep -oE '^[0-9]+(\.[0-9]+)+' | head -1)
+        if [[ -n "$v" ]]; then
+            echo "$v"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# True on KDE Plasma 6.8 or newer with no X11 session installed, i.e. where
+# xrdp cannot start a KDE desktop. 6.7.90 is the 6.8 beta, the version the
+# Obsoletes above cut off at. Where startplasma-x11 still exists (a distro
+# that kept the X11 session) xrdp keeps working, so that is not refused.
+# $1 = path to startplasma-x11 (overridable for tests).
+_xrdp_kde_without_x11() {
+    local startplasma="${1:-/usr/bin/startplasma-x11}" ver
+    [[ -x "$startplasma" ]] && return 1
+    command -v plasmashell >/dev/null 2>&1 || return 1
+    ver=$(_plasma_version) || return 1
+    [[ "$(printf '%s\n' 6.7.90 "$ver" | sort -V | head -1)" == "6.7.90" ]]
+}
+
 install_xrdp() {
     info "Installing xrdp..."
+
+    if _xrdp_kde_without_x11; then
+        error "KDE Plasma $(_plasma_version) has no X11 session: Plasma 6.8 removed it, and xrdp needs one to start a KDE desktop."
+        error "xrdp cannot work on this system. Use krdp instead: run Enable RDP again and choose krdp."
+        return 1
+    fi
+
     ensure_tools
 
     case "$DISTRO_FAMILY" in

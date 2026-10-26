@@ -2697,6 +2697,224 @@ test_xrdp_uninstall_refuses_while_sessions_open() {
     assert_eq $'ERROR\nERROR\nrc=1' "$_out" "uninstall_xrdp changes nothing and fails while RDP sessions are open"
 }
 
+# --- KDE Plasma 6.8+ (no X11 session) and Enable RDP's xrdp/krdp switch ---
+
+# _plasma_version reads the package manager; each stub answers like the real
+# tool does for an installed or a missing package.
+test_plasma_version_reads_each_package_manager() {
+    local _out
+    _out=$(
+        rpm() { [[ "$4" == "plasma-workspace" ]] && { echo "6.8.1"; return 0; }; echo "package $4 is not installed"; return 1; }
+        dpkg-query() { return 1; }; pacman() { return 1; }
+        _plasma_version
+    )
+    assert_eq "6.8.1" "$_out" "_plasma_version reads rpm's plasma-workspace version"
+
+    _out=$(
+        rpm() { echo "package $4 is not installed"; return 1; }
+        dpkg-query() { [[ "$3" == "plasma-workspace" ]] && { echo "install ok installed|4:6.8.1-0ubuntu1"; return 0; }; return 1; }
+        pacman() { return 1; }
+        _plasma_version
+    )
+    assert_eq "6.8.1" "$_out" "_plasma_version strips a Debian epoch and revision"
+
+    _out=$(
+        rpm() { return 1; }; pacman() { return 1; }
+        dpkg-query() { echo "deinstall ok config-files|4:6.8.1-0ubuntu1"; return 0; }
+        _plasma_version; echo "rc=$?"
+    )
+    assert_eq "rc=1" "$_out" "_plasma_version ignores a removed Debian package that left its config"
+
+    _out=$(
+        rpm() { [[ "$4" == "plasma6-workspace" ]] && { echo "6.8.0"; return 0; }; return 1; }
+        dpkg-query() { return 1; }; pacman() { return 1; }
+        _plasma_version
+    )
+    assert_eq "6.8.0" "$_out" "_plasma_version reads openSUSE's plasma6-workspace"
+
+    _out=$(
+        rpm() { return 1; }; dpkg-query() { return 1; }
+        pacman() { [[ "$2" == "plasma-workspace" ]] && { echo "plasma-workspace 6.8.1-1"; return 0; }; return 1; }
+        _plasma_version
+    )
+    assert_eq "6.8.1" "$_out" "_plasma_version reads pacman's plasma-workspace version"
+}
+
+# $1 = Plasma version to report, $2 = "kde" when plasmashell exists,
+# $3 = "x11" when startplasma-x11 exists. Prints yes/no.
+_xrdp_test_kde_without_x11() {
+    local _d
+    _d=$(mktemp -d)
+    [[ "$3" == "x11" ]] && { touch "$_d/startplasma-x11"; chmod +x "$_d/startplasma-x11"; }
+    (
+        eval "_plasma_version() { echo '$1'; }"
+        if [[ "$2" == "kde" ]]; then plasmashell() { :; }; else unset -f plasmashell; PATH=/nonexistent; fi
+        if _xrdp_kde_without_x11 "$_d/startplasma-x11"; then echo yes; else echo no; fi
+    )
+    rm -rf "$_d"
+}
+
+test_xrdp_kde_without_x11() {
+    assert_eq "yes" "$(_xrdp_test_kde_without_x11 6.8.1 kde none)" "_xrdp_kde_without_x11: Plasma 6.8.1 with no X11 session"
+    assert_eq "yes" "$(_xrdp_test_kde_without_x11 6.7.90 kde none)" "_xrdp_kde_without_x11: the 6.8 beta (6.7.90) counts as 6.8"
+    assert_eq "no" "$(_xrdp_test_kde_without_x11 6.7.5 kde none)" "_xrdp_kde_without_x11: Plasma 6.7.5 can still install the X11 session"
+    assert_eq "no" "$(_xrdp_test_kde_without_x11 6.8.1 kde x11)" "_xrdp_kde_without_x11: a 6.8 system that still has startplasma-x11"
+    assert_eq "no" "$(_xrdp_test_kde_without_x11 6.8.1 nokde none)" "_xrdp_kde_without_x11: not a KDE desktop"
+}
+
+# The refusal comes first, so nothing is installed or started.
+test_xrdp_install_refuses_on_plasma_68() {
+    local _out
+    _out=$(
+        DISTRO_FAMILY=fedora PKG_MGR=dnf
+        _xrdp_kde_without_x11() { return 0; }
+        _plasma_version() { echo "6.8.1"; }
+        ensure_tools() { echo "RAN: ensure_tools"; }
+        run_as_root() { echo "RAN: $*"; }
+        info() { :; }; error() { echo "ERROR: $*"; }
+        install_xrdp; echo "rc=$?"
+    )
+    assert_false "install_xrdp installs nothing on Plasma 6.8" grep -q "^RAN:" <<<"$_out"
+    assert_true "install_xrdp fails on Plasma 6.8" grep -qx "rc=1" <<<"$_out"
+    assert_true "install_xrdp says Plasma 6.8 removed the X11 session" \
+        grep -q "ERROR: KDE Plasma 6.8.1 has no X11 session: Plasma 6.8 removed it" <<<"$_out"
+    assert_true "install_xrdp points to krdp on Plasma 6.8" \
+        grep -q "ERROR: xrdp cannot work on this system. Use krdp instead" <<<"$_out"
+}
+
+# Runs install_enable_rdp on a pseudo-terminal and answers q. $1 = "68" to
+# stand in for Plasma 6.8 without X11.
+_enable_rdp_test_menu() {
+    local _plasma68="$1"
+    { sleep 0.5; printf 'q\n'; } | timeout -k 2 10 script -qefc \
+        "bash -c 'source \"\$0\"; source \"\$1\"; BOLD=; CYAN=; RESET=
+            if [[ \"\$2\" == 68 ]]; then _xrdp_kde_without_x11() { return 0; }; else _xrdp_kde_without_x11() { return 1; }; fi
+            install_enable_rdp; echo \"rc=\$?\"' \
+            '${SCRIPT_DIR}/lib/installers/xrdp.sh' '${SCRIPT_DIR}/lib/installers/enable_rdp.sh' '${_plasma68}'" \
+        /dev/null 2>/dev/null | tr -d '\r'
+}
+
+test_enable_rdp_menu_recommends_krdp_on_plasma_68() {
+    if ! command -v script &>/dev/null; then _skip "Enable RDP menu on Plasma 6.8 (no util-linux script)"; return; fi
+    local _out
+    _out=$(_enable_rdp_test_menu 68)
+    assert_true "Enable RDP menu recommends krdp on Plasma 6.8" \
+        grep -q "2) krdp  — KDE-native, Wayland-based (recommended on Plasma 6.8+)" <<<"$_out"
+    assert_true "Enable RDP menu says xrdp cannot start KDE on Plasma 6.8" \
+        grep -q "1) xrdp  — cannot start KDE here: Plasma 6.8 removed the X11 session it needs" <<<"$_out"
+    assert_true "Enable RDP menu gives the fixed-resolution workaround on Plasma 6.8" \
+        grep -q "Remmina: Resolution > Custom" <<<"$_out"
+    assert_false "Enable RDP menu no longer calls krdp not recommended on Plasma 6.8" \
+        grep -q "not recommended" <<<"$_out"
+    assert_true "Enable RDP menu: q cancels" grep -qx "rc=2" <<<"$_out"
+}
+
+test_enable_rdp_menu_unchanged_elsewhere() {
+    if ! command -v script &>/dev/null; then _skip "Enable RDP menu off Plasma 6.8 (no util-linux script)"; return; fi
+    local _out
+    _out=$(_enable_rdp_test_menu other)
+    assert_true "Enable RDP menu still recommends xrdp off Plasma 6.8" \
+        grep -q "1) xrdp  — traditional, X11-based, works on most distros (currently recommended)" <<<"$_out"
+}
+
+# $1 = servers installed ("xrdp", "krdp", "both", "none"), $2 = "kde" or not,
+# $3 = "68" for Plasma 6.8 without X11. Prints the switch target or nothing.
+_enable_rdp_test_target() {
+    (
+        source "${SCRIPT_DIR}/lib/installers/enable_rdp.sh"
+        case "$1" in
+            xrdp) check_xrdp() { return 0; }; check_krdp() { return 1; } ;;
+            krdp) check_xrdp() { return 1; }; check_krdp() { return 0; } ;;
+            both) check_xrdp() { return 0; }; check_krdp() { return 0; } ;;
+            *)    check_xrdp() { return 1; }; check_krdp() { return 1; } ;;
+        esac
+        if [[ "$2" == "kde" ]]; then plasmashell() { :; }; else unset -f plasmashell; PATH=/nonexistent; fi
+        if [[ "$3" == "68" ]]; then _xrdp_kde_without_x11() { return 0; }; else _xrdp_kde_without_x11() { return 1; }; fi
+        _enable_rdp_switch_target
+    )
+}
+
+test_enable_rdp_switch_target() {
+    assert_eq "krdp" "$(_enable_rdp_test_target xrdp kde 68)" "Uninstall offers krdp in place of xrdp on Plasma 6.8"
+    assert_eq "krdp" "$(_enable_rdp_test_target xrdp kde other)" "Uninstall offers krdp in place of xrdp on older Plasma"
+    assert_eq "" "$(_enable_rdp_test_target xrdp nokde other)" "Uninstall offers no krdp switch off KDE"
+    assert_eq "xrdp" "$(_enable_rdp_test_target krdp kde other)" "Uninstall offers xrdp in place of krdp where X11 still exists"
+    assert_eq "" "$(_enable_rdp_test_target krdp kde 68)" "Uninstall offers no xrdp switch on Plasma 6.8"
+    assert_eq "" "$(_enable_rdp_test_target both kde other)" "Uninstall offers no switch with both servers installed"
+}
+
+# Runs uninstall_enable_rdp with xrdp installed on KDE and every package step
+# stubbed to log what it would do. $1 = answer to type ("" = no terminal),
+# $2 = "krdp-fails" to make the krdp install fail.
+_enable_rdp_test_uninstall() {
+    local _answer="$1" _mode="${2:-}" _driver
+    _driver=$(mktemp)
+    cat > "$_driver" <<DRIVER_EOF
+source '${SCRIPT_DIR}/lib/installers/xrdp.sh'
+source '${SCRIPT_DIR}/lib/installers/enable_rdp.sh'
+BOLD=; CYAN=; RESET=; CFG_AUTO_CONFIRM=false
+_krdp=false
+check_xrdp() { return 0; }
+check_krdp() { [[ "\$_krdp" == true ]]; }
+plasmashell() { :; }
+_xrdp_kde_without_x11() { return 0; }
+_xrdp_sessions_open() { return 1; }
+install_krdp() { echo "STEP: install_krdp"; [[ '${_mode}' == krdp-fails ]] || _krdp=true; }
+uninstall_xrdp() { echo "STEP: uninstall_xrdp"; }
+uninstall_krdp() { echo "STEP: uninstall_krdp"; }
+info() { echo "INFO: \$*"; }; error() { echo "ERROR: \$*"; }
+rc=0; uninstall_enable_rdp || rc=\$?; echo "rc=\$rc"
+DRIVER_EOF
+    if [[ -z "$_answer" ]]; then
+        setsid bash "$_driver" < /dev/null 2>/dev/null
+    else
+        { sleep 0.5; printf '%s\n' "$_answer"; } | timeout -k 2 10 script -qefc "bash '$_driver'" /dev/null 2>/dev/null | tr -d '\r'
+    fi
+    rm -f "$_driver"
+}
+
+test_enable_rdp_uninstall_switches_to_krdp() {
+    if ! command -v script &>/dev/null; then _skip "Enable RDP switch to krdp (no util-linux script)"; return; fi
+    local _out _steps
+    _out=$(_enable_rdp_test_uninstall 2)
+    assert_true "Uninstall offers the switch to krdp" \
+        grep -q "2) Switch to krdp — installs krdp, then removes xrdp" <<<"$_out"
+    assert_true "Uninstall recommends the switch on Plasma 6.8" \
+        grep -q "Switching to krdp is recommended" <<<"$_out"
+    _steps=$(grep "^STEP:" <<<"$_out" | tr '\n' ' ')
+    assert_eq "STEP: install_krdp STEP: uninstall_xrdp " "$_steps" "Switch to krdp installs krdp first, then removes xrdp"
+    assert_true "Switch to krdp succeeds" grep -qx "rc=0" <<<"$_out"
+    assert_true "Switch to krdp says what happened" grep -q "INFO: Switched from xrdp to krdp" <<<"$_out"
+}
+
+test_enable_rdp_uninstall_switch_keeps_xrdp_when_krdp_fails() {
+    if ! command -v script &>/dev/null; then _skip "Enable RDP failed switch (no util-linux script)"; return; fi
+    local _out
+    _out=$(_enable_rdp_test_uninstall 2 krdp-fails)
+    assert_false "A failed krdp install leaves xrdp installed" grep -q "STEP: uninstall_xrdp" <<<"$_out"
+    assert_true "A failed krdp install fails the switch" grep -qx "rc=1" <<<"$_out"
+}
+
+test_enable_rdp_uninstall_remove_and_cancel() {
+    if ! command -v script &>/dev/null; then _skip "Enable RDP remove/cancel (no util-linux script)"; return; fi
+    local _out _steps
+    _out=$(_enable_rdp_test_uninstall 1)
+    _steps=$(grep "^STEP:" <<<"$_out" | tr '\n' ' ')
+    assert_eq "STEP: uninstall_xrdp " "$_steps" "Uninstall choice 1 only removes xrdp"
+    _out=$(_enable_rdp_test_uninstall q)
+    assert_false "Uninstall choice q changes nothing" grep -q "^STEP:" <<<"$_out"
+    assert_true "Uninstall choice q reports cancelled" grep -qx "rc=2" <<<"$_out"
+}
+
+# Unattended runs (no terminal) keep the old behaviour: remove, never switch.
+test_enable_rdp_uninstall_without_terminal_removes() {
+    local _out _steps
+    _out=$(_enable_rdp_test_uninstall "")
+    _steps=$(grep "^STEP:" <<<"$_out" | tr '\n' ' ')
+    assert_eq "STEP: uninstall_xrdp " "$_steps" "Uninstall with no terminal removes xrdp without asking"
+    assert_true "Uninstall with no terminal succeeds" grep -qx "rc=0" <<<"$_out"
+}
+
 test_xrdp_pam_add_converts_include_to_substack
 test_xrdp_pam_add_orders_auth_line_after_the_include
 test_xrdp_pam_fix_include_repairs_an_unreachable_module
@@ -2713,6 +2931,16 @@ test_xrdp_restart_skipped_while_sessions_open
 test_xrdp_restart_runs_without_sessions
 test_xrdp_update_does_not_restart_under_a_session
 test_xrdp_uninstall_refuses_while_sessions_open
+test_plasma_version_reads_each_package_manager
+test_xrdp_kde_without_x11
+test_xrdp_install_refuses_on_plasma_68
+test_enable_rdp_menu_recommends_krdp_on_plasma_68
+test_enable_rdp_menu_unchanged_elsewhere
+test_enable_rdp_switch_target
+test_enable_rdp_uninstall_switches_to_krdp
+test_enable_rdp_uninstall_switch_keeps_xrdp_when_krdp_fails
+test_enable_rdp_uninstall_remove_and_cancel
+test_enable_rdp_uninstall_without_terminal_removes
 
 # ============================================================================
 # LocalSend Tests

@@ -12,6 +12,30 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Changed
+
+- **Enable RDP** on KDE Plasma 6.8 and newer now recommends krdp and says why
+  xrdp can't start KDE there. Its menu and the krdp install also say that krdp
+  does not resize to the client window yet (KDE bug 519498), and that the way
+  round it is a fixed resolution set in the RDP client (in Remmina:
+  Resolution > Custom) with dynamic resolution left off. Other desktops and
+  older Plasma still get xrdp as the recommended choice.
+
+- **Enable RDP**'s Uninstall now asks whether to remove the RDP server or
+  switch to the other one, so moving from xrdp to krdp (or back) no longer
+  needs a full uninstall first. Switching to krdp installs it before removing
+  xrdp, so a failed install leaves xrdp as it was. The switch to xrdp is not
+  offered on Plasma 6.8+. With no terminal to ask on, or with `auto_confirm`
+  set, Uninstall removes the server as before.
+
+### Fixed
+
+- **Enable RDP → xrdp** on KDE Plasma 6.8 and newer now stops before
+  installing anything, with an error saying Plasma 6.8 removed the X11 session
+  xrdp needs and to use krdp instead. Before, it failed with "Could not install
+  the KDE Plasma X11 session" and advice to install updates and retry, which
+  could never work.
+
 ## [1.11.1] - 2026-10-23
 
 ### Changed
