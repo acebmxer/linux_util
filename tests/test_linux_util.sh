@@ -4713,6 +4713,49 @@ test_xodus_nexus_version_cache_follows_the_appimage
 
 # ----------------------------------------------------------------------------
 echo ""
+echo "=== Hermes Agent ==="
+
+test_hermes_agent_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "Hermes Agent"[[:space:]]+install_hermes_agent ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["Hermes Agent"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Hermes Agent"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["Hermes Agent"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"Hermes Agent=\$HOME/.hermes/hermes-agent"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_hermes_agent()" "${SCRIPT_DIR}/lib/installers/hermes_agent.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "Hermes Agent is registered with category, subcategory, description, upstream-binary mark and all five functions"
+}
+
+# ~/.local/bin is not on PATH in the session that ran upstream's installer, so
+# the check must find upstream's own link there, and the version comes from
+# the agent's --version line.
+test_hermes_agent_found_by_upstream_link_and_version_parsed() {
+    local out
+    out=$(
+        d=$(mktemp -d)
+        export HOME="$d" PATH="/usr/bin:/bin"
+        mkdir -p "$d/.local/bin"
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/hermes_agent.sh"
+        a=absent; check_hermes_agent || a=missing
+        v0=$(get_version_hermes_agent)
+        printf '#!/bin/sh\necho "Hermes Agent v0.22.6 (2026.9.24) · stable · local f0d94882e89a"\n' > "$d/.local/bin/hermes"
+        chmod +x "$d/.local/bin/hermes"
+        b=absent; check_hermes_agent && b=found
+        v1=$(get_version_hermes_agent)
+        rm -rf "$d"
+        echo "$a [$v0] $b $v1"
+    )
+    assert_eq "missing [] found 0.22.6" "$out" "Hermes Agent is detected through ~/.local/bin/hermes off PATH and its version is read from --version"
+}
+
+test_hermes_agent_registered
+test_hermes_agent_found_by_upstream_link_and_version_parsed
+
+# ----------------------------------------------------------------------------
+echo ""
 echo "=== ArtCraft / Craft apps ==="
 
 test_craft_apps_registered_in_artcraft_subcategory() {

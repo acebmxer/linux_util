@@ -52,6 +52,7 @@ GNOME Desktop
 Google Chrome
 GridCraft
 GTK Window Fix
+Hermes Agent
 Heroic Games Launcher
 Intel Drivers
 JetBrains Toolbox

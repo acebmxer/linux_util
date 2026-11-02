@@ -16,8 +16,8 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Incomplete:** 242 utilities and system tasks are registered in
-> `lib/installers.sh`; 197 are listed below. The **File Managers**, **Firewalls**,
+> **Incomplete:** 243 utilities and system tasks are registered in
+> `lib/installers.sh`; 198 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
 > Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
@@ -137,6 +137,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Docker** | Container platform — official repos, adds user to `docker` group |
 | **GitHub CLI** | Official CLI for GitHub — repos, issues, PRs, and workflows |
 | **Go SDK** | Official Go programming language toolchain |
+| **Hermes Agent** | Nous Research's open-source AI agent for the terminal (installed per user; update and uninstall use its own commands, settings in `~/.hermes` are kept) |
 | **JetBrains Toolbox** | Manager for JetBrains IDEs (IntelliJ, PyCharm, WebStorm, etc.) |
 | **k9s** | Terminal UI for managing Kubernetes clusters |
 | **kubectl** | Kubernetes command-line tool |

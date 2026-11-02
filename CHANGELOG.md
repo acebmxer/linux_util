@@ -12,6 +12,17 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **Hermes Agent** (Development > IDEs & Editors), Nous Research's open-source
+  AI agent for the terminal. Installed per user with upstream's own install
+  script, into `~/.hermes/hermes-agent` with the `hermes` command in
+  `~/.local/bin`, so an install made by hand is detected and updated in place.
+  The agent's setup wizard is skipped when there is no terminal or
+  `auto_confirm` is set. Update runs `hermes update`, and Uninstall runs
+  `hermes uninstall`, which keeps your settings and data in `~/.hermes`.
+  System Updates refreshes it. Fixes #83.
+
 ## [1.11.2] - 2026-10-25
 
 ### Changed

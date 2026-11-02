@@ -213,6 +213,7 @@ register_utility "Go SDK"              install_golang           check_golang    
 register_utility "Google Chrome"       install_google_chrome    check_google_chrome    uninstall_google_chrome    update_google_chrome       get_version_google_chrome
 register_utility "GParted"             install_gparted          check_gparted          uninstall_gparted          update_gparted             get_version_gparted
 register_utility "HandBrake"           install_handbrake        check_handbrake        uninstall_handbrake        update_handbrake           get_version_handbrake
+register_utility "Hermes Agent"          install_hermes_agent     check_hermes_agent     uninstall_hermes_agent     update_hermes_agent        get_version_hermes_agent
 register_utility "Heroic Games Launcher" install_heroic         check_heroic           uninstall_heroic           update_heroic              get_version_heroic
 register_utility "Inkscape"            install_inkscape         check_inkscape         uninstall_inkscape         update_inkscape            get_version_inkscape
 register_utility "Input Leap"          install_input_leap       check_input_leap       uninstall_input_leap       update_input_leap          get_version_input_leap
@@ -608,6 +609,7 @@ UTILITY_CATEGORY["Filelight"]="System Tools"
 UTILITY_CATEGORY["Firefox"]="Internet"
 UTILITY_CATEGORY["GIMP"]="Productivity"
 UTILITY_CATEGORY["GitHub CLI"]="Development"
+UTILITY_CATEGORY["Hermes Agent"]="Development"
 UTILITY_CATEGORY["Google Chrome"]="Internet"
 UTILITY_CATEGORY["Heroic Games Launcher"]="Gaming"
 UTILITY_CATEGORY["JetBrains Toolbox"]="Development"
@@ -802,6 +804,7 @@ UTILITY_SUBCATEGORY["Standard Notes"]="Notes"
 UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
 UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Claude Desktop"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Hermes Agent"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
@@ -982,6 +985,7 @@ UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshot
 UTILITY_DESCRIPTION["Ansible"]="IT automation tool for provisioning, configuration management, and application deployment using agentless SSH-based playbooks."
 UTILITY_DESCRIPTION["Claude Code"]="Anthropic's AI coding assistant that runs in the terminal for code generation, editing, and analysis."
 UTILITY_DESCRIPTION["Claude Desktop"]="Anthropic's Claude desktop app with Chat, Cowork, and Claude Code (Linux beta). Installed from Anthropic's apt repository — natively on Debian/Ubuntu, inside an Ubuntu 26.04 distrobox on other distros (Distrobox is installed first if missing)."
+UTILITY_DESCRIPTION["Hermes Agent"]="Nous Research's open-source AI agent for the terminal, with tools, memory, skills and messaging gateways. Installed per user with upstream's own script; updates and removal use its own hermes update / hermes uninstall, which keeps your settings in ~/.hermes."
 UTILITY_DESCRIPTION["Cursor IDE"]="AI-powered code editor built on VS Code with deeply integrated AI features for code completion and chat."
 UTILITY_DESCRIPTION["DBeaver"]="Universal database management tool supporting PostgreSQL, MySQL, SQLite, Oracle, and many more."
 UTILITY_DESCRIPTION["Docker"]="Container platform for building, shipping, and running applications in isolated environments."
@@ -1243,7 +1247,8 @@ mark_upstream_binary \
     "VectorCraft=$HOME/Applications/vectorcraft.AppImage" \
     "WordCraft=$HOME/Applications/wordcraft.AppImage" \
     "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE" \
-    "Xodus Nexus=$_XN_APPIMAGE"
+    "Xodus Nexus=$_XN_APPIMAGE" \
+    "Hermes Agent=$HOME/.hermes/hermes-agent"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
