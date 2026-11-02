@@ -4756,6 +4756,41 @@ test_hermes_agent_found_by_upstream_link_and_version_parsed
 
 # ----------------------------------------------------------------------------
 echo ""
+echo "=== Codex ==="
+
+test_codex_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "Codex"[[:space:]]+install_codex ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["Codex"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Codex"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["Codex"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_codex()" "${SCRIPT_DIR}/lib/installers/codex.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "Codex is registered with category, subcategory, description and all five functions"
+}
+
+test_codex_version_parsed_from_version_line() {
+    local out
+    out=$(
+        d=$(mktemp -d)
+        export PATH="$d:/usr/bin:/bin"
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/codex.sh"
+        a=$(get_version_codex)
+        printf '#!/bin/sh\necho "codex-cli 0.166.0"\n' > "$d/codex"; chmod +x "$d/codex"
+        b=$(get_version_codex)
+        rm -rf "$d"
+        echo "[$a] $b"
+    )
+    assert_eq "[] 0.166.0" "$out" "Codex version is read from the codex --version line and is empty when not installed"
+}
+
+test_codex_registered
+test_codex_version_parsed_from_version_line
+
+# ----------------------------------------------------------------------------
+echo ""
 echo "=== ArtCraft / Craft apps ==="
 
 test_craft_apps_registered_in_artcraft_subcategory() {

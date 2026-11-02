@@ -21,6 +21,7 @@ Claude Code
 Claude Desktop
 Claws Mail
 Cockpit
+Codex
 Command-Not-Found Prompt
 COSMIC Desktop
 Create Snapshot

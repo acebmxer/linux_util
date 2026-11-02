@@ -16,8 +16,8 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Incomplete:** 243 utilities and system tasks are registered in
-> `lib/installers.sh`; 198 are listed below. The **File Managers**, **Firewalls**,
+> **Incomplete:** 244 utilities and system tasks are registered in
+> `lib/installers.sh`; 199 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
 > Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
@@ -128,6 +128,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Ansible** | IT automation and configuration management tool |
 | **Claude Code** | Anthropic's AI coding assistant for the terminal |
 | **Claude Desktop** | Anthropic's Claude desktop app — Chat, Cowork and Claude Code (Linux beta). Native on Debian/Ubuntu; on other distros it runs in an Ubuntu 26.04 distrobox and appears in the app menu |
+| **Codex** | OpenAI's AI coding agent for the terminal (npm; settings in `~/.codex` are kept on uninstall) |
 | **Cursor IDE** | AI-powered code editor built on VS Code |
 | **DBeaver** | Universal database management tool |
 | **Distrobox** | Run any Linux distro in an integrated terminal container (needs Podman/Docker) |

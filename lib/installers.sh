@@ -169,6 +169,7 @@ register_utility "Claws Mail"          install_claws_mail       check_claws_mail
 register_utility "Claude Code"         install_claude_code      check_claude_code      uninstall_claude_code      update_claude_code
 # Claude Desktop: native on Debian/Ubuntu, in an Ubuntu distrobox everywhere else
 register_utility "Claude Desktop"      install_claude_desktop   check_claude_desktop   uninstall_claude_desktop   update_claude_desktop      get_version_claude_desktop
+register_utility "Codex"               install_codex            check_codex            uninstall_codex            update_codex               get_version_codex
 register_utility "Cockpit"             install_cockpit          check_cockpit          uninstall_cockpit          update_cockpit             get_version_cockpit
 register_utility "Cursor IDE"          install_cursor           check_cursor           uninstall_cursor           update_cursor              get_version_cursor
 register_utility "DBeaver"             install_dbeaver          check_dbeaver          uninstall_dbeaver          update_dbeaver             get_version_dbeaver
@@ -591,6 +592,7 @@ UTILITY_CATEGORY["Btop"]="System Tools"
 UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
 UTILITY_CATEGORY["Claude Desktop"]="Development"
+UTILITY_CATEGORY["Codex"]="Development"
 UTILITY_CATEGORY["Claws Mail"]="Internet"
 UTILITY_CATEGORY["Cockpit"]="Remote Admin Tools"
 UTILITY_CATEGORY["Cursor IDE"]="Development"
@@ -804,6 +806,7 @@ UTILITY_SUBCATEGORY["Standard Notes"]="Notes"
 UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
 UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Claude Desktop"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Codex"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Hermes Agent"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
@@ -985,6 +988,7 @@ UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshot
 UTILITY_DESCRIPTION["Ansible"]="IT automation tool for provisioning, configuration management, and application deployment using agentless SSH-based playbooks."
 UTILITY_DESCRIPTION["Claude Code"]="Anthropic's AI coding assistant that runs in the terminal for code generation, editing, and analysis."
 UTILITY_DESCRIPTION["Claude Desktop"]="Anthropic's Claude desktop app with Chat, Cowork, and Claude Code (Linux beta). Installed from Anthropic's apt repository — natively on Debian/Ubuntu, inside an Ubuntu 26.04 distrobox on other distros (Distrobox is installed first if missing)."
+UTILITY_DESCRIPTION["Codex"]="OpenAI's coding agent that runs in the terminal for code generation, editing, and review. Installed from npm (Node.js is installed first if missing); your sign-in and settings in ~/.codex are kept on uninstall."
 UTILITY_DESCRIPTION["Hermes Agent"]="Nous Research's open-source AI agent for the terminal, with tools, memory, skills and messaging gateways. Installed per user with upstream's own script; updates and removal use its own hermes update / hermes uninstall, which keeps your settings in ~/.hermes."
 UTILITY_DESCRIPTION["Cursor IDE"]="AI-powered code editor built on VS Code with deeply integrated AI features for code completion and chat."
 UTILITY_DESCRIPTION["DBeaver"]="Universal database management tool supporting PostgreSQL, MySQL, SQLite, Oracle, and many more."

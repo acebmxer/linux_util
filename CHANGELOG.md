@@ -14,6 +14,13 @@ when a release is cut.
 
 ### Added
 
+- **Codex** (Development > IDEs & Editors), OpenAI's coding agent for the
+  terminal. Installed from npm as `@openai/codex`, installing Node.js first
+  when it is missing, and checked by running `codex --version` rather than
+  trusting npm's exit code. Update re-installs the latest package. Uninstall
+  removes the package and leaves Node.js and your sign-in and settings in
+  `~/.codex`. Fixes #84.
+
 - **Hermes Agent** (Development > IDEs & Editors), Nous Research's open-source
   AI agent for the terminal. Installed per user with upstream's own install
   script, into `~/.hermes/hermes-agent` with the `hermes` command in
