@@ -66,6 +66,7 @@ LibreOffice
 LightCraft
 linux-tkg
 Local Time Zone / Locale
+LM Studio
 LocalSend
 Lutris
 LXQt Desktop

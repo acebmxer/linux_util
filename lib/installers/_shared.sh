@@ -311,3 +311,54 @@ ensure_appimage_fuse() {
             ;;
     esac
 }
+
+# Debian 13 and Ubuntu 24.04+ renamed several libraries for the 64-bit time_t
+# transition (libasound2 -> libasound2t64). apt picks the new name by itself
+# for some of them but not for libasound2, which has two providers on Ubuntu.
+_electron_debian_name() {
+    if apt-cache show "${1}t64" &>/dev/null; then echo "${1}t64"; else echo "$1"; fi
+}
+
+# Runtime libraries for the Electron inside an AppImage (Xodus Nexus, LM Studio;
+# do not add a copy). $1 is the app name used in messages. An AppImage is not
+# a package, so nothing else pulls them in. Most are present on any desktop
+# install; this matters on minimal ones. Taken from the libraries the bundled
+# binary links (ldd), named per family the same way as NVIDIA PAIR's list.
+ensure_electron_runtime_deps() {
+    local app="$1"
+    local -a deps=()
+    case "$DISTRO_FAMILY" in
+        debian)
+            deps=("$(_electron_debian_name libgtk-3-0)" libnss3 libxtst6 libxss1
+                  "$(_electron_debian_name libasound2)" libgbm1 libsecret-1-0 xdg-utils)
+            ;;
+        fedora|rhel)
+            deps=(gtk3 nss libXScrnSaver libXtst xdg-utils libsecret mesa-libgbm alsa-lib)
+            ;;
+        suse)
+            deps=(gtk3 mozilla-nss libXss1 libXtst6 xdg-utils libsecret-1-0 libgbm1 libasound2)
+            ;;
+        arch)
+            deps=(gtk3 nss libxss libxtst xdg-utils libsecret mesa alsa-lib)
+            ;;
+    esac
+    (( ${#deps[@]} == 0 )) && return 0
+
+    local dep
+    local -a missing=()
+    for dep in "${deps[@]}"; do
+        pkg_check_installed "$dep" || missing+=("$dep")
+    done
+    (( ${#missing[@]} == 0 )) && return 0
+
+    # One transaction; if it fails a single wrong name is the likely cause, so
+    # retry individually rather than lose the rest.
+    if ! pkg_install "${missing[@]}"; then
+        for dep in "${missing[@]}"; do
+            pkg_check_installed "$dep" && continue
+            pkg_install "$dep" || \
+                verbose "${app}: runtime dependency '${dep}' unavailable; continuing."
+        done
+    fi
+    return 0
+}

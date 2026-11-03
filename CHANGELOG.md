@@ -14,6 +14,15 @@ when a release is cut.
 
 ### Added
 
+- **LM Studio** (Development > IDEs & Editors), the desktop app for running
+  large language models locally. Upstream's AppImage (x86_64 and aarch64, about
+  1 GB) is installed per user in `~/.local/opt/lm-studio` after checking the
+  SHA-512 file upstream publishes beside it, with an `lm-studio` command and an
+  application-menu entry and icon taken from the AppImage. Update skips the
+  download when already at the latest version, and System Updates refreshes it
+  and counts it as pending. Uninstalling removes the app and leaves your models
+  and settings in `~/.lmstudio`. Fixes #85.
+
 - **Codex** (Development > IDEs & Editors), OpenAI's coding agent for the
   terminal. Installed from npm as `@openai/codex`, installing Node.js first
   when it is missing, and checked by running `codex --version` rather than

@@ -16,8 +16,8 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Incomplete:** 244 utilities and system tasks are registered in
-> `lib/installers.sh`; 199 are listed below. The **File Managers**, **Firewalls**,
+> **Incomplete:** 245 utilities and system tasks are registered in
+> `lib/installers.sh`; 200 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
 > Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
@@ -142,6 +142,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **JetBrains Toolbox** | Manager for JetBrains IDEs (IntelliJ, PyCharm, WebStorm, etc.) |
 | **k9s** | Terminal UI for managing Kubernetes clusters |
 | **kubectl** | Kubernetes command-line tool |
+| **LM Studio** | Desktop app for running large language models locally (AppImage, about 1 GB; models in `~/.lmstudio` are kept on uninstall) |
 | **Neovim** | Extensible Vim-based text editor |
 | **Node.js** | JavaScript runtime — LTS release via NodeSource |
 | **NVM** | Node Version Manager — install and switch Node.js versions |

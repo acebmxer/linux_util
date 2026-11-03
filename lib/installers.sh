@@ -235,6 +235,7 @@ register_utility "LACT"                install_lact             check_lact      
 register_utility "Libation"            install_libation         check_libation         uninstall_libation         update_libation            get_version_libation
 register_utility "LibreOffice"         install_libreoffice      check_libreoffice      uninstall_libreoffice      update_libreoffice         get_version_libreoffice
 register_utility "LibreWolf"           install_librewolf        check_librewolf        uninstall_librewolf        update_librewolf           get_version_librewolf
+register_utility "LM Studio"           install_lm_studio        check_lm_studio        uninstall_lm_studio        update_lm_studio           get_version_lm_studio
 register_utility "LocalSend"           install_localsend        check_localsend        uninstall_localsend        update_localsend           get_version_localsend
 register_utility "Logseq"              install_logseq           check_logseq           uninstall_logseq           update_logseq              get_version_logseq
 register_utility "Lutris"              install_lutris           check_lutris           uninstall_lutris           update_lutris              get_version_lutris
@@ -612,6 +613,7 @@ UTILITY_CATEGORY["Firefox"]="Internet"
 UTILITY_CATEGORY["GIMP"]="Productivity"
 UTILITY_CATEGORY["GitHub CLI"]="Development"
 UTILITY_CATEGORY["Hermes Agent"]="Development"
+UTILITY_CATEGORY["LM Studio"]="Development"
 UTILITY_CATEGORY["Google Chrome"]="Internet"
 UTILITY_CATEGORY["Heroic Games Launcher"]="Gaming"
 UTILITY_CATEGORY["JetBrains Toolbox"]="Development"
@@ -808,6 +810,7 @@ UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Claude Desktop"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Codex"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Hermes Agent"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["LM Studio"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
@@ -990,6 +993,7 @@ UTILITY_DESCRIPTION["Claude Code"]="Anthropic's AI coding assistant that runs in
 UTILITY_DESCRIPTION["Claude Desktop"]="Anthropic's Claude desktop app with Chat, Cowork, and Claude Code (Linux beta). Installed from Anthropic's apt repository — natively on Debian/Ubuntu, inside an Ubuntu 26.04 distrobox on other distros (Distrobox is installed first if missing)."
 UTILITY_DESCRIPTION["Codex"]="OpenAI's coding agent that runs in the terminal for code generation, editing, and review. Installed from npm (Node.js is installed first if missing); your sign-in and settings in ~/.codex are kept on uninstall."
 UTILITY_DESCRIPTION["Hermes Agent"]="Nous Research's open-source AI agent for the terminal, with tools, memory, skills and messaging gateways. Installed per user with upstream's own script; updates and removal use its own hermes update / hermes uninstall, which keeps your settings in ~/.hermes."
+UTILITY_DESCRIPTION["LM Studio"]="Desktop app for downloading and running large language models locally, with a chat window and an OpenAI-compatible local server. Installed per user from upstream's AppImage (about 1 GB, SHA-512 checked); your models and settings in ~/.lmstudio are kept on uninstall."
 UTILITY_DESCRIPTION["Cursor IDE"]="AI-powered code editor built on VS Code with deeply integrated AI features for code completion and chat."
 UTILITY_DESCRIPTION["DBeaver"]="Universal database management tool supporting PostgreSQL, MySQL, SQLite, Oracle, and many more."
 UTILITY_DESCRIPTION["Docker"]="Container platform for building, shipping, and running applications in isolated environments."
@@ -1252,7 +1256,8 @@ mark_upstream_binary \
     "WordCraft=$HOME/Applications/wordcraft.AppImage" \
     "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE" \
     "Xodus Nexus=$_XN_APPIMAGE" \
-    "Hermes Agent=$HOME/.hermes/hermes-agent"
+    "Hermes Agent=$HOME/.hermes/hermes-agent" \
+    "LM Studio=$_LMS_APPIMAGE"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1264,7 +1269,8 @@ mark_upstream_latest \
     "Visual Studio Code=_vscode_latest_version" \
     "Libation=_libation_latest_version" \
     "Claude Desktop=_claude_desktop_latest_version" \
-    "Xodus Nexus=_xn_latest_version"
+    "Xodus Nexus=_xn_latest_version" \
+    "LM Studio=_lms_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

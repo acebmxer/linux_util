@@ -4791,6 +4791,65 @@ test_codex_version_parsed_from_version_line
 
 # ----------------------------------------------------------------------------
 echo ""
+echo "=== LM Studio ==="
+
+test_lm_studio_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "LM Studio"[[:space:]]+install_lm_studio ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["LM Studio"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["LM Studio"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["LM Studio"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"LM Studio=\$_LMS_APPIMAGE"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"LM Studio=_lms_latest_version"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_lm_studio()" "${SCRIPT_DIR}/lib/installers/lm_studio.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "LM Studio is registered with category, subcategory, description, upstream-binary marks and all five functions"
+}
+
+# The "latest" download link redirects to the versioned AppImage; the version
+# is whatever sits in that path, with the build number after the dash.
+test_lm_studio_version_taken_from_redirect_url() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/lm_studio.sh"
+        printf '%s\n' 'https://installers.lmstudio.ai/linux/x64/0.4.28-2/LM-Studio-0.4.28-2-x64.AppImage' | _lms_version_from_url
+        printf '%s\n' 'https://installers.lmstudio.ai/linux/arm64/0.10.3-14/LM-Studio-0.10.3-14-arm64.AppImage' | _lms_version_from_url
+        printf '%s\n' 'https://lmstudio.ai/download' | _lms_version_from_url
+    )
+    assert_eq "0.4.28-2 0.10.3-14 " "$(echo $out) " "LM Studio latest version is read from the redirect path for x64 and arm64 and is empty for other URLs"
+}
+
+# The AppImage says 0.4.28+2 in its embedded menu entry, the download path
+# says 0.4.28-2; both are shown as 0.4.28-2 so the update check can compare
+# them. The cached value follows the file when the app updates itself.
+test_lm_studio_version_from_appimage_is_cached_and_follows_the_file() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/lm_studio.sh"
+        d=$(mktemp -d)
+        _LMS_APPIMAGE="$d/LM-Studio.AppImage"
+        _LMS_VERSION_CACHE="$d/cache/lm-studio.version"
+        printf '#!/bin/sh\nmkdir squashfs-root && printf "X-AppImage-Version=0.4.28+2\\n" > squashfs-root/a.desktop\n' > "$_LMS_APPIMAGE"
+        chmod +x "$_LMS_APPIMAGE"
+        a=$(get_version_lm_studio)
+        _lms_appimage_version() { echo "should-not-run"; }
+        b=$(get_version_lm_studio)
+        printf '#!/bin/sh\n# newer\n' > "$_LMS_APPIMAGE"; touch -d '+1 minute' "$_LMS_APPIMAGE"
+        _lms_appimage_version() { echo "0.4.29-1"; }
+        c=$(get_version_lm_studio)
+        rm -rf "$d"
+        echo "$a $b $c"
+    )
+    assert_eq "0.4.28-2 0.4.28-2 0.4.29-1" "$out" "LM Studio version is read from the AppImage as 0.4.28-2, cached per file and re-read after the file changes"
+}
+
+test_lm_studio_registered
+test_lm_studio_version_taken_from_redirect_url
+test_lm_studio_version_from_appimage_is_cached_and_follows_the_file
+
+# ----------------------------------------------------------------------------
+echo ""
 echo "=== ArtCraft / Craft apps ==="
 
 test_craft_apps_registered_in_artcraft_subcategory() {
