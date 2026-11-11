@@ -2625,12 +2625,15 @@ test_xrdp_kde_x11_fails_when_session_still_missing() {
 }
 
 # A process named like a session's channel server makes the check true; it is
-# a copy of sleep, so the name in /proc/<pid>/comm is the only thing faked.
+# a shell script named xrdp-chansrv, so the name in /proc/<pid>/comm is the
+# only thing faked. Not a renamed copy of sleep: multi-call coreutils (uutils,
+# Ubuntu 26.04) refuse to run under a name they don't know (#87).
 test_xrdp_sessions_open_sees_a_session_process() {
     local _d _pid
     _d=$(mktemp -d)
-    cp "$(command -v sleep)" "$_d/xrdp-chansrv"
-    "$_d/xrdp-chansrv" 30 &
+    printf '#!/bin/sh\nwhile :; do sleep 0.1; done\n' > "$_d/xrdp-chansrv"
+    chmod +x "$_d/xrdp-chansrv"
+    "$_d/xrdp-chansrv" &
     _pid=$!
     sleep 0.2
     assert_true "_xrdp_sessions_open is true while an xrdp-chansrv process runs" _xrdp_sessions_open
