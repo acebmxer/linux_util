@@ -14,6 +14,16 @@ when a release is cut.
 
 ### Added
 
+- **GPU Task Manager** (System Tools), a terminal task manager for the GPU:
+  per-process VRAM and GPU load, and which runtimes and model files
+  (llama.cpp, Ollama, PyTorch) are using it, on NVIDIA, AMD (amdgpu) and Intel
+  (i915) GPUs. Upstream's portable build (x86_64 and aarch64) is installed per
+  user in `~/.local/opt/gputaskman` after checking the SHA-256 file upstream
+  publishes beside it, with a `gputaskman` command in `~/.local/bin`. It needs
+  glibc 2.35 or newer, so it is refused with a clear message on Rocky/RHEL 9.
+  Update skips the download when already at the latest version, and System
+  Updates refreshes it and counts it as pending.
+
 - **LM Studio** (Development > IDEs & Editors), the desktop app for running
   large language models locally. Upstream's AppImage (x86_64 and aarch64, about
   1 GB) is installed per user in `~/.local/opt/lm-studio` after checking the

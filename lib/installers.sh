@@ -213,6 +213,7 @@ register_utility "GitHub CLI"          install_github_cli       check_github_cli
 register_utility "Go SDK"              install_golang           check_golang           uninstall_golang           update_golang              get_version_golang
 register_utility "Google Chrome"       install_google_chrome    check_google_chrome    uninstall_google_chrome    update_google_chrome       get_version_google_chrome
 register_utility "GParted"             install_gparted          check_gparted          uninstall_gparted          update_gparted             get_version_gparted
+register_utility "GPU Task Manager"    install_gputaskman       check_gputaskman       uninstall_gputaskman       update_gputaskman          get_version_gputaskman
 register_utility "HandBrake"           install_handbrake        check_handbrake        uninstall_handbrake        update_handbrake           get_version_handbrake
 register_utility "Hermes Agent"          install_hermes_agent     check_hermes_agent     uninstall_hermes_agent     update_hermes_agent        get_version_hermes_agent
 register_utility "Heroic Games Launcher" install_heroic         check_heroic           uninstall_heroic           update_heroic              get_version_heroic
@@ -590,6 +591,7 @@ UTILITY_CATEGORY["Brave Browser"]="Internet"
 UTILITY_CATEGORY["Brave Debloat"]="Internet"
 UTILITY_CATEGORY["Brave Origin"]="Internet"
 UTILITY_CATEGORY["Btop"]="System Tools"
+UTILITY_CATEGORY["GPU Task Manager"]="System Tools"
 UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
 UTILITY_CATEGORY["Claude Desktop"]="Development"
@@ -1139,6 +1141,7 @@ UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyb
 UTILITY_DESCRIPTION["Ventoy"]="Bootable USB solution for loading multiple ISO images from a single drive — just copy ISOs and boot."
 UTILITY_DESCRIPTION["GParted"]="Graphical partition editor for creating, resizing, moving, copying, and deleting disk partitions. Supports ext2/3/4, btrfs, xfs, ntfs, fat32, and more — ideal for managing drives and preparing disks."
 UTILITY_DESCRIPTION["KDiskMark"]="HDD and SSD benchmark tool with a graphical interface over fio (Flexible I/O Tester) — measures sequential and random read/write speeds with configurable block size, queue depth and thread count, and can generate a text report. Installed from the native package; falls back to Flathub where the distro does not package it (Debian 12, Ubuntu 22.04, openSUSE Leap 15)."
+UTILITY_DESCRIPTION["GPU Task Manager"]="Terminal task manager for the GPU: per-process VRAM and GPU load, and which runtimes and model files (llama.cpp, Ollama, PyTorch) are using it. NVIDIA through the driver, AMD (amdgpu) and Intel (i915) through the kernel. Installed per user from upstream's portable build (SHA-256 checked); needs glibc 2.35 or newer."
 UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written in C, displaying OS, hardware, and software details."
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
 UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS. Install this first to enable Create, Restore, and Delete Snapshot."
@@ -1257,7 +1260,8 @@ mark_upstream_binary \
     "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE" \
     "Xodus Nexus=$_XN_APPIMAGE" \
     "Hermes Agent=$HOME/.hermes/hermes-agent" \
-    "LM Studio=$_LMS_APPIMAGE"
+    "LM Studio=$_LMS_APPIMAGE" \
+    "GPU Task Manager=$_GTM_DIR"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1270,7 +1274,8 @@ mark_upstream_latest \
     "Libation=_libation_latest_version" \
     "Claude Desktop=_claude_desktop_latest_version" \
     "Xodus Nexus=_xn_latest_version" \
-    "LM Studio=_lms_latest_version"
+    "LM Studio=_lms_latest_version" \
+    "GPU Task Manager=_gtm_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

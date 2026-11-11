@@ -4850,6 +4850,72 @@ test_lm_studio_version_from_appimage_is_cached_and_follows_the_file
 
 # ----------------------------------------------------------------------------
 echo ""
+echo "=== GPU Task Manager ==="
+
+test_gputaskman_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "GPU Task Manager"[[:space:]]+install_gputaskman ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["GPU Task Manager"\]="System Tools"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["GPU Task Manager"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"GPU Task Manager=\$_GTM_DIR"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"GPU Task Manager=_gtm_latest_version"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_gputaskman()" "${SCRIPT_DIR}/lib/installers/gputaskman.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "GPU Task Manager is registered with category, description, upstream-binary marks and all five functions"
+}
+
+# GitHub's /releases/latest redirects to the newest tag's page; the version is
+# the tag without its leading v. Anything else gives no version.
+test_gputaskman_version_taken_from_redirect_url() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/gputaskman.sh"
+        printf '%s\n' 'https://github.com/shanselman/gputaskman/releases/tag/v0.4.0' | _gtm_version_from_url
+        printf '%s\n' 'https://github.com/shanselman/gputaskman/releases/tag/v1.12.30' | _gtm_version_from_url
+        printf '%s\n' 'https://github.com/shanselman/gputaskman/releases/tag/nightly' | _gtm_version_from_url
+        printf '%s\n' 'https://github.com/shanselman/gputaskman/releases' | _gtm_version_from_url
+    )
+    assert_eq "0.4.0 1.12.30 " "$(echo $out) " "GPU Task Manager latest version is the release tag without its v, and empty for other URLs"
+}
+
+# Upstream's build needs glibc 2.35 (Ubuntu 22.04, Debian 12); Rocky 9's 2.34
+# and a system without glibc are refused, 2.35 and later accepted.
+test_gputaskman_glibc_minimum() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/gputaskman.sh"
+        for v in 2.34 2.35 2.39 2.4 3.0 ""; do
+            if _gtm_glibc_ok "$v"; then printf 'y'; else printf 'n'; fi
+        done
+    )
+    assert_eq "nyynyn" "$out" "GPU Task Manager accepts glibc 2.35 and newer and refuses 2.34, 2.4 and no glibc"
+}
+
+# The bundle has no --version flag; the version is the one written beside it
+# at install time, and nothing is reported when it is not installed.
+test_gputaskman_version_from_install_stamp() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/gputaskman.sh"
+        d=$(mktemp -d)
+        _GTM_VERSION_FILE="$d/.linux_util-version"
+        a=$(get_version_gputaskman)
+        printf '0.4.0\n' > "$_GTM_VERSION_FILE"
+        b=$(get_version_gputaskman)
+        rm -rf "$d"
+        echo "[$a] [$b]"
+    )
+    assert_eq "[] [0.4.0]" "$out" "GPU Task Manager version is read from the install stamp and empty when not installed"
+}
+
+test_gputaskman_registered
+test_gputaskman_version_taken_from_redirect_url
+test_gputaskman_glibc_minimum
+test_gputaskman_version_from_install_stamp
+
+# ----------------------------------------------------------------------------
+echo ""
 echo "=== ArtCraft / Craft apps ==="
 
 test_craft_apps_registered_in_artcraft_subcategory() {

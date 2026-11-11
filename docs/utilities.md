@@ -16,8 +16,8 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Incomplete:** 245 utilities and system tasks are registered in
-> `lib/installers.sh`; 200 are listed below. The **File Managers**, **Firewalls**,
+> **Incomplete:** 246 utilities and system tasks are registered in
+> `lib/installers.sh`; 201 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
 > Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
@@ -285,6 +285,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **ClamAV** | Open-source antivirus engine — prompts for a desktop front-end, defaulting to ClamUI (Flathub) |
 | **Fastfetch** | Fast system information display tool |
 | **Filelight** | Disk usage analyzer with interactive sunburst chart |
+| **GPU Task Manager** | Terminal task manager for the GPU (`gputaskman`): per-process VRAM and GPU load, and which runtimes and model files use it — NVIDIA, AMD (amdgpu) and Intel (i915). Upstream's portable build, SHA-256 checked, installed per user in `~/.local/opt/gputaskman`; needs glibc 2.35 or newer (not Rocky/RHEL 9) |
 | **Input Leap** | Software KVM — share keyboard and mouse across machines |
 | **OCCT** | CPU/RAM/GPU stability and stress testing — free Personal edition, x86_64 binary from ocbase.com, installed per-user under `~/.local/share/occt` |
 | **Pay Respects** | Press `F` to fix the last failed command — Rust `thefuck` replacement with inline `Ctrl+X` correction. Installed from upstream's `.deb`/`.rpm` (in no distro repo; AUR on Arch) and wired into `~/.bashrc`/`~/.zshrc`; its AI module is disabled by default |

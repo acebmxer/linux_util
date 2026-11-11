@@ -51,6 +51,7 @@ GIMP
 GitHub CLI
 GNOME Desktop
 Google Chrome
+GPU Task Manager
 GridCraft
 GTK Window Fix
 Hermes Agent
