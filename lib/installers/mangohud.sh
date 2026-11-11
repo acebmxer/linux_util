@@ -38,10 +38,7 @@ install_mangohud() {
             ;;
         fedora)
             # MangoHud is in RPM Fusion free
-            if ! rpm -q rpmfusion-free-release &>/dev/null; then
-                sudo "$PKG_MGR" install -y \
-                    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
-            fi
+            ensure_rpmfusion free || return 1
             pkg_install mangohud
             ;;
         rhel)

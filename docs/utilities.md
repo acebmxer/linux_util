@@ -16,8 +16,8 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Incomplete:** 246 utilities and system tasks are registered in
-> `lib/installers.sh`; 201 are listed below. The **File Managers**, **Firewalls**,
+> **Incomplete:** 249 utilities and system tasks are registered in
+> `lib/installers.sh`; 204 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
 > Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
@@ -251,6 +251,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **LibreOffice** | Open-source office suite — direct download / native packages / flatpak |
 | **Logseq** | Privacy-first knowledge management and outliner |
 | **Mark Text** | Simple and elegant Markdown editor |
+| **Multimedia Codecs** | Full audio and video codecs (H.264, HEVC, AAC and more) for FFmpeg and GStreamer apps. Fedora: enables RPM Fusion, replaces `ffmpeg-free` with the full `ffmpeg` and installs the `multimedia` group; RHEL clones: RPM Fusion for EL (with EPEL and CRB); Debian/Ubuntu and Arch: `ffmpeg` and the GStreamer plugin sets (Ubuntu needs universe); openSUSE: Packman through `opi codecs`. Uninstall is not offered, since media apps link against the codecs |
 | **Nextcloud Desktop** | Sync client for self-hosted Nextcloud cloud storage |
 | **OBS Studio** | Video recording and live streaming |
 | **Obsidian** | Markdown-based knowledge base with graphs and plugins |
@@ -281,6 +282,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 
 | Utility | Description |
 |---------|-------------|
+| **bat** | `cat` with syntax highlighting, line numbers and Git change markers — on Debian/Ubuntu, where the command is `batcat`, a `bat` link to it is added in `~/.local/bin` |
 | **Btop** | Terminal-based resource monitor with rich visuals |
 | **ClamAV** | Open-source antivirus engine — prompts for a desktop front-end, defaulting to ClamUI (Flathub) |
 | **Fastfetch** | Fast system information display tool |
@@ -289,6 +291,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **Input Leap** | Software KVM — share keyboard and mouse across machines |
 | **OCCT** | CPU/RAM/GPU stability and stress testing — free Personal edition, x86_64 binary from ocbase.com, installed per-user under `~/.local/share/occt` |
 | **Pay Respects** | Press `F` to fix the last failed command — Rust `thefuck` replacement with inline `Ctrl+X` correction. Installed from upstream's `.deb`/`.rpm` (in no distro repo; AUR on Arch) and wired into `~/.bashrc`/`~/.zshrc`; its AI module is disabled by default |
+| **ripgrep** | `rg`: searches a folder tree for text much faster than `grep -r`, skipping files in `.gitignore` |
 | **Stacer** | Graphical system optimizer and monitor |
 | **TMOG** | Native Qt task manager with real-time system metrics — no repo, AUR, or checksums upstream; installed from tmog.org's `.deb` on Debian/Ubuntu, AppImage elsewhere |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |

@@ -14,18 +14,13 @@ install_vlc() {
             ;;
         fedora)
             # VLC requires RPM Fusion Free
-            if ! rpm -q rpmfusion-free-release &>/dev/null; then
-                sudo "$PKG_MGR" install -y \
-                    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
-            fi
+            ensure_rpmfusion free || return 1
             pkg_install vlc
             ;;
         rhel)
             pkg_install epel-release 2>/dev/null || true
-            if ! rpm -q rpmfusion-free-release &>/dev/null; then
-                sudo "$PKG_MGR" install -y \
-                    "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm" 2>/dev/null || true
-            fi
+            # Not fatal: without RPM Fusion VLC falls back to Flatpak below
+            ensure_rpmfusion free || true
             pkg_install vlc 2>/dev/null || {
                 warn "VLC not found in repos. Falling back to Flatpak..."
                 if has_flatpak; then

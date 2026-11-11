@@ -5,6 +5,7 @@ _linux_util_utilities() {
     cat <<'EOF'
 AMD Drivers
 ArtCraft Launcher
+bat
 Betterbird
 Bitwarden Client
 Bitwarden Extension
@@ -74,6 +75,7 @@ LXQt Desktop
 Mainline
 MangoHud
 MATE Desktop
+Multimedia Codecs
 NeoMutt
 Nextcloud Desktop
 NVIDIA Drivers
@@ -100,6 +102,7 @@ ProtonVPN
 QBittorrent
 Remmina
 Restore Snapshot
+ripgrep
 Signal Desktop
 SponsorBlock Extension
 Stacer

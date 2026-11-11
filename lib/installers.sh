@@ -162,6 +162,7 @@ register_utility "Brave Browser"       install_brave            check_brave     
 register_utility "Brave Debloat"       install_brave_debloat    check_brave_debloat    uninstall_brave_debloat    update_brave_debloat       get_version_brave_debloat
 register_utility "Brave Origin"        install_brave_origin     check_brave_origin     uninstall_brave_origin     update_brave_origin        get_version_brave_origin
 register_utility "Btop"                install_btop             check_btop             uninstall_btop             update_btop                get_version_btop
+register_utility "bat"                 install_bat              check_bat              uninstall_bat              update_bat                 get_version_bat
 register_utility "Intel CPU Microcode & Thermal" install_intel_chipset_drivers check_intel_chipset_drivers uninstall_intel_chipset_drivers update_intel_chipset_drivers get_version_intel_chipset_drivers
 register_utility "Chromium"            install_chromium         check_chromium         uninstall_chromium         update_chromium            get_version_chromium
 register_utility "ClamAV"              install_clamav           check_clamav           uninstall_clamav           update_clamav              get_version_clamav
@@ -242,6 +243,7 @@ register_utility "Logseq"              install_logseq           check_logseq    
 register_utility "Lutris"              install_lutris           check_lutris           uninstall_lutris           update_lutris              get_version_lutris
 register_utility "MangoHud"            install_mangohud         check_mangohud         uninstall_mangohud         update_mangohud            get_version_mangohud
 register_utility "Mark Text"           install_marktext         check_marktext         uninstall_marktext         update_marktext            get_version_marktext
+register_utility "Multimedia Codecs"   install_multimedia_codecs check_multimedia_codecs uninstall_multimedia_codecs update_multimedia_codecs get_version_multimedia_codecs
 register_utility "NeoMutt"             install_neomutt          check_neomutt          uninstall_neomutt          update_neomutt             get_version_neomutt
 register_utility "Neovim"              install_neovim           check_neovim           uninstall_neovim           update_neovim              get_version_neovim
 register_utility "Nextcloud Desktop"   install_nextcloud_desktop check_nextcloud_desktop uninstall_nextcloud_desktop update_nextcloud_desktop get_version_nextcloud_desktop
@@ -269,6 +271,7 @@ register_utility "ProtonVPN"           install_protonvpn        check_protonvpn 
 register_utility "pyenv"               install_pyenv            check_pyenv            uninstall_pyenv            update_pyenv               get_version_pyenv
 register_utility "QBittorrent"         install_qbittorrent      check_qbittorrent      uninstall_qbittorrent      update_qbittorrent         get_version_qbittorrent
 register_utility "Remmina"             install_remmina          check_remmina          uninstall_remmina          update_remmina             get_version_remmina
+register_utility "ripgrep"             install_ripgrep          check_ripgrep          uninstall_ripgrep          update_ripgrep             get_version_ripgrep
 register_utility "RustDesk"            install_rustdesk         check_rustdesk         uninstall_rustdesk         update_rustdesk            get_version_rustdesk
 register_utility "Rustup"              install_rustup           check_rustup           uninstall_rustup           update_rustup              get_version_rustup
 register_utility "Signal Desktop"         install_signal                check_signal                uninstall_signal                update_signal                 get_version_signal
@@ -591,6 +594,8 @@ UTILITY_CATEGORY["Brave Browser"]="Internet"
 UTILITY_CATEGORY["Brave Debloat"]="Internet"
 UTILITY_CATEGORY["Brave Origin"]="Internet"
 UTILITY_CATEGORY["Btop"]="System Tools"
+UTILITY_CATEGORY["bat"]="System Tools"
+UTILITY_CATEGORY["ripgrep"]="System Tools"
 UTILITY_CATEGORY["GPU Task Manager"]="System Tools"
 UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
@@ -744,6 +749,7 @@ UTILITY_CATEGORY["KDiskMark"]="Disk Utilities"
 UTILITY_CATEGORY["Virt-Manager"]="Development"
 UTILITY_CATEGORY["Firecracker"]="Development"
 UTILITY_CATEGORY["VLC"]="Productivity"
+UTILITY_CATEGORY["Multimedia Codecs"]="Productivity"
 UTILITY_CATEGORY["Zen Browser"]="Internet"
 UTILITY_CATEGORY["Zoom"]="Internet"
 UTILITY_CATEGORY["Zotero"]="Productivity"
@@ -1115,6 +1121,7 @@ UTILITY_DESCRIPTION["Libation"]="Open-source Audible audiobook manager for downl
 UTILITY_DESCRIPTION["Logseq"]="Open-source knowledge management and note-taking app based on linked, Markdown-formatted outliner blocks."
 UTILITY_DESCRIPTION["Mark Text"]="Simple, elegant Markdown editor focused on writing speed with live preview and multiple themes."
 UTILITY_DESCRIPTION["VLC"]="Versatile open-source media player supporting virtually every audio and video format without additional codecs."
+UTILITY_DESCRIPTION["Multimedia Codecs"]="Full audio and video codecs (H.264, HEVC, AAC and more) for FFmpeg and GStreamer apps such as browsers, video players and editors. Fedora: enables RPM Fusion, replaces ffmpeg-free with the full ffmpeg and installs the multimedia group. RHEL clones: RPM Fusion for EL (with EPEL and CRB). Debian/Ubuntu and Arch: ffmpeg and the GStreamer plugin sets. openSUSE: Packman through opi codecs. Not removable from here, since media apps link against the codecs."
 UTILITY_DESCRIPTION["Zotero"]="Free reference manager for collecting, organizing, annotating, and citing research sources."
 UTILITY_DESCRIPTION["Joplin Client"]="Open-source note-taking and to-do application with Markdown support and sync."
 UTILITY_DESCRIPTION["Joplin Web Clipper"]="Deploys Joplin Web Clipper browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, LibreWolf, Thorium, Vivaldi). Captures web pages and screenshots directly into Joplin — requires the Joplin desktop app running with Web Clipper service enabled."
@@ -1135,6 +1142,8 @@ UTILITY_DESCRIPTION["CachyOS Kernel Manager"]="GUI to install, build, swap, and 
 UTILITY_DESCRIPTION["Fedora Mainline Kernel"]="Enables the community @kernel-vanilla/mainline Copr and installs the latest upstream (vanilla) mainline kernel on Fedora — the standard way to test an upstream kernel there, since Fedora has no dedicated GUI manager. Fedora only. Mainline kernels are unsigned, so Secure Boot must be disabled to boot them; the stock Fedora kernel is kept as a fallback."
 UTILITY_DESCRIPTION["linux-tkg"]="Frogging-Family custom-kernel builder. Unlike the other kernel managers it BUILDS a kernel from source — you pick the CPU scheduler (BORE, EEVDF, PDS, …), compiler, and config. Cross-distro: makepkg on Arch, or ./install.sh on Debian/Ubuntu, Fedora, and openSUSE (it produces and installs a .deb/.rpm). The build is interactive and can take 20-60+ minutes; kernels carry 'tkg' in the name and are removed manually (./install.sh uninstall-help). Build deps are installed automatically where possible."
 UTILITY_DESCRIPTION["Btop"]="Modern terminal-based resource monitor with a rich visual interface showing CPU, memory, disk, and network."
+UTILITY_DESCRIPTION["bat"]="A cat clone with syntax highlighting, line numbers and Git change markers. On Debian/Ubuntu, where the command is named batcat, a bat link to it is added in ~/.local/bin."
+UTILITY_DESCRIPTION["ripgrep"]="rg: searches a folder tree for text much faster than grep -r, and skips files listed in .gitignore."
 UTILITY_DESCRIPTION["Filelight"]="KDE disk usage analyzer that visualizes storage consumption as an interactive radial map, making it easy to identify large files and directories."
 UTILITY_DESCRIPTION["ClamAV"]="Open-source antivirus engine for detecting trojans, viruses, malware, and other malicious threats. Asks which desktop front-end you want and defaults to ClamUI, a GTK4/libadwaita app from Flathub covering scanning, quarantine, and scheduled scans; ClamTk is offered too wherever the distro packages it. Enables the freshclam definition updater and the scan daemon."
 UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyboard and mouse across multiple computers on your local network."

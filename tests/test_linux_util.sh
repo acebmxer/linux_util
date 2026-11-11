@@ -4916,6 +4916,132 @@ test_gputaskman_version_from_install_stamp
 
 # ----------------------------------------------------------------------------
 echo ""
+echo "=== RPM Fusion helper, Multimedia Codecs, bat, ripgrep ==="
+
+# Runs ensure_rpmfusion with rpm and the package manager stubbed. $1 family,
+# $2 section asked for, $3 release packages already installed (space list),
+# $4 epel-release installed (y/n). Prints each command that would change the
+# system, one per line.
+_rpmfusion_run() {
+    (
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        DISTRO_FAMILY="$1"; DISTRO_NAME="Test"; PKG_MGR=dnf
+        _have=" $3 "; [[ "$4" == y ]] && _have+="epel-release "
+        rpm() {
+            case "$1" in
+                -E) [[ "$2" == "%fedora" ]] && echo 45 || echo 9 ;;
+                -q) [[ "$_have" == *" $2 "* ]] ;;
+            esac
+        }
+        # Logged to a file: ensure_rpmfusion silences run_as_root's output.
+        _log=$(mktemp)
+        pkg_install() { echo "install $*" >> "$_log"; }
+        run_as_root() { [[ "$2" == "makecache" ]] || echo "root $*" >> "$_log"; return 0; }
+        info() { :; }; error() { echo "error" >> "$_log"; }
+        ensure_rpmfusion "$2" && echo "rc=0" >> "$_log" || echo "rc=1" >> "$_log"
+        cat "$_log"; rm -f "$_log"
+    )
+}
+
+test_ensure_rpmfusion_fedora_installs_missing_sections() {
+    assert_eq $'install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-45.noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-45.noarch.rpm\nrc=0' \
+        "$(_rpmfusion_run fedora nonfree "" n)" \
+        "ensure_rpmfusion nonfree on Fedora installs free and nonfree for the release from rpm -E"
+    assert_eq $'install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-45.noarch.rpm\nrc=0' \
+        "$(_rpmfusion_run fedora nonfree "rpmfusion-free-release" n)" \
+        "ensure_rpmfusion nonfree with free already on installs only nonfree"
+    assert_eq "rc=0" "$(_rpmfusion_run fedora free "rpmfusion-free-release" n)" \
+        "ensure_rpmfusion does nothing when RPM Fusion is already enabled"
+}
+
+# #86: on Rocky 9.8 the release package is -9, never the os-release 9.8, and
+# EPEL and CRB come first.
+test_ensure_rpmfusion_rhel_uses_major_version_and_epel() {
+    assert_eq $'install epel-release\nroot crb enable\ninstall https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-9.noarch.rpm\nrc=0' \
+        "$(DISTRO_VERSION_ID=9.8 _rpmfusion_run rhel nonfree "" n)" \
+        "ensure_rpmfusion on a RHEL clone enables EPEL and CRB, then RPM Fusion for EL by major version"
+    assert_eq $'error\nrc=1' "$(_rpmfusion_run suse free "" n)" \
+        "ensure_rpmfusion refuses distros without RPM Fusion"
+}
+
+# One implementation: no installer builds an RPM Fusion release URL itself.
+test_rpmfusion_url_only_in_shared_helper() {
+    local hits
+    hits=$(grep -l 'rpmfusion-[a-z${}]*-release-' "${SCRIPT_DIR}"/lib/installers/*.sh | grep -v '/_shared.sh$' | xargs -r -n1 basename | tr '\n' ' ')
+    assert_eq "" "$hits" "RPM Fusion is enabled only through ensure_rpmfusion (no copies in installers)"
+}
+
+test_new_utilities_registered() {
+    local name slug cat fn gaps=0
+    for entry in "Multimedia Codecs|multimedia_codecs|Productivity" "bat|bat|System Tools" "ripgrep|ripgrep|System Tools"; do
+        IFS='|' read -r name slug cat <<<"$entry"
+        grep -qE "^register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -q "^UTILITY_CATEGORY\[\"${name}\"\]=\"${cat}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -q "^UTILITY_DESCRIPTION\[\"${name}\"\]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qx "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qx "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "Multimedia Codecs, bat and ripgrep are registered with category, description, completions and all five functions"
+}
+
+test_codecs_ffmpeg_version_parse() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/multimedia_codecs.sh"
+        for l in "ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers" \
+                 "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026" \
+                 "ffmpeg version n7.1 Copyright" \
+                 "ffmpeg version N-12345-gabcdef" ""; do
+            printf '[%s]' "$(printf '%s\nsecond line 1.2.3\n' "$l" | _codecs_version_from_output)"
+        done
+    )
+    assert_eq "[9.0.2][7.1.5][7.1][][]" "$out" "Multimedia Codecs reports the FFmpeg version from ffmpeg -version, empty for git builds and no output"
+}
+
+# EL 8 names the GStreamer libav plugin gstreamer1-libav, EL 9+ gstreamer1-plugin-libav.
+test_codecs_rhel_libav_name() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/multimedia_codecs.sh"
+        for v in 8.10 9.8 10.1; do DISTRO_VERSION_ID=$v; printf '%s ' "$(_codecs_rhel_libav)"; done
+    )
+    assert_eq "gstreamer1-libav gstreamer1-plugin-libav gstreamer1-plugin-libav " "$out" "Multimedia Codecs picks the GStreamer libav package name by EL release"
+}
+
+# Debian/Ubuntu: a bat link to batcat is made only when nothing is called bat
+# yet, and uninstall removes only that link.
+test_bat_batcat_link() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/bat.sh"
+        d=$(mktemp -d); info() { :; }; pkg_remove() { :; }
+        DISTRO_FAMILY=debian
+        _BAT_BATCAT="$d/batcat"; printf '#!/bin/sh\n' > "$_BAT_BATCAT"; chmod +x "$_BAT_BATCAT"
+        _BAT_LINK="$d/home/bin/bat"
+        _bat_link_batcat; printf '%s ' "$( [[ "$(readlink "$_BAT_LINK")" == "$_BAT_BATCAT" ]] && echo linked || echo none)"
+        uninstall_bat; printf '%s ' "$( [[ -e "$_BAT_LINK" || -L "$_BAT_LINK" ]] && echo kept || echo removed)"
+        printf 'mine\n' > "$_BAT_LINK"
+        _bat_link_batcat; uninstall_bat; printf '%s ' "$(cat "$_BAT_LINK")"
+        rm -f "$_BAT_LINK"; DISTRO_FAMILY=fedora
+        _bat_link_batcat; printf '%s' "$( [[ -e "$_BAT_LINK" ]] && echo linked || echo none)"
+        rm -rf "$d"
+    )
+    assert_eq "linked removed mine none" "$out" "bat links batcat on Debian only when bat is free, and uninstall removes only its own link"
+}
+
+test_ensure_rpmfusion_fedora_installs_missing_sections
+test_ensure_rpmfusion_rhel_uses_major_version_and_epel
+test_rpmfusion_url_only_in_shared_helper
+test_new_utilities_registered
+test_codecs_ffmpeg_version_parse
+test_codecs_rhel_libav_name
+test_bat_batcat_link
+
+# ----------------------------------------------------------------------------
+echo ""
 echo "=== ArtCraft / Craft apps ==="
 
 test_craft_apps_registered_in_artcraft_subcategory() {
