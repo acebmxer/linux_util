@@ -89,55 +89,6 @@ get_version_xodus_nexus() {
     printf '%s\n' "$v"
 }
 
-# Debian 13 and Ubuntu 24.04+ renamed several libraries for the 64-bit time_t
-# transition (libasound2 -> libasound2t64). apt picks the new name by itself
-# for some of them but not for libasound2, which has two providers on Ubuntu.
-_xn_debian_name() {
-    if apt-cache show "${1}t64" &>/dev/null; then echo "${1}t64"; else echo "$1"; fi
-}
-
-# Runtime libraries for the Electron inside the AppImage: an AppImage is not a
-# package, so nothing else pulls them in. Most are present on any desktop
-# install; this matters on minimal ones. Taken from the libraries the bundled
-# binary links (ldd), named per family the same way as NVIDIA PAIR's list.
-_xn_install_runtime_deps() {
-    local -a deps=()
-    case "$DISTRO_FAMILY" in
-        debian)
-            deps=("$(_xn_debian_name libgtk-3-0)" libnss3 libxtst6 libxss1
-                  "$(_xn_debian_name libasound2)" libgbm1 libsecret-1-0 xdg-utils)
-            ;;
-        fedora|rhel)
-            deps=(gtk3 nss libXScrnSaver libXtst xdg-utils libsecret mesa-libgbm alsa-lib)
-            ;;
-        suse)
-            deps=(gtk3 mozilla-nss libXss1 libXtst6 xdg-utils libsecret-1-0 libgbm1 libasound2)
-            ;;
-        arch)
-            deps=(gtk3 nss libxss libxtst xdg-utils libsecret mesa alsa-lib)
-            ;;
-    esac
-    (( ${#deps[@]} == 0 )) && return 0
-
-    local dep
-    local -a missing=()
-    for dep in "${deps[@]}"; do
-        pkg_check_installed "$dep" || missing+=("$dep")
-    done
-    (( ${#missing[@]} == 0 )) && return 0
-
-    # One transaction; if it fails a single wrong name is the likely cause, so
-    # retry individually rather than lose the rest.
-    if ! pkg_install "${missing[@]}"; then
-        for dep in "${missing[@]}"; do
-            pkg_check_installed "$dep" && continue
-            pkg_install "$dep" || \
-                verbose "Xodus Nexus: runtime dependency '${dep}' unavailable; continuing."
-        done
-    fi
-    return 0
-}
-
 # Download release $1 and check it against the SHA-512 file upstream publishes
 # beside every launcher AppImage (the same check the in-app updater makes). The
 # verified file is left in $_XN_FILE, next to the install path so the final move
@@ -246,7 +197,7 @@ install_xodus_nexus() {
     fi
 
     ensure_appimage_fuse
-    _xn_install_runtime_deps
+    ensure_electron_runtime_deps "Xodus Nexus"
     _xn_download "$version" || return 1
 
     chmod 0755 "$_XN_FILE" || return 1

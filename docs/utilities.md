@@ -16,8 +16,8 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
 | [System Tools](#system-tools) | | |
 
-> **Incomplete:** 242 utilities and system tasks are registered in
-> `lib/installers.sh`; 197 are listed below. The **File Managers**, **Firewalls**,
+> **Incomplete:** 249 utilities and system tasks are registered in
+> `lib/installers.sh`; 204 are listed below. The **File Managers**, **Firewalls**,
 > **Login Screens** and **Window Managers** categories have no table here at all,
 > and a handful of entries in the documented categories are missing too (Angry IP
 > Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
@@ -128,6 +128,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Ansible** | IT automation and configuration management tool |
 | **Claude Code** | Anthropic's AI coding assistant for the terminal |
 | **Claude Desktop** | Anthropic's Claude desktop app — Chat, Cowork and Claude Code (Linux beta). Native on Debian/Ubuntu; on other distros it runs in an Ubuntu 26.04 distrobox and appears in the app menu |
+| **Codex** | OpenAI's AI coding agent for the terminal (npm; settings in `~/.codex` are kept on uninstall) |
 | **Cursor IDE** | AI-powered code editor built on VS Code |
 | **DBeaver** | Universal database management tool |
 | **Distrobox** | Run any Linux distro in an integrated terminal container (needs Podman/Docker) |
@@ -137,9 +138,11 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Docker** | Container platform — official repos, adds user to `docker` group |
 | **GitHub CLI** | Official CLI for GitHub — repos, issues, PRs, and workflows |
 | **Go SDK** | Official Go programming language toolchain |
+| **Hermes Agent** | Nous Research's open-source AI agent for the terminal (installed per user; update and uninstall use its own commands, settings in `~/.hermes` are kept) |
 | **JetBrains Toolbox** | Manager for JetBrains IDEs (IntelliJ, PyCharm, WebStorm, etc.) |
 | **k9s** | Terminal UI for managing Kubernetes clusters |
 | **kubectl** | Kubernetes command-line tool |
+| **LM Studio** | Desktop app for running large language models locally (AppImage, about 1 GB; models in `~/.lmstudio` are kept on uninstall) |
 | **Neovim** | Extensible Vim-based text editor |
 | **Node.js** | JavaScript runtime — LTS release via NodeSource |
 | **NVM** | Node Version Manager — install and switch Node.js versions |
@@ -248,6 +251,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **LibreOffice** | Open-source office suite — direct download / native packages / flatpak |
 | **Logseq** | Privacy-first knowledge management and outliner |
 | **Mark Text** | Simple and elegant Markdown editor |
+| **Multimedia Codecs** | Full audio and video codecs (H.264, HEVC, AAC and more) for FFmpeg and GStreamer apps. Fedora: enables RPM Fusion, replaces `ffmpeg-free` with the full `ffmpeg` and installs the `multimedia` group; RHEL clones: RPM Fusion for EL (with EPEL and CRB); Debian/Ubuntu and Arch: `ffmpeg` and the GStreamer plugin sets (Ubuntu needs universe); openSUSE: Packman through `opi codecs`. Uninstall is not offered, since media apps link against the codecs |
 | **Nextcloud Desktop** | Sync client for self-hosted Nextcloud cloud storage |
 | **OBS Studio** | Video recording and live streaming |
 | **Obsidian** | Markdown-based knowledge base with graphs and plugins |
@@ -278,13 +282,16 @@ Additional, cross-distro managers that run alongside the native package manager 
 
 | Utility | Description |
 |---------|-------------|
+| **bat** | `cat` with syntax highlighting, line numbers and Git change markers — on Debian/Ubuntu, where the command is `batcat`, a `bat` link to it is added in `~/.local/bin` |
 | **Btop** | Terminal-based resource monitor with rich visuals |
 | **ClamAV** | Open-source antivirus engine — prompts for a desktop front-end, defaulting to ClamUI (Flathub) |
 | **Fastfetch** | Fast system information display tool |
 | **Filelight** | Disk usage analyzer with interactive sunburst chart |
+| **GPU Task Manager** | Terminal task manager for the GPU (`gputaskman`): per-process VRAM and GPU load, and which runtimes and model files use it — NVIDIA, AMD (amdgpu) and Intel (i915). Upstream's portable build, SHA-256 checked, installed per user in `~/.local/opt/gputaskman`; needs glibc 2.35 or newer (not Rocky/RHEL 9) |
 | **Input Leap** | Software KVM — share keyboard and mouse across machines |
 | **OCCT** | CPU/RAM/GPU stability and stress testing — free Personal edition, x86_64 binary from ocbase.com, installed per-user under `~/.local/share/occt` |
 | **Pay Respects** | Press `F` to fix the last failed command — Rust `thefuck` replacement with inline `Ctrl+X` correction. Installed from upstream's `.deb`/`.rpm` (in no distro repo; AUR on Arch) and wired into `~/.bashrc`/`~/.zshrc`; its AI module is disabled by default |
+| **ripgrep** | `rg`: searches a folder tree for text much faster than `grep -r`, skipping files in `.gitignore` |
 | **Stacer** | Graphical system optimizer and monitor |
 | **TMOG** | Native Qt task manager with real-time system metrics — no repo, AUR, or checksums upstream; installed from tmog.org's `.deb` on Debian/Ubuntu, AppImage elsewhere |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |

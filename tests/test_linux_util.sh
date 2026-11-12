@@ -2625,12 +2625,15 @@ test_xrdp_kde_x11_fails_when_session_still_missing() {
 }
 
 # A process named like a session's channel server makes the check true; it is
-# a copy of sleep, so the name in /proc/<pid>/comm is the only thing faked.
+# a shell script named xrdp-chansrv, so the name in /proc/<pid>/comm is the
+# only thing faked. Not a renamed copy of sleep: multi-call coreutils (uutils,
+# Ubuntu 26.04) refuse to run under a name they don't know (#87).
 test_xrdp_sessions_open_sees_a_session_process() {
     local _d _pid
     _d=$(mktemp -d)
-    cp "$(command -v sleep)" "$_d/xrdp-chansrv"
-    "$_d/xrdp-chansrv" 30 &
+    printf '#!/bin/sh\nwhile :; do sleep 0.1; done\n' > "$_d/xrdp-chansrv"
+    chmod +x "$_d/xrdp-chansrv"
+    "$_d/xrdp-chansrv" &
     _pid=$!
     sleep 0.2
     assert_true "_xrdp_sessions_open is true while an xrdp-chansrv process runs" _xrdp_sessions_open
@@ -4710,6 +4713,335 @@ test_xodus_nexus_version_cache_follows_the_appimage() {
 test_xodus_nexus_registered
 test_xodus_nexus_latest_skips_backend_runtime_and_prerelease
 test_xodus_nexus_version_cache_follows_the_appimage
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== Hermes Agent ==="
+
+test_hermes_agent_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "Hermes Agent"[[:space:]]+install_hermes_agent ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["Hermes Agent"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Hermes Agent"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["Hermes Agent"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"Hermes Agent=\$HOME/.hermes/hermes-agent"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_hermes_agent()" "${SCRIPT_DIR}/lib/installers/hermes_agent.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "Hermes Agent is registered with category, subcategory, description, upstream-binary mark and all five functions"
+}
+
+# ~/.local/bin is not on PATH in the session that ran upstream's installer, so
+# the check must find upstream's own link there, and the version comes from
+# the agent's --version line.
+test_hermes_agent_found_by_upstream_link_and_version_parsed() {
+    local out
+    out=$(
+        d=$(mktemp -d)
+        export HOME="$d" PATH="/usr/bin:/bin"
+        mkdir -p "$d/.local/bin"
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/hermes_agent.sh"
+        a=absent; check_hermes_agent || a=missing
+        v0=$(get_version_hermes_agent)
+        printf '#!/bin/sh\necho "Hermes Agent v0.22.6 (2026.9.24) · stable · local f0d94882e89a"\n' > "$d/.local/bin/hermes"
+        chmod +x "$d/.local/bin/hermes"
+        b=absent; check_hermes_agent && b=found
+        v1=$(get_version_hermes_agent)
+        rm -rf "$d"
+        echo "$a [$v0] $b $v1"
+    )
+    assert_eq "missing [] found 0.22.6" "$out" "Hermes Agent is detected through ~/.local/bin/hermes off PATH and its version is read from --version"
+}
+
+test_hermes_agent_registered
+test_hermes_agent_found_by_upstream_link_and_version_parsed
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== Codex ==="
+
+test_codex_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "Codex"[[:space:]]+install_codex ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["Codex"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Codex"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["Codex"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_codex()" "${SCRIPT_DIR}/lib/installers/codex.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "Codex is registered with category, subcategory, description and all five functions"
+}
+
+test_codex_version_parsed_from_version_line() {
+    local out
+    out=$(
+        d=$(mktemp -d)
+        export PATH="$d:/usr/bin:/bin"
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/codex.sh"
+        a=$(get_version_codex)
+        printf '#!/bin/sh\necho "codex-cli 0.166.0"\n' > "$d/codex"; chmod +x "$d/codex"
+        b=$(get_version_codex)
+        rm -rf "$d"
+        echo "[$a] $b"
+    )
+    assert_eq "[] 0.166.0" "$out" "Codex version is read from the codex --version line and is empty when not installed"
+}
+
+test_codex_registered
+test_codex_version_parsed_from_version_line
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== LM Studio ==="
+
+test_lm_studio_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "LM Studio"[[:space:]]+install_lm_studio ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["LM Studio"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["LM Studio"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["LM Studio"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"LM Studio=\$_LMS_APPIMAGE"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"LM Studio=_lms_latest_version"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_lm_studio()" "${SCRIPT_DIR}/lib/installers/lm_studio.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "LM Studio is registered with category, subcategory, description, upstream-binary marks and all five functions"
+}
+
+# The "latest" download link redirects to the versioned AppImage; the version
+# is whatever sits in that path, with the build number after the dash.
+test_lm_studio_version_taken_from_redirect_url() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/lm_studio.sh"
+        printf '%s\n' 'https://installers.lmstudio.ai/linux/x64/0.4.28-2/LM-Studio-0.4.28-2-x64.AppImage' | _lms_version_from_url
+        printf '%s\n' 'https://installers.lmstudio.ai/linux/arm64/0.10.3-14/LM-Studio-0.10.3-14-arm64.AppImage' | _lms_version_from_url
+        printf '%s\n' 'https://lmstudio.ai/download' | _lms_version_from_url
+    )
+    assert_eq "0.4.28-2 0.10.3-14 " "$(echo $out) " "LM Studio latest version is read from the redirect path for x64 and arm64 and is empty for other URLs"
+}
+
+# The AppImage says 0.4.28+2 in its embedded menu entry, the download path
+# says 0.4.28-2; both are shown as 0.4.28-2 so the update check can compare
+# them. The cached value follows the file when the app updates itself.
+test_lm_studio_version_from_appimage_is_cached_and_follows_the_file() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/lm_studio.sh"
+        d=$(mktemp -d)
+        _LMS_APPIMAGE="$d/LM-Studio.AppImage"
+        _LMS_VERSION_CACHE="$d/cache/lm-studio.version"
+        printf '#!/bin/sh\nmkdir squashfs-root && printf "X-AppImage-Version=0.4.28+2\\n" > squashfs-root/a.desktop\n' > "$_LMS_APPIMAGE"
+        chmod +x "$_LMS_APPIMAGE"
+        a=$(get_version_lm_studio)
+        _lms_appimage_version() { echo "should-not-run"; }
+        b=$(get_version_lm_studio)
+        printf '#!/bin/sh\n# newer\n' > "$_LMS_APPIMAGE"; touch -d '+1 minute' "$_LMS_APPIMAGE"
+        _lms_appimage_version() { echo "0.4.29-1"; }
+        c=$(get_version_lm_studio)
+        rm -rf "$d"
+        echo "$a $b $c"
+    )
+    assert_eq "0.4.28-2 0.4.28-2 0.4.29-1" "$out" "LM Studio version is read from the AppImage as 0.4.28-2, cached per file and re-read after the file changes"
+}
+
+test_lm_studio_registered
+test_lm_studio_version_taken_from_redirect_url
+test_lm_studio_version_from_appimage_is_cached_and_follows_the_file
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== GPU Task Manager ==="
+
+test_gputaskman_registered() {
+    local fn gaps=0
+    grep -qE '^register_utility "GPU Task Manager"[[:space:]]+install_gputaskman ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_CATEGORY\["GPU Task Manager"\]="System Tools"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_DESCRIPTION\["GPU Task Manager"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"GPU Task Manager=\$_GTM_DIR"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '"GPU Task Manager=_gtm_latest_version"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_gputaskman()" "${SCRIPT_DIR}/lib/installers/gputaskman.sh" || gaps=1
+    done
+    assert_eq "0" "$gaps" "GPU Task Manager is registered with category, description, upstream-binary marks and all five functions"
+}
+
+# GitHub's /releases/latest redirects to the newest tag's page; the version is
+# the tag without its leading v. Anything else gives no version.
+test_gputaskman_version_taken_from_redirect_url() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/gputaskman.sh"
+        printf '%s\n' 'https://github.com/shanselman/gputaskman/releases/tag/v0.4.0' | _gtm_version_from_url
+        printf '%s\n' 'https://github.com/shanselman/gputaskman/releases/tag/v1.12.30' | _gtm_version_from_url
+        printf '%s\n' 'https://github.com/shanselman/gputaskman/releases/tag/nightly' | _gtm_version_from_url
+        printf '%s\n' 'https://github.com/shanselman/gputaskman/releases' | _gtm_version_from_url
+    )
+    assert_eq "0.4.0 1.12.30 " "$(echo $out) " "GPU Task Manager latest version is the release tag without its v, and empty for other URLs"
+}
+
+# Upstream's build needs glibc 2.35 (Ubuntu 22.04, Debian 12); Rocky 9's 2.34
+# and a system without glibc are refused, 2.35 and later accepted.
+test_gputaskman_glibc_minimum() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/gputaskman.sh"
+        for v in 2.34 2.35 2.39 2.4 3.0 ""; do
+            if _gtm_glibc_ok "$v"; then printf 'y'; else printf 'n'; fi
+        done
+    )
+    assert_eq "nyynyn" "$out" "GPU Task Manager accepts glibc 2.35 and newer and refuses 2.34, 2.4 and no glibc"
+}
+
+# The bundle has no --version flag; the version is the one written beside it
+# at install time, and nothing is reported when it is not installed.
+test_gputaskman_version_from_install_stamp() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/gputaskman.sh"
+        d=$(mktemp -d)
+        _GTM_VERSION_FILE="$d/.linux_util-version"
+        a=$(get_version_gputaskman)
+        printf '0.4.0\n' > "$_GTM_VERSION_FILE"
+        b=$(get_version_gputaskman)
+        rm -rf "$d"
+        echo "[$a] [$b]"
+    )
+    assert_eq "[] [0.4.0]" "$out" "GPU Task Manager version is read from the install stamp and empty when not installed"
+}
+
+test_gputaskman_registered
+test_gputaskman_version_taken_from_redirect_url
+test_gputaskman_glibc_minimum
+test_gputaskman_version_from_install_stamp
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== RPM Fusion helper, Multimedia Codecs, bat, ripgrep ==="
+
+# Runs ensure_rpmfusion with rpm and the package manager stubbed. $1 family,
+# $2 section asked for, $3 release packages already installed (space list),
+# $4 epel-release installed (y/n). Prints each command that would change the
+# system, one per line.
+_rpmfusion_run() {
+    (
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        DISTRO_FAMILY="$1"; DISTRO_NAME="Test"; PKG_MGR=dnf
+        _have=" $3 "; [[ "$4" == y ]] && _have+="epel-release "
+        rpm() {
+            case "$1" in
+                -E) [[ "$2" == "%fedora" ]] && echo 45 || echo 9 ;;
+                -q) [[ "$_have" == *" $2 "* ]] ;;
+            esac
+        }
+        # Logged to a file: ensure_rpmfusion silences run_as_root's output.
+        _log=$(mktemp)
+        pkg_install() { echo "install $*" >> "$_log"; }
+        run_as_root() { [[ "$2" == "makecache" ]] || echo "root $*" >> "$_log"; return 0; }
+        info() { :; }; error() { echo "error" >> "$_log"; }
+        ensure_rpmfusion "$2" && echo "rc=0" >> "$_log" || echo "rc=1" >> "$_log"
+        cat "$_log"; rm -f "$_log"
+    )
+}
+
+test_ensure_rpmfusion_fedora_installs_missing_sections() {
+    assert_eq $'install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-45.noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-45.noarch.rpm\nrc=0' \
+        "$(_rpmfusion_run fedora nonfree "" n)" \
+        "ensure_rpmfusion nonfree on Fedora installs free and nonfree for the release from rpm -E"
+    assert_eq $'install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-45.noarch.rpm\nrc=0' \
+        "$(_rpmfusion_run fedora nonfree "rpmfusion-free-release" n)" \
+        "ensure_rpmfusion nonfree with free already on installs only nonfree"
+    assert_eq "rc=0" "$(_rpmfusion_run fedora free "rpmfusion-free-release" n)" \
+        "ensure_rpmfusion does nothing when RPM Fusion is already enabled"
+}
+
+# #86: on Rocky 9.8 the release package is -9, never the os-release 9.8, and
+# EPEL and CRB come first.
+test_ensure_rpmfusion_rhel_uses_major_version_and_epel() {
+    assert_eq $'install epel-release\nroot crb enable\ninstall https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-9.noarch.rpm\nrc=0' \
+        "$(DISTRO_VERSION_ID=9.8 _rpmfusion_run rhel nonfree "" n)" \
+        "ensure_rpmfusion on a RHEL clone enables EPEL and CRB, then RPM Fusion for EL by major version"
+    assert_eq $'error\nrc=1' "$(_rpmfusion_run suse free "" n)" \
+        "ensure_rpmfusion refuses distros without RPM Fusion"
+}
+
+# One implementation: no installer builds an RPM Fusion release URL itself.
+test_rpmfusion_url_only_in_shared_helper() {
+    local hits
+    hits=$(grep -l 'rpmfusion-[a-z${}]*-release-' "${SCRIPT_DIR}"/lib/installers/*.sh | grep -v '/_shared.sh$' | xargs -r -n1 basename | tr '\n' ' ')
+    assert_eq "" "$hits" "RPM Fusion is enabled only through ensure_rpmfusion (no copies in installers)"
+}
+
+test_new_utilities_registered() {
+    local name slug cat fn gaps=0
+    for entry in "Multimedia Codecs|multimedia_codecs|Productivity" "bat|bat|System Tools" "ripgrep|ripgrep|System Tools"; do
+        IFS='|' read -r name slug cat <<<"$entry"
+        grep -qE "^register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -q "^UTILITY_CATEGORY\[\"${name}\"\]=\"${cat}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -q "^UTILITY_DESCRIPTION\[\"${name}\"\]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qx "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qx "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "Multimedia Codecs, bat and ripgrep are registered with category, description, completions and all five functions"
+}
+
+test_codecs_ffmpeg_version_parse() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/multimedia_codecs.sh"
+        for l in "ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers" \
+                 "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026" \
+                 "ffmpeg version n7.1 Copyright" \
+                 "ffmpeg version N-12345-gabcdef" ""; do
+            printf '[%s]' "$(printf '%s\nsecond line 1.2.3\n' "$l" | _codecs_version_from_output)"
+        done
+    )
+    assert_eq "[9.0.2][7.1.5][7.1][][]" "$out" "Multimedia Codecs reports the FFmpeg version from ffmpeg -version, empty for git builds and no output"
+}
+
+# EL 8 names the GStreamer libav plugin gstreamer1-libav, EL 9+ gstreamer1-plugin-libav.
+test_codecs_rhel_libav_name() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/multimedia_codecs.sh"
+        for v in 8.10 9.8 10.1; do DISTRO_VERSION_ID=$v; printf '%s ' "$(_codecs_rhel_libav)"; done
+    )
+    assert_eq "gstreamer1-libav gstreamer1-plugin-libav gstreamer1-plugin-libav " "$out" "Multimedia Codecs picks the GStreamer libav package name by EL release"
+}
+
+# Debian/Ubuntu: a bat link to batcat is made only when nothing is called bat
+# yet, and uninstall removes only that link.
+test_bat_batcat_link() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/bat.sh"
+        d=$(mktemp -d); info() { :; }; pkg_remove() { :; }
+        DISTRO_FAMILY=debian
+        _BAT_BATCAT="$d/batcat"; printf '#!/bin/sh\n' > "$_BAT_BATCAT"; chmod +x "$_BAT_BATCAT"
+        _BAT_LINK="$d/home/bin/bat"
+        _bat_link_batcat; printf '%s ' "$( [[ "$(readlink "$_BAT_LINK")" == "$_BAT_BATCAT" ]] && echo linked || echo none)"
+        uninstall_bat; printf '%s ' "$( [[ -e "$_BAT_LINK" || -L "$_BAT_LINK" ]] && echo kept || echo removed)"
+        printf 'mine\n' > "$_BAT_LINK"
+        _bat_link_batcat; uninstall_bat; printf '%s ' "$(cat "$_BAT_LINK")"
+        rm -f "$_BAT_LINK"; DISTRO_FAMILY=fedora
+        _bat_link_batcat; printf '%s' "$( [[ -e "$_BAT_LINK" ]] && echo linked || echo none)"
+        rm -rf "$d"
+    )
+    assert_eq "linked removed mine none" "$out" "bat links batcat on Debian only when bat is free, and uninstall removes only its own link"
+}
+
+test_ensure_rpmfusion_fedora_installs_missing_sections
+test_ensure_rpmfusion_rhel_uses_major_version_and_epel
+test_rpmfusion_url_only_in_shared_helper
+test_new_utilities_registered
+test_codecs_ffmpeg_version_parse
+test_codecs_rhel_libav_name
+test_bat_batcat_link
 
 # ----------------------------------------------------------------------------
 echo ""

@@ -162,6 +162,7 @@ register_utility "Brave Browser"       install_brave            check_brave     
 register_utility "Brave Debloat"       install_brave_debloat    check_brave_debloat    uninstall_brave_debloat    update_brave_debloat       get_version_brave_debloat
 register_utility "Brave Origin"        install_brave_origin     check_brave_origin     uninstall_brave_origin     update_brave_origin        get_version_brave_origin
 register_utility "Btop"                install_btop             check_btop             uninstall_btop             update_btop                get_version_btop
+register_utility "bat"                 install_bat              check_bat              uninstall_bat              update_bat                 get_version_bat
 register_utility "Intel CPU Microcode & Thermal" install_intel_chipset_drivers check_intel_chipset_drivers uninstall_intel_chipset_drivers update_intel_chipset_drivers get_version_intel_chipset_drivers
 register_utility "Chromium"            install_chromium         check_chromium         uninstall_chromium         update_chromium            get_version_chromium
 register_utility "ClamAV"              install_clamav           check_clamav           uninstall_clamav           update_clamav              get_version_clamav
@@ -169,6 +170,7 @@ register_utility "Claws Mail"          install_claws_mail       check_claws_mail
 register_utility "Claude Code"         install_claude_code      check_claude_code      uninstall_claude_code      update_claude_code
 # Claude Desktop: native on Debian/Ubuntu, in an Ubuntu distrobox everywhere else
 register_utility "Claude Desktop"      install_claude_desktop   check_claude_desktop   uninstall_claude_desktop   update_claude_desktop      get_version_claude_desktop
+register_utility "Codex"               install_codex            check_codex            uninstall_codex            update_codex               get_version_codex
 register_utility "Cockpit"             install_cockpit          check_cockpit          uninstall_cockpit          update_cockpit             get_version_cockpit
 register_utility "Cursor IDE"          install_cursor           check_cursor           uninstall_cursor           update_cursor              get_version_cursor
 register_utility "DBeaver"             install_dbeaver          check_dbeaver          uninstall_dbeaver          update_dbeaver             get_version_dbeaver
@@ -212,7 +214,9 @@ register_utility "GitHub CLI"          install_github_cli       check_github_cli
 register_utility "Go SDK"              install_golang           check_golang           uninstall_golang           update_golang              get_version_golang
 register_utility "Google Chrome"       install_google_chrome    check_google_chrome    uninstall_google_chrome    update_google_chrome       get_version_google_chrome
 register_utility "GParted"             install_gparted          check_gparted          uninstall_gparted          update_gparted             get_version_gparted
+register_utility "GPU Task Manager"    install_gputaskman       check_gputaskman       uninstall_gputaskman       update_gputaskman          get_version_gputaskman
 register_utility "HandBrake"           install_handbrake        check_handbrake        uninstall_handbrake        update_handbrake           get_version_handbrake
+register_utility "Hermes Agent"          install_hermes_agent     check_hermes_agent     uninstall_hermes_agent     update_hermes_agent        get_version_hermes_agent
 register_utility "Heroic Games Launcher" install_heroic         check_heroic           uninstall_heroic           update_heroic              get_version_heroic
 register_utility "Inkscape"            install_inkscape         check_inkscape         uninstall_inkscape         update_inkscape            get_version_inkscape
 register_utility "Input Leap"          install_input_leap       check_input_leap       uninstall_input_leap       update_input_leap          get_version_input_leap
@@ -233,11 +237,13 @@ register_utility "LACT"                install_lact             check_lact      
 register_utility "Libation"            install_libation         check_libation         uninstall_libation         update_libation            get_version_libation
 register_utility "LibreOffice"         install_libreoffice      check_libreoffice      uninstall_libreoffice      update_libreoffice         get_version_libreoffice
 register_utility "LibreWolf"           install_librewolf        check_librewolf        uninstall_librewolf        update_librewolf           get_version_librewolf
+register_utility "LM Studio"           install_lm_studio        check_lm_studio        uninstall_lm_studio        update_lm_studio           get_version_lm_studio
 register_utility "LocalSend"           install_localsend        check_localsend        uninstall_localsend        update_localsend           get_version_localsend
 register_utility "Logseq"              install_logseq           check_logseq           uninstall_logseq           update_logseq              get_version_logseq
 register_utility "Lutris"              install_lutris           check_lutris           uninstall_lutris           update_lutris              get_version_lutris
 register_utility "MangoHud"            install_mangohud         check_mangohud         uninstall_mangohud         update_mangohud            get_version_mangohud
 register_utility "Mark Text"           install_marktext         check_marktext         uninstall_marktext         update_marktext            get_version_marktext
+register_utility "Multimedia Codecs"   install_multimedia_codecs check_multimedia_codecs uninstall_multimedia_codecs update_multimedia_codecs get_version_multimedia_codecs
 register_utility "NeoMutt"             install_neomutt          check_neomutt          uninstall_neomutt          update_neomutt             get_version_neomutt
 register_utility "Neovim"              install_neovim           check_neovim           uninstall_neovim           update_neovim              get_version_neovim
 register_utility "Nextcloud Desktop"   install_nextcloud_desktop check_nextcloud_desktop uninstall_nextcloud_desktop update_nextcloud_desktop get_version_nextcloud_desktop
@@ -265,6 +271,7 @@ register_utility "ProtonVPN"           install_protonvpn        check_protonvpn 
 register_utility "pyenv"               install_pyenv            check_pyenv            uninstall_pyenv            update_pyenv               get_version_pyenv
 register_utility "QBittorrent"         install_qbittorrent      check_qbittorrent      uninstall_qbittorrent      update_qbittorrent         get_version_qbittorrent
 register_utility "Remmina"             install_remmina          check_remmina          uninstall_remmina          update_remmina             get_version_remmina
+register_utility "ripgrep"             install_ripgrep          check_ripgrep          uninstall_ripgrep          update_ripgrep             get_version_ripgrep
 register_utility "RustDesk"            install_rustdesk         check_rustdesk         uninstall_rustdesk         update_rustdesk            get_version_rustdesk
 register_utility "Rustup"              install_rustup           check_rustup           uninstall_rustup           update_rustup              get_version_rustup
 register_utility "Signal Desktop"         install_signal                check_signal                uninstall_signal                update_signal                 get_version_signal
@@ -587,9 +594,13 @@ UTILITY_CATEGORY["Brave Browser"]="Internet"
 UTILITY_CATEGORY["Brave Debloat"]="Internet"
 UTILITY_CATEGORY["Brave Origin"]="Internet"
 UTILITY_CATEGORY["Btop"]="System Tools"
+UTILITY_CATEGORY["bat"]="System Tools"
+UTILITY_CATEGORY["ripgrep"]="System Tools"
+UTILITY_CATEGORY["GPU Task Manager"]="System Tools"
 UTILITY_CATEGORY["Chromium"]="Internet"
 UTILITY_CATEGORY["Claude Code"]="Development"
 UTILITY_CATEGORY["Claude Desktop"]="Development"
+UTILITY_CATEGORY["Codex"]="Development"
 UTILITY_CATEGORY["Claws Mail"]="Internet"
 UTILITY_CATEGORY["Cockpit"]="Remote Admin Tools"
 UTILITY_CATEGORY["Cursor IDE"]="Development"
@@ -608,6 +619,8 @@ UTILITY_CATEGORY["Filelight"]="System Tools"
 UTILITY_CATEGORY["Firefox"]="Internet"
 UTILITY_CATEGORY["GIMP"]="Productivity"
 UTILITY_CATEGORY["GitHub CLI"]="Development"
+UTILITY_CATEGORY["Hermes Agent"]="Development"
+UTILITY_CATEGORY["LM Studio"]="Development"
 UTILITY_CATEGORY["Google Chrome"]="Internet"
 UTILITY_CATEGORY["Heroic Games Launcher"]="Gaming"
 UTILITY_CATEGORY["JetBrains Toolbox"]="Development"
@@ -736,6 +749,7 @@ UTILITY_CATEGORY["KDiskMark"]="Disk Utilities"
 UTILITY_CATEGORY["Virt-Manager"]="Development"
 UTILITY_CATEGORY["Firecracker"]="Development"
 UTILITY_CATEGORY["VLC"]="Productivity"
+UTILITY_CATEGORY["Multimedia Codecs"]="Productivity"
 UTILITY_CATEGORY["Zen Browser"]="Internet"
 UTILITY_CATEGORY["Zoom"]="Internet"
 UTILITY_CATEGORY["Zotero"]="Productivity"
@@ -802,6 +816,9 @@ UTILITY_SUBCATEGORY["Standard Notes"]="Notes"
 UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
 UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Claude Desktop"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Codex"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Hermes Agent"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["LM Studio"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
@@ -982,6 +999,9 @@ UTILITY_DESCRIPTION["Delete Snapshot"]="Permanently removes one or more snapshot
 UTILITY_DESCRIPTION["Ansible"]="IT automation tool for provisioning, configuration management, and application deployment using agentless SSH-based playbooks."
 UTILITY_DESCRIPTION["Claude Code"]="Anthropic's AI coding assistant that runs in the terminal for code generation, editing, and analysis."
 UTILITY_DESCRIPTION["Claude Desktop"]="Anthropic's Claude desktop app with Chat, Cowork, and Claude Code (Linux beta). Installed from Anthropic's apt repository — natively on Debian/Ubuntu, inside an Ubuntu 26.04 distrobox on other distros (Distrobox is installed first if missing)."
+UTILITY_DESCRIPTION["Codex"]="OpenAI's coding agent that runs in the terminal for code generation, editing, and review. Installed from npm (Node.js is installed first if missing); your sign-in and settings in ~/.codex are kept on uninstall."
+UTILITY_DESCRIPTION["Hermes Agent"]="Nous Research's open-source AI agent for the terminal, with tools, memory, skills and messaging gateways. Installed per user with upstream's own script; updates and removal use its own hermes update / hermes uninstall, which keeps your settings in ~/.hermes."
+UTILITY_DESCRIPTION["LM Studio"]="Desktop app for downloading and running large language models locally, with a chat window and an OpenAI-compatible local server. Installed per user from upstream's AppImage (about 1 GB, SHA-512 checked); your models and settings in ~/.lmstudio are kept on uninstall."
 UTILITY_DESCRIPTION["Cursor IDE"]="AI-powered code editor built on VS Code with deeply integrated AI features for code completion and chat."
 UTILITY_DESCRIPTION["DBeaver"]="Universal database management tool supporting PostgreSQL, MySQL, SQLite, Oracle, and many more."
 UTILITY_DESCRIPTION["Docker"]="Container platform for building, shipping, and running applications in isolated environments."
@@ -1101,6 +1121,7 @@ UTILITY_DESCRIPTION["Libation"]="Open-source Audible audiobook manager for downl
 UTILITY_DESCRIPTION["Logseq"]="Open-source knowledge management and note-taking app based on linked, Markdown-formatted outliner blocks."
 UTILITY_DESCRIPTION["Mark Text"]="Simple, elegant Markdown editor focused on writing speed with live preview and multiple themes."
 UTILITY_DESCRIPTION["VLC"]="Versatile open-source media player supporting virtually every audio and video format without additional codecs."
+UTILITY_DESCRIPTION["Multimedia Codecs"]="Full audio and video codecs (H.264, HEVC, AAC and more) for FFmpeg and GStreamer apps such as browsers, video players and editors. Fedora: enables RPM Fusion, replaces ffmpeg-free with the full ffmpeg and installs the multimedia group. RHEL clones: RPM Fusion for EL (with EPEL and CRB). Debian/Ubuntu and Arch: ffmpeg and the GStreamer plugin sets. openSUSE: Packman through opi codecs. Not removable from here, since media apps link against the codecs."
 UTILITY_DESCRIPTION["Zotero"]="Free reference manager for collecting, organizing, annotating, and citing research sources."
 UTILITY_DESCRIPTION["Joplin Client"]="Open-source note-taking and to-do application with Markdown support and sync."
 UTILITY_DESCRIPTION["Joplin Web Clipper"]="Deploys Joplin Web Clipper browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, LibreWolf, Thorium, Vivaldi). Captures web pages and screenshots directly into Joplin — requires the Joplin desktop app running with Web Clipper service enabled."
@@ -1121,12 +1142,15 @@ UTILITY_DESCRIPTION["CachyOS Kernel Manager"]="GUI to install, build, swap, and 
 UTILITY_DESCRIPTION["Fedora Mainline Kernel"]="Enables the community @kernel-vanilla/mainline Copr and installs the latest upstream (vanilla) mainline kernel on Fedora — the standard way to test an upstream kernel there, since Fedora has no dedicated GUI manager. Fedora only. Mainline kernels are unsigned, so Secure Boot must be disabled to boot them; the stock Fedora kernel is kept as a fallback."
 UTILITY_DESCRIPTION["linux-tkg"]="Frogging-Family custom-kernel builder. Unlike the other kernel managers it BUILDS a kernel from source — you pick the CPU scheduler (BORE, EEVDF, PDS, …), compiler, and config. Cross-distro: makepkg on Arch, or ./install.sh on Debian/Ubuntu, Fedora, and openSUSE (it produces and installs a .deb/.rpm). The build is interactive and can take 20-60+ minutes; kernels carry 'tkg' in the name and are removed manually (./install.sh uninstall-help). Build deps are installed automatically where possible."
 UTILITY_DESCRIPTION["Btop"]="Modern terminal-based resource monitor with a rich visual interface showing CPU, memory, disk, and network."
+UTILITY_DESCRIPTION["bat"]="A cat clone with syntax highlighting, line numbers and Git change markers. On Debian/Ubuntu, where the command is named batcat, a bat link to it is added in ~/.local/bin."
+UTILITY_DESCRIPTION["ripgrep"]="rg: searches a folder tree for text much faster than grep -r, and skips files listed in .gitignore."
 UTILITY_DESCRIPTION["Filelight"]="KDE disk usage analyzer that visualizes storage consumption as an interactive radial map, making it easy to identify large files and directories."
 UTILITY_DESCRIPTION["ClamAV"]="Open-source antivirus engine for detecting trojans, viruses, malware, and other malicious threats. Asks which desktop front-end you want and defaults to ClamUI, a GTK4/libadwaita app from Flathub covering scanning, quarantine, and scheduled scans; ClamTk is offered too wherever the distro packages it. Enables the freshclam definition updater and the scan daemon."
 UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyboard and mouse across multiple computers on your local network."
 UTILITY_DESCRIPTION["Ventoy"]="Bootable USB solution for loading multiple ISO images from a single drive — just copy ISOs and boot."
 UTILITY_DESCRIPTION["GParted"]="Graphical partition editor for creating, resizing, moving, copying, and deleting disk partitions. Supports ext2/3/4, btrfs, xfs, ntfs, fat32, and more — ideal for managing drives and preparing disks."
 UTILITY_DESCRIPTION["KDiskMark"]="HDD and SSD benchmark tool with a graphical interface over fio (Flexible I/O Tester) — measures sequential and random read/write speeds with configurable block size, queue depth and thread count, and can generate a text report. Installed from the native package; falls back to Flathub where the distro does not package it (Debian 12, Ubuntu 22.04, openSUSE Leap 15)."
+UTILITY_DESCRIPTION["GPU Task Manager"]="Terminal task manager for the GPU: per-process VRAM and GPU load, and which runtimes and model files (llama.cpp, Ollama, PyTorch) are using it. NVIDIA through the driver, AMD (amdgpu) and Intel (i915) through the kernel. Installed per user from upstream's portable build (SHA-256 checked); needs glibc 2.35 or newer."
 UTILITY_DESCRIPTION["Fastfetch"]="Lightning-fast system information tool written in C, displaying OS, hardware, and software details."
 UTILITY_DESCRIPTION["Stacer"]="Linux system optimizer and monitoring tool with a graphical interface for managing services and resources."
 UTILITY_DESCRIPTION["Timeshift"]="System restore utility that creates incremental filesystem snapshots using rsync or BTRFS. Install this first to enable Create, Restore, and Delete Snapshot."
@@ -1243,7 +1267,10 @@ mark_upstream_binary \
     "VectorCraft=$HOME/Applications/vectorcraft.AppImage" \
     "WordCraft=$HOME/Applications/wordcraft.AppImage" \
     "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE" \
-    "Xodus Nexus=$_XN_APPIMAGE"
+    "Xodus Nexus=$_XN_APPIMAGE" \
+    "Hermes Agent=$HOME/.hermes/hermes-agent" \
+    "LM Studio=$_LMS_APPIMAGE" \
+    "GPU Task Manager=$_GTM_DIR"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1255,7 +1282,9 @@ mark_upstream_latest \
     "Visual Studio Code=_vscode_latest_version" \
     "Libation=_libation_latest_version" \
     "Claude Desktop=_claude_desktop_latest_version" \
-    "Xodus Nexus=_xn_latest_version"
+    "Xodus Nexus=_xn_latest_version" \
+    "LM Studio=_lms_latest_version" \
+    "GPU Task Manager=_gtm_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

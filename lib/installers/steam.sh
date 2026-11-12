@@ -231,16 +231,8 @@ install_steam() {
             fi
             ;;
         fedora)
-            if ! rpm -q rpmfusion-nonfree-release &>/dev/null; then
-                echo "Enabling RPM Fusion repositories (required for Steam)..."
-                if ! sudo "$PKG_MGR" install -y \
-                    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
-                    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"; then
-                    echo "Error: Failed to enable RPM Fusion repositories."
-                    return 1
-                fi
-                sudo "$PKG_MGR" makecache
-            fi
+            # Steam is in RPM Fusion nonfree
+            ensure_rpmfusion nonfree || return 1
             echo "Installing Steam from RPM Fusion..."
             if ! pkg_install steam; then
                 echo "Error: Failed to install Steam."

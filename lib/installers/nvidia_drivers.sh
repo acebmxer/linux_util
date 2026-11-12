@@ -498,7 +498,7 @@ install_nvidia_drivers() {
             echo "Detecting available NVIDIA drivers..."
             
             # Check if RPM Fusion (nonfree) is enabled
-            if ! dnf repolist 2>/dev/null | grep -qi 'rpmfusion.*nonfree'; then
+            if ! rpmfusion_enabled nonfree; then
                 echo ""
                 echo "[!] RPM Fusion (nonfree) repository is required for NVIDIA drivers on Fedora/RHEL."
                 echo ""
@@ -510,14 +510,7 @@ install_nvidia_drivers() {
                     esac
                 done
                 if [[ "$enable_rpmfusion" =~ ^[Yy]$ ]]; then
-                    echo "Enabling RPM Fusion repositories..."
-                    if [[ "$DISTRO_ID" == "fedora" ]]; then
-                        pkg_install "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-${DISTRO_VERSION_ID}.noarch.rpm" "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${DISTRO_VERSION_ID}.noarch.rpm"
-                    else
-                        # RHEL/CentOS
-                        pkg_install "https://download1.rpmfusion.org/free/el/rpmfusion-free-release-${DISTRO_VERSION_ID}.noarch.rpm" "https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-${DISTRO_VERSION_ID}.noarch.rpm"
-                    fi
-                    pkg_refresh >/dev/null 2>&1
+                    ensure_rpmfusion nonfree || return 1
                 else
                     warn "RPM Fusion is required for NVIDIA drivers. Installation cancelled."
                     return 1

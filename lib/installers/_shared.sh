@@ -311,3 +311,104 @@ ensure_appimage_fuse() {
             ;;
     esac
 }
+
+# Enable the CRB repository on a RHEL clone (named powertools on EL 8). The crb
+# helper ships with epel-release; config-manager is the fallback without it.
+# Shared by KDE Plasma and ensure_rpmfusion; do not add a copy.
+enable_crb() {
+    run_as_root crb enable &>/dev/null || \
+        run_as_root "$PKG_MGR" config-manager --set-enabled crb &>/dev/null || true
+}
+
+# Whether RPM Fusion's release package for the given section ($1: free or
+# nonfree, default free) is installed.
+rpmfusion_enabled() {
+    rpm -q "rpmfusion-${1:-free}-release" &>/dev/null
+}
+
+# Enable RPM Fusion on Fedora or a RHEL clone, if it is not already enabled.
+# $1 is free (the default) or nonfree; nonfree also enables free. On RHEL
+# clones RPM Fusion depends on EPEL and the CRB repository, so both are enabled
+# first. The release package is named by the major version (rpm -E), never the
+# point release in os-release (9.8), which RPM Fusion does not publish (#86).
+# Every installer that needs RPM Fusion calls this; do not add a copy.
+ensure_rpmfusion() {
+    local want="${1:-free}" os ver section
+    local -a urls=()
+    case "$DISTRO_FAMILY" in
+        fedora) os=fedora; ver=$(rpm -E %fedora) ;;
+        rhel)   os=el;     ver=$(rpm -E %rhel) ;;
+        *)      error "RPM Fusion is only available on Fedora and RHEL-family systems."; return 1 ;;
+    esac
+
+    local -a sections=(free)
+    [[ "$want" == "nonfree" ]] && sections+=(nonfree)
+    for section in "${sections[@]}"; do
+        rpmfusion_enabled "$section" || \
+            urls+=("https://mirrors.rpmfusion.org/${section}/${os}/rpmfusion-${section}-release-${ver}.noarch.rpm")
+    done
+    (( ${#urls[@]} )) || return 0
+
+    if [[ "$DISTRO_FAMILY" == "rhel" ]]; then
+        rpm -q epel-release &>/dev/null || pkg_install epel-release || {
+            error "Failed to enable EPEL, which RPM Fusion needs on ${DISTRO_NAME}."
+            return 1
+        }
+        enable_crb
+    fi
+
+    info "Enabling RPM Fusion (${sections[*]})..."
+    pkg_install "${urls[@]}" || { error "Failed to enable RPM Fusion."; return 1; }
+    run_as_root "$PKG_MGR" makecache &>/dev/null || true
+}
+
+# Debian 13 and Ubuntu 24.04+ renamed several libraries for the 64-bit time_t
+# transition (libasound2 -> libasound2t64). apt picks the new name by itself
+# for some of them but not for libasound2, which has two providers on Ubuntu.
+_electron_debian_name() {
+    if apt-cache show "${1}t64" &>/dev/null; then echo "${1}t64"; else echo "$1"; fi
+}
+
+# Runtime libraries for the Electron inside an AppImage (Xodus Nexus, LM Studio;
+# do not add a copy). $1 is the app name used in messages. An AppImage is not
+# a package, so nothing else pulls them in. Most are present on any desktop
+# install; this matters on minimal ones. Taken from the libraries the bundled
+# binary links (ldd), named per family the same way as NVIDIA PAIR's list.
+ensure_electron_runtime_deps() {
+    local app="$1"
+    local -a deps=()
+    case "$DISTRO_FAMILY" in
+        debian)
+            deps=("$(_electron_debian_name libgtk-3-0)" libnss3 libxtst6 libxss1
+                  "$(_electron_debian_name libasound2)" libgbm1 libsecret-1-0 xdg-utils)
+            ;;
+        fedora|rhel)
+            deps=(gtk3 nss libXScrnSaver libXtst xdg-utils libsecret mesa-libgbm alsa-lib)
+            ;;
+        suse)
+            deps=(gtk3 mozilla-nss libXss1 libXtst6 xdg-utils libsecret-1-0 libgbm1 libasound2)
+            ;;
+        arch)
+            deps=(gtk3 nss libxss libxtst xdg-utils libsecret mesa alsa-lib)
+            ;;
+    esac
+    (( ${#deps[@]} == 0 )) && return 0
+
+    local dep
+    local -a missing=()
+    for dep in "${deps[@]}"; do
+        pkg_check_installed "$dep" || missing+=("$dep")
+    done
+    (( ${#missing[@]} == 0 )) && return 0
+
+    # One transaction; if it fails a single wrong name is the likely cause, so
+    # retry individually rather than lose the rest.
+    if ! pkg_install "${missing[@]}"; then
+        for dep in "${missing[@]}"; do
+            pkg_check_installed "$dep" && continue
+            pkg_install "$dep" || \
+                verbose "${app}: runtime dependency '${dep}' unavailable; continuing."
+        done
+    fi
+    return 0
+}

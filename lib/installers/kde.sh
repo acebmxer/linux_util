@@ -135,7 +135,7 @@ setup_install_kde() {
         dnf|yum)
             # EPEL / CRB are needed on RHEL clones for the Plasma packages.
             run_as_root "$PKG_MGR" install -y epel-release 2>/dev/null || true
-            run_as_root crb enable 2>/dev/null || run_as_root "$PKG_MGR" config-manager --set-enabled crb 2>/dev/null || true
+            enable_crb
             case "$tier" in
                 minimal)
                     info "Installing KDE Plasma (Minimal/Core)..."

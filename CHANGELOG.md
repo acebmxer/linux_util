@@ -12,6 +12,73 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-12
+
+### Added
+
+- **Multimedia Codecs** (Productivity), full audio and video playback and
+  encoding (H.264, HEVC, AAC and more) for FFmpeg and GStreamer apps such as
+  browsers, video players and editors. On Fedora it enables RPM Fusion,
+  replaces Fedora's limited `ffmpeg-free` with the full `ffmpeg` and installs
+  the `multimedia` group, as RPM Fusion's own guide does. RHEL clones get
+  RPM Fusion for EL (with EPEL and CRB), Debian/Ubuntu and Arch get `ffmpeg`
+  and the GStreamer plugin sets, and openSUSE gets Packman's codecs through
+  openSUSE's own `opi codecs`. Uninstall is not offered, since media apps link
+  against the codecs.
+
+- **bat** (System Tools), `cat` with syntax highlighting, line numbers and Git
+  change markers. Debian and Ubuntu name the command `batcat`, so a `bat` link
+  to it is added in `~/.local/bin` unless something there is already called
+  `bat`; uninstall removes only that link.
+
+- **ripgrep** (System Tools), the `rg` search tool: finds text in a folder tree
+  much faster than `grep -r` and skips files listed in `.gitignore`.
+
+- **GPU Task Manager** (System Tools), a terminal task manager for the GPU:
+  per-process VRAM and GPU load, and which runtimes and model files
+  (llama.cpp, Ollama, PyTorch) are using it, on NVIDIA, AMD (amdgpu) and Intel
+  (i915) GPUs. Upstream's portable build (x86_64 and aarch64) is installed per
+  user in `~/.local/opt/gputaskman` after checking the SHA-256 file upstream
+  publishes beside it, with a `gputaskman` command in `~/.local/bin`. It needs
+  glibc 2.35 or newer, so it is refused with a clear message on Rocky/RHEL 9.
+  Update skips the download when already at the latest version, and System
+  Updates refreshes it and counts it as pending.
+
+- **LM Studio** (Development > IDEs & Editors), the desktop app for running
+  large language models locally. Upstream's AppImage (x86_64 and aarch64, about
+  1 GB) is installed per user in `~/.local/opt/lm-studio` after checking the
+  SHA-512 file upstream publishes beside it, with an `lm-studio` command and an
+  application-menu entry and icon taken from the AppImage. Update skips the
+  download when already at the latest version, and System Updates refreshes it
+  and counts it as pending. Uninstalling removes the app and leaves your models
+  and settings in `~/.lmstudio`. Fixes #85.
+
+- **Codex** (Development > IDEs & Editors), OpenAI's coding agent for the
+  terminal. Installed from npm as `@openai/codex`, installing Node.js first
+  when it is missing, and checked by running `codex --version` rather than
+  trusting npm's exit code. Update re-installs the latest package. Uninstall
+  removes the package and leaves Node.js and your sign-in and settings in
+  `~/.codex`. Fixes #84.
+
+- **Hermes Agent** (Development > IDEs & Editors), Nous Research's open-source
+  AI agent for the terminal. Installed per user with upstream's own install
+  script, into `~/.hermes/hermes-agent` with the `hermes` command in
+  `~/.local/bin`, so an install made by hand is detected and updated in place.
+  The agent's setup wizard is skipped when there is no terminal or
+  `auto_confirm` is set. Update runs `hermes update`, and Uninstall runs
+  `hermes uninstall`, which keeps your settings and data in `~/.hermes`.
+  System Updates refreshes it. Fixes #83.
+
+### Fixed
+
+- **NVIDIA Drivers** on Rocky Linux and other RHEL clones can enable RPM Fusion
+  again. It asked for RPM Fusion's release package by the full OS version
+  (`9.8`), which RPM Fusion does not publish, so the download failed. RPM
+  Fusion is now enabled in one shared place, by major version, with EPEL and
+  CRB first; VLC, Steam, OBS Studio, Lutris, MangoHud, HandBrake and the AMD
+  and Intel drivers use it too, and now stop with a clear error when it can't
+  be enabled. Fixes #86.
+
 ## [1.11.2] - 2026-10-25
 
 ### Changed

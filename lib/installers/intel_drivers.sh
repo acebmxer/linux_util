@@ -46,21 +46,12 @@ install_intel_drivers() {
             # RPM Fusion nonfree carries the full-codec intel-media-driver;
             # Fedora's own libva-intel-media-driver is the codec-reduced build.
             # It installs to /usr/lib64/dri-nonfree, which libva searches first.
-            if ! rpm -q rpmfusion-nonfree-release &>/dev/null; then
-                sudo "$PKG_MGR" install -y \
-                    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
-                    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
-            fi
+            ensure_rpmfusion nonfree || return 1
             pkg_install mesa-dri-drivers mesa-vulkan-drivers vulkan-tools vulkan-loader intel-media-driver libva-utils
             ;;
         rhel)
-            # RPM Fusion for EL (which needs EPEL) carries intel-media-driver
-            pkg_install epel-release 2>/dev/null || true
-            if ! rpm -q rpmfusion-nonfree-release &>/dev/null; then
-                sudo "$PKG_MGR" install -y \
-                    "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm" \
-                    "https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-$(rpm -E %rhel).noarch.rpm"
-            fi
+            # RPM Fusion for EL carries intel-media-driver
+            ensure_rpmfusion nonfree || return 1
             pkg_install mesa-dri-drivers mesa-vulkan-drivers vulkan-tools vulkan-loader intel-media-driver 2>/dev/null || true
             pkg_install libva-utils 2>/dev/null || true
             ;;

@@ -42,15 +42,12 @@ install_amd_drivers() {
             # RPM Fusion free carries mesa-va-drivers-freeworld: Fedora's own Mesa
             # leaves out H.264/H.265/VC-1 video acceleration. It installs beside
             # Fedora's Mesa (/usr/lib64/dri-freeworld), which libva searches first.
-            if ! rpm -q rpmfusion-free-release &>/dev/null; then
-                sudo "$PKG_MGR" install -y \
-                    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
-            fi
+            ensure_rpmfusion free || return 1
             pkg_install mesa-dri-drivers mesa-vulkan-drivers vulkan-tools vulkan-loader xorg-x11-drv-amdgpu \
                 mesa-va-drivers-freeworld libva-utils
 
             # RPM Fusion provides 32-bit Mesa (lib32-mesa) for Steam
-            if rpm -q rpmfusion-free-release &>/dev/null; then
+            if rpmfusion_enabled free; then
                 pkg_install mesa-vulkan-drivers.i686 vulkan-loader.i686 2>/dev/null || true
             fi
             ;;

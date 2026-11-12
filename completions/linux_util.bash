@@ -5,6 +5,7 @@ _linux_util_utilities() {
     cat <<'EOF'
 AMD Drivers
 ArtCraft Launcher
+bat
 Betterbird
 Bitwarden Client
 Bitwarden Extension
@@ -21,6 +22,7 @@ Claude Code
 Claude Desktop
 Claws Mail
 Cockpit
+Codex
 Command-Not-Found Prompt
 COSMIC Desktop
 Create Snapshot
@@ -50,8 +52,10 @@ GIMP
 GitHub CLI
 GNOME Desktop
 Google Chrome
+GPU Task Manager
 GridCraft
 GTK Window Fix
+Hermes Agent
 Heroic Games Launcher
 Intel Drivers
 JetBrains Toolbox
@@ -64,12 +68,14 @@ LibreOffice
 LightCraft
 linux-tkg
 Local Time Zone / Locale
+LM Studio
 LocalSend
 Lutris
 LXQt Desktop
 Mainline
 MangoHud
 MATE Desktop
+Multimedia Codecs
 NeoMutt
 Nextcloud Desktop
 NVIDIA Drivers
@@ -96,6 +102,7 @@ ProtonVPN
 QBittorrent
 Remmina
 Restore Snapshot
+ripgrep
 Signal Desktop
 SponsorBlock Extension
 Stacer
