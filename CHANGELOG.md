@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-12
+
 ### Added
 
 - **Multimedia Codecs** (Productivity), full audio and video playback and
