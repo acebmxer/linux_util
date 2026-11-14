@@ -109,6 +109,23 @@ _ALPINE_TABLE=(
     "kitty|kitty|kitty||"
     "WezTerm|wezterm|wezterm||"
     "CUPS|cups||cupsd|"
+    "Vim|vim|vim||"
+    "Emacs|emacs|emacs||"
+    "Helix|helix|hx||"
+    "fzf|fzf|fzf||"
+    "eza|eza|eza||"
+    "zoxide|zoxide|zoxide||"
+    "starship|starship|starship||"
+    "lazygit|lazygit|lazygit||"
+    "Helm|helm|helm||"
+    "k3s|k3s|k3s|k3s|"
+    "Python|python3 py3-pip python3-dev|python3||"
+    "PHP|php84|php84||"
+    "Ruby|ruby ruby-dev|ruby||"
+    "Wireshark|wireshark|wireshark||"
+    "nmap|nmap|nmap||"
+    "Ollama|ollama|ollama|ollama|"
+    "Java JDK|openjdk25-jdk|javac||"
 )
 
 # Registered utilities whose own installer file has an Alpine branch.

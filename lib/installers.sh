@@ -411,6 +411,36 @@ register_utility "ncdu"              install_ncdu               check_ncdu      
 register_utility "nvtop"             install_nvtop              check_nvtop              uninstall_nvtop              update_nvtop              get_version_nvtop
 register_utility "smartmontools"     install_smartmontools      check_smartmontools      uninstall_smartmontools      update_smartmontools      get_version_smartmontools
 register_utility "zram"              install_zram               check_zram               uninstall_zram               update_zram               get_version_zram
+# Development and shell tools (#91). Alpine keeps only the ones in alpine_packages.sh.
+register_utility "Emacs"             install_emacs              check_emacs              uninstall_emacs              update_emacs              get_version_emacs
+register_utility "fzf"               install_fzf                check_fzf                uninstall_fzf                update_fzf                get_version_fzf
+register_utility "eza"               install_eza                check_eza                uninstall_eza                update_eza                get_version_eza
+register_utility "Helix"             install_helix              check_helix              uninstall_helix              update_helix              get_version_helix
+register_utility "Helm"              install_helm               check_helm               uninstall_helm               update_helm               get_version_helm
+register_utility "Java JDK"          install_java_jdk           check_java_jdk           uninstall_java_jdk           update_java_jdk           get_version_java_jdk
+register_utility "k3s"               install_k3s                check_k3s                uninstall_k3s                update_k3s                get_version_k3s
+register_utility "lazygit"           install_lazygit            check_lazygit            uninstall_lazygit            update_lazygit            get_version_lazygit
+register_utility "minikube"          install_minikube           check_minikube           uninstall_minikube           update_minikube           get_version_minikube
+register_utility "Ollama"            install_ollama             check_ollama             uninstall_ollama             update_ollama             get_version_ollama
+register_utility "PHP"               install_php                check_php                uninstall_php                update_php                get_version_php
+register_utility "Podman Desktop"    install_podman_desktop     check_podman_desktop     uninstall_podman_desktop     update_podman_desktop     get_version_podman_desktop
+register_utility "Python"            install_python             check_python             uninstall_python             update_python             get_version_python
+register_utility "Ruby"              install_ruby               check_ruby               uninstall_ruby               update_ruby               get_version_ruby
+register_utility "starship"          install_starship           check_starship           uninstall_starship           update_starship           get_version_starship
+register_utility "tldr"              install_tldr               check_tldr               uninstall_tldr               update_tldr               get_version_tldr
+register_utility "Vim"               install_vim                check_vim                uninstall_vim                update_vim                get_version_vim
+register_utility "VirtualBox"        install_virtualbox         check_virtualbox         uninstall_virtualbox         update_virtualbox         get_version_virtualbox
+register_utility "Wireshark"         install_wireshark          check_wireshark          uninstall_wireshark          update_wireshark          get_version_wireshark
+register_utility "Zed"               install_zed                check_zed                uninstall_zed                update_zed                get_version_zed
+register_utility "zoxide"            install_zoxide             check_zoxide             uninstall_zoxide             update_zoxide             get_version_zoxide
+# Sublime Text: its RPM signing key carries a SHA-1 signature, which Rocky/Alma 9 and 10 refuse to import.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%%.*}" -lt 9 ]]; then
+    register_utility "Sublime Text"      install_sublime_text       check_sublime_text       uninstall_sublime_text       update_sublime_text       get_version_sublime_text
+fi
+# nmap: not in openSUSE Leap's repositories.
+if [[ "$DISTRO_ID" != "opensuse-leap" && "$DISTRO_ID" != "sles" ]]; then
+    register_utility "nmap"              install_nmap               check_nmap               uninstall_nmap               update_nmap               get_version_nmap
+fi
 # Alacritty: no package for Rocky/Alma/RHEL (no upstream binary either) or Ubuntu 22.04.
 if [[ "$DISTRO_FAMILY" != "rhel" ]] && ! [[ "$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -lt 23 ]]; then
     register_utility "Alacritty"         install_alacritty          check_alacritty          uninstall_alacritty          update_alacritty          get_version_alacritty
@@ -749,6 +779,29 @@ UTILITY_CATEGORY["firewall-config (GUI)"]="Firewalls"
 UTILITY_CATEGORY["HandBrake"]="Productivity"
 UTILITY_CATEGORY["Inkscape"]="Productivity"
 UTILITY_CATEGORY["Input Leap"]="System Tools"
+UTILITY_CATEGORY["Emacs"]="Development"
+UTILITY_CATEGORY["Helix"]="Development"
+UTILITY_CATEGORY["Helm"]="Development"
+UTILITY_CATEGORY["Java JDK"]="Development"
+UTILITY_CATEGORY["k3s"]="Development"
+UTILITY_CATEGORY["lazygit"]="Development"
+UTILITY_CATEGORY["minikube"]="Development"
+UTILITY_CATEGORY["nmap"]="Development"
+UTILITY_CATEGORY["Ollama"]="Development"
+UTILITY_CATEGORY["PHP"]="Development"
+UTILITY_CATEGORY["Podman Desktop"]="Development"
+UTILITY_CATEGORY["Python"]="Development"
+UTILITY_CATEGORY["Ruby"]="Development"
+UTILITY_CATEGORY["Sublime Text"]="Development"
+UTILITY_CATEGORY["Vim"]="Development"
+UTILITY_CATEGORY["VirtualBox"]="Development"
+UTILITY_CATEGORY["Wireshark"]="Development"
+UTILITY_CATEGORY["Zed"]="Development"
+UTILITY_CATEGORY["fzf"]="System Tools"
+UTILITY_CATEGORY["eza"]="System Tools"
+UTILITY_CATEGORY["starship"]="System Tools"
+UTILITY_CATEGORY["tldr"]="System Tools"
+UTILITY_CATEGORY["zoxide"]="System Tools"
 UTILITY_CATEGORY["auto-cpufreq"]="System Tools"
 UTILITY_CATEGORY["BleachBit"]="System Tools"
 UTILITY_CATEGORY["CPU-X"]="System Tools"
@@ -894,11 +947,11 @@ UTILITY_SUBCATEGORY["Kodi"]="Media"
 UTILITY_SUBCATEGORY["Spotify"]="Media"
 UTILITY_SUBCATEGORY["Multimedia Codecs"]="Media"
 UTILITY_SUBCATEGORY["Libation"]="Media"
-UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
-UTILITY_SUBCATEGORY["Claude Desktop"]="IDEs & Editors"
-UTILITY_SUBCATEGORY["Codex"]="IDEs & Editors"
-UTILITY_SUBCATEGORY["Hermes Agent"]="IDEs & Editors"
-UTILITY_SUBCATEGORY["LM Studio"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Claude Code"]="AI Tools"
+UTILITY_SUBCATEGORY["Claude Desktop"]="AI Tools"
+UTILITY_SUBCATEGORY["Codex"]="AI Tools"
+UTILITY_SUBCATEGORY["Hermes Agent"]="AI Tools"
+UTILITY_SUBCATEGORY["LM Studio"]="AI Tools"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
@@ -963,6 +1016,41 @@ UTILITY_SUBCATEGORY["Alacritty"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["Ghostty"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["kitty"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["WezTerm"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Vim"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Emacs"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Helix"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Sublime Text"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Zed"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Ollama"]="AI Tools"
+UTILITY_SUBCATEGORY["GitHub CLI"]="Git"
+UTILITY_SUBCATEGORY["lazygit"]="Git"
+UTILITY_SUBCATEGORY["Docker"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["Podman"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["Podman Desktop"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["kubectl"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["k9s"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["Helm"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["minikube"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["k3s"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["Python"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Java JDK"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["PHP"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Ruby"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Go SDK"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Node.js"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Rustup"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["pyenv"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["NVM"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["VirtualBox"]="Virtualization"
+UTILITY_SUBCATEGORY["Virt-Manager"]="Virtualization"
+UTILITY_SUBCATEGORY["Firecracker"]="Virtualization"
+UTILITY_SUBCATEGORY["Wireshark"]="Network & Security"
+UTILITY_SUBCATEGORY["nmap"]="Network & Security"
+UTILITY_SUBCATEGORY["fzf"]="Shell Tools"
+UTILITY_SUBCATEGORY["eza"]="Shell Tools"
+UTILITY_SUBCATEGORY["zoxide"]="Shell Tools"
+UTILITY_SUBCATEGORY["starship"]="Shell Tools"
+UTILITY_SUBCATEGORY["tldr"]="Shell Tools"
 UTILITY_SUBCATEGORY["Btop"]="Monitors"
 UTILITY_SUBCATEGORY["htop"]="Monitors"
 UTILITY_SUBCATEGORY["nvtop"]="Monitors"
@@ -1027,7 +1115,7 @@ UTILITY_SUBCATEGORY["Mount SMB Share"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
 
 # Explicit subcategory display order within each category tab
-SUBCATEGORY_ORDER["Development"]="IDEs & Editors|Distrobox"
+SUBCATEGORY_ORDER["Development"]="IDEs & Editors|AI Tools|Languages & Runtimes|Git|Containers & Kubernetes|Virtualization|Network & Security|Distrobox"
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
@@ -1255,6 +1343,29 @@ UTILITY_DESCRIPTION["linux-tkg"]="Frogging-Family custom-kernel builder. Unlike 
 UTILITY_DESCRIPTION["Btop"]="Modern terminal-based resource monitor with a rich visual interface showing CPU, memory, disk, and network."
 UTILITY_DESCRIPTION["bat"]="A cat clone with syntax highlighting, line numbers and Git change markers. On Debian/Ubuntu, where the command is named batcat, a bat link to it is added in ~/.local/bin."
 UTILITY_DESCRIPTION["ripgrep"]="rg: searches a folder tree for text much faster than grep -r, and skips files listed in .gitignore."
+UTILITY_DESCRIPTION["Emacs"]="GNU Emacs, the extensible editor and environment, with its graphical window. Distro package on every distro."
+UTILITY_DESCRIPTION["eza"]="ls replacement with colours, icons and git status. Distro package (Debian 13, Ubuntu 26.04, Fedora, Arch, openSUSE, Alpine); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin (x86_64 only)."
+UTILITY_DESCRIPTION["fzf"]="Command-line fuzzy finder that filters any list as you type, with Ctrl+R, Ctrl+T and Alt+C in the shell (loaded from ~/.bashrc, and ~/.zshrc when it exists). Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["Helix"]="Modal terminal editor with language-server support built in. Distro package (Fedora, Rocky/Alma 9 and 10, Arch, openSUSE, Alpine); on Debian, Ubuntu and Rocky/Alma 8 the GitHub release, SHA-256 checked, in /opt/helix."
+UTILITY_DESCRIPTION["Helm"]="The Kubernetes package manager. Distro package (Fedora, Rocky/Alma 9 and 10, Arch, openSUSE, Alpine); elsewhere the release from get.helm.sh, checked against Helm's published SHA-256, in /usr/local/bin."
+UTILITY_DESCRIPTION["Java JDK"]="OpenJDK with the compiler. Distro packages: default-jdk on Debian and Ubuntu, the newest long-term-support build elsewhere (25, 21 or 17)."
+UTILITY_DESCRIPTION["k3s"]="Lightweight Kubernetes: installs a cluster node and starts it as a service. Alpine: distro package. Elsewhere k3s's own install script from get.k3s.io, which checks the k3s binary itself. Uninstalling deletes the cluster data in /var/lib/rancher/k3s."
+UTILITY_DESCRIPTION["lazygit"]="Terminal UI for git: stage hunks, resolve conflicts and browse history from the keyboard. Distro package (Debian 13, Ubuntu 26.04, Fedora, Arch, openSUSE, Alpine); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin."
+UTILITY_DESCRIPTION["minikube"]="Runs a local single-node Kubernetes cluster for development. Distro package on Arch and openSUSE Tumbleweed; elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin. Needs a driver such as Docker, Podman or KVM, which this does not install. Not available on Alpine."
+UTILITY_DESCRIPTION["nmap"]="Network scanner: finds hosts and open ports. Distro package; not in openSUSE Leap."
+UTILITY_DESCRIPTION["Ollama"]="Runs large language models locally. Distro package (Fedora, Arch, openSUSE, Alpine) started as a service; elsewhere the GitHub release, SHA-256 checked, with an ollama user and systemd service. CPU and NVIDIA GPUs; AMD GPUs need Ollama's ROCm add-on, which is not installed. Uninstall keeps downloaded models."
+UTILITY_DESCRIPTION["PHP"]="The PHP command-line interpreter from the distro's packages (php-cli, php, php8 or php84). Not a web-server module."
+UTILITY_DESCRIPTION["Podman Desktop"]="Graphical manager for Podman containers, pods and Kubernetes. Distro package on Arch, Flathub elsewhere. Needs a Podman engine (the Podman entry). Not available on Alpine."
+UTILITY_DESCRIPTION["Python"]="The distro's Python 3 with pip, virtual environments and development headers. The version is the distro's; pyenv installs others. Uninstall keeps python3 itself, which the system needs."
+UTILITY_DESCRIPTION["Ruby"]="Ruby with the headers gems need to build native extensions, from the distro's packages."
+UTILITY_DESCRIPTION["starship"]="Fast, themeable shell prompt, loaded from ~/.bashrc (and ~/.zshrc when it exists). Distro package (Debian 13, Ubuntu 26.04, Arch, openSUSE, Alpine); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin."
+UTILITY_DESCRIPTION["Sublime Text"]="Fast, polished text and code editor (paid licence, free to evaluate). Installed from Sublime HQ's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and openSUSE, so updates arrive with the system; on Arch from the AUR (only with AUR support enabled). Not available on Alpine or Rocky/Alma 9 and 10 (their RPM refuses the key's SHA-1 signature). Uninstall keeps your settings and licence."
+UTILITY_DESCRIPTION["tldr"]="Short, example-first help pages for shell commands (tldr tar). Installs the distro's client (tealdeer, tlrc or the Python tldr; EPEL on Rocky/Alma). Not available on Alpine."
+UTILITY_DESCRIPTION["Vim"]="The classic modal editor (vim-enhanced on Fedora and RHEL clones). Distro package on every distro."
+UTILITY_DESCRIPTION["VirtualBox"]="Runs virtual machines. Distro package on Ubuntu, Arch and openSUSE; Oracle's own signed repository on Debian 12/13, Fedora up to 44 and Rocky/Alma 8 to 10. The kernel module is built for the running kernel and must be signed under Secure Boot. Your VMs are kept on uninstall. Not available on Alpine."
+UTILITY_DESCRIPTION["Wireshark"]="Network packet analyser. Distro package; the installing user joins the wireshark group to capture without root (log out and in)."
+UTILITY_DESCRIPTION["Zed"]="Fast code editor with built-in collaboration and AI. Distro package on Arch and openSUSE Tumbleweed, Flathub elsewhere. Not available on Alpine."
+UTILITY_DESCRIPTION["zoxide"]="Smarter cd: remembers the folders you use and jumps to them with z, loaded from ~/.bashrc (and ~/.zshrc when it exists). Distro package (every release except Rocky/Alma 10); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin."
 UTILITY_DESCRIPTION["Alacritty"]="Fast GPU-accelerated terminal emulator configured by a text file. Distro package; not available on Rocky/Alma/RHEL or Ubuntu 22.04, which have none."
 UTILITY_DESCRIPTION["auto-cpufreq"]="Adjusts CPU speed and power use to the battery and load, with a background service; for laptops. No distro carries it: on Arch it comes from the AUR (only with AUR support enabled), elsewhere upstream's own installer runs from the GitHub release (upstream publishes no checksum), into /opt/auto-cpufreq. Cannot run beside TLP. Not available on Alpine, openSUSE Leap or Rocky/Alma 8 and 9."
 UTILITY_DESCRIPTION["BleachBit"]="Disk cleaner that clears caches, logs, history and temporary files for the system and many applications. Distro package (EPEL on Rocky/Alma 8 and 9), or Flathub on Rocky/Alma 10. Not available on Alpine."
@@ -1363,7 +1474,7 @@ mark_aur_only_arch \
     "Euro-Office=euro-office-desktopeditors-git" \
     "Snap (snapd)=snapd" "Snapper GUI=snapper-gui-git" \
     "Trojita=trojita" "Zotero=zotero" "1Password=1password" \
-    "auto-cpufreq=auto-cpufreq"
+    "auto-cpufreq=auto-cpufreq" "Sublime Text=sublime-text-4"
 
 # Utilities that can install from upstream's own binary when no package source
 # carries them (the third tier of arch_install_ordered, reached on Arch because
@@ -1388,7 +1499,16 @@ mark_upstream_binary \
     "Hermes Agent=$HOME/.hermes/hermes-agent" \
     "LM Studio=$_LMS_APPIMAGE" \
     "GPU Task Manager=$_GTM_DIR" \
-    "auto-cpufreq=$_ACF_ROOT/current"
+    "auto-cpufreq=$_ACF_ROOT/current" \
+    "Helix=/opt/helix" \
+    "Helm=/usr/local/bin/helm" \
+    "lazygit=/usr/local/bin/lazygit" \
+    "eza=/usr/local/bin/eza" \
+    "zoxide=/usr/local/bin/zoxide" \
+    "starship=/usr/local/bin/starship" \
+    "minikube=/usr/local/bin/minikube" \
+    "k3s=/usr/local/bin/k3s-uninstall.sh" \
+    "Ollama=/usr/local/lib/ollama"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1403,7 +1523,16 @@ mark_upstream_latest \
     "Xodus Nexus=_xn_latest_version" \
     "LM Studio=_lms_latest_version" \
     "GPU Task Manager=_gtm_latest_version" \
-    "auto-cpufreq=_acf_latest_version"
+    "auto-cpufreq=_acf_latest_version" \
+    "Helix=_helix_latest_version" \
+    "Helm=_helm_latest_version" \
+    "lazygit=_lazygit_latest_version" \
+    "eza=_eza_latest_version" \
+    "zoxide=_zoxide_latest_version" \
+    "starship=_starship_latest_version" \
+    "minikube=_minikube_latest_version" \
+    "k3s=_k3s_latest_version" \
+    "Ollama=_ollama_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

@@ -14,6 +14,25 @@ when a release is cut.
 
 ### Added
 
+- **23 more Development apps and shell tools** (part of #91). Editors: Vim,
+  Emacs, Helix, Sublime Text and Zed. Shell tools: fzf, eza, zoxide, starship
+  and tldr (in System Tools > Shell Tools, beside bat and ripgrep); zoxide,
+  starship and fzf are loaded from `~/.bashrc` (and `~/.zshrc` when it exists).
+  Git: lazygit. Containers and Kubernetes: Podman Desktop, Helm, minikube and
+  k3s. Languages: Python, Java JDK, PHP and Ruby. Also VirtualBox, Wireshark,
+  nmap and Ollama. Each uses the distro's own package; where a release has
+  none, lazygit, eza, zoxide, starship, minikube, Helix, Helm and Ollama use
+  the upstream release, checked against its published SHA-256; Sublime Text
+  and (on Debian, Fedora and RHEL clones) VirtualBox use their vendor's signed
+  repository; Zed and Podman Desktop use Flathub; k3s uses its own install
+  script. Development is now sorted into folders: **IDEs & Editors**, **AI
+  Tools** (Claude Code, Claude Desktop, Codex, Hermes Agent and LM Studio
+  moved here, with Ollama), **Languages & Runtimes**, **Git**, **Containers &
+  Kubernetes**, **Virtualization**, **Network & Security** and Distrobox.
+  Uninstalling k3s deletes its cluster data; VirtualBox needs its kernel
+  module signed under Secure Boot. Not offered: Sublime Text on Rocky/Alma 9
+  and 10 (their RPM refuses its signing key), nmap on openSUSE Leap, and on
+  Alpine Sublime Text, Zed, tldr, Podman Desktop, minikube and VirtualBox.
 - **17 more System Tools** (part of #91). Monitors: htop and nvtop. Disk
   health: smartmontools. Power and memory: TLP, auto-cpufreq, zram and
   earlyoom. Cleanup: BleachBit and ncdu. Hardware info: HardInfo, inxi and

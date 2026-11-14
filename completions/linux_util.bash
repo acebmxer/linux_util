@@ -43,9 +43,11 @@ Devolutions RDM
 Discord
 Docker
 earlyoom
+Emacs
 Enable RDP
 Euro-Office
 Evolution
+eza
 Fastfetch
 Fedora Mainline Kernel
 Feral Gamemode
@@ -54,6 +56,7 @@ Firecracker
 Firefox
 Flatpak Setup
 Full System Upgrade/Update
+fzf
 Geary
 Ghostty
 GIMP
@@ -63,20 +66,25 @@ Google Chrome
 GPU Task Manager
 GTK Window Fix
 HardInfo
+Helix
+Helm
 Hermes Agent
 Heroic Games Launcher
 htop
 Intel Drivers
 inxi
+Java JDK
 JetBrains Toolbox
 Joplin Client
 Joplin Web Clipper
+k3s
 KDE Desktop
 KDiskMark
 KeePassXC
 kitty
 KMail
 Kodi
+lazygit
 LibreOffice
 linux-tkg
 Local Time Zone / Locale
@@ -87,11 +95,13 @@ LXQt Desktop
 Mainline
 MangoHud
 MATE Desktop
+minikube
 mpv
 Multimedia Codecs
 ncdu
 NeoMutt
 Nextcloud Desktop
+nmap
 NVIDIA Drivers
 NVIDIA PAIR
 NVM
@@ -99,14 +109,22 @@ nvtop
 OBS Studio
 Obsidian
 Okular
+Ollama
 OnlyOffice
 OpenLogi
 OpenSSH Server
+PHP
+Podman Desktop
+Python
 RawTherapee
+Ruby
 Scribus
 Shotcut
 smartmontools
 Spotify
+starship
+Sublime Text
+tldr
 TLP
 tmux
 tmux Resurrect
@@ -142,6 +160,8 @@ Trojita
 Num Lock at Boot
 UFW Firewall
 VeraCrypt
+Vim
+VirtualBox
 Visual Studio Code
 VSCodium
 Vivaldi Browser
@@ -150,11 +170,14 @@ WinApps
 Wine
 WireGuard Client
 WireGuard Server
+Wireshark
 WPS Office
 XEN Guest Utilities
 Xfce Desktop
 Xodus Nexus
 Xournal++
+Zed
+zoxide
 zram
 Zsh + Oh My Zsh
 EOF

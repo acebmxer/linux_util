@@ -2086,6 +2086,18 @@ _ver_from_snap() {
 # APT REPOSITORY HELPER
 # ============================================================================
 
+# True when the key file $1 (armored or binary) holds a key with fingerprint $2.
+# A throwaway GNUPGHOME so reading the key never creates ~/.gnupg. Used by
+# _add_apt_repo and rpm_import_key_checked.
+gpg_key_has_fingerprint() {
+    local keyfile="$1" want="$2" home fprs
+    home=$(mktemp -d)
+    fprs=$(GNUPGHOME="$home" gpg --show-keys --with-colons "$keyfile" 2>/dev/null |
+        awk -F: '$1 == "fpr" { print $10 }')
+    rm -rf "$home"
+    grep -qx "$want" <<< "$fprs"
+}
+
 # Add an APT repository with a GPG keyring.
 # Usage: _add_apt_repo KEY_URL KEYRING_PATH SOURCES_LINE SOURCES_LIST_PATH
 #   KEY_URL          — URL to the GPG public key
@@ -2115,18 +2127,10 @@ _add_apt_repo() {
         error "Failed to download GPG key from: $key_url"
         return 1
     fi
-    if [[ -n "$key_fingerprint" ]]; then
-        # Throwaway GNUPGHOME so reading the key never creates ~/.gnupg.
-        local _gnupghome _fprs
-        _gnupghome=$(mktemp -d)
-        _fprs=$(GNUPGHOME="$_gnupghome" gpg --show-keys --with-colons "$_tmpkey" 2>/dev/null |
-            awk -F: '$1 == "fpr" { print $10 }')
-        rm -rf "$_gnupghome"
-        if ! grep -qx "$key_fingerprint" <<< "$_fprs"; then
-            rm -f "$_tmpkey"
-            error "GPG key from $key_url does not match fingerprint $key_fingerprint"
-            return 1
-        fi
+    if [[ -n "$key_fingerprint" ]] && ! gpg_key_has_fingerprint "$_tmpkey" "$key_fingerprint"; then
+        rm -f "$_tmpkey"
+        error "GPG key from $key_url does not match fingerprint $key_fingerprint"
+        return 1
     fi
     if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "$_tmpkey" 2>/dev/null; then
         gpg --dearmor < "$_tmpkey" | sudo tee "$keyring_path" > /dev/null

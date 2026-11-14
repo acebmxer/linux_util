@@ -128,38 +128,98 @@ appear when it applies.
 | Utility | Description |
 |---------|-------------|
 | **Ansible** | IT automation and configuration management tool |
+| **DBeaver** | Universal database management tool |
+| **OpenTofu** | Open-source Terraform-compatible infrastructure-as-code tool |
+| **Postman** | API development and testing platform |
+| **PowerShell** | Microsoft's cross-platform automation shell built on .NET — Microsoft's apt repo where available, otherwise the GitHub release `.deb` |
+| **Terraform** | HashiCorp infrastructure-as-code tool |
+| **Toolbx** | Containerized command-line environments on Podman, integrated with the host (not available on openSUSE) |
+
+Grouped into folders inside the Development tab:
+
+### IDEs & Editors
+
+| Utility | Description |
+|---------|-------------|
+| **Visual Studio Code** | Microsoft's extensible code editor |
+| **VSCodium** | Telemetry-free community build of VS Code (Open VSX extensions) |
+| **Cursor IDE** | AI-powered code editor built on VS Code |
+| **JetBrains Toolbox** | Manager for JetBrains IDEs (IntelliJ, PyCharm, WebStorm, etc.) |
+| **Neovim** | Extensible Vim-based text editor |
+| **Vim** | The classic modal editor (`vim-enhanced` on Fedora and RHEL clones) |
+| **Emacs** | GNU Emacs, the extensible editor, with its graphical window |
+| **Helix** | Modal terminal editor with language-server support built in. Distro package (Fedora, Rocky/Alma 9 and 10, Arch, openSUSE, Alpine); on Debian, Ubuntu and Rocky/Alma 8 the GitHub release, SHA-256 checked, in `/opt/helix` |
+| **Sublime Text** | Fast text and code editor (paid licence, free to evaluate). Sublime HQ's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and openSUSE; the AUR on Arch (only with AUR support on); not available on Alpine or Rocky/Alma 9 and 10 (their RPM refuses the key's SHA-1 signature) |
+| **Zed** | Fast code editor with built-in collaboration and AI. Distro package on Arch and openSUSE Tumbleweed, Flathub elsewhere; not available on Alpine |
+
+### AI Tools
+
+| Utility | Description |
+|---------|-------------|
 | **Claude Code** | Anthropic's AI coding assistant for the terminal |
 | **Claude Desktop** | Anthropic's Claude desktop app — Chat, Cowork and Claude Code (Linux beta). Native on Debian/Ubuntu; on other distros it runs in an Ubuntu 26.04 distrobox and appears in the app menu |
 | **Codex** | OpenAI's AI coding agent for the terminal (npm; settings in `~/.codex` are kept on uninstall) |
-| **Cursor IDE** | AI-powered code editor built on VS Code |
-| **DBeaver** | Universal database management tool |
+| **Hermes Agent** | Nous Research's open-source AI agent for the terminal (installed per user; update and uninstall use its own commands, settings in `~/.hermes` are kept) |
+| **LM Studio** | Desktop app for running large language models locally (AppImage, about 1 GB; models in `~/.lmstudio` are kept on uninstall) |
+| **Ollama** | Runs large language models locally, as a service. Distro package (Fedora, Arch, openSUSE, Alpine); elsewhere the GitHub release, SHA-256 checked, with an `ollama` user and systemd service. CPU and NVIDIA GPUs; AMD GPUs need Ollama's ROCm add-on, which is not installed. Uninstall keeps downloaded models |
+
+### Languages & Runtimes
+
+| Utility | Description |
+|---------|-------------|
+| **Python** | The distro's Python 3 with pip, venv and development headers (pyenv installs other versions). Uninstall keeps `python3` itself |
+| **Java JDK** | OpenJDK with the compiler: `default-jdk` on Debian/Ubuntu, otherwise the newest long-term-support build the repositories carry (25, 21 or 17) |
+| **PHP** | The PHP command-line interpreter from the distro's packages (not a web-server module) |
+| **Ruby** | Ruby with the headers gems need to build native extensions |
+| **Go SDK** | Official Go programming language toolchain |
+| **Node.js** | JavaScript runtime — LTS release via NodeSource |
+| **Rustup** | Rust toolchain installer and version manager |
+| **pyenv** | Python version manager |
+| **NVM** | Node Version Manager — install and switch Node.js versions |
+
+### Git
+
+| Utility | Description |
+|---------|-------------|
+| **GitHub CLI** | Official CLI for GitHub — repos, issues, PRs, and workflows |
+| **lazygit** | Terminal UI for git. Distro package where there is one (Debian 13, Ubuntu 26.04, Fedora, Arch, openSUSE, Alpine); elsewhere the GitHub release, SHA-256 checked, in `/usr/local/bin` |
+
+### Containers & Kubernetes
+
+| Utility | Description |
+|---------|-------------|
+| **Docker** | Container platform — official repos, adds user to `docker` group |
+| **Podman** | Daemonless OCI container engine |
+| **Podman Desktop** | Graphical manager for Podman containers, pods and Kubernetes. Distro package on Arch, Flathub elsewhere; not available on Alpine |
+| **kubectl** | Kubernetes command-line tool |
+| **k9s** | Terminal UI for managing Kubernetes clusters |
+| **Helm** | Kubernetes package manager. Distro package (Fedora, Rocky/Alma 9 and 10, Arch, openSUSE, Alpine); elsewhere the release from `get.helm.sh`, checked against Helm's published SHA-256 |
+| **minikube** | Local single-node Kubernetes cluster for development. Distro package on Arch and openSUSE Tumbleweed; elsewhere the GitHub release, SHA-256 checked. Needs a driver (Docker, Podman or KVM); not available on Alpine |
+| **k3s** | Lightweight Kubernetes node, started as a service. Alpine: distro package; elsewhere k3s's own install script from `get.k3s.io`. Uninstalling deletes the cluster data in `/var/lib/rancher/k3s` |
+
+### Virtualization
+
+| Utility | Description |
+|---------|-------------|
+| **VirtualBox** | Runs virtual machines. Distro package on Ubuntu, Arch and openSUSE; Oracle's own signed repository on Debian 12/13, Fedora up to 44 and Rocky/Alma 8 to 10. The kernel module must be signed under Secure Boot; your VMs are kept on uninstall; not available on Alpine |
+| **Virt-Manager** | GUI for managing KVM/QEMU virtual machines |
+| **Firecracker** | Lightweight KVM microVM monitor (AWS) — Arch package on Arch, otherwise the upstream `firecracker` and `jailer` binaries in `/usr/local/bin`; needs `/dev/kvm` access |
+
+### Network & Security
+
+| Utility | Description |
+|---------|-------------|
+| **Wireshark** | Network packet analyser; the installing user joins the `wireshark` group to capture without root (log out and in) |
+| **nmap** | Network scanner for hosts and open ports; not in openSUSE Leap |
+
+### Distrobox
+
+| Utility | Description |
+|---------|-------------|
 | **Distrobox** | Run any Linux distro in an integrated terminal container (needs Podman/Docker) |
 | **BoxBuddy** | GTK4 graphical front-end for Distrobox (Flatpak) |
 | **DistroShelf** | GTK4 graphical manager for Distrobox containers (Flatpak) |
 | **Kontainer** | Kirigami/QML graphical manager for Distrobox containers, built for KDE Plasma (Flatpak) |
-| **Docker** | Container platform — official repos, adds user to `docker` group |
-| **GitHub CLI** | Official CLI for GitHub — repos, issues, PRs, and workflows |
-| **Go SDK** | Official Go programming language toolchain |
-| **Hermes Agent** | Nous Research's open-source AI agent for the terminal (installed per user; update and uninstall use its own commands, settings in `~/.hermes` are kept) |
-| **JetBrains Toolbox** | Manager for JetBrains IDEs (IntelliJ, PyCharm, WebStorm, etc.) |
-| **k9s** | Terminal UI for managing Kubernetes clusters |
-| **kubectl** | Kubernetes command-line tool |
-| **LM Studio** | Desktop app for running large language models locally (AppImage, about 1 GB; models in `~/.lmstudio` are kept on uninstall) |
-| **Neovim** | Extensible Vim-based text editor |
-| **Node.js** | JavaScript runtime — LTS release via NodeSource |
-| **NVM** | Node Version Manager — install and switch Node.js versions |
-| **OpenTofu** | Open-source Terraform-compatible infrastructure-as-code tool |
-| **Podman** | Daemonless OCI container engine |
-| **PowerShell** | Microsoft's cross-platform automation shell built on .NET — Microsoft's apt repo where available, otherwise the GitHub release `.deb` |
-| **Postman** | API development and testing platform |
-| **pyenv** | Python version manager |
-| **Rustup** | Rust toolchain installer and version manager |
-| **Terraform** | HashiCorp infrastructure-as-code tool |
-| **Toolbx** | Containerized command-line environments on Podman, integrated with the host (not available on openSUSE) |
-| **Virt-Manager** | GUI for managing KVM/QEMU virtual machines |
-| **Firecracker** | Lightweight KVM microVM monitor (AWS) — Arch package on Arch, otherwise the upstream `firecracker` and `jailer` binaries in `/usr/local/bin`; needs `/dev/kvm` access |
-| **Visual Studio Code** | Microsoft's extensible code editor |
-| **VSCodium** | Telemetry-free community build of VS Code (Open VSX extensions) |
 
 ## Gaming
 
@@ -408,6 +468,11 @@ Command-line helpers and shells.
 | **ripgrep** | `rg`: searches a folder tree for text much faster than `grep -r`, skipping files in `.gitignore` |
 | **Pay Respects** | Press `F` to fix the last failed command — Rust `thefuck` replacement with inline `Ctrl+X` correction. Installed from upstream's `.deb`/`.rpm` (in no distro repo; AUR on Arch) and wired into `~/.bashrc`/`~/.zshrc`; its AI module is disabled by default |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |
+| **fzf** | Command-line fuzzy finder with Ctrl+R / Ctrl+T / Alt+C in the shell (loaded from `~/.bashrc`, and `~/.zshrc` when it exists) |
+| **eza** | `ls` replacement with colours, icons and git status. Distro package where there is one; elsewhere the GitHub release, SHA-256 checked (x86_64 only) |
+| **zoxide** | Smarter `cd`: jump to frequently used folders with `z`. Distro package (every release except Rocky/Alma 10); elsewhere the GitHub release, SHA-256 checked. Loaded from the shell profile |
+| **starship** | Fast, themeable shell prompt. Distro package where there is one; elsewhere the GitHub release, SHA-256 checked. Loaded from the shell profile |
+| **tldr** | Short, example-first help pages for commands (`tldr tar`). The distro's client: tealdeer, tlrc or the Python tldr (EPEL on Rocky/Alma); not available on Alpine |
 
 ### Terminal Emulators
 

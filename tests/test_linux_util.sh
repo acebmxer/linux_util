@@ -3030,6 +3030,7 @@ echo ""
 echo "=== Pay Respects Tests ==="
 
 # Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/_shared.sh"   # shell_rc_block_remove, used by _payr_remove_rc
 source "${SCRIPT_DIR}/lib/installers/pay_respects.sh"
 
 # Upstream's real release shape: a rolling "nightly" release sits at the top of
@@ -4735,7 +4736,7 @@ test_hermes_agent_registered() {
     local fn gaps=0
     grep -qE '^register_utility "Hermes Agent"[[:space:]]+install_hermes_agent ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_CATEGORY\["Hermes Agent"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
-    grep -q '^UTILITY_SUBCATEGORY\["Hermes Agent"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Hermes Agent"\]="AI Tools"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_DESCRIPTION\["Hermes Agent"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '"Hermes Agent=\$HOME/.hermes/hermes-agent"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     for fn in install check uninstall update get_version; do
@@ -4778,7 +4779,7 @@ test_codex_registered() {
     local fn gaps=0
     grep -qE '^register_utility "Codex"[[:space:]]+install_codex ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_CATEGORY\["Codex"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
-    grep -q '^UTILITY_SUBCATEGORY\["Codex"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Codex"\]="AI Tools"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_DESCRIPTION\["Codex"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     for fn in install check uninstall update get_version; do
         grep -q "^${fn}_codex()" "${SCRIPT_DIR}/lib/installers/codex.sh" || gaps=1
@@ -4813,7 +4814,7 @@ test_lm_studio_registered() {
     local fn gaps=0
     grep -qE '^register_utility "LM Studio"[[:space:]]+install_lm_studio ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_CATEGORY\["LM Studio"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
-    grep -q '^UTILITY_SUBCATEGORY\["LM Studio"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["LM Studio"\]="AI Tools"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_DESCRIPTION\["LM Studio"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '"LM Studio=\$_LMS_APPIMAGE"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '"LM Studio=_lms_latest_version"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
@@ -5833,6 +5834,334 @@ test_terminal_installers_refuse_without_package
 test_tlp_and_auto_cpufreq_exclude_each_other
 test_auto_cpufreq_version_and_update
 test_cups_service_name
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== Development apps and shell tools (#91) ==="
+
+_DEV_APPS=(
+    "Emacs|emacs|Development" "eza|eza|System Tools" "fzf|fzf|System Tools" "Helix|helix|Development"
+    "Helm|helm|Development" "Java JDK|java_jdk|Development" "k3s|k3s|Development"
+    "lazygit|lazygit|Development" "minikube|minikube|Development" "nmap|nmap|Development"
+    "Ollama|ollama|Development" "PHP|php|Development" "Podman Desktop|podman_desktop|Development"
+    "Python|python|Development" "Ruby|ruby|Development" "starship|starship|System Tools"
+    "Sublime Text|sublime_text|Development" "tldr|tldr|System Tools" "Vim|vim|Development"
+    "VirtualBox|virtualbox|Development" "Wireshark|wireshark|Development" "Zed|zed|Development"
+    "zoxide|zoxide|System Tools"
+)
+
+test_dev_apps_registered() {
+    local entry name slug cat fn gaps=0
+    for entry in "${_DEV_APPS[@]}"; do
+        IFS='|' read -r name slug cat <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"${cat}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "The 23 new Development apps and shell tools are registered with category, description, completions and all five functions"
+}
+
+test_dev_subcategories() {
+    local entry name sub gaps=0
+    for entry in "Vim|IDEs & Editors" "Emacs|IDEs & Editors" "Helix|IDEs & Editors" "Sublime Text|IDEs & Editors" "Zed|IDEs & Editors" "Neovim|IDEs & Editors" "Visual Studio Code|IDEs & Editors" \
+                 "Claude Code|AI Tools" "Claude Desktop|AI Tools" "Codex|AI Tools" "Hermes Agent|AI Tools" "LM Studio|AI Tools" "Ollama|AI Tools" \
+                 "Python|Languages & Runtimes" "Java JDK|Languages & Runtimes" "PHP|Languages & Runtimes" "Ruby|Languages & Runtimes" "Go SDK|Languages & Runtimes" "Node.js|Languages & Runtimes" "Rustup|Languages & Runtimes" "pyenv|Languages & Runtimes" "NVM|Languages & Runtimes" \
+                 "GitHub CLI|Git" "lazygit|Git" \
+                 "Docker|Containers & Kubernetes" "Podman|Containers & Kubernetes" "Podman Desktop|Containers & Kubernetes" "kubectl|Containers & Kubernetes" "k9s|Containers & Kubernetes" "Helm|Containers & Kubernetes" "minikube|Containers & Kubernetes" "k3s|Containers & Kubernetes" \
+                 "VirtualBox|Virtualization" "Virt-Manager|Virtualization" "Firecracker|Virtualization" \
+                 "Wireshark|Network & Security" "nmap|Network & Security" \
+                 "fzf|Shell Tools" "eza|Shell Tools" "zoxide|Shell Tools" "starship|Shell Tools" "tldr|Shell Tools" \
+                 "Distrobox|Distrobox"; do
+        IFS='|' read -r name sub <<<"$entry"
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["Development"]="IDEs & Editors|AI Tools|Languages & Runtimes|Git|Containers & Kubernetes|Virtualization|Network & Security|Distrobox"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no folder order"; }
+    assert_eq "0" "$gaps" "Development apps are sorted into IDEs & Editors, AI Tools, Languages & Runtimes, Git, Containers & Kubernetes, Virtualization and Network & Security"
+}
+
+test_dev_upstream_marks() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0 n
+    grep -qF '"Sublime Text=sublime-text-4"' "$f" || { gaps=1; echo "  Sublime Text not AUR-only on Arch"; }
+    for n in Helix Helm lazygit eza zoxide starship minikube k3s Ollama; do
+        grep -qE "\"${n}=[^\"]+\"" "$f" || { gaps=1; echo "  $n has no upstream marker"; }
+        grep -qE "\"${n}=_[a-z0-9]+_latest_version\"" "$f" || { gaps=1; echo "  $n has no latest-version lookup"; }
+    done
+    local line
+    line=$(grep -n 'register_utility "Sublime Text"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-lt 9' || { gaps=1; echo "  Sublime Text not held back on Rocky/Alma 9 and 10"; }
+    line=$(grep -n 'register_utility "nmap"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'opensuse-leap' || { gaps=1; echo "  nmap not held back on openSUSE Leap"; }
+    assert_eq "0" "$gaps" "Upstream-installed apps are marked so System Updates refreshes them; Sublime Text is AUR-only on Arch; Sublime Text and nmap are held back where they cannot install"
+}
+
+test_dev_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in Vim Emacs Helix fzf eza zoxide starship lazygit Helm k3s Python "Java JDK" PHP Ruby Wireshark nmap Ollama; do
+            [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"
+        done
+        for n in "Sublime Text" Zed tldr "Podman Desktop" minikube VirtualBox; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        printf 'k3s=%s ollama=%s ' "$(_alpine_field k3s 4)" "$(_alpine_field Ollama 4)"
+        echo done
+    )
+    assert_eq "k3s=k3s ollama=ollama done" "$out" "Alpine offers the apps its repositories carry, with their services, and hides the rest"
+}
+
+# --- Verified GitHub downloads ---
+_GH_FIXTURE='{"tag_name": "v1.2.3","assets": [
+ {"name": "tool_1.2.3_linux_x86_64.tar.gz","uploader": {"login": "bot"},"size": 9,"digest": "sha256:'"$(printf 'a%.0s' {1..64})"'","browser_download_url": "https://x/tool_1.2.3_linux_x86_64.tar.gz"},
+ {"name": "tool_1.2.3_linux_arm64.tar.gz","uploader": {"login": "bot"},"size": 9,"browser_download_url": "https://x/tool_1.2.3_linux_arm64.tar.gz"},
+ {"name": "tool_1.2.3_darwin.tar.gz","uploader": {"login": "bot"},"digest": "sha256:'"$(printf 'b%.0s' {1..64})"'","browser_download_url": "https://x/tool_1.2.3_darwin.tar.gz"}]}'
+
+test_github_asset_info() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        curl() { printf '%s' "$_GH_FIXTURE"; }
+        github_asset_info o/r 'tool_[0-9.]+_linux_x86_64\.tar\.gz'
+        echo "tag=$(github_latest_tag o/r)"
+        github_asset_info o/r 'tool_[0-9.]+_linux_arm64\.tar\.gz' || echo "arm64-none"
+        github_asset_info o/r 'tool_[0-9.]+_darwin\.tar\.gz'
+    )
+    assert_contains "$out" "^tool_1.2.3_linux_x86_64.tar.gz https://x/tool_1.2.3_linux_x86_64.tar.gz a{64}$" "github_asset_info returns the file's own URL and digest"
+    assert_contains "$out" "^tag=v1.2.3$" "github_latest_tag reads the release tag"
+    assert_contains "$out" "^arm64-none$" "a file with no published digest is never returned, and no other file's digest is borrowed"
+    assert_contains "$out" "^tool_1.2.3_darwin.tar.gz https://x/tool_1.2.3_darwin.tar.gz b{64}$" "each file keeps its own digest"
+}
+
+test_github_asset_download_checks_digest() {
+    local out good bad
+    good=$(printf 'a%.0s' {1..64})
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        error() { printf 'ERR:%s ' "$*"; }; info() { :; }
+        verify_sha256() { [[ "$2" == "$_want" ]]; }
+        _gh_release_json() { return 0; }
+        github_asset_info() { echo "f.tar.gz https://x/f.tar.gz $good"; }
+        curl() { while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && echo data > "$2"; shift; done; }
+        d=$(mktemp -d)
+        _want="$good"; r=$(github_asset_download o/r 'f\\.tar\\.gz' "$d") && echo "ok:${r##*/}"
+        _want="$bad"; github_asset_download o/r 'f\\.tar\\.gz' "$d" >/dev/null || echo "mismatch-refused"
+        github_asset_info() { return 1; }
+        github_asset_download o/r 'f\\.tar\\.gz' "$d" >/dev/null || echo "no-digest-refused"
+        rm -rf "$d"
+    )
+    assert_contains "$out" "ok:f.tar.gz" "github_asset_download returns the file when the digest matches"
+    assert_contains "$out" "mismatch-refused" "github_asset_download refuses a file whose digest differs"
+    assert_contains "$out" "no-digest-refused" "github_asset_download refuses a release file with no published digest"
+}
+
+# A rate-limit answer from GitHub is not a release, and the message says so.
+test_github_rate_limit_message() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        error() { printf 'ERR:%s' "$*"; }
+        curl() { printf '{"message": "API rate limit exceeded for 1.2.3.4."}'; }
+        github_asset_download o/r 'f' "$(mktemp -d)" || printf ' rc=1'
+        github_latest_tag o/r || printf ' no-tag'
+    )
+    assert_contains "$out" "ERR:Could not read the latest o/r release from GitHub \(offline, or its rate limit is used up" "a GitHub rate-limit answer is reported as such, not as a missing file"
+    assert_contains "$out" "rc=1 no-tag$" "a rate-limit answer yields no release tag"
+}
+
+test_upstream_arch_and_regex() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        error() { :; }
+        uname() { echo "$_m"; }
+        _m=x86_64;  printf '%s,' "$(upstream_arch gnu)" "$(upstream_arch go)" "$(_upstream_expand_regex 'a_@GOX@_@GNU@_@GO@')"
+        _m=aarch64; printf '%s,' "$(upstream_arch gnu)" "$(upstream_arch go)" "$(_upstream_expand_regex 'a_@GOX@_@GNU@_@GO@')"
+        _m=riscv64; upstream_arch go || printf 'none'
+    )
+    assert_eq "x86_64,amd64,a_x86_64_x86_64_amd64,aarch64,arm64,a_arm64_aarch64_arm64,none" "$out" "upstream_arch maps the CPU to each upstream naming style and refuses unknown CPUs"
+}
+
+# --- Shell profile blocks ---
+test_shell_rc_blocks() {
+    local out d
+    d=$(mktemp -d)
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        info() { :; }
+        export HOME="$d"
+        printf 'export A=1\n' > "$d/.bashrc"
+        shell_init_setup tool 'eval "$(tool init bash)"' 'eval "$(tool init zsh)"'
+        shell_init_setup tool 'eval "$(tool init bash)"' 'eval "$(tool init zsh)"'
+        printf 'bash-blocks=%s zsh-file=%s ' "$(grep -c 'tool init bash' "$d/.bashrc")" "$([[ -f "$d/.zshrc" ]] && echo yes || echo no)"
+        printf 'export Z=1\n' > "$d/.zshrc"
+        shell_init_setup tool 'eval "$(tool init bash)"' 'eval "$(tool init zsh)"'
+        printf 'zsh-blocks=%s ' "$(grep -c 'tool init zsh' "$d/.zshrc")"
+        shell_init_remove tool
+        printf 'after-remove=%s,%s ' "$(grep -c 'tool init' "$d/.bashrc")" "$(grep -c 'tool init' "$d/.zshrc")"
+        printf 'kept=%s' "$(grep -c '^export' "$d/.bashrc")"
+    )
+    rm -rf "$d"
+    assert_eq "bash-blocks=1 zsh-file=no zsh-blocks=1 after-remove=0,0 kept=1" "$out" "shell blocks are added once, only to an existing .zshrc, and removed leaving the rest of the file"
+}
+
+# --- Package or upstream binary ---
+_nog_run() {   # $1 in-repo (y/n)
+    (
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        _log=$(mktemp); _inrepo="$1"
+        pkg_refresh() { :; }; ensure_epel() { :; }; info() { :; }
+        pkg_in_repo() { [[ "$_inrepo" == y ]]; }
+        pkg_install() { echo "pkg_install $*" >> "$_log"; }
+        github_binary_install() { echo "github $*" >> "$_log"; }
+        native_or_github_install tool o/r 're' tool
+        tr '\n' '|' < "$_log"; rm -f "$_log"
+    )
+}
+test_native_or_github_install_order() {
+    assert_eq "pkg_install tool|" "$(_nog_run y)" "native_or_github_install uses the distro package when the repository has it"
+    assert_eq "github o/r re tool|" "$(_nog_run n)" "native_or_github_install uses the verified release when the repository has no such package"
+}
+
+test_native_or_github_update_route() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        info() { :; }; error() { :; }
+        pkg_upgrade() { printf 'pkg_upgrade '; }
+        github_binary_install() { printf 'reinstall '; }
+        github_latest_tag() { echo v2.0.0; }
+        upstream_binary_present() { [[ "$UP" == y ]]; }
+        UP=n; native_or_github_update tool o/r re tool tool 1.0.0
+        UP=y; native_or_github_update tool o/r re tool tool 1.0.0
+        UP=y; native_or_github_update tool o/r re tool tool 2.0.0; printf 'rc=%s' "$?"
+    )
+    assert_eq "pkg_upgrade reinstall rc=0" "$out" "update follows the install route: the package manager, or the release only when it is newer"
+}
+
+# --- Choosing the package this system carries ---
+test_tldr_and_java_package_choice() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/tldr.sh"
+        source "${SCRIPT_DIR}/lib/installers/java_jdk.sh"
+        pkg_in_repo() { [[ " $_have " == *" $1 "* ]]; }
+        _have="tealdeer tldr"; printf '%s,' "$(_tldr_package)"
+        _have="tlrc";          printf '%s,' "$(_tldr_package)"
+        _have="tldr";          printf '%s,' "$(_tldr_package)"
+        _have="";              _tldr_package || printf 'none,'
+        DISTRO_FAMILY=rhel; _have="java-17-openjdk-devel java-21-openjdk-devel"; printf '%s,' "$(_java_package)"
+        _have="java-25-openjdk-devel java-21-openjdk-devel";                      printf '%s,' "$(_java_package)"
+        DISTRO_FAMILY=debian; _have="default-jdk";                                printf '%s,' "$(_java_package)"
+        DISTRO_FAMILY=arch;   _have="";                                           _java_package || printf 'none'
+    )
+    assert_eq "tealdeer,tlrc,tldr,none,java-21-openjdk-devel,java-25-openjdk-devel,default-jdk,none" "$out" "tldr and the JDK pick the newest client or build the repositories carry"
+}
+
+# --- Per-family package names ---
+test_runtime_package_names() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/php.sh"
+        source "${SCRIPT_DIR}/lib/installers/ruby.sh"
+        source "${SCRIPT_DIR}/lib/installers/python.sh"
+        source "${SCRIPT_DIR}/lib/installers/vim.sh"
+        source "${SCRIPT_DIR}/lib/installers/wireshark.sh"
+        for f in debian fedora rhel arch suse alpine; do
+            DISTRO_FAMILY=$f
+            printf '%s: %s | %s | %s | %s | %s\n' "$f" "$(_php_pkg)" "$(_ruby_pkgs)" "$(_python_pkgs)" "$(_vim_pkg)" "$(_ws_pkgs)"
+        done
+    )
+    assert_contains "$out" "^debian: php-cli \| ruby-full \| python3 python3-pip python3-venv python3-dev \| vim \| wireshark$" "Debian package names for PHP, Ruby, Python, Vim and Wireshark"
+    assert_contains "$out" "^rhel: php-cli \| ruby ruby-devel \| python3 python3-pip python3-devel \| vim-enhanced \| wireshark wireshark-cli$" "RHEL package names for PHP, Ruby, Python, Vim and Wireshark"
+    assert_contains "$out" "^arch: php \| ruby \| python python-pip \| vim \| wireshark-qt wireshark-cli$" "Arch package names for PHP, Ruby, Python, Vim and Wireshark"
+    assert_contains "$out" "^alpine: php84 \| ruby ruby-dev \| python3 py3-pip python3-dev \| vim \| wireshark$" "Alpine package names for PHP, Ruby, Python, Vim and Wireshark"
+}
+
+# Uninstalling Python keeps python3 itself.
+test_python_uninstall_keeps_interpreter() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/python.sh"
+        info() { :; }; pkg_remove() { echo "$*"; }
+        DISTRO_FAMILY=debian; uninstall_python
+        DISTRO_FAMILY=arch;   uninstall_python
+    )
+    assert_eq "python3-pip python3-venv python3-dev
+python-pip" "$out" "Python uninstall removes pip, venv and headers but never python3 itself"
+}
+
+# Helix and Helm choose the package when the repository has one.
+test_helix_helm_route() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/helix.sh"
+        source "${SCRIPT_DIR}/lib/installers/helm.sh"
+        info() { :; }; error() { :; }; pkg_refresh() { :; }; ensure_epel() { :; }
+        pkg_in_repo() { [[ "$_in" == y ]]; }
+        pkg_install() { printf 'pkg(%s) ' "$*"; }
+        _helix_install_release() { printf 'helix-release '; }
+        _helm_install_release() { printf 'helm-release '; }
+        _in=y; install_helix; install_helm
+        _in=n; install_helix; install_helm
+    )
+    assert_eq "pkg(helix) pkg(helm) helix-release helm-release " "$out" "Helix and Helm use the distro package when there is one and the verified release otherwise"
+}
+
+# Ollama: package route starts the service; release route needs systemd.
+test_ollama_routes() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/ollama.sh"
+        info() { :; }; error() { printf 'ERR '; }; warn() { :; }; pkg_refresh() { :; }
+        pkg_in_repo() { [[ "$_in" == y ]]; }
+        pkg_install() { printf 'pkg(%s) ' "$*"; }
+        svc_enable_now() { printf 'svc(%s) ' "$1"; }
+        has_systemd() { return 1; }
+        _in=y; install_ollama
+        _in=n; install_ollama; printf 'rc=%s' "$?"
+    )
+    assert_eq "pkg(ollama) svc(ollama) ERR rc=1" "$out" "Ollama: the package route starts the service; the release route stops without systemd"
+}
+
+# VirtualBox and Sublime Text refuse on releases their vendor does not cover, changing nothing.
+test_virtualbox_refuses_unsupported_release() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/virtualbox.sh"
+        info() { :; }; error() { printf 'ERR '; }; pkg_refresh() { :; }; ensure_tools() { :; }; ensure_epel() { :; }
+        pkg_in_repo() { return 1; }
+        _vb_url_exists() { return 1; }
+        pkg_install() { printf 'INSTALLED '; }
+        _add_apt_repo() { printf 'REPO '; }
+        DISTRO_FAMILY=fedora; DISTRO_NAME=Fedora; DISTRO_VERSION_ID=99; install_virtualbox; printf 'f=%s ' "$?"
+        DISTRO_FAMILY=debian; DISTRO_NAME=Debian; DISTRO_ID=debian; install_virtualbox; printf 'd=%s' "$?"
+    )
+    assert_eq "ERR f=1 ERR d=1" "$out" "VirtualBox stops without adding a repository or installing when Oracle has none for the release"
+}
+
+test_dev_apps_registered
+test_dev_subcategories
+test_dev_upstream_marks
+test_dev_alpine_rows
+test_github_asset_info
+test_github_asset_download_checks_digest
+test_upstream_arch_and_regex
+test_github_rate_limit_message
+test_shell_rc_blocks
+test_native_or_github_install_order
+test_native_or_github_update_route
+test_tldr_and_java_package_choice
+test_runtime_package_names
+test_python_uninstall_keeps_interpreter
+test_helix_helm_route
+test_ollama_routes
+test_virtualbox_refuses_unsupported_release
 
 echo ""
 echo "════════════════════════════════════════════════════════════════"

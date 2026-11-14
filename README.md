@@ -127,7 +127,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Desktop Environments** | KDE Plasma, GNOME, Xfce, Cinnamon, MATE, LXQt, Budgie, COSMIC, Deepin, Pantheon |
 | **Backup** | Timeshift and Snapper (create/restore/delete), Déjà Dup, Kup, Vorta, Duplicati |
 | **Disk Utilities** | GParted, Ventoy, KDiskMark, and a Btrfs toolset (Assistant, btrfsmaintenance, btrbk, duperemove) |
-| **Development** | Docker, Podman, Distrobox, Toolbx, VS Code, VSCodium, Cursor, Claude Code, Claude Desktop, Codex, Hermes Agent, LM Studio, Node/NVM, Go, Rust, pyenv, Terraform, OpenTofu, Ansible, kubectl, k9s, DBeaver, Virt-Manager, Firecracker |
+| **Development** | Folders for IDEs & Editors (VS Code, VSCodium, Cursor, JetBrains Toolbox, Neovim, Vim, Emacs, Helix, Sublime Text, Zed), AI Tools (Claude Code, Claude Desktop, Codex, Hermes Agent, LM Studio, Ollama), Languages & Runtimes (Python, Java JDK, PHP, Ruby, Go, Node/NVM, Rust, pyenv), Git (GitHub CLI, lazygit), Containers & Kubernetes (Docker, Podman, Podman Desktop, kubectl, k9s, Helm, minikube, k3s), Virtualization (VirtualBox, Virt-Manager, Firecracker), Network & Security (Wireshark, nmap) and Distrobox, plus Terraform, OpenTofu, Ansible, DBeaver, Postman, PowerShell and Toolbx |
 | **Gaming** | Steam, Lutris, Heroic, Bottles, Xodus Nexus, Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat |
 | **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, LibreWolf, Zen, Thorium, Tor), email clients, messaging, and VPNs (ProtonVPN, PIA, Tailscale, WireGuard) |
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
@@ -137,7 +137,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
 | **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |
 | **Window Managers** | Hyprland, Sway, i3, bspwm, awesome, dwm, Openbox |
-| **System Tools** | Folders for Monitors (Btop, htop, nvtop, GPU Task Manager, TMOG, Stacer), Power & Memory (TLP, auto-cpufreq, zram, earlyoom), Disk & Cleanup (smartmontools, ncdu, Filelight, BleachBit), System Info (Fastfetch, inxi, HardInfo, CPU-X), Shell Tools (bat, ripgrep, Pay Respects, Zsh + Oh My Zsh), Terminal Emulators (Alacritty, kitty, Ghostty, WezTerm) and Kernel Managers, plus ClamAV, CUPS, Input Leap and OCCT |
+| **System Tools** | Folders for Monitors (Btop, htop, nvtop, GPU Task Manager, TMOG, Stacer), Power & Memory (TLP, auto-cpufreq, zram, earlyoom), Disk & Cleanup (smartmontools, ncdu, Filelight, BleachBit), System Info (Fastfetch, inxi, HardInfo, CPU-X), Shell Tools (bat, ripgrep, fzf, eza, zoxide, starship, tldr, Pay Respects, Zsh + Oh My Zsh), Terminal Emulators (Alacritty, kitty, Ghostty, WezTerm) and Kernel Managers, plus ClamAV, CUPS, Input Leap and OCCT |
 
 Every entry, with its per-utility description and any distro limits, is in
 [docs/utilities.md](docs/utilities.md). For what is installed on *this* machine,
