@@ -10,7 +10,7 @@
 [![Unique cloners](https://img.shields.io/badge/unique%20cloners-30-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
-[![Tests](https://img.shields.io/badge/tests-599%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-604%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 [![Distros tested](https://img.shields.io/badge/distros%20tested-6-informational)](#supported-distributions)
 [![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
@@ -128,7 +128,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Backup** | Timeshift and Snapper (create/restore/delete), Déjà Dup, Kup, Vorta, Duplicati |
 | **Disk Utilities** | GParted, Ventoy, KDiskMark, and a Btrfs toolset (Assistant, btrfsmaintenance, btrbk, duperemove) |
 | **Development** | Folders for IDEs & Editors (VS Code, VSCodium, Cursor, JetBrains Toolbox, Neovim, Vim, Emacs, Helix, Sublime Text, Zed), AI Tools (Claude Code, Claude Desktop, Codex, Hermes Agent, LM Studio, Ollama), Languages & Runtimes (Python, Java JDK, PHP, Ruby, Go, Node/NVM, Rust, pyenv), Git (GitHub CLI, lazygit), Containers & Kubernetes (Docker, Podman, Podman Desktop, kubectl, k9s, Helm, minikube, k3s), Virtualization (VirtualBox, Virt-Manager, Firecracker), Network & Security (Wireshark, nmap) and Distrobox, plus Terraform, OpenTofu, Ansible, DBeaver, Postman, PowerShell and Toolbx |
-| **Gaming** | Steam, Lutris, Heroic, Bottles, Xodus Nexus, Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat |
+| **Gaming** | Folders for Game Launchers (Steam, Lutris, Heroic, Bottles, Prism Launcher, Xodus Nexus), Emulators (RetroArch, Dolphin Emulator, PPSSPP), Game Streaming (Sunshine, Moonlight) and Gaming Utilities (Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat, Flatseal, Gear Lever) |
 | **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, Opera, LibreWolf, Zen, Thorium, Tor), email clients, messaging (Signal, Discord, Slack, Telegram, Zoom, WhatsApp, Microsoft Teams, Mattermost), and VPNs (ProtonVPN, Mullvad, NordVPN, OpenVPN, PIA, Tailscale, WireGuard) |
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
 | **Productivity** | ArtCraft Launcher, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Multimedia Codecs, Obsidian, Joplin, Logseq, Bitwarden, 1Password, KeePassXC, Cryptomator, VeraCrypt, Nextcloud, NVIDIA PAIR, WinApps, and more: media (mpv, Kodi, Spotify), creative (Blender, Darktable, RawTherapee, Shotcut, Scribus) and documents (Calibre, Anki, Okular, Xournal++) |

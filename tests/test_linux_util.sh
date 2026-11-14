@@ -6011,6 +6011,96 @@ test_opera_uninstall_removes_repo_entries() {
     assert_eq "pkg_remove(opera-stable) sudo(rm -f /etc/apt/sources.list.d/opera-stable.list /etc/apt/sources.list.d/opera-stable.sources /usr/share/keyrings/opera-archive-keyring.gpg) " "$out" "Opera uninstall removes its repository entries and key"
 }
 
+# --- Gaming apps (#91, stage 5) ---
+echo ""
+echo "=== Gaming apps (#91) ==="
+
+_GAME_APPS=(
+    "Dolphin Emulator|dolphin_emulator|Emulators" "Flatseal|flatseal|Gaming Utilities" "Gear Lever|gear_lever|Gaming Utilities"
+    "Moonlight|moonlight|Game Streaming" "PPSSPP|ppsspp|Emulators" "Prism Launcher|prism_launcher|Game Launchers"
+    "RetroArch|retroarch|Emulators" "Sunshine|sunshine|Game Streaming"
+)
+
+test_game_apps_registered() {
+    local entry name slug sub fn gaps=0
+    for entry in "${_GAME_APPS[@]}"; do
+        IFS='|' read -r name slug sub <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"Gaming\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+        grep -qF "| **${name}** |" "${SCRIPT_DIR}/docs/utilities.md" || { gaps=1; echo "  missing docs row: $name"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["Gaming"]="Game Launchers|Emulators|Game Streaming|Gaming Utilities"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no Gaming folder order"; }
+    assert_eq "0" "$gaps" "The 8 new Gaming apps are registered with category, folder, description, completions, docs row and all five functions"
+}
+
+test_game_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in "Prism Launcher" Moonlight RetroArch "Dolphin Emulator" PPSSPP; do
+            [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"
+        done
+        for n in Sunshine Flatseal "Gear Lever"; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        echo done
+    )
+    assert_eq "done" "$out" "Alpine offers Prism Launcher, Moonlight, RetroArch, Dolphin Emulator and PPSSPP, and hides Sunshine, Flatseal and Gear Lever"
+}
+
+# openSUSE calls the Moonlight package "moonlight"; every other family "moonlight-qt".
+test_moonlight_package_name() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/moonlight.sh"
+        info() { :; }
+        native_or_flatpak_install() { printf '%s:%s ' "$1" "$2"; }
+        DISTRO_FAMILY=suse; install_moonlight
+        DISTRO_FAMILY=fedora; install_moonlight
+    )
+    assert_eq "com.moonlight_stream.Moonlight:moonlight com.moonlight_stream.Moonlight:moonlight-qt " "$out" "Moonlight installs moonlight on openSUSE and moonlight-qt elsewhere"
+}
+
+# Sunshine's input setup needs a desktop session; without one the command is printed, not run.
+test_sunshine_setup_step() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/sunshine.sh"
+        info() { :; }; warn() { printf 'WARN(%s) ' "$*"; }
+        flatpak_install_flathub() { printf 'flathub(%s) ' "$1"; }
+        flatpak() { printf 'flatpak(%s) ' "$*"; }
+        pkexec() { :; }
+        DISPLAY=""; WAYLAND_DISPLAY=""; install_sunshine
+        DISPLAY=":0"; install_sunshine
+    )
+    assert_eq "flathub(dev.lizardbyte.app.Sunshine) WARN(Sunshine needs one more step, from a desktop session: flatpak run --command=additional-install.sh dev.lizardbyte.app.Sunshine) flathub(dev.lizardbyte.app.Sunshine) flatpak(run --command=additional-install.sh dev.lizardbyte.app.Sunshine) " "$out" "Sunshine runs its setup step in a desktop session and prints the command otherwise"
+}
+
+test_sunshine_uninstall_removes_rules() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/sunshine.sh"
+        info() { :; }
+        tmp=$(mktemp -d)
+        _SUNSHINE_UDEV="$tmp/60-sunshine.rules"; _SUNSHINE_MODULES="$tmp/60-sunshine.conf"; _SUNSHINE_SERVICE="$tmp/svc"
+        : >"$_SUNSHINE_UDEV"; : >"$_SUNSHINE_MODULES"; : >"$_SUNSHINE_SERVICE"
+        systemctl() { :; }; udevadm() { :; }; flatpak() { printf 'flatpak(%s) ' "$*"; }
+        sudo() { "$@"; }
+        uninstall_sunshine
+        ls "$tmp" | wc -l
+        rm -rf "$tmp"
+    )
+    assert_eq "flatpak(uninstall -y --user dev.lizardbyte.app.Sunshine) 0" "$out" "Sunshine uninstall removes the rules and service its setup step wrote, then the app"
+}
+
 # --- Verified GitHub downloads ---
 _GH_FIXTURE='{"tag_name": "v1.2.3","assets": [
  {"name": "tool_1.2.3_linux_x86_64.tar.gz","uploader": {"login": "bot"},"size": 9,"digest": "sha256:'"$(printf 'a%.0s' {1..64})"'","browser_download_url": "https://x/tool_1.2.3_linux_x86_64.tar.gz"},
@@ -6249,6 +6339,11 @@ test_net_apps_held_back
 test_net_vendor_repo_installs_stop_on_failure
 test_nordvpn_adds_user_to_group
 test_opera_uninstall_removes_repo_entries
+test_game_apps_registered
+test_game_alpine_rows
+test_moonlight_package_name
+test_sunshine_setup_step
+test_sunshine_uninstall_removes_rules
 test_github_asset_info
 test_github_asset_download_checks_digest
 test_upstream_arch_and_regex

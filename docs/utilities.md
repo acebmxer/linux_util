@@ -227,12 +227,20 @@ Grouped into folders inside the Development tab:
 |---------|-------------|
 | **Bottles** | Wine prefix manager for running Windows software |
 | **Boxflat** | Settings manager for Moza Racing sim-racing hardware (Flatpak) |
+| **Dolphin Emulator** | Nintendo GameCube and Wii emulator. Distro package; Flathub on RHEL clones *(Emulators)* |
 | **Feral Gamemode** | Optimizes system performance while gaming |
+| **Flatseal** | Shows and changes the permissions of Flatpak apps. Distro package where there is one, else Flathub; not available on Alpine *(Gaming Utilities)* |
+| **Gear Lever** | Manages AppImage files (menu entries, updates, removal). Distro package on openSUSE, Flathub elsewhere; not available on Alpine *(Gaming Utilities)* |
 | **Heroic Games Launcher** | Open-source launcher for Epic, GOG, and Amazon Prime Gaming |
 | **Lutris** | Open gaming platform for multiple game sources |
 | **MangoHud** | Vulkan/OpenGL overlay for FPS, frame times, and hardware monitoring |
+| **Moonlight** | Streams games from a Sunshine or GeForce PC to this one. Distro package on Fedora, Arch, openSUSE and Alpine, Flathub elsewhere *(Game Streaming)* |
+| **PPSSPP** | Sony PSP emulator. Distro package on Arch, openSUSE and Alpine, Flathub elsewhere *(Emulators)* |
+| **Prism Launcher** | Minecraft launcher with separate instances per version and mod loader. Distro package where there is one, else Flathub *(Game Launchers)* |
 | **ProtonUp-Qt** | Manages Proton-GE and Wine-GE compatibility layers |
+| **RetroArch** | Frontend for the libretro emulator cores (consoles, arcade, computers). Distro package; Flathub on RHEL clones *(Emulators)* |
 | **Steam App** | Valve's gaming platform — native packages / RPM Fusion / flatpak |
+| **Sunshine** | Game-streaming server for Moonlight clients. Flathub plus Sunshine's own setup step for virtual input (asks for your password in a desktop session); not available on Alpine *(Game Streaming)* |
 | **Wine** | Compatibility layer for running Windows applications and games on Linux |
 | **Xodus Nexus** | Unofficial Xbox-inspired launcher for Microsoft Store PC games (owned or Game Pass), x86_64 AppImage |
 

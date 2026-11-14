@@ -42,6 +42,7 @@ Deepin Desktop
 Devolutions RDM
 Discord
 Docker
+Dolphin Emulator
 earlyoom
 Emacs
 Enable RDP
@@ -55,8 +56,10 @@ FileZilla
 Firecracker
 Firefox
 Flatpak Setup
+Flatseal
 Full System Upgrade/Update
 fzf
+Gear Lever
 Geary
 Ghostty
 GIMP
@@ -98,6 +101,7 @@ MATE Desktop
 Mattermost
 Microsoft Teams
 minikube
+Moonlight
 mpv
 Mullvad VPN
 Multimedia Codecs
@@ -121,8 +125,11 @@ OpenVPN
 Opera
 PHP
 Podman Desktop
+PPSSPP
+Prism Launcher
 Python
 RawTherapee
+RetroArch
 Ruby
 Scribus
 Shotcut
@@ -130,6 +137,7 @@ smartmontools
 Spotify
 starship
 Sublime Text
+Sunshine
 tldr
 TLP
 tmux

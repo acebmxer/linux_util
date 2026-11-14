@@ -14,6 +14,16 @@ when a release is cut.
 
 ### Added
 
+- **8 more Gaming apps** (part of #91). Launcher: Prism Launcher (Minecraft).
+  Emulators: RetroArch, Dolphin Emulator and PPSSPP. Game streaming: Sunshine
+  (host) and Moonlight (client). Utilities: Flatseal (Flatpak permissions) and
+  Gear Lever (AppImage manager). Each uses the distro package where a
+  repository has one, otherwise Flathub. Sunshine always uses Flathub and then
+  runs its documented setup step for virtual keyboards and gamepads, which asks
+  for your password in a desktop session (otherwise the command is printed);
+  uninstalling it removes the rules that step wrote. Gaming is now sorted into
+  folders: **Game Launchers**, **Emulators**, **Game Streaming** and **Gaming
+  Utilities**. Not offered on Alpine: Sunshine, Flatseal and Gear Lever.
 - **7 more Internet apps** (part of #91). Browser: Opera. Messaging: WhatsApp
   (ZapZap, an open-source client for WhatsApp Web, as WhatsApp has no Linux
   app), Microsoft Teams (Teams for Linux, as Microsoft ended its own Linux app

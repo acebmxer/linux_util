@@ -474,6 +474,15 @@ fi
 register_utility "OpenVPN"            install_openvpn          check_openvpn            uninstall_openvpn           update_openvpn            get_version_openvpn
 register_utility "Opera"              install_opera            check_opera              uninstall_opera             update_opera              get_version_opera
 register_utility "WhatsApp"           install_whatsapp         check_whatsapp           uninstall_whatsapp          update_whatsapp           get_version_whatsapp
+# Gaming apps (#91): launcher, emulators, game streaming and Flatpak/AppImage helpers. Alpine keeps the five in alpine_packages.sh.
+register_utility "Dolphin Emulator"   install_dolphin_emulator check_dolphin_emulator   uninstall_dolphin_emulator  update_dolphin_emulator   get_version_dolphin_emulator
+register_utility "Flatseal"           install_flatseal         check_flatseal           uninstall_flatseal          update_flatseal           get_version_flatseal
+register_utility "Gear Lever"         install_gear_lever       check_gear_lever         uninstall_gear_lever        update_gear_lever         get_version_gear_lever
+register_utility "Moonlight"          install_moonlight        check_moonlight          uninstall_moonlight         update_moonlight          get_version_moonlight
+register_utility "PPSSPP"             install_ppsspp           check_ppsspp             uninstall_ppsspp            update_ppsspp             get_version_ppsspp
+register_utility "Prism Launcher"     install_prism_launcher   check_prism_launcher     uninstall_prism_launcher    update_prism_launcher     get_version_prism_launcher
+register_utility "RetroArch"          install_retroarch        check_retroarch          uninstall_retroarch         update_retroarch          get_version_retroarch
+register_utility "Sunshine"           install_sunshine         check_sunshine           uninstall_sunshine          update_sunshine           get_version_sunshine
 
 # COSMIC: requires Ubuntu 24.10+/Debian Trixie, Fedora 42+, or Arch.
 # Not packaged for the RHEL ecosystem or openSUSE Leap/SLES.
@@ -819,6 +828,14 @@ UTILITY_CATEGORY["NordVPN"]="Internet"
 UTILITY_CATEGORY["OpenVPN"]="Internet"
 UTILITY_CATEGORY["Opera"]="Internet"
 UTILITY_CATEGORY["WhatsApp"]="Internet"
+UTILITY_CATEGORY["Dolphin Emulator"]="Gaming"
+UTILITY_CATEGORY["Flatseal"]="Gaming"
+UTILITY_CATEGORY["Gear Lever"]="Gaming"
+UTILITY_CATEGORY["Moonlight"]="Gaming"
+UTILITY_CATEGORY["PPSSPP"]="Gaming"
+UTILITY_CATEGORY["Prism Launcher"]="Gaming"
+UTILITY_CATEGORY["RetroArch"]="Gaming"
+UTILITY_CATEGORY["Sunshine"]="Gaming"
 UTILITY_CATEGORY["zoxide"]="System Tools"
 UTILITY_CATEGORY["auto-cpufreq"]="System Tools"
 UTILITY_CATEGORY["BleachBit"]="System Tools"
@@ -1003,6 +1020,14 @@ UTILITY_SUBCATEGORY["Mattermost"]="Messaging"
 UTILITY_SUBCATEGORY["Mullvad VPN"]="VPN"
 UTILITY_SUBCATEGORY["NordVPN"]="VPN"
 UTILITY_SUBCATEGORY["OpenVPN"]="VPN"
+UTILITY_SUBCATEGORY["Dolphin Emulator"]="Emulators"
+UTILITY_SUBCATEGORY["Flatseal"]="Gaming Utilities"
+UTILITY_SUBCATEGORY["Gear Lever"]="Gaming Utilities"
+UTILITY_SUBCATEGORY["Moonlight"]="Game Streaming"
+UTILITY_SUBCATEGORY["PPSSPP"]="Emulators"
+UTILITY_SUBCATEGORY["Prism Launcher"]="Game Launchers"
+UTILITY_SUBCATEGORY["RetroArch"]="Emulators"
+UTILITY_SUBCATEGORY["Sunshine"]="Game Streaming"
 UTILITY_SUBCATEGORY["Timeshift"]="Timeshift"
 UTILITY_SUBCATEGORY["Create Snapshot"]="Timeshift"
 UTILITY_SUBCATEGORY["Restore Snapshot"]="Timeshift"
@@ -1143,6 +1168,7 @@ UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
 SUBCATEGORY_ORDER["Development"]="IDEs & Editors|AI Tools|Languages & Runtimes|Git|Containers & Kubernetes|Virtualization|Network & Security|Distrobox"
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
+SUBCATEGORY_ORDER["Gaming"]="Game Launchers|Emulators|Game Streaming|Gaming Utilities"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
 SUBCATEGORY_ORDER["Productivity"]="Office Suites|Notes|Password Managers|Encryption|Documents & Reading|Graphics & Photo|Video & Audio|Media"
 SUBCATEGORY_ORDER["Remote Admin Tools"]="Remote Access"
@@ -1393,6 +1419,14 @@ UTILITY_DESCRIPTION["Zed"]="Fast code editor with built-in collaboration and AI.
 UTILITY_DESCRIPTION["zoxide"]="Smarter cd: remembers the folders you use and jumps to them with z, loaded from ~/.bashrc (and ~/.zshrc when it exists). Distro package (every release except Rocky/Alma 10); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin."
 UTILITY_DESCRIPTION["Opera"]="Opera web browser with a built-in ad blocker, free VPN-style proxy and sidebar messengers. Installed from Opera's own signed repository on Debian, Ubuntu, Fedora, RHEL clones (x86_64) and openSUSE, so updates arrive with the system; on Arch from Flathub when Flatpak is set up, otherwise the AUR (only with AUR support enabled). Not available on Alpine. Uninstall keeps your profile."
 UTILITY_DESCRIPTION["WhatsApp"]="WhatsApp has no official Linux app; this installs ZapZap, an open-source desktop client that wraps WhatsApp Web (link it with your phone's QR code). Distro package on openSUSE, Flathub elsewhere. Not available on Alpine. Uninstall keeps the linked session."
+UTILITY_DESCRIPTION["Dolphin Emulator"]="Nintendo GameCube and Wii emulator. Distro package on Debian, Ubuntu, Fedora, Arch, openSUSE and Alpine; Flathub on RHEL clones. Uninstall keeps your saves and settings."
+UTILITY_DESCRIPTION["Flatseal"]="Shows and changes the permissions of Flatpak apps (files, devices, network), for example for the Flatpak game apps here. Distro package where a repository has one, otherwise Flathub. Not available on Alpine. Uninstall keeps your permission overrides."
+UTILITY_DESCRIPTION["Gear Lever"]="Manages AppImage files: menu entries, updates and removal. Distro package on openSUSE, Flathub elsewhere. Not available on Alpine. Uninstall keeps the AppImages it manages."
+UTILITY_DESCRIPTION["Moonlight"]="Streams games from a Sunshine or GeForce PC to this computer. Distro package on Fedora, Arch, openSUSE and Alpine; Flathub elsewhere. Uninstall keeps your paired hosts."
+UTILITY_DESCRIPTION["PPSSPP"]="Sony PSP emulator with upscaling and save states. Distro package on Arch, openSUSE and Alpine; Flathub elsewhere. Uninstall keeps your saves and settings."
+UTILITY_DESCRIPTION["Prism Launcher"]="Minecraft launcher with separate instances per game version and mod loader. Distro package on Ubuntu 26.04, Arch, openSUSE and Alpine; Flathub elsewhere. Uninstall keeps your instances and accounts."
+UTILITY_DESCRIPTION["RetroArch"]="Frontend for the libretro emulator cores (consoles, arcade, computers); fetch cores in the app's Online Updater. Distro package on Debian, Ubuntu, Fedora, Arch, openSUSE and Alpine; Flathub on RHEL clones. Uninstall keeps your saves and settings."
+UTILITY_DESCRIPTION["Sunshine"]="Self-hosted game-streaming server for Moonlight clients. Flathub on every family, plus Sunshine's own setup step (virtual keyboard and gamepad rules, asks for your password in a desktop session). Web page at https://localhost:47990. Not available on Alpine. Uninstall removes those rules and keeps your pairings."
 UTILITY_DESCRIPTION["Microsoft Teams"]="Microsoft stopped its own Linux Teams app in 2022; this installs Teams for Linux, the open-source client that wraps the Teams web app (chat, meetings, notifications, screen sharing). Flathub, or the distro package where a repository has one. Not available on Alpine. Uninstall keeps your sign-in."
 UTILITY_DESCRIPTION["Mattermost"]="Desktop app for Mattermost, the self-hosted team chat. Distro package on Arch, Flathub elsewhere. Not available on Alpine. Uninstall keeps your saved servers."
 UTILITY_DESCRIPTION["Mullvad VPN"]="Mullvad's VPN app (WireGuard, no account email needed). Installed from Mullvad's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and openSUSE, so updates arrive with the system; on Arch from the distro repository. The background service is enabled. Not available on Alpine."
