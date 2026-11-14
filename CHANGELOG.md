@@ -25,7 +25,8 @@ when a release is cut.
   root password. On first run it offers to install the GNU `grep`, `sed`,
   `gawk`, `coreutils` and `findutils` that BusyBox lacks. Services are started
   through OpenRC, and the reboot offered after an update runs `reboot` where
-  there is no `systemctl`. Alpine joins the CI distro-detection matrix.
+  there is no `systemctl`. Alpine 3.22, 3.23 and 3.24 and openSUSE Leap 16.0
+  join the CI distro-detection matrix.
 
 ### Changed
 

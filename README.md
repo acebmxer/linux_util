@@ -206,9 +206,10 @@ of `grep`, `sed`, `gawk`, `coreutils` and `findutils` that BusyBox lacks.
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then
 by auto-detecting the available package manager.
 
-CI checks distro detection on every release of Debian, Ubuntu, Fedora and Rocky
-Linux that is still supported, plus Arch Linux and openSUSE Tumbleweed (see the
-`distro-smoke` job in [ci.yml](.github/workflows/ci.yml)).
+CI checks distro detection on every release of Debian, Ubuntu, Fedora, Rocky
+Linux, openSUSE Leap and Alpine that is still supported, plus Arch Linux and
+openSUSE Tumbleweed (see the `distro-smoke` job in
+[ci.yml](.github/workflows/ci.yml)).
 
 ---
 
