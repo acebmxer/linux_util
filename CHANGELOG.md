@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-11-14
+
 ### Added
 
 - **9 more Backup tools** (fixes #92). Command line: restic, rclone, Kopia and
