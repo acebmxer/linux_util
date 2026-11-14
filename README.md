@@ -10,7 +10,7 @@
 [![Unique cloners](https://img.shields.io/badge/unique%20cloners-30-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
-[![Tests](https://img.shields.io/badge/tests-604%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-608%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 [![Distros tested](https://img.shields.io/badge/distros%20tested-6-informational)](#supported-distributions)
 [![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
@@ -125,7 +125,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Bootloaders** | GRUB, Limine, systemd-boot, switching between them, and five GRUB theme packs |
 | **Drivers** | NVIDIA, AMD and Intel GPU (with video acceleration), Intel and AMD microcode, LACT, OpenLogi, Thermalright TRCC, XEN guest tools |
 | **Desktop Environments** | KDE Plasma, GNOME, Xfce, Cinnamon, MATE, LXQt, Budgie, COSMIC, Deepin, Pantheon |
-| **Backup** | Timeshift and Snapper (create/restore/delete), Déjà Dup, Kup, Vorta, Duplicati |
+| **Backup** | Folders for File Backup (Déjà Dup, Kup, Vorta, Duplicati, Back In Time, Pika Backup, luckyBackup, Grsync), Command Line (restic, rclone, Kopia, rsnapshot), Timeshift and Snapper (create/restore/delete), plus Clonezilla |
 | **Disk Utilities** | GParted, Ventoy, KDiskMark, and a Btrfs toolset (Assistant, btrfsmaintenance, btrbk, duperemove) |
 | **Development** | Folders for IDEs & Editors (VS Code, VSCodium, Cursor, JetBrains Toolbox, Neovim, Vim, Emacs, Helix, Sublime Text, Zed), AI Tools (Claude Code, Claude Desktop, Codex, Hermes Agent, LM Studio, Ollama), Languages & Runtimes (Python, Java JDK, PHP, Ruby, Go, Node/NVM, Rust, pyenv), Git (GitHub CLI, lazygit), Containers & Kubernetes (Docker, Podman, Podman Desktop, kubectl, k9s, Helm, minikube, k3s), Virtualization (VirtualBox, Virt-Manager, Firecracker), Network & Security (Wireshark, nmap) and Distrobox, plus Terraform, OpenTofu, Ansible, DBeaver, Postman, PowerShell and Toolbx |
 | **Gaming** | Folders for Game Launchers (Steam, Lutris, Heroic, Bottles, Prism Launcher, Xodus Nexus), Emulators (RetroArch, Dolphin Emulator, PPSSPP), Game Streaming (Sunshine, Moonlight) and Gaming Utilities (Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat, Flatseal, Gear Lever) |

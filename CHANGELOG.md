@@ -14,6 +14,18 @@ when a release is cut.
 
 ### Added
 
+- **9 more Backup tools** (fixes #92). Command line: restic, rclone, Kopia and
+  rsnapshot. Desktop: Back In Time, Pika Backup, luckyBackup and Grsync.
+  Also Clonezilla (the package, for disks that are not mounted; the live disk
+  is still needed to clone the running system). Each uses the distro package
+  (EPEL on RHEL clones); Kopia otherwise uses its GitHub release, checked
+  against its published SHA-256, and Pika Backup uses Flathub where there is no
+  package. rsnapshot needs your own config and schedule. Backup is now sorted
+  into **File Backup** and **Command Line** folders beside Timeshift and
+  Snapper. Not offered: restic and rclone on Rocky/Alma 8, Back In Time on
+  Rocky/Alma 10, luckyBackup on RHEL clones, Clonezilla on Fedora, RHEL clones
+  and openSUSE; Back In Time and luckyBackup on Arch need AUR support; on
+  Alpine only restic, rclone and rsnapshot.
 - **8 more Gaming apps** (part of #91). Launcher: Prism Launcher (Minecraft).
   Emulators: RetroArch, Dolphin Emulator and PPSSPP. Game streaming: Sunshine
   (host) and Moonlight (client). Utilities: Flatseal (Flatpak permissions) and

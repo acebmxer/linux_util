@@ -9,6 +9,7 @@ AMD Drivers
 Anki
 ArtCraft Launcher
 auto-cpufreq
+Back In Time
 bat
 Betterbird
 Bitwarden Client
@@ -27,6 +28,7 @@ Cinnamon Desktop
 Claude Code
 Claude Desktop
 Claws Mail
+Clonezilla
 Cockpit
 Codex
 Command-Not-Found Prompt
@@ -67,6 +69,7 @@ GitHub CLI
 GNOME Desktop
 Google Chrome
 GPU Task Manager
+Grsync
 GTK Window Fix
 HardInfo
 Helix
@@ -87,12 +90,14 @@ KeePassXC
 kitty
 KMail
 Kodi
+Kopia
 lazygit
 LibreOffice
 linux-tkg
 Local Time Zone / Locale
 LM Studio
 LocalSend
+luckyBackup
 Lutris
 LXQt Desktop
 Mainline
@@ -124,12 +129,16 @@ OpenSSH Server
 OpenVPN
 Opera
 PHP
+Pika Backup
 Podman Desktop
 PPSSPP
 Prism Launcher
 Python
 RawTherapee
+rclone
+restic
 RetroArch
+rsnapshot
 Ruby
 Scribus
 Shotcut

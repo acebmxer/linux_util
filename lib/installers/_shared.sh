@@ -656,14 +656,16 @@ shell_init_remove() {
 # package is installed.
 # ============================================================================
 
-# Fill @GNU@ (x86_64|aarch64), @GO@ (amd64|arm64) and @GOX@ (x86_64|arm64) in an
+# Fill @GNU@ (x86_64|aarch64), @GO@ (amd64|arm64), @GOX@ (x86_64|arm64) and @X64@ (x64|arm64) in an
 # asset-name regex with this machine's names.
 _upstream_expand_regex() {
-    local re="$1" gnu go gox
+    local re="$1" gnu go gox x64
     gnu=$(upstream_arch gnu) || return 1
     go=$(upstream_arch go) || return 1
     gox=$gnu; [[ "$gnu" == aarch64 ]] && gox=arm64
-    re="${re//@GNU@/$gnu}"; re="${re//@GO@/$go}"; re="${re//@GOX@/$gox}"
+    # @X64@ (x64|arm64) is the spelling Kopia's release files use.
+    x64=x64; [[ "$gnu" == aarch64 ]] && x64=arm64
+    re="${re//@GNU@/$gnu}"; re="${re//@GO@/$go}"; re="${re//@GOX@/$gox}"; re="${re//@X64@/$x64}"
     printf '%s\n' "$re"
 }
 
@@ -678,7 +680,13 @@ github_binary_install() {
     file=$(github_asset_download "$repo" "$re" "$tmp") || { rm -rf "$tmp"; return 1; }
     if [[ "$file" == *.tar.gz || "$file" == *.tgz ]]; then
         tar -xzf "$file" -C "$tmp" || { error "Could not unpack $(basename "$file")."; rm -rf "$tmp"; return 1; }
-        found=$(find "$tmp" -type f -name "$bin" | head -1)
+        if command -v find &>/dev/null; then
+            found=$(find "$tmp" -type f -name "$bin" | head -1)
+        else
+            # A minimal image (Rocky) has no findutils: the binary is at the top or one folder down.
+            local cand
+            for cand in "$tmp/$bin" "$tmp"/*/"$bin"; do [[ -f "$cand" ]] && { found="$cand"; break; }; done
+        fi
     else
         found="$file"
     fi

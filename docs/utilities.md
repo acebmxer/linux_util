@@ -110,6 +110,15 @@ appear when it applies.
 | **Kup** | KDE backup tool — incremental (bup) or synchronized (rsync) backups via System Settings |
 | **Vorta** | Borg Backup GUI — deduplicating, encrypted backups |
 | **Duplicati** | Browser-based backup tool with cloud provider support |
+| **Back In Time** | Snapshot backups of your files with rsync and a Qt window. Distro package (EPEL on RHEL clones 8 and 9), AUR on Arch (AUR support must be on); not available on Rocky/Alma 10 or Alpine *(File Backup)* |
+| **Pika Backup** | Scheduled home-folder backups with BorgBackup. Distro package on Arch and openSUSE Tumbleweed, Flathub elsewhere; not available on Alpine *(File Backup)* |
+| **luckyBackup** | Rsync-based backup and sync with profiles and scheduling. Distro package, AUR on Arch (AUR support must be on); not available on RHEL clones or Alpine *(File Backup)* |
+| **Grsync** | Graphical front-end for rsync with saved presets. Distro package (EPEL on RHEL clones); not available on Alpine *(File Backup)* |
+| **restic** | Encrypted, deduplicating command-line backup to local, SFTP, S3 and cloud stores. Distro package; not available on Rocky/Alma 8 *(Command Line)* |
+| **rclone** | Command-line copy and sync to dozens of cloud storage services. Distro package; not available on Rocky/Alma 8 *(Command Line)* |
+| **Kopia** | Fast, encrypted, deduplicating backup with a web page (`kopia server start`). Distro package on Fedora and openSUSE, SHA-256 checked GitHub release elsewhere; command line only; not available on Alpine *(Command Line)* |
+| **rsnapshot** | Scheduled rsync snapshots with hard links; you write the config and the schedule *(Command Line)* |
+| **Clonezilla** | Disk and partition cloning for disks that are not mounted; the live disk is needed to clone the running system. Debian, Ubuntu and Arch only |
 
 ## Disk Utilities
 

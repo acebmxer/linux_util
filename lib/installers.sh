@@ -483,6 +483,28 @@ register_utility "PPSSPP"             install_ppsspp           check_ppsspp     
 register_utility "Prism Launcher"     install_prism_launcher   check_prism_launcher     uninstall_prism_launcher    update_prism_launcher     get_version_prism_launcher
 register_utility "RetroArch"          install_retroarch        check_retroarch          uninstall_retroarch         update_retroarch          get_version_retroarch
 register_utility "Sunshine"           install_sunshine         check_sunshine           uninstall_sunshine          update_sunshine           get_version_sunshine
+# Backup tools (#91 follow-up, #92). Only the ones with no package on a family are held back; Alpine keeps only the three in alpine_packages.sh.
+register_utility "Grsync"             install_grsync           check_grsync             uninstall_grsync            update_grsync             get_version_grsync
+register_utility "Kopia"              install_kopia            check_kopia              uninstall_kopia             update_kopia              get_version_kopia
+register_utility "Pika Backup"        install_pika_backup      check_pika_backup        uninstall_pika_backup       update_pika_backup        get_version_pika_backup
+register_utility "rsnapshot"          install_rsnapshot        check_rsnapshot          uninstall_rsnapshot         update_rsnapshot          get_version_rsnapshot
+# restic and rclone: no package for Rocky/Alma 8.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%%.*}" -ge 9 ]]; then
+    register_utility "restic"             install_restic           check_restic             uninstall_restic            update_restic             get_version_restic
+    register_utility "rclone"             install_rclone           check_rclone             uninstall_rclone            update_rclone             get_version_rclone
+fi
+# Back In Time: EPEL carries it for RHEL clones 8 and 9, not 10.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%%.*}" -lt 10 ]]; then
+    register_utility "Back In Time"       install_back_in_time     check_back_in_time       uninstall_back_in_time      update_back_in_time       get_version_back_in_time
+fi
+# luckyBackup: no package for RHEL clones.
+if [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "luckyBackup"        install_luckybackup      check_luckybackup        uninstall_luckybackup       update_luckybackup        get_version_luckybackup
+fi
+# Clonezilla: packaged for Debian, Ubuntu and Arch only.
+if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "arch" ]]; then
+    register_utility "Clonezilla"         install_clonezilla       check_clonezilla         uninstall_clonezilla        update_clonezilla         get_version_clonezilla
+fi
 
 # COSMIC: requires Ubuntu 24.10+/Debian Trixie, Fedora 42+, or Arch.
 # Not packaged for the RHEL ecosystem or openSUSE Leap/SLES.
@@ -770,6 +792,15 @@ UTILITY_CATEGORY["Déjà Dup"]="Backup"
 UTILITY_CATEGORY["Kup"]="Backup"
 UTILITY_CATEGORY["Vorta"]="Backup"
 UTILITY_CATEGORY["Duplicati"]="Backup"
+UTILITY_CATEGORY["Back In Time"]="Backup"
+UTILITY_CATEGORY["Clonezilla"]="Backup"
+UTILITY_CATEGORY["Grsync"]="Backup"
+UTILITY_CATEGORY["Kopia"]="Backup"
+UTILITY_CATEGORY["luckyBackup"]="Backup"
+UTILITY_CATEGORY["Pika Backup"]="Backup"
+UTILITY_CATEGORY["rclone"]="Backup"
+UTILITY_CATEGORY["restic"]="Backup"
+UTILITY_CATEGORY["rsnapshot"]="Backup"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
 UTILITY_CATEGORY["VSCodium"]="Development"
 UTILITY_CATEGORY["Vivaldi Browser"]="Internet"
@@ -1045,6 +1076,14 @@ UTILITY_SUBCATEGORY["Déjà Dup"]="File Backup"
 UTILITY_SUBCATEGORY["Kup"]="File Backup"
 UTILITY_SUBCATEGORY["Vorta"]="File Backup"
 UTILITY_SUBCATEGORY["Duplicati"]="File Backup"
+UTILITY_SUBCATEGORY["Back In Time"]="File Backup"
+UTILITY_SUBCATEGORY["Pika Backup"]="File Backup"
+UTILITY_SUBCATEGORY["luckyBackup"]="File Backup"
+UTILITY_SUBCATEGORY["Grsync"]="File Backup"
+UTILITY_SUBCATEGORY["restic"]="Command Line"
+UTILITY_SUBCATEGORY["rclone"]="Command Line"
+UTILITY_SUBCATEGORY["Kopia"]="Command Line"
+UTILITY_SUBCATEGORY["rsnapshot"]="Command Line"
 UTILITY_SUBCATEGORY["AMD CPU Microcode & Firmware"]="CPU Microcode"
 UTILITY_SUBCATEGORY["AMD Drivers"]="GPU Drivers"
 UTILITY_SUBCATEGORY["Intel Drivers"]="GPU Drivers"
@@ -1172,6 +1211,7 @@ SUBCATEGORY_ORDER["Gaming"]="Game Launchers|Emulators|Game Streaming|Gaming Util
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
 SUBCATEGORY_ORDER["Productivity"]="Office Suites|Notes|Password Managers|Encryption|Documents & Reading|Graphics & Photo|Video & Audio|Media"
 SUBCATEGORY_ORDER["Remote Admin Tools"]="Remote Access"
+SUBCATEGORY_ORDER["Backup"]="File Backup|Command Line|Timeshift|Snapper"
 SUBCATEGORY_ORDER["Bootloaders"]="GRUB Themes"
 SUBCATEGORY_ORDER["Login Screens"]="Display Managers|SDDM Themes|LightDM Greeters"
 SUBCATEGORY_ORDER["System Tools"]="Monitors|Power & Memory|Disk & Cleanup|System Info|Shell Tools|Terminal Emulators|Kernel Managers"
@@ -1464,6 +1504,15 @@ UTILITY_DESCRIPTION["Déjà Dup"]="(GNOME) Simple, beginner-friendly backup tool
 UTILITY_DESCRIPTION["Kup"]="(KDE) Backup tool that integrates with Plasma System Settings. Supports incremental versioned backups (via bup) and synchronized folder copies (via rsync) to local drives or external media. On Fedora, installed from the zawertun/kde-kup Copr as it is not in the official repos. Not available for RHEL-based systems."
 UTILITY_DESCRIPTION["Vorta"]="GUI frontend for BorgBackup — a fast, deduplicating backup tool with encryption and compression. Installs both Borg (CLI) and Vorta (GUI). On RHEL-based systems, only BorgBackup is installed via EPEL as Vorta is not packaged there."
 UTILITY_DESCRIPTION["Duplicati"]="Cloud backup tool with a web-based GUI supporting S3, Google Drive, OneDrive, SFTP, and many more backends. Features encryption, deduplication, and scheduling. Installed via Flatpak — run 'Flatpak Setup' from the Package Managers category first if not already configured."
+UTILITY_DESCRIPTION["Back In Time"]="Simple snapshot backups of your files using rsync, with a Qt window; restore any snapshot. Distro package on Debian, Ubuntu, Fedora, RHEL clones 8 and 9 (EPEL) and openSUSE; on Arch from the AUR (only with AUR support enabled). Not available on Rocky/Alma 10 or Alpine. Uninstall keeps your snapshots and profiles."
+UTILITY_DESCRIPTION["Clonezilla"]="Disk and partition cloning and imaging. Installs the Clonezilla package (Debian, Ubuntu, Arch) for use on disks that are not mounted; cloning the running system's own disk needs the live Clonezilla disk (Ventoy can boot it). Not available on Fedora, RHEL clones, openSUSE or Alpine."
+UTILITY_DESCRIPTION["Grsync"]="Graphical front-end for rsync: sync and back up folders with saved presets. Distro package (EPEL on RHEL clones). Not available on Alpine. Uninstall keeps your saved sessions."
+UTILITY_DESCRIPTION["Kopia"]="Fast, encrypted, deduplicating backup with snapshots and a web page (kopia server start). The command-line program: distro package on Fedora and openSUSE; elsewhere Kopia's GitHub release, SHA-256 checked, in /usr/local/bin. The KopiaUI desktop app is not installed. Not available on Alpine. Uninstall keeps your repository connections."
+UTILITY_DESCRIPTION["luckyBackup"]="Graphical rsync-based backup and sync with profiles and scheduling. Distro package on Debian, Ubuntu, Fedora and openSUSE; on Arch from the AUR (only with AUR support enabled). Not available on RHEL clones or Alpine. Uninstall keeps your profiles."
+UTILITY_DESCRIPTION["Pika Backup"]="Simple scheduled backups of your home folder with BorgBackup, in a desktop window. Distro package on Arch and openSUSE Tumbleweed; Flathub elsewhere. Not available on Alpine. Uninstall keeps your schedule and repository settings."
+UTILITY_DESCRIPTION["rclone"]="Command-line tool that copies and syncs files to and from dozens of cloud storage services. Distro package (EPEL on RHEL clones 9 and newer). Not available on Rocky/Alma 8. Uninstall keeps your rclone.conf."
+UTILITY_DESCRIPTION["restic"]="Fast, encrypted, deduplicating command-line backup to a local folder, SFTP, S3 and many cloud stores. Distro package (EPEL on RHEL clones 9 and newer). Not available on Rocky/Alma 8. Uninstall keeps your repositories."
+UTILITY_DESCRIPTION["rsnapshot"]="Scheduled, space-saving snapshots of folders using rsync and hard links. Distro package (EPEL on RHEL clones). You write /etc/rsnapshot.conf and the cron or timer entry yourself; neither is created. Uninstall keeps /etc/rsnapshot.conf."
 UTILITY_DESCRIPTION["Snapper"]="Btrfs and LVM snapshot manager. Supports automatic pre/post snapshots on Arch, openSUSE, Debian/Ubuntu, and Fedora. Conflicts with Timeshift — the installer will prompt to remove it first."
 UTILITY_DESCRIPTION["Snapper GUI"]="GTK graphical interface for Snapper. Browse, create, delete, and compare snapshots visually. Works on any filesystem Snapper supports — does not require Btrfs."
 UTILITY_DESCRIPTION["Btrfs Assistant"]="Qt GUI for managing Btrfs filesystems and Snapper snapshots. Includes subvolume management, snapshot browsing, and scrub/balance operations. Available on Arch, Debian/Ubuntu, Fedora, and openSUSE."
@@ -1541,7 +1590,7 @@ mark_aur_only_arch \
     "Snap (snapd)=snapd" "Snapper GUI=snapper-gui-git" \
     "Trojita=trojita" "Zotero=zotero" "1Password=1password" \
     "auto-cpufreq=auto-cpufreq" "Sublime Text=sublime-text-4" \
-    "NordVPN=nordvpn-bin"
+    "NordVPN=nordvpn-bin" "Back In Time=backintime" "luckyBackup=luckybackup"
 
 # Utilities that can install from upstream's own binary when no package source
 # carries them (the third tier of arch_install_ordered, reached on Arch because
@@ -1575,7 +1624,8 @@ mark_upstream_binary \
     "starship=/usr/local/bin/starship" \
     "minikube=/usr/local/bin/minikube" \
     "k3s=/usr/local/bin/k3s-uninstall.sh" \
-    "Ollama=/usr/local/lib/ollama"
+    "Ollama=/usr/local/lib/ollama" \
+    "Kopia=/usr/local/bin/kopia"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1599,7 +1649,8 @@ mark_upstream_latest \
     "starship=_starship_latest_version" \
     "minikube=_minikube_latest_version" \
     "k3s=_k3s_latest_version" \
-    "Ollama=_ollama_latest_version"
+    "Ollama=_ollama_latest_version" \
+    "Kopia=_kopia_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

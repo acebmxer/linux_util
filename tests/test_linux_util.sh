@@ -6102,6 +6102,109 @@ test_sunshine_uninstall_removes_rules() {
     assert_eq "flatpak(uninstall -y --user dev.lizardbyte.app.Sunshine) 0" "$out" "Sunshine uninstall removes the rules and service its setup step wrote, then the app"
 }
 
+# --- Backup tools (#92) ---
+echo ""
+echo "=== Backup tools (#92) ==="
+
+_BACKUP_APPS=(
+    "Back In Time|back_in_time|File Backup" "Clonezilla|clonezilla|" "Grsync|grsync|File Backup" "Kopia|kopia|Command Line"
+    "luckyBackup|luckybackup|File Backup" "Pika Backup|pika_backup|File Backup" "rclone|rclone|Command Line"
+    "restic|restic|Command Line" "rsnapshot|rsnapshot|Command Line"
+)
+
+test_backup_apps_registered() {
+    local entry name slug sub fn gaps=0
+    for entry in "${_BACKUP_APPS[@]}"; do
+        IFS='|' read -r name slug sub <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"Backup\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        if [[ -n "$sub" ]]; then
+            grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+        fi
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+        grep -qF "| **${name}** |" "${SCRIPT_DIR}/docs/utilities.md" || { gaps=1; echo "  missing docs row: $name"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["Backup"]="File Backup|Command Line|Timeshift|Snapper"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no Backup folder order"; }
+    assert_eq "0" "$gaps" "The 9 new Backup tools are registered with category, folder, description, completions, docs row and all five functions"
+}
+
+# Each tool is held back (or marked AUR-only) exactly where no package or safe download exists for it.
+test_backup_apps_held_back() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0 line out
+    grep -qF '"Back In Time=backintime"' "$f" && grep -qF '"luckyBackup=luckybackup"' "$f" || { gaps=1; echo "  Back In Time / luckyBackup not AUR-only on Arch"; }
+    grep -qF '"Kopia=/usr/local/bin/kopia"' "$f" && grep -qF '"Kopia=_kopia_latest_version"' "$f" || { gaps=1; echo "  Kopia has no upstream marker"; }
+    line=$(grep -n 'register_utility "restic"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-ge 9' || { gaps=1; echo "  restic/rclone not held back on Rocky/Alma 8"; }
+    line=$(grep -n 'register_utility "Back In Time"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-lt 10' || { gaps=1; echo "  Back In Time not held back on Rocky/Alma 10"; }
+    line=$(grep -n 'register_utility "luckyBackup"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF '!= "rhel"' || { gaps=1; echo "  luckyBackup not held back on RHEL clones"; }
+    line=$(grep -n 'register_utility "Clonezilla"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF '"debian"' || { gaps=1; echo "  Clonezilla not limited to Debian family and Arch"; }
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in restic rclone rsnapshot; do [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"; done
+        for n in Kopia Grsync "Pika Backup" "Back In Time" luckyBackup Clonezilla; do [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"; done
+        echo done
+    )
+    assert_eq "0 done" "${gaps} ${out}" "Backup tools are held back where they have no package, and Alpine offers restic, rclone and rsnapshot only"
+}
+
+# Kopia's release files say x64, not x86_64 or amd64.
+test_kopia_release_name() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        source "${SCRIPT_DIR}/lib/installers/kopia.sh"
+        error() { :; }
+        uname() { echo "$_m"; }
+        _m=x86_64;  printf '%s,' "$(_upstream_expand_regex "$_kopia_RE")"
+        _m=aarch64; printf '%s' "$(_upstream_expand_regex "$_kopia_RE")"
+        [[ "kopia-0.23.1-linux-x64.tar.gz" =~ ^(kopia-[0-9.]+-linux-x64\.tar\.gz)$ ]] && printf ',match'
+    )
+    assert_eq 'kopia-[0-9.]+-linux-x64\.tar\.gz,kopia-[0-9.]+-linux-arm64\.tar\.gz,match' "$out" "Kopia's release file pattern follows the CPU (x64, arm64)"
+}
+
+# Back In Time's command-line half comes with it and goes with it; a missing half must not fail the uninstall.
+test_back_in_time_uninstall_removes_dependency() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/back_in_time.sh"
+        info() { :; }
+        pkg_remove() { printf 'remove(%s) ' "$*"; }
+        pkg_check_installed() { [[ "$1" == backintime-common ]]; }
+        DISTRO_FAMILY=debian; uninstall_back_in_time; printf 'rc=%s' "$?"
+    )
+    assert_eq "remove(backintime-qt) remove(backintime-common) rc=0" "$out" "Back In Time uninstall removes the app and its command-line package and still succeeds"
+}
+
+# A minimal image has no find; the unpacked release binary is still found.
+test_github_binary_install_without_find() {
+    local out d
+    d=$(mktemp -d)
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        error() { :; }; info() { :; }
+        mktemp() { echo "$d/w"; }
+        mkdir -p "$d/w/pkg"; printf '#!/bin/sh\n' > "$d/w/pkg/tool"; (cd "$d/w" && tar -czf "$d/t.tar.gz" pkg)
+        rm -rf "$d/w"; mkdir "$d/w"
+        github_asset_download() { cp "$d/t.tar.gz" "$3/t.tar.gz"; echo "$3/t.tar.gz"; }
+        upstream_arch() { echo x86_64; }
+        find() { return 127; }
+        command() { [[ "$2" == find ]] && return 1; builtin command "$@"; }
+        sudo() { printf '%s' "$*"; }
+        github_binary_install o/r 'x' tool
+    )
+    rm -rf "$d"
+    assert_eq "install -Dm755 $d/w/pkg/tool /usr/local/bin/tool" "$out" "A release binary one folder deep is found without find"
+}
+
 # --- Verified GitHub downloads ---
 _GH_FIXTURE='{"tag_name": "v1.2.3","assets": [
  {"name": "tool_1.2.3_linux_x86_64.tar.gz","uploader": {"login": "bot"},"size": 9,"digest": "sha256:'"$(printf 'a%.0s' {1..64})"'","browser_download_url": "https://x/tool_1.2.3_linux_x86_64.tar.gz"},
@@ -6345,6 +6448,11 @@ test_game_alpine_rows
 test_moonlight_package_name
 test_sunshine_setup_step
 test_sunshine_uninstall_removes_rules
+test_backup_apps_registered
+test_backup_apps_held_back
+test_kopia_release_name
+test_back_in_time_uninstall_removes_dependency
+test_github_binary_install_without_find
 test_github_asset_info
 test_github_asset_download_checks_digest
 test_upstream_arch_and_regex
