@@ -85,6 +85,21 @@ setup_fix_broken_packages() {
             sudo zypper verify
             ;;
 
+        apk)
+            # A simulated fix lists what apk would reinstall or repair; an
+            # intact system lists nothing.
+            local out
+            out=$(sudo apk fix --simulate 2>&1)
+            grep -qE '\((Re)?[Ii]nstalling|Purging|Upgrading' <<<"$out" && { issues=1; warn "Packages apk would repair:"; printf '%s\n' "$out" | tail -n 20; }
+
+            _repair_gate "$issues" || return 3
+
+            info "Refreshing the package index (apk update)..."
+            sudo apk update
+            info "Repairing installed packages (apk fix)..."
+            sudo apk fix
+            ;;
+
         *)
             error "Unsupported package manager: ${PKG_MGR:-unknown}"
             return 1

@@ -588,14 +588,14 @@ test_detect_distro_valid_values() {
     _mgr=$(echo "$_out" | grep '^_RESULT_MGR='    | cut -d= -f2)
 
     case "$_fam" in
-        debian|fedora|rhel|arch|suse)
+        debian|fedora|rhel|arch|suse|alpine)
             _pass "detect_distro sets DISTRO_FAMILY to a known value ('${_fam}')" ;;
         *)
             _fail "detect_distro sets DISTRO_FAMILY to a known value (got: '${_fam}')" ;;
     esac
 
     case "$_mgr" in
-        apt|dnf|yum|pacman|zypper)
+        apt|dnf|yum|pacman|zypper|apk)
             _pass "detect_distro sets PKG_MGR to a known value ('${_mgr}')" ;;
         *)
             _fail "detect_distro sets PKG_MGR to a known value (got: '${_mgr}')" ;;
@@ -5225,6 +5225,116 @@ test_front_end_hidden_question
 test_front_end_quiet_reads
 test_front_end_sudo_bash_keeps_read
 test_front_end_gate_in_main_script
+
+# ============================================================================
+# Test: Alpine Linux support
+# ============================================================================
+echo ""
+echo "=== Alpine Linux Tests ==="
+
+test_alpine_detect() {
+    local _out
+    _out=$(_run_detect_mock "alpine" "" "Alpine Linux" "3.24.4")
+    assert_eq "alpine" "$(echo "$_out" | grep '^_FAMILY=' | cut -d= -f2)" "Mock alpine → DISTRO_FAMILY=alpine"
+    assert_eq "apk"    "$(echo "$_out" | grep '^_MGR='    | cut -d= -f2)" "Mock alpine → PKG_MGR=apk"
+    _out=$(_run_detect_mock "someunknown" "alpine" "SomeDistro" "1.0")
+    assert_eq "apk"    "$(echo "$_out" | grep '^_MGR='    | cut -d= -f2)" "ID_LIKE=alpine derivative → PKG_MGR=apk"
+}
+
+# Each pkg_* wrapper must run the apk command, not fall through the case silently.
+test_alpine_pkg_wrappers() {
+    local _out
+    _out=$(
+        PKG_MGR=apk
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        run_with_spinner() { shift; "$@"; }
+        sudo() { echo "sudo $*"; }
+        pkg_install tmux git
+        pkg_remove tmux
+        pkg_upgrade tmux
+        pkg_install_local /tmp/x.apk
+        pkg_clean
+        PKG_REFRESH_TIMEOUT_SECS=5 pkg_refresh 2>&1
+    )
+    assert_contains "$_out" "sudo apk add tmux git"              "Alpine: pkg_install runs apk add"
+    assert_contains "$_out" "sudo apk del tmux"                  "Alpine: pkg_remove runs apk del"
+    assert_contains "$_out" "sudo apk add --upgrade tmux"        "Alpine: pkg_upgrade upgrades the named package"
+    assert_contains "$_out" "sudo apk add --allow-untrusted /tmp/x.apk" "Alpine: pkg_install_local runs apk add --allow-untrusted"
+    assert_contains "$_out" "sudo apk cache clean"               "Alpine: pkg_clean cleans the apk cache"
+}
+
+# The sudo stand-in: with doas it hands the same flags to doas; with only su it
+# quotes the command for su and cannot cache a login.
+test_alpine_sudo_shim() {
+    local _bin _out _rc
+    _bin=$(mktemp -d)
+    ln -s "$(command -v sh)" "$_bin/sh"; ln -s "$(command -v sed)" "$_bin/sed"
+    printf '#!/bin/sh\necho "doas $*"\n' > "$_bin/doas"; chmod +x "$_bin/doas"
+    _out=$(PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" -n -u bob echo hi)
+    assert_eq "doas -n -u bob echo hi" "$_out" "sudo shim: flags and command reach doas"
+    _out=$(PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" -v)
+    assert_eq "doas true" "$_out" "sudo shim: -v asks doas to validate the login"
+    rm -f "$_bin/doas"
+    printf '#!/bin/sh\nfor a in "$@"; do echo "[$a]"; done\n' > "$_bin/su"; chmod +x "$_bin/su"
+    _out=$(PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" sh -c "it's here")
+    assert_eq $'[-c]\n['"'sh' '-c' 'it'\\''s here'"$']\n[root]' "$_out" "sudo shim: su receives one quoted command for root"
+    PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" -v; _rc=$?
+    assert_eq "0" "$_rc" "sudo shim: -v succeeds without a password when only su exists"
+    PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" -n true; _rc=$?
+    assert_eq "1" "$_rc" "sudo shim: -n fails when only su exists (no cached login)"
+    rm -rf "$_bin"
+}
+
+# On Alpine only utilities with an Alpine path stay registered, and the generic
+# apk handlers replace the original ones.
+test_alpine_registry_filter() {
+    local _out
+    _out=$(
+        DISTRO_FAMILY=alpine
+        declare -a UTILITIES=(Chrome tmux "System Updates" Steam) SYSTEM_TASKS=("System Updates")
+        declare -A INSTALL_FUNCS=([Chrome]=i1 [tmux]=i2 ["System Updates"]=i3 [Steam]=i4)
+        declare -A UNINSTALL_FUNCS CHECK_FUNCS UPDATE_FUNCS VERSION_FUNCS
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        apply_alpine_registry
+        echo "utils=${UTILITIES[*]}"
+        echo "tasks=${SYSTEM_TASKS[*]}"
+        echo "tmux=${INSTALL_FUNCS[tmux]} ${CHECK_FUNCS[tmux]}"
+        echo "sys=${INSTALL_FUNCS["System Updates"]}"
+    )
+    assert_contains "$_out" "utils=tmux System Updates" "Alpine: utilities without an Alpine path are dropped"
+    assert_contains "$_out" "tasks=System Updates"      "Alpine: system tasks with their own Alpine handling stay"
+    assert_contains "$_out" "tmux=_alpine_install_tmux _alpine_check_tmux" "Alpine: listed utilities get the generic apk handlers"
+    assert_contains "$_out" "sys=i3"                    "Alpine: utilities with their own handlers keep them"
+    _out=$(
+        DISTRO_FAMILY=debian
+        declare -a UTILITIES=(Chrome tmux) SYSTEM_TASKS=()
+        declare -A INSTALL_FUNCS=([Chrome]=i1 [tmux]=i2)
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        apply_alpine_registry
+        echo "utils=${UTILITIES[*]}"
+    )
+    assert_eq "utils=Chrome tmux" "$_out" "Non-Alpine: the registry is left untouched"
+}
+
+# A typo in the table would silently hide a utility on Alpine.
+test_alpine_table_names_registered() {
+    local _row _name _missing=""
+    source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+    for _row in "${_ALPINE_TABLE[@]}" ; do
+        _name="${_row%%|*}"
+        grep -qF "\"${_name}\"" "${SCRIPT_DIR}/lib/installers.sh" || _missing+=" $_name"
+    done
+    for _name in "${_ALPINE_OWN_HANDLERS[@]}"; do
+        grep -qF "\"${_name}\"" "${SCRIPT_DIR}/lib/installers.sh" || _missing+=" $_name"
+    done
+    assert_eq "" "$_missing" "Alpine table: every name is registered in installers.sh"
+}
+
+test_alpine_detect
+test_alpine_pkg_wrappers
+test_alpine_sudo_shim
+test_alpine_registry_filter
+test_alpine_table_names_registered
 
 echo ""
 echo "════════════════════════════════════════════════════════════════"

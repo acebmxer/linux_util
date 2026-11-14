@@ -5,6 +5,57 @@
 # Provides system helper functions used across all modules
 # ============================================================================
 
+# --- Root access when sudo is not installed (Alpine ships without it) --------
+# LU_ROOT_METHOD says how this run gets root: sudo, doas, or su. When sudo is
+# missing, lib/shim/sudo (a stand-in program) goes on PATH, so every existing
+# "sudo ..." call in lib/ works unchanged -- including through timeout, xargs
+# and "bash -c". See that file for the flags it understands.
+if command -v sudo &>/dev/null; then
+    LU_ROOT_METHOD="sudo"
+else
+    if command -v doas &>/dev/null; then LU_ROOT_METHOD="doas"; else LU_ROOT_METHOD="su"; fi
+    export PATH="${SCRIPT_DIR}/lib/shim:${PATH}"
+fi
+export LU_ROOT_METHOD
+
+# --- Services: systemd or OpenRC (Alpine) -----------------------------------
+# One set of helpers so an installer does not hard-code systemctl. The unit /
+# init-script name is the same on both for the services this project manages.
+has_systemd() { [[ -d /run/systemd/system ]]; }
+
+# svc_exists NAME — is there a service called NAME?
+svc_exists() {
+    if has_systemd; then
+        systemctl list-unit-files "${1}.service" 2>/dev/null | grep -q "^${1}\.service"
+    else
+        [[ -x "/etc/init.d/$1" ]]
+    fi
+}
+
+# svc_is_active NAME — is NAME running right now?
+svc_is_active() {
+    if has_systemd; then systemctl is-active --quiet "$1"
+    else rc-service "$1" status &>/dev/null; fi
+}
+
+# svc_enable_now NAME — start at boot and start it now.
+svc_enable_now() {
+    if has_systemd; then sudo systemctl enable --now "$1"
+    else sudo rc-update add "$1" default && sudo rc-service "$1" start; fi
+}
+
+# svc_disable_now NAME — stop it and do not start it at boot.
+svc_disable_now() {
+    if has_systemd; then sudo systemctl disable --now "$1"
+    else sudo rc-service "$1" stop; sudo rc-update del "$1" default; fi
+}
+
+# svc_status NAME — human-readable status, for error messages.
+svc_status() {
+    if has_systemd; then systemctl status "$1" --no-pager 2>&1 | head -20
+    else rc-service "$1" status 2>&1 | head -20; fi
+}
+
 # Helper functions for system setup
 # run_as_root executes a command with sudo using argument-vector semantics.
 # Each argument is passed directly to sudo without shell re-parsing.

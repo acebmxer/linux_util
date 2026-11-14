@@ -3,7 +3,7 @@
 # ============================================================================
 # Linux Utilities Installer & System Setup
 # Interactive multi-select installer combining system setup and utility management
-# Compatible with: Debian/Ubuntu, Fedora/RHEL/CentOS, Arch/Manjaro, openSUSE
+# Compatible with: Debian/Ubuntu, Fedora/RHEL/CentOS, Arch/Manjaro, openSUSE, Alpine
 # ============================================================================
 
 # Prevent running as root
@@ -37,6 +37,7 @@ if (( ${#_lu_missing_core[@]} > 0 )); then
             *debian*|*ubuntu*) _lu_pkg="gawk"; _lu_install="sudo apt install -y $_lu_pkg" ;;
             *arch*) _lu_pkg="gawk"; _lu_install="sudo pacman -S --noconfirm $_lu_pkg" ;;
             *suse*) _lu_pkg="gawk"; _lu_install="sudo zypper install -y $_lu_pkg" ;;
+            *alpine*) _lu_pkg="gawk grep sed"; _lu_install="su -c 'apk add $_lu_pkg'" ;;
             *) _lu_pkg=""; _lu_install="" ;;
         esac
         if [[ -n "$_lu_install" ]]; then
@@ -181,6 +182,7 @@ echo ""
 # Continue sourcing remaining library modules
 source "${SCRIPT_DIR}/lib/aur.sh" || { echo "Error: Failed to source aur.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/system.sh" || { echo "Error: Failed to source system.sh"; exit 1; }
+ensure_alpine_prereqs || exit 1
 source "${SCRIPT_DIR}/lib/verify.sh" || { echo "Error: Failed to source verify.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/snapshot.sh" || { echo "Error: Failed to source snapshot.sh"; exit 1; }
 source "${SCRIPT_DIR}/lib/utilities.sh" || { echo "Error: Failed to source utilities.sh"; exit 1; }
@@ -226,10 +228,16 @@ fi
 # Only run when stdin is a terminal (skip during non-interactive/test invocations
 # so that child processes cannot inherit the lock fd and block subsequent runs).
 if [[ -t 0 ]]; then
-    sudo -v 9>&-
-    ( exec 9>&-; while true; do sudo -n true; sleep 50; done ) 2>/dev/null &
-    SUDO_KEEPALIVE_PID=$!
-    echo "$SUDO_KEEPALIVE_PID" > "$SUDO_PID_FILE"
+    if [[ "$LU_ROOT_METHOD" == "su" ]]; then
+        # su cannot remember a password: there is nothing to cache or keep alive.
+        warn "Neither sudo nor doas is installed, so root commands use su and ask for the root password each time."
+        warn "To be asked once, install doas: su -c 'apk add doas'"
+    else
+        sudo -v 9>&- || { echo "Error: could not get root access with $LU_ROOT_METHOD."; exit 1; }
+        ( exec 9>&-; while true; do sudo -n true; sleep 50; done ) 2>/dev/null &
+        SUDO_KEEPALIVE_PID=$!
+        echo "$SUDO_KEEPALIVE_PID" > "$SUDO_PID_FILE"
+    fi
 fi
 
 # Initialize Timeshift integration (Debian/Ubuntu only — silent no-op otherwise)

@@ -104,6 +104,10 @@ jobs:
             name: openSUSE Tumbleweed
             family: suse
             pkg_mgr: zypper
+          - image: alpine:3.24
+            name: Alpine 3.24
+            family: alpine
+            pkg_mgr: apk
     container:
       image: ${{ matrix.image }}
     steps:
@@ -119,8 +123,11 @@ jobs:
             suse)
               zypper --non-interactive install -y gawk
               ;;
+            alpine)
+              apk add bash gawk grep sed coreutils findutils util-linux curl wget tar
+              ;;
           esac
-          useradd -m testuser
+          if [ "${{ matrix.family }}" = alpine ]; then adduser -D testuser; else useradd -m testuser; fi
           chown -R testuser:testuser "$GITHUB_WORKSPACE"
 
       - name: Run detect_distro as a non-root user

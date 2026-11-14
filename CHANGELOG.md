@@ -12,6 +12,27 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **Alpine Linux support** (#90). `./linux_util.sh` now runs on Alpine and
+  postmarketOS using `apk`, instead of stopping with "No supported package
+  manager found". System Updates, Full System Upgrade, Fix Broken Packages, the
+  mount tasks, XEN Guest Utilities and about 70 utilities that Alpine ships as
+  packages (browsers, editors, file managers, window managers, containers,
+  media and office apps) are listed; anything that needs glibc or a
+  `.deb`/`.rpm` is not offered, as on other distros. Alpine has no `sudo`, so
+  root commands use `sudo` or `doas` when installed and otherwise `su` with the
+  root password. On first run it offers to install the GNU `grep`, `sed`,
+  `gawk`, `coreutils` and `findutils` that BusyBox lacks. Services are started
+  through OpenRC. Alpine joins the CI distro-detection matrix.
+
+### Fixed
+
+- **XEN Guest Utilities** on Alpine installed from the `edge` repository, which
+  can break a stable release, and then checked its service with `systemctl`.
+  It now installs from the release's own repository, enables the OpenRC
+  service and verifies it with OpenRC.
+
 ## [1.12.0] - 2026-11-12
 
 ### Added

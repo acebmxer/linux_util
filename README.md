@@ -194,6 +194,14 @@ Tab-completion for bash and zsh ships in `completions/` — setup is in
 | RHEL | RHEL, CentOS, Rocky Linux, AlmaLinux, Oracle Linux | `dnf` / `yum` |
 | Arch | Arch Linux, Manjaro, EndeavourOS, Garuda, Artix, CachyOS | `pacman` + AUR |
 | openSUSE | openSUSE Leap, Tumbleweed, SLES | `zypper` |
+| Alpine | Alpine Linux, postmarketOS | `apk` |
+
+On Alpine only the utilities Alpine's own repositories carry are listed; anything
+that needs glibc or a `.deb`/`.rpm` is not offered there. Alpine has no `sudo` by
+default: linux_util uses `sudo` or `doas` if installed and otherwise `su`, which
+asks for the root password for every root command (`su -c 'apk add doas'` once
+makes that a single prompt). On first run it offers to install the GNU versions
+of `grep`, `sed`, `gawk`, `coreutils` and `findutils` that BusyBox lacks.
 
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then
 by auto-detecting the available package manager.

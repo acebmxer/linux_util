@@ -1289,3 +1289,6 @@ mark_upstream_latest \
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.
 mark_full_upgrade "System Updates"
+
+# Alpine: keep only the utilities that have an Alpine path (lib/installers/alpine_packages.sh).
+apply_alpine_registry

@@ -1,0 +1,44 @@
+#!/bin/sh
+# sudo stand-in for systems that ship without it (Alpine). linux_util puts this
+# directory on PATH only when no real sudo exists. It runs the command as root
+# through doas when that is installed, otherwise through su, so every
+# "sudo ..." call in lib/ works unchanged, including through timeout, xargs and
+# "bash -c".
+#
+# Understood: -v (check the login), -n (never prompt), -u USER (run as USER).
+# -E, -H, -S and -k are accepted and ignored. su cannot remember a password, so
+# with su every root command asks for the root password; -v then succeeds
+# without asking and -n always fails.
+
+validate=0; noninteractive=0; user=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --) shift; break ;;
+        -v) validate=1 ;;
+        -n) noninteractive=1 ;;
+        -u) user="${2:-}"; shift ;;
+        -*) ;;
+        *)  break ;;
+    esac
+    shift
+done
+
+if command -v doas >/dev/null 2>&1; then
+    if [ "$validate" = 1 ]; then set -- true; fi
+    if [ "$noninteractive" = 1 ] && [ -n "$user" ]; then exec doas -n -u "$user" "$@"; fi
+    if [ "$noninteractive" = 1 ]; then exec doas -n "$@"; fi
+    if [ -n "$user" ]; then exec doas -u "$user" "$@"; fi
+    exec doas "$@"
+fi
+
+[ "$validate" = 1 ] && exit 0
+[ "$noninteractive" = 1 ] && exit 1
+[ $# -gt 0 ] || exit 0
+
+# Single-quote every argument for the shell su starts.
+cmd=""
+for arg in "$@"; do
+    esc=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+    cmd="${cmd:+$cmd }'$esc'"
+done
+exec su -c "$cmd" "${user:-root}"

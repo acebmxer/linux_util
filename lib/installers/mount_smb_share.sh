@@ -25,6 +25,7 @@ _msb_ensure_smb_tools() {
         rhel)    pkg_install cifs-utils samba-client ;;
         arch)    pkg_install cifs-utils smbclient ;;
         suse)    pkg_install cifs-utils samba-client ;;
+        alpine)  pkg_install cifs-utils samba-client ;;
         *)
             warn "Cannot auto-install SMB tools on this distro. Install cifs-utils and smbclient manually."
             return 1

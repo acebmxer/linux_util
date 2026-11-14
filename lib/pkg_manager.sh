@@ -74,6 +74,10 @@ detect_distro() {
             DISTRO_FAMILY="suse"
             PKG_MGR="zypper"
             ;;
+        alpine|postmarketos)
+            DISTRO_FAMILY="alpine"
+            PKG_MGR="apk"
+            ;;
         *)
             # Try ID_LIKE for derivatives
             case "$DISTRO_ID_LIKE" in
@@ -87,9 +91,11 @@ detect_distro() {
                     DISTRO_FAMILY="arch"; PKG_MGR="pacman" ;;
                 *suse*)
                     DISTRO_FAMILY="suse"; PKG_MGR="zypper" ;;
+                *alpine*)
+                    DISTRO_FAMILY="alpine"; PKG_MGR="apk" ;;
                 *)
                     echo "Warning: Unrecognized distribution '${DISTRO_NAME}' (${DISTRO_ID})."
-                    echo "Supported: Debian/Ubuntu, Fedora/RHEL, Arch, openSUSE"
+                    echo "Supported: Debian/Ubuntu, Fedora/RHEL, Arch, openSUSE, Alpine"
                     # Auto-detect by available package manager
                     if command -v apt &>/dev/null; then
                         DISTRO_FAMILY="debian"; PKG_MGR="apt"
@@ -101,6 +107,8 @@ detect_distro() {
                         DISTRO_FAMILY="arch"; PKG_MGR="pacman"
                     elif command -v zypper &>/dev/null; then
                         DISTRO_FAMILY="suse"; PKG_MGR="zypper"
+                    elif command -v apk &>/dev/null; then
+                        DISTRO_FAMILY="alpine"; PKG_MGR="apk"
                     else
                         echo "Error: No supported package manager found."
                         exit 1
@@ -195,6 +203,9 @@ pkg_refresh() {
         zypper)
             "$_run" "Refreshing package cache" \
                 timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo zypper refresh ;;
+        apk)
+            "$_run" "Refreshing package cache" \
+                timeout "$PKG_REFRESH_TIMEOUT_SECS" sudo apk update ;;
     esac
     _PKG_REFRESHED=true
 }
@@ -206,6 +217,7 @@ pkg_install() {
         dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" install -y "$@" ;;
         pacman)  run_with_spinner "$_label" sudo pacman -S --noconfirm "$@" ;;
         zypper)  run_with_spinner "$_label" sudo zypper install -y "$@" ;;
+        apk)     run_with_spinner "$_label" sudo apk add "$@" ;;
     esac
 }
 
@@ -217,6 +229,7 @@ pkg_remove() {
         dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" remove -y "$@" ;;
         pacman)  run_with_spinner "$_label" sudo pacman -Rs --noconfirm "$@" ;;
         zypper)  run_with_spinner "$_label" sudo zypper remove -y "$@" ;;
+        apk)     run_with_spinner "$_label" sudo apk del "$@" ;;
     esac
 }
 
@@ -228,6 +241,8 @@ pkg_upgrade() {
         dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" upgrade -y "$@" ;;
         pacman)  run_with_spinner "$_label" sudo pacman -S --noconfirm "$@" ;;
         zypper)  run_with_spinner "$_label" sudo zypper update -y "$@" ;;
+        apk)     run_with_spinner "Refreshing package cache" sudo apk update &&
+                 run_with_spinner "$_label" sudo apk add --upgrade "$@" ;;
     esac
 }
 
@@ -237,6 +252,7 @@ pkg_check_installed() {
         dnf|yum) rpm -q "$1" &>/dev/null ;;
         pacman)  pacman -Q "$1" &>/dev/null ;;
         zypper)  rpm -q "$1" &>/dev/null ;;
+        apk)     apk info -e "$1" &>/dev/null ;;
     esac
 }
 
@@ -247,6 +263,7 @@ pkg_install_local() {
         dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" install -y "$1" ;;
         pacman)  run_with_spinner "$_label" sudo pacman -U --noconfirm "$1" ;;
         zypper)  run_with_spinner "$_label" sudo zypper install -y --allow-unsigned-rpm "$1" ;;
+        apk)     run_with_spinner "$_label" sudo apk add --allow-untrusted "$1" ;;
     esac
 }
 
@@ -283,6 +300,7 @@ pkg_autoremove() {
         pacman) "$_run" "Removing orphaned packages" \
                     bash -c "pkgs=\$(pacman -Qdtq 2>/dev/null); [[ -n \"\$pkgs\" ]] && sudo pacman -Rs $_nc \$pkgs || true" ;;
         zypper) true ;;
+        apk)    true ;;   # apk has no orphan list: packages are removed with `apk del`
     esac
 }
 
@@ -381,6 +399,7 @@ pkg_full_upgrade() {
                      "$_run" "Upgrading installed packages (pacman only)" sudo pacman -Syu $_nc
                  fi ;;
         zypper)  "$_run" "Upgrading installed packages" sudo zypper update $_y ;;
+        apk)     "$_run" "Upgrading installed packages" sudo apk upgrade ;;
     esac
 }
 
@@ -397,6 +416,7 @@ pkg_clean() {
         pacman)  "$_run" "Cleaning package cache" \
                      bash -c "sudo find /var/cache/pacman/pkg -maxdepth 1 -name 'download-*' -delete 2>/dev/null; sudo pacman -Sc $_nc" ;;
         zypper)  "$_run" "Cleaning package cache" sudo zypper clean -a ;;
+        apk)     "$_run" "Cleaning package cache" sudo apk cache clean ;;
     esac
 }
 
@@ -1816,6 +1836,11 @@ pkg_get_version() {
             fi
             ;;
         pacman)  pacman -Q "$pkg" 2>/dev/null | awk '{print $2}' || echo "unknown" ;;
+        apk)
+            # "curl-8.23.0-r0 x86_64 {curl} (curl) [installed]" -> "8.23.0-r0"
+            v=$(apk list -I "$pkg" 2>/dev/null | sed -n -E "s/^${pkg}-([0-9][^ ]*) .*/\1/p" | head -1)
+            printf '%s\n' "${v:-unknown}"
+            ;;
     esac
 }
 
@@ -2142,7 +2167,38 @@ ensure_tools() {
                 sudo zypper install -y gpg2 curl wget 2>/dev/null || true
             fi
             ;;
+        apk)
+            if ! command -v gpg &>/dev/null || ! command -v curl &>/dev/null || ! command -v wget &>/dev/null; then
+                sudo apk add gnupg curl wget 2>/dev/null || true
+            fi
+            ;;
     esac
+}
+
+# Alpine ships BusyBox versions of grep, sed, find and friends. The project's
+# modules use GNU-only options (grep -P, sed -r extensions, find -printf, ...),
+# so the GNU tools are installed once before the menu opens. Does nothing on
+# other distros, or on Alpine once the tools are present.
+ensure_alpine_prereqs() {
+    [[ "$PKG_MGR" == "apk" ]] || return 0
+    local -a _need=()
+    grep --version 2>&1 | grep -q 'GNU grep'   || _need+=(grep)
+    sed --version  2>&1 | grep -q 'GNU sed'    || _need+=(sed)
+    awk --version  2>&1 | grep -q 'GNU Awk'    || _need+=(gawk)
+    date --version 2>&1 | grep -q 'GNU coreutils' || _need+=(coreutils)
+    find --version 2>&1 | grep -q 'GNU findutils' || _need+=(findutils)
+    command -v flock &>/dev/null || _need+=(util-linux)
+    command -v curl  &>/dev/null || _need+=(curl)
+    command -v wget  &>/dev/null || _need+=(wget)
+    command -v tar   &>/dev/null || _need+=(tar)
+    [[ ${#_need[@]} -eq 0 ]] && return 0
+    info "Alpine ships BusyBox tools; linux_util needs the GNU versions of: ${_need[*]}"
+    if [[ -t 0 ]]; then
+        local _ans
+        read -r -p "Install them now with apk? [Y/n] " _ans
+        [[ "${_ans,,}" == "n" ]] && { error "Cannot continue without: ${_need[*]}"; return 1; }
+    fi
+    sudo apk add "${_need[@]}" || { error "Could not install: ${_need[*]}"; return 1; }
 }
 
 # Check for internet connectivity; warns but does not abort (best-effort).
@@ -2185,6 +2241,7 @@ pkg_snapshot() {
         dnf|yum) _native=$(rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' 2>/dev/null | sort | md5sum | awk '{print $1}') ;;
         pacman)  _native=$(pacman -Q 2>/dev/null | md5sum | awk '{print $1}') ;;
         zypper)  _native=$(rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' 2>/dev/null | sort | md5sum | awk '{print $1}') ;;
+        apk)     _native=$(apk info -v 2>/dev/null | sort | md5sum | awk '{print $1}') ;;
     esac
     # Include Flatpak commit state so Flatpak-only updates count as a change.
     if command -v flatpak &>/dev/null; then
