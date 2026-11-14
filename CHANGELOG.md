@@ -30,6 +30,9 @@ when a release is cut.
 
 ### Changed
 
+- **Weekly distro EOL check.** A scheduled workflow compares the CI distro
+  matrix with endoflife.date and keeps one issue open while a release needs
+  dropping (end of life) or adding (newly supported).
 - **ArtCraft Launcher** is now listed directly under Productivity instead of an
   "ArtCraft" folder, and the separate CADCraft, DeckCraft, DesignCraft,
   EffectCraft, FilmCraft, GridCraft, LightCraft, PdfCraft, PhotoCraft,
