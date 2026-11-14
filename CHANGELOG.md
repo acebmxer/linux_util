@@ -30,6 +30,11 @@ when a release is cut.
 
 ### Changed
 
+- **Utility catalogue is complete.** `docs/utilities.md` now lists every
+  utility and system task the menu offers, including the File Managers,
+  Firewalls, Login Screens and Window Managers categories and the entries that
+  were missing (Angry IP Scanner, Brave Debloat, LocalSend, PowerShell,
+  Snapper GUI, fail2ban, Unattended Upgrades, Configure Syncthing Folders).
 - **Weekly distro EOL check.** A scheduled workflow compares the CI distro
   matrix with endoflife.date and keeps one issue open while a release needs
   dropping (end of life) or adding (newly supported).

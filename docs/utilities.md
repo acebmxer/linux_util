@@ -14,15 +14,12 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | [Desktop Environments](#desktop-environments) | [Backup](#backup) | [Disk Utilities](#disk-utilities) |
 | [Development](#development) | [Gaming](#gaming) | [Internet](#internet) |
 | [Package Managers](#package-managers) | [Productivity](#productivity) | [Remote Admin Tools](#remote-admin-tools) |
-| [System Tools](#system-tools) | | |
+| [File Managers](#file-managers) | [Firewalls](#firewalls) | [Login Screens](#login-screens) |
+| [System Tools](#system-tools) | [Window Managers](#window-managers) | |
 
-> **Incomplete:** 249 utilities and system tasks are registered in
-> `lib/installers.sh`; 204 are listed below. The **File Managers**, **Firewalls**,
-> **Login Screens** and **Window Managers** categories have no table here at all,
-> and a handful of entries in the documented categories are missing too (Angry IP
-> Scanner, Brave Debloat, LocalSend, PowerShell, Snapper GUI, fail2ban,
-> Unattended Upgrades). Run `./linux_util.sh --list` for the
-> authoritative list.
+Run `./linux_util.sh --list` for the live list on your own machine. Entries
+that depend on the distribution (for example the Debian/Ubuntu-only tasks) only
+appear when it applies.
 
 ## System Tasks
 
@@ -42,7 +39,11 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **UFW Firewall** | Installs and configures Uncomplicated Firewall with sensible defaults |
 | **Num Lock at Boot** | Enables Num Lock on TTY consoles and the display manager login screen |
 | **Parallel Downloads** | Raises parallel package downloads to 10 — `max_parallel_downloads` in `/etc/dnf/dnf.conf` or `ParallelDownloads` in `/etc/pacman.conf`; backs up the file first and is reversible *(Fedora/RHEL/Arch only)* |
+| **Configure Syncthing Folders** | Wizard that picks which folders Syncthing syncs, following Linux best practice — nothing changes without your confirmation |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
+| **Unattended Upgrades** | Enables the `unattended-upgrades` package so security (and optionally other) updates install automatically in the background, using the package's own debconf setup *(Debian/Ubuntu only)* |
+| **Configure Unattended Upgrades** | Opens `/etc/apt/apt.conf.d/50unattended-upgrades` in your editor to choose update origins, blacklist packages and set auto-reboot and notifications; only shown once the package is installed *(Debian/Ubuntu only)* |
+| **Install fail2ban** | Installs fail2ban and enables its service, banning IPs that repeatedly fail logins *(Debian/Ubuntu only)* |
 | **GTK Window Fix** | Restores minimize/maximize/close on window title bars for GTK apps (GNOME/Cinnamon/MATE/Xfce); GNOME's default window-manager button layout omits them |
 | **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/KDE Neon only)* |
 | **Fix Grub on BTRFS** | Fixes GRUB boot entries after BTRFS snapshot restores *(Ubuntu/Kubuntu/KDE Neon only)* |
@@ -104,6 +105,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Create Snapshot (Snapper)** | Creates a Snapper snapshot with a user-provided description |
 | **Restore Snapshot (Snapper)** | Restores from a Snapper snapshot |
 | **Delete Snapshot (Snapper)** | Lists and deletes existing Snapper snapshots |
+| **Snapper GUI** | GTK graphical interface for Snapper — browse, create, delete and compare snapshots on any filesystem Snapper supports; Btrfs is not required |
 | **Déjà Dup** | Simple GNOME backup tool with cloud and local storage support |
 | **Kup** | KDE backup tool — incremental (bup) or synchronized (rsync) backups via System Settings |
 | **Vorta** | Borg Backup GUI — deduplicating, encrypted backups |
@@ -148,6 +150,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **NVM** | Node Version Manager — install and switch Node.js versions |
 | **OpenTofu** | Open-source Terraform-compatible infrastructure-as-code tool |
 | **Podman** | Daemonless OCI container engine |
+| **PowerShell** | Microsoft's cross-platform automation shell built on .NET — Microsoft's apt repo where available, otherwise the GitHub release `.deb` |
 | **Postman** | API development and testing platform |
 | **pyenv** | Python version manager |
 | **Rustup** | Rust toolchain installer and version manager |
@@ -177,10 +180,12 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 
 | Utility | Description |
 |---------|-------------|
+| **Angry IP Scanner** | Network scanner that pings IP ranges, resolves hostnames, scans ports and exports CSV, TXT or XML; needs Java |
 | **Betterbird** | Thunderbird fork with extra fixes and features — Flatpak / AUR |
 | **Bitwarden Extension** | Bitwarden browser extension installer |
 | **Brave Browser** | Privacy-focused Chromium browser with built-in ad blocking |
 | **Brave Origin** | Streamlined Brave build without Rewards, Wallet, VPN, and Leo AI |
+| **Brave Debloat** | Turns off Brave's Rewards, Wallet, VPN, Leo AI, News, Talk and Tor through enterprise policy, and disables telemetry *(Web Browser Tweaks)* |
 | **Chromium** | Open-source browser, upstream base for Chrome |
 | **Claws Mail** | Fast, lightweight GTK email client with a plugin system |
 | **Discord** | Voice, video, and text communication platform |
@@ -193,6 +198,7 @@ Themes)* or *(Remote Access)* are the subcategory folder the item sits in.
 | **Joplin Web Clipper** | Browser extension for saving web content to Joplin |
 | **KMail** | KDE's email client with PGP encryption |
 | **LibreWolf** | Privacy-hardened Firefox fork |
+| **LocalSend** | Open-source AirDrop alternative — sends files and text between devices on the same network with no account or cloud; uses port 53317. Official `.deb` on Debian/Ubuntu, Flathub elsewhere *(File Transfer)* |
 | **NeoMutt** | Terminal email client, a maintained fork of Mutt |
 | **PIA VPN** | Private Internet Access VPN client |
 | **Proton Mail Bridge** | Local IMAP/SMTP gateway for Proton Mail — needs a paid plan |
@@ -277,6 +283,48 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **Termius SSH Client** | Modern SSH client with cross-device sync *(Remote Access)* |
 | **OpenRSAT** | Active Directory management console (Microsoft RSAT-like) from Tranquil IT — installs the latest GitHub release as a `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL x86_64), or standalone binary (openSUSE); not available on Arch |
 
+## File Managers
+
+| Utility | Description |
+|---------|-------------|
+| **Nautilus** | GNOME's default file manager (Files) — simple GTK interface with sidebar and network browsing *(Graphical)* |
+| **Dolphin** | KDE Plasma's default file manager — split views, tabs, embedded terminal and KIO protocols (`sftp://`, `smb://`) *(Graphical)* |
+| **Thunar** | Xfce's fast, lightweight file manager with bulk rename and custom actions *(Graphical)* |
+| **Nemo** | Cinnamon's file manager, a Nautilus fork with dual-pane view and an editable address bar *(Graphical)* |
+| **Caja** | MATE's file manager, a GNOME 2-era fork with dual-pane view and plugins *(Graphical)* |
+| **PCManFM-Qt** | LXQt's very lightweight file manager with tabs, dual panes and trash *(Graphical)* |
+| **Krusader** | Twin-panel file manager for KDE in the style of Total Commander — archives, batch rename, comparison and sync *(Graphical)* |
+| **Midnight Commander** | Classic text-mode twin-panel file manager (`mc`) with built-in editor and FTP/SFTP *(Terminal)* |
+| **Ranger** | Vim-style terminal file manager with Miller columns and previews *(Terminal)* |
+| **nnn** | Tiny, fast terminal file manager with optional previews and plugins *(Terminal)* |
+| **Superfile** | Modern terminal file manager (`spf`) with multiple panes, previews, fuzzy search and themes *(Terminal)* |
+
+Any of these runs on any desktop; the desktop-named ones pull in that desktop's libraries.
+
+## Firewalls
+
+| Utility | Description |
+|---------|-------------|
+| **Gufw (Firewall GUI)** | Graphical front-end for UFW — status, rules and app profiles; installs UFW first if needed |
+| **firewalld** | Zone-based firewall daemon, the default on Fedora, RHEL and openSUSE; disables UFW first if it is active |
+| **firewall-config (GUI)** | Graphical tool for firewalld zones, services, ports and rich rules; installs firewalld first if needed |
+
+UFW Firewall is listed under [System Tasks](#system-tasks).
+
+## Login Screens
+
+| Utility | Description |
+|---------|-------------|
+| **SDDM** | Qt display manager used by KDE Plasma and LXQt; enabled when no login screen is active, otherwise asks first. Reboot to use it *(Display Managers)* |
+| **GDM** | GNOME's GTK display manager (`gdm3` on Debian/Ubuntu, `gdm` elsewhere) *(Display Managers)* |
+| **LightDM** | Lightweight cross-desktop display manager, installed with a GTK greeter *(Display Managers)* |
+| **ly** | Minimal text-mode display manager that needs no X/Wayland greeter; packaged on Arch and openSUSE only *(Display Managers)* |
+| **LXDM** | Lightweight GTK display manager from LXDE *(Display Managers)* |
+| **SDDM Breeze Theme** | Sets KDE's Breeze as the SDDM login theme through an `/etc/sddm.conf.d` drop-in *(SDDM Themes)* |
+| **SDDM Sugar Candy** | Configurable QtQuick SDDM theme with a blurred background, downloaded from GitHub *(SDDM Themes)* |
+| **SDDM Astronaut** | QtQuick SDDM theme bundle in several sci-fi styles, downloaded from GitHub *(SDDM Themes)* |
+| **LightDM Slick Greeter** | The themeable GTK greeter used by Linux Mint, selected for LightDM through a drop-in *(LightDM Greeters)* |
+
 ## System Tools
 
 | Utility | Description |
@@ -303,3 +351,15 @@ Grouped under a **Kernel Managers** folder inside the System Tools tab — tools
 | **CachyOS Kernel Manager** | GUI to install/build/swap kernels on Arch (also configures sched-ext). Ships only in the CachyOS repo, not the AUR; installs where that repo is enabled |
 | **Fedora Mainline Kernel** | Enables the `@kernel-vanilla/mainline` Copr and installs the latest upstream mainline kernel. Fedora only (requires Secure Boot disabled) |
 | **linux-tkg** | Frogging-Family custom-kernel **builder** — compiles a kernel from source with your choice of scheduler (BORE/EEVDF/PDS), compiler, and config. Cross-distro (Arch via makepkg; Debian/Ubuntu, Fedora, openSUSE via `install.sh`). Interactive, long compile |
+
+## Window Managers
+
+| Utility | Description |
+|---------|-------------|
+| **awesome** | Highly configurable X11 window manager with dynamic tiling, configured in Lua |
+| **bspwm** | X11 tiling window manager that arranges windows as a binary tree, controlled by `bspc`; installs `sxhkd` for keybindings |
+| **dwm** | Suckless dynamic X11 window manager; the packaged build is stock, changes need editing `config.h` and recompiling |
+| **Hyprland** | Animated Wayland tiling compositor — Arch, Fedora, openSUSE Tumbleweed and Ubuntu 24.04+; not RHEL or Debian stable |
+| **i3** | Classic X11 tiling window manager with simple text configuration |
+| **Openbox** | Minimal, fast X11 stacking window manager with XML configuration |
+| **Sway** | Wayland tiling compositor, a drop-in replacement for i3 that reads i3 configs |
