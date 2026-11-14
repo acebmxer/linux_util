@@ -412,3 +412,352 @@ ensure_electron_runtime_deps() {
     fi
     return 0
 }
+
+# ============================================================================
+# Native package, else Flathub
+#
+# Install source policy for apps that most distros package but some do not
+# (Anki, Calibre on RHEL clones, Kodi on openSUSE, ...): the distro's own
+# repository first, because it is signed by the distro and tracks the system;
+# Flathub only where the repository has no such package. Used by mpv, Kodi,
+# Blender, Darktable, RawTherapee, Shotcut, Scribus, Calibre, Anki, Okular,
+# Xournal++ and KeePassXC. Older installers carry their own copy of this
+# fallback inline; do not add another one, use these.
+# ============================================================================
+
+# Whether a package manager repository that is configured right now offers PKG.
+# The query output is captured first and tested afterwards: piping it into
+# grep -q would end the query early and, under pipefail, report "not found"
+# for a package that is there (SIGPIPE, status 141).
+pkg_in_repo() {
+    local pkg="$1" out
+    case "${PKG_MGR:-}" in
+        apt)
+            out=$(apt-cache policy "$pkg" 2>/dev/null)
+            [[ "$out" == *"Candidate: "[!\(]* ]]
+            ;;
+        dnf|yum)
+            out=$("$PKG_MGR" -q repoquery --latest-limit=1 --qf '%{name}\n' "$pkg" 2>/dev/null)
+            grep -qx "$pkg" <<<"$out"
+            ;;
+        pacman)  arch_repo_has "$pkg" ;;
+        zypper)
+            out=$(zypper -q info "$pkg" 2>/dev/null)
+            grep -q '^Version' <<<"$out"
+            ;;
+        apk)
+            out=$(apk search -e "$pkg" 2>/dev/null)
+            [[ -n "$out" ]]
+            ;;
+        *)       return 1 ;;
+    esac
+}
+
+# RHEL clones carry much of this software in EPEL (which needs CRB). A no-op
+# on every other family. Used by native_or_flatpak_install and the installers
+# that take a package from EPEL.
+ensure_epel() {
+    [[ "${DISTRO_FAMILY:-}" == "rhel" ]] || return 0
+    rpm -q epel-release &>/dev/null || pkg_install epel-release || true
+    enable_crb
+}
+
+# Install a Flathub app system-wide, adding flatpak and the flathub remote first.
+# sudo, not a bare flatpak: ensure_flatpak adds flathub as a SYSTEM remote (see
+# the note in flatpak_or_aur in aur.sh).
+flatpak_install_flathub() {
+    local flatpak_id="$1"
+    ensure_flatpak || { error "Flatpak is needed for ${flatpak_id} and could not be set up."; return 1; }
+    sudo flatpak install -y flathub "$flatpak_id" || return 1
+    flatpak_refresh_dbus
+}
+
+# native_or_flatpak_install FLATPAK_ID PKG
+native_or_flatpak_install() {
+    local flatpak_id="$1" pkg="$2"
+    pkg_refresh
+    ensure_epel
+    if pkg_in_repo "$pkg"; then
+        pkg_install "$pkg"
+        return $?
+    fi
+    info "${pkg} is not in the ${DISTRO_NAME:-system} repositories; installing the Flatpak from Flathub."
+    flatpak_install_flathub "$flatpak_id"
+}
+
+# User settings and data stay: these apps hold notes, vaults and libraries.
+native_or_flatpak_uninstall() {
+    local flatpak_id="$1" pkg="$2"
+    if flatpak_is_installed "$flatpak_id"; then
+        flatpak uninstall -y --user "$flatpak_id" 2>/dev/null || \
+            sudo flatpak uninstall -y --system "$flatpak_id"
+    else
+        pkg_remove "$pkg"
+    fi
+}
+
+native_or_flatpak_update() {
+    local flatpak_id="$1" pkg="$2"
+    if flatpak_is_installed "$flatpak_id"; then
+        flatpak update -y --user "$flatpak_id" 2>/dev/null || \
+            sudo flatpak update -y --system "$flatpak_id"
+    else
+        pkg_upgrade "$pkg"
+    fi
+}
+
+# Version from the package manager or Flatpak. The program itself is never run:
+# several of these are GUI apps that open a window for --version.
+native_or_flatpak_version() {
+    _ver_from_pkg "$2" || _ver_from_flatpak "$1" || echo ""
+}
+
+# ============================================================================
+# Upstream GitHub release downloads, verified
+#
+# For apps no distro package covers on every release (lazygit, eza, helix,
+# starship, zoxide, minikube, Ollama). GitHub publishes a SHA-256 digest for
+# every release file next to its download URL in the release API; the download
+# is checked against it and refused without one. Used by lazygit, eza, Helix,
+# starship, zoxide, minikube and Ollama; do not add another copy of this.
+# ============================================================================
+
+declare -A _GH_RELEASE_JSON=()
+
+# Release JSON for REPO, fetched once per run, flattened to one line.
+_gh_release_json() {
+    local repo="$1"
+    if [[ -z "${_GH_RELEASE_JSON[$repo]:-}" ]]; then
+        _GH_RELEASE_JSON["$repo"]=$(curl -fsSL --max-time 30 \
+            "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null | tr -d '\n') || return 1
+    fi
+    # A rate-limit or error answer is JSON too, but has no release in it.
+    if [[ "${_GH_RELEASE_JSON[$repo]}" != *'"tag_name"'* ]]; then
+        unset "_GH_RELEASE_JSON[$repo]"
+        return 1
+    fi
+}
+
+# Latest release tag of REPO, e.g. v0.66.3.
+github_latest_tag() {
+    _gh_release_json "$1" || return 1
+    grep -oP '"tag_name":\s*"\K[^"]+' <<<"${_GH_RELEASE_JSON[$1]}" | head -1
+}
+
+# github_asset_info REPO NAME_REGEX
+# Prints "name url sha256" for the first release file whose name matches the
+# extended regex (anchored at both ends), or nothing. A file with no published
+# digest is never returned.
+github_asset_info() {
+    local repo="$1" re="$2" entry name url sha
+    _gh_release_json "$repo" || return 1
+    while IFS= read -r entry; do
+        name=$(grep -oP '"name":\s*"\K[^"]+' <<<"$entry" | head -1)
+        [[ "$name" =~ ^(${re})$ ]] || continue
+        sha=$(grep -oP '"digest":\s*"sha256:\K[0-9a-f]{64}' <<<"$entry" | head -1)
+        url=$(grep -oP '"browser_download_url":\s*"\K[^"]+' <<<"$entry" | head -1)
+        [[ -n "$sha" && -n "$url" ]] || continue
+        printf '%s %s %s\n' "$name" "$url" "$sha"
+        return 0
+    done < <(grep -oP '"name":\s*"[^"]+"(?:(?!"name":).)*?"digest":\s*"sha256:[0-9a-f]{64}"(?:(?!"name":).)*?"browser_download_url":\s*"[^"]+"' \
+                 <<<"${_GH_RELEASE_JSON[$repo]}")
+    return 1
+}
+
+# github_asset_download REPO NAME_REGEX DEST_DIR
+# Downloads the matching release file into DEST_DIR, checks it against its
+# published SHA-256 and prints its path. Returns 1 (with the reason) otherwise.
+github_asset_download() {
+    local repo="$1" re="$2" dest="$3" name url sha
+    _gh_release_json "$repo" || {
+        error "Could not read the latest ${repo} release from GitHub (offline, or its rate limit is used up; try again later)."
+        return 1
+    }
+    read -r name url sha < <(github_asset_info "$repo" "$re")
+    if [[ -z "$name" ]]; then
+        error "No downloadable, checksummed file matching ${re} in the latest ${repo} release."
+        return 1
+    fi
+    # stderr: the caller captures this function's stdout as the file path.
+    info "Downloading ${name}..." >&2
+    curl -fsSL --max-time 600 "$url" -o "${dest}/${name}" || { error "Could not download ${name}."; return 1; }
+    verify_sha256 "${dest}/${name}" "$sha" "$name" || return 1
+    printf '%s\n' "${dest}/${name}"
+}
+
+# Architecture names upstream release files use. Prints nothing and returns 1
+# on a CPU this tool has no builds for.
+#   upstream_arch gnu -> x86_64 | aarch64   (Rust target triples)
+#   upstream_arch go  -> amd64  | arm64     (Go style)
+upstream_arch() {
+    case "$(uname -m)-$1" in
+        x86_64-gnu)  echo x86_64 ;;
+        aarch64-gnu) echo aarch64 ;;
+        x86_64-go)   echo amd64 ;;
+        aarch64-go)  echo arm64 ;;
+        *) error "No upstream build for the $(uname -m) CPU."; return 1 ;;
+    esac
+}
+
+# ============================================================================
+# Shell profile blocks (starship, zoxide, fzf)
+#
+# These tools do nothing until the shell is told to load them. The block is
+# written between two marker lines so it is added once and removed exactly.
+# ============================================================================
+
+# shell_rc_block_add RCFILE BEGIN END   (block body on stdin)
+shell_rc_block_add() {
+    local rcfile="$1" begin="$2" end="$3" body
+    body=$(cat)
+    grep -qF "$begin" "$rcfile" 2>/dev/null && return 0
+    { printf '\n%s\n' "$begin"; printf '%s\n' "$body"; printf '%s\n' "$end"; } >> "$rcfile"
+    info "Added a block to ${rcfile}"
+}
+
+# shell_rc_block_remove RCFILE BEGIN END
+# Exact string matching (awk), avoiding regex-escaping issues with sed.
+shell_rc_block_remove() {
+    local rcfile="$1" begin="$2" end="$3"
+    [[ -f "$rcfile" ]] || return 0
+    grep -qF "$begin" "$rcfile" 2>/dev/null || return 0
+    awk -v begin="$begin" -v end="$end" '
+        $0 == begin { skip=1 }
+        skip { if ($0 == end) { skip=0 } next }
+        { print }
+    ' "$rcfile" > "${rcfile}.tmp" && mv "${rcfile}.tmp" "$rcfile"
+    info "Removed a block from ${rcfile}"
+}
+
+# shell_init_setup NAME BASH_LINE ZSH_LINE: add NAME's block to ~/.bashrc, and to
+# ~/.zshrc when that file exists (zsh may not be set up yet).
+shell_init_setup() {
+    local name="$1" bash_line="$2" zsh_line="$3"
+    shell_rc_block_add "$HOME/.bashrc" "# >>> linux_util ${name} (bash) >>>" "# <<< linux_util ${name} (bash) <<<" <<<"$bash_line"
+    [[ -f "$HOME/.zshrc" ]] && shell_rc_block_add "$HOME/.zshrc" "# >>> linux_util ${name} (zsh) >>>" "# <<< linux_util ${name} (zsh) <<<" <<<"$zsh_line"
+    return 0
+}
+
+shell_init_remove() {
+    local name="$1"
+    shell_rc_block_remove "$HOME/.bashrc" "# >>> linux_util ${name} (bash) >>>" "# <<< linux_util ${name} (bash) <<<"
+    shell_rc_block_remove "$HOME/.zshrc" "# >>> linux_util ${name} (zsh) >>>" "# <<< linux_util ${name} (zsh) <<<"
+}
+
+# ============================================================================
+# Distro package, else a verified upstream binary
+#
+# For single-binary tools (lazygit, eza, zoxide, starship, minikube) that most
+# distros package but some releases do not: the distro's own package when its
+# repositories have one, otherwise the GitHub release file, checked against its
+# published SHA-256 and installed to /usr/local/bin. The package manager never
+# sees the copy, so uninstall and update follow whichever route is on the
+# machine: the /usr/local/bin file counts as the upstream route only while no
+# package is installed.
+# ============================================================================
+
+# Fill @GNU@ (x86_64|aarch64), @GO@ (amd64|arm64), @GOX@ (x86_64|arm64) and @X64@ (x64|arm64) in an
+# asset-name regex with this machine's names.
+_upstream_expand_regex() {
+    local re="$1" gnu go gox x64
+    gnu=$(upstream_arch gnu) || return 1
+    go=$(upstream_arch go) || return 1
+    gox=$gnu; [[ "$gnu" == aarch64 ]] && gox=arm64
+    # @X64@ (x64|arm64) is the spelling Kopia's release files use.
+    x64=x64; [[ "$gnu" == aarch64 ]] && x64=arm64
+    re="${re//@GNU@/$gnu}"; re="${re//@GO@/$go}"; re="${re//@GOX@/$gox}"; re="${re//@X64@/$x64}"
+    printf '%s\n' "$re"
+}
+
+# github_binary_install REPO ASSET_REGEX BINARY_NAME [DEST_NAME]
+# Downloads the matching release file (a .tar.gz holding BINARY_NAME, or the
+# bare binary itself), verifies it and installs it as /usr/local/bin/DEST_NAME.
+github_binary_install() {
+    local repo="$1" re="$2" bin="$3" dest="${4:-$3}" tmp file found
+    re=$(_upstream_expand_regex "$re") || return 1
+    tmp=$(mktemp -d) || return 1
+    CLEANUP_FILES+=("$tmp")
+    file=$(github_asset_download "$repo" "$re" "$tmp") || { rm -rf "$tmp"; return 1; }
+    if [[ "$file" == *.tar.gz || "$file" == *.tgz ]]; then
+        tar -xzf "$file" -C "$tmp" || { error "Could not unpack $(basename "$file")."; rm -rf "$tmp"; return 1; }
+        if command -v find &>/dev/null; then
+            found=$(find "$tmp" -type f -name "$bin" | head -1)
+        else
+            # A minimal image (Rocky) has no findutils: the binary is at the top or one folder down.
+            local cand
+            for cand in "$tmp/$bin" "$tmp"/*/"$bin"; do [[ -f "$cand" ]] && { found="$cand"; break; }; done
+        fi
+    else
+        found="$file"
+    fi
+    if [[ -z "$found" ]]; then
+        error "${bin} was not in the downloaded file."
+        rm -rf "$tmp"
+        return 1
+    fi
+    sudo install -Dm755 "$found" "/usr/local/bin/${dest}" || { rm -rf "$tmp"; return 1; }
+    rm -rf "$tmp"
+}
+
+# True when /usr/local/bin/DEST is a copy this route installed (no package owns it).
+upstream_binary_present() {
+    local dest="$1" pkg="$2"
+    [[ -x "/usr/local/bin/${dest}" ]] && ! pkg_check_installed "$pkg"
+}
+
+# native_or_github_install PKG REPO ASSET_REGEX BINARY [DEST_NAME]
+native_or_github_install() {
+    local pkg="$1"
+    pkg_refresh
+    ensure_epel
+    if pkg_in_repo "$pkg"; then
+        pkg_install "$pkg"
+        return $?
+    fi
+    info "${pkg} is not in the ${DISTRO_NAME:-system} repositories; installing the verified release from GitHub."
+    github_binary_install "${@:2}"
+}
+
+# native_or_github_uninstall PKG DEST_NAME
+native_or_github_uninstall() {
+    local pkg="$1" dest="$2"
+    if pkg_check_installed "$pkg"; then
+        pkg_remove "$pkg"
+    fi
+    sudo rm -f "/usr/local/bin/${dest}"
+}
+
+# native_or_github_update PKG REPO ASSET_REGEX BINARY DEST_NAME INSTALLED_VERSION
+# Reinstalls the release only when it is newer than INSTALLED_VERSION.
+native_or_github_update() {
+    local pkg="$1" repo="$2" re="$3" bin="$4" dest="$5" cur="$6" tag
+    if ! upstream_binary_present "$dest" "$pkg"; then
+        pkg_upgrade "$pkg"
+        return $?
+    fi
+    tag=$(github_latest_tag "$repo") || { error "Could not read the latest ${repo} release from GitHub."; return 1; }
+    if [[ -n "$cur" && "${tag#v}" == "$cur" ]]; then
+        info "${dest} is already at the latest version (${cur})."
+        return 0
+    fi
+    github_binary_install "$repo" "$re" "$bin" "$dest"
+}
+
+# rpm_import_key_checked URL FINGERPRINT
+# Imports a vendor's RPM signing key only when the downloaded key carries the
+# pinned fingerprint. Used by Sublime Text and VirtualBox.
+rpm_import_key_checked() {
+    local url="$1" fpr="$2" tmp
+    ensure_tools
+    tmp=$(mktemp) || return 1
+    if ! curl -fsSL --max-time 30 "$url" -o "$tmp"; then
+        rm -f "$tmp"; error "Could not download the signing key from ${url}."; return 1
+    fi
+    if ! gpg_key_has_fingerprint "$tmp" "$fpr"; then
+        rm -f "$tmp"; error "The key from ${url} does not match fingerprint ${fpr}."; return 1
+    fi
+    sudo rpm --import "$tmp"
+    local rc=$?
+    rm -f "$tmp"
+    return "$rc"
+}

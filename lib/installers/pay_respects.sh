@@ -205,18 +205,12 @@ _payr_apply_rc() {
     info "Added Pay Respects ${shell} block to ${rcfile}"
 }
 
-# Remove a begin/end marker block using exact string matching (awk), avoiding
-# regex-escaping issues with BRE and sed.
+# Remove a begin/end marker block (the shared shell_rc_block_remove does the work).
 _payr_remove_rc() {
     local rcfile="$1" begin="$2" end="$3"
     [[ -f "$rcfile" ]] || return 0
     grep -qF "$begin" "$rcfile" 2>/dev/null || return 0
-    awk -v begin="$begin" -v end="$end" '
-        $0 == begin { skip=1 }
-        skip { if ($0 == end) { skip=0 } next }
-        { print }
-    ' "$rcfile" > "${rcfile}.tmp" && mv "${rcfile}.tmp" "$rcfile"
-    info "Removed Pay Respects block from ${rcfile}"
+    shell_rc_block_remove "$rcfile" "$begin" "$end"
 }
 
 # The binary alone does nothing: the shell has to be told to bind F to it.

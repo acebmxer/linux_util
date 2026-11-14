@@ -124,33 +124,35 @@ NO_RETRY["DistroShelf"]=1
 NO_RETRY["Kontainer"]=1
 
 # --- Utilities (alphabetical order) ---
+register_utility "1Password"            install_onepassword      check_onepassword      uninstall_onepassword      update_onepassword        get_version_onepassword
 register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   check_amd_chipset_drivers   uninstall_amd_chipset_drivers   update_amd_chipset_drivers   get_version_amd_chipset_drivers
 register_utility "Angry IP Scanner"    install_angry_ip_scanner check_angry_ip_scanner uninstall_angry_ip_scanner update_angry_ip_scanner    get_version_angry_ip_scanner
+register_utility "Anki"                 install_anki             check_anki             uninstall_anki             update_anki               get_version_anki
 register_utility "Ansible"             install_ansible          check_ansible          uninstall_ansible          update_ansible             get_version_ansible
 register_utility "AnyDesk"             install_anydesk          check_anydesk          uninstall_anydesk          update_anydesk             get_version_anydesk
-# ArtCraft launcher and the Craft apps: one entry each, in the "ArtCraft" folder
 register_utility "ArtCraft Launcher" install_artcraft check_artcraft uninstall_artcraft update_artcraft get_version_artcraft
-register_utility "CADCraft" install_cadcraft check_cadcraft uninstall_cadcraft update_cadcraft get_version_cadcraft
-register_utility "DeckCraft" install_deckcraft check_deckcraft uninstall_deckcraft update_deckcraft get_version_deckcraft
-register_utility "DesignCraft" install_designcraft check_designcraft uninstall_designcraft update_designcraft get_version_designcraft
-register_utility "EffectCraft" install_effectcraft check_effectcraft uninstall_effectcraft update_effectcraft get_version_effectcraft
-register_utility "FilmCraft" install_filmcraft check_filmcraft uninstall_filmcraft update_filmcraft get_version_filmcraft
-register_utility "GridCraft" install_gridcraft check_gridcraft uninstall_gridcraft update_gridcraft get_version_gridcraft
-register_utility "LightCraft" install_lightcraft check_lightcraft uninstall_lightcraft update_lightcraft get_version_lightcraft
-register_utility "PdfCraft" install_pdfcraft check_pdfcraft uninstall_pdfcraft update_pdfcraft get_version_pdfcraft
-register_utility "PhotoCraft" install_photocraft check_photocraft uninstall_photocraft update_photocraft get_version_photocraft
-register_utility "SoundCraft" install_soundcraft check_soundcraft uninstall_soundcraft update_soundcraft get_version_soundcraft
-register_utility "VectorCraft" install_vectorcraft check_vectorcraft uninstall_vectorcraft update_vectorcraft get_version_vectorcraft
-register_utility "WordCraft" install_wordcraft check_wordcraft uninstall_wordcraft update_wordcraft get_version_wordcraft
 register_utility "Audacity"            install_audacity         check_audacity         uninstall_audacity         update_audacity            get_version_audacity
 register_utility "Bitwarden Client"       install_bitwarden           check_bitwarden           uninstall_bitwarden           update_bitwarden              get_version_bitwarden
+register_utility "Blender"              install_blender          check_blender          uninstall_blender          update_blender            get_version_blender
+register_utility "Calibre"              install_calibre          check_calibre          uninstall_calibre          update_calibre            get_version_calibre
+register_utility "Cryptomator"          install_cryptomator      check_cryptomator      uninstall_cryptomator      update_cryptomator        get_version_cryptomator
+register_utility "Darktable"            install_darktable        check_darktable        uninstall_darktable        update_darktable          get_version_darktable
 register_utility "GRUB"                install_grub             check_grub             uninstall_grub             update_grub                get_version_grub
+register_utility "KeePassXC"            install_keepassxc        check_keepassxc        uninstall_keepassxc        update_keepassxc          get_version_keepassxc
+register_utility "Kodi"                 install_kodi             check_kodi             uninstall_kodi             update_kodi               get_version_kodi
 register_utility "Limine"              install_limine           check_limine           uninstall_limine           update_limine              get_version_limine
+register_utility "mpv"                  install_mpv              check_mpv              uninstall_mpv              update_mpv                get_version_mpv
+register_utility "Okular"               install_okular           check_okular           uninstall_okular           update_okular             get_version_okular
+register_utility "RawTherapee"          install_rawtherapee      check_rawtherapee      uninstall_rawtherapee      update_rawtherapee        get_version_rawtherapee
+register_utility "Scribus"              install_scribus          check_scribus          uninstall_scribus          update_scribus            get_version_scribus
+register_utility "Shotcut"              install_shotcut          check_shotcut          uninstall_shotcut          update_shotcut            get_version_shotcut
+register_utility "Spotify"              install_spotify          check_spotify          uninstall_spotify          update_spotify            get_version_spotify
 register_utility "systemd-boot"        install_systemd_boot     check_systemd_boot     uninstall_systemd_boot     update_systemd_boot        get_version_systemd_boot
 register_utility "Switch Bootloader"   setup_switch_bootloader  check_always_false         noop_switch_bootloader    update_switch_bootloader    get_version_switch_bootloader
 register_utility "Configure Bootloader" setup_configure_bootloader check_always_false noop_function update_configure_bootloader get_version_configure_bootloader
 register_utility "GRUB Theme Selector" install_grubtheme_selector    check_always_false          noop_function                   update_grubtheme_selector    get_version_grubtheme_selector
 register_utility "Distro GRUB Themes"  install_grubtheme_distro      check_grubtheme_distro      uninstall_grubtheme_distro      update_grubtheme_distro      get_version_grubtheme_distro
+register_utility "VeraCrypt"            install_veracrypt        check_veracrypt        uninstall_veracrypt        update_veracrypt          get_version_veracrypt
 register_utility "vinceliuice GRUB Themes" install_grubtheme_vinceliuice check_grubtheme_vinceliuice uninstall_grubtheme_vinceliuice update_grubtheme_vinceliuice get_version_grubtheme_vinceliuice
 register_utility "Catppuccin GRUB Theme" install_grubtheme_catppuccin check_grubtheme_catppuccin  uninstall_grubtheme_catppuccin  update_grubtheme_catppuccin  get_version_grubtheme_catppuccin
 register_utility "HyperFluent GRUB Theme" install_grubtheme_hyperfluent check_grubtheme_hyperfluent uninstall_grubtheme_hyperfluent update_grubtheme_hyperfluent get_version_grubtheme_hyperfluent
@@ -351,6 +353,7 @@ register_utility "WireGuard Client"    install_wireguard_client check_wireguard_
 register_utility "WireGuard Server"    install_wireguard_server check_wireguard_server uninstall_wireguard_server update_wireguard_server    get_version_wireguard_server
 register_utility "WPS Office"          install_wps_office       check_wps_office       uninstall_wps_office       update_wps_office          get_version_wps_office
 register_utility "Xodus Nexus"         install_xodus_nexus      check_xodus_nexus      uninstall_xodus_nexus      update_xodus_nexus         get_version_xodus_nexus
+register_utility "Xournal++"            install_xournalpp        check_xournalpp        uninstall_xournalpp        update_xournalpp          get_version_xournalpp
 register_utility "Zen Browser"         install_zen_browser      check_zen_browser      uninstall_zen_browser      update_zen_browser         get_version_zen_browser
 register_utility "Zoom"                install_zoom             check_zoom             uninstall_zoom             update_zoom                get_version_zoom
 register_utility "Zotero"              install_zotero           check_zotero           uninstall_zotero           update_zotero              get_version_zotero
@@ -391,6 +394,116 @@ _rhel10_plus=false
 
 if [[ "$DISTRO_ID" != "elementary" && "$_rhel10_plus" == "false" ]]; then
     register_utility "Cinnamon Desktop"    install_cinnamon         check_cinnamon         uninstall_cinnamon         update_cinnamon            get_version_cinnamon
+fi
+
+# System Tools (#91): monitors, disk health, power and memory, cleanup, hardware
+# info, terminal emulators and printing. Only the ones that cannot install on a
+# family are held back (the reason is in each installer's header and in
+# docs/utilities.md). Alpine keeps only the ones in alpine_packages.sh.
+register_utility "BleachBit"         install_bleachbit          check_bleachbit          uninstall_bleachbit          update_bleachbit          get_version_bleachbit
+register_utility "CPU-X"             install_cpu_x              check_cpu_x              uninstall_cpu_x              update_cpu_x              get_version_cpu_x
+register_utility "CUPS"              install_cups               check_cups               uninstall_cups               update_cups               get_version_cups
+register_utility "earlyoom"          install_earlyoom           check_earlyoom           uninstall_earlyoom           update_earlyoom           get_version_earlyoom
+register_utility "HardInfo"          install_hardinfo           check_hardinfo           uninstall_hardinfo           update_hardinfo           get_version_hardinfo
+register_utility "htop"              install_htop               check_htop               uninstall_htop               update_htop               get_version_htop
+register_utility "kitty"             install_kitty              check_kitty              uninstall_kitty              update_kitty              get_version_kitty
+register_utility "ncdu"              install_ncdu               check_ncdu               uninstall_ncdu               update_ncdu               get_version_ncdu
+register_utility "nvtop"             install_nvtop              check_nvtop              uninstall_nvtop              update_nvtop              get_version_nvtop
+register_utility "smartmontools"     install_smartmontools      check_smartmontools      uninstall_smartmontools      update_smartmontools      get_version_smartmontools
+register_utility "zram"              install_zram               check_zram               uninstall_zram               update_zram               get_version_zram
+# Development and shell tools (#91). Alpine keeps only the ones in alpine_packages.sh.
+register_utility "Emacs"             install_emacs              check_emacs              uninstall_emacs              update_emacs              get_version_emacs
+register_utility "fzf"               install_fzf                check_fzf                uninstall_fzf                update_fzf                get_version_fzf
+register_utility "eza"               install_eza                check_eza                uninstall_eza                update_eza                get_version_eza
+register_utility "Helix"             install_helix              check_helix              uninstall_helix              update_helix              get_version_helix
+register_utility "Helm"              install_helm               check_helm               uninstall_helm               update_helm               get_version_helm
+register_utility "Java JDK"          install_java_jdk           check_java_jdk           uninstall_java_jdk           update_java_jdk           get_version_java_jdk
+register_utility "k3s"               install_k3s                check_k3s                uninstall_k3s                update_k3s                get_version_k3s
+register_utility "lazygit"           install_lazygit            check_lazygit            uninstall_lazygit            update_lazygit            get_version_lazygit
+register_utility "minikube"          install_minikube           check_minikube           uninstall_minikube           update_minikube           get_version_minikube
+register_utility "Ollama"            install_ollama             check_ollama             uninstall_ollama             update_ollama             get_version_ollama
+register_utility "PHP"               install_php                check_php                uninstall_php                update_php                get_version_php
+register_utility "Podman Desktop"    install_podman_desktop     check_podman_desktop     uninstall_podman_desktop     update_podman_desktop     get_version_podman_desktop
+register_utility "Python"            install_python             check_python             uninstall_python             update_python             get_version_python
+register_utility "Ruby"              install_ruby               check_ruby               uninstall_ruby               update_ruby               get_version_ruby
+register_utility "starship"          install_starship           check_starship           uninstall_starship           update_starship           get_version_starship
+register_utility "tldr"              install_tldr               check_tldr               uninstall_tldr               update_tldr               get_version_tldr
+register_utility "Vim"               install_vim                check_vim                uninstall_vim                update_vim                get_version_vim
+register_utility "VirtualBox"        install_virtualbox         check_virtualbox         uninstall_virtualbox         update_virtualbox         get_version_virtualbox
+register_utility "Wireshark"         install_wireshark          check_wireshark          uninstall_wireshark          update_wireshark          get_version_wireshark
+register_utility "Zed"               install_zed                check_zed                uninstall_zed                update_zed                get_version_zed
+register_utility "zoxide"            install_zoxide             check_zoxide             uninstall_zoxide             update_zoxide             get_version_zoxide
+# Sublime Text: its RPM signing key carries a SHA-1 signature, which Rocky/Alma 9 and 10 refuse to import.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%%.*}" -lt 9 ]]; then
+    register_utility "Sublime Text"      install_sublime_text       check_sublime_text       uninstall_sublime_text       update_sublime_text       get_version_sublime_text
+fi
+# nmap: not in openSUSE Leap's repositories.
+if [[ "$DISTRO_ID" != "opensuse-leap" && "$DISTRO_ID" != "sles" ]]; then
+    register_utility "nmap"              install_nmap               check_nmap               uninstall_nmap               update_nmap               get_version_nmap
+fi
+# Alacritty: no package for Rocky/Alma/RHEL (no upstream binary either) or Ubuntu 22.04.
+if [[ "$DISTRO_FAMILY" != "rhel" ]] && ! [[ "$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -lt 23 ]]; then
+    register_utility "Alacritty"         install_alacritty          check_alacritty          uninstall_alacritty          update_alacritty          get_version_alacritty
+fi
+# auto-cpufreq: upstream's installer asks openSUSE Leap for Python packages Leap does not have,
+# and the program needs Python 3.10, which Rocky/Alma 8 and 9 do not ship.
+if [[ "$DISTRO_ID" != "opensuse-leap" && "$DISTRO_ID" != "sles" ]] && { [[ "$DISTRO_FAMILY" != "rhel" ]] || [[ "${DISTRO_VERSION_ID%%.*}" -ge 10 ]]; }; then
+    register_utility "auto-cpufreq"      install_auto_cpufreq       check_auto_cpufreq       uninstall_auto_cpufreq       update_auto_cpufreq       get_version_auto_cpufreq
+fi
+# Ghostty: only the Debian family, Arch and openSUSE carry a package.
+if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]]; then
+    register_utility "Ghostty"           install_ghostty            check_ghostty            uninstall_ghostty            update_ghostty            get_version_ghostty
+fi
+# WezTerm: only Arch, openSUSE and Alpine carry a maintained package.
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "alpine" ]]; then
+    register_utility "WezTerm"           install_wezterm            check_wezterm            uninstall_wezterm            update_wezterm            get_version_wezterm
+fi
+# EPEL 10 has neither TLP nor inxi.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%.*}" -lt 10 ]]; then
+    register_utility "inxi"              install_inxi               check_inxi               uninstall_inxi               update_inxi               get_version_inxi
+    register_utility "TLP"               install_tlp                check_tlp                uninstall_tlp                update_tlp                get_version_tlp
+fi
+# Internet (#91): browser, messengers and VPNs. Alpine keeps only OpenVPN (alpine_packages.sh).
+register_utility "Mattermost"         install_mattermost       check_mattermost         uninstall_mattermost        update_mattermost         get_version_mattermost
+register_utility "Microsoft Teams"    install_microsoft_teams  check_microsoft_teams    uninstall_microsoft_teams   update_microsoft_teams    get_version_microsoft_teams
+register_utility "Mullvad VPN"        install_mullvad_vpn      check_mullvad_vpn        uninstall_mullvad_vpn       update_mullvad_vpn        get_version_mullvad_vpn
+# NordVPN's package needs glibc 2.35: RHEL clones have it from release 10.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%%.*}" -ge 10 ]]; then
+    register_utility "NordVPN"            install_nordvpn          check_nordvpn            uninstall_nordvpn           update_nordvpn            get_version_nordvpn
+fi
+register_utility "OpenVPN"            install_openvpn          check_openvpn            uninstall_openvpn           update_openvpn            get_version_openvpn
+register_utility "Opera"              install_opera            check_opera              uninstall_opera             update_opera              get_version_opera
+register_utility "WhatsApp"           install_whatsapp         check_whatsapp           uninstall_whatsapp          update_whatsapp           get_version_whatsapp
+# Gaming apps (#91): launcher, emulators, game streaming and Flatpak/AppImage helpers. Alpine keeps the five in alpine_packages.sh.
+register_utility "Dolphin Emulator"   install_dolphin_emulator check_dolphin_emulator   uninstall_dolphin_emulator  update_dolphin_emulator   get_version_dolphin_emulator
+register_utility "Flatseal"           install_flatseal         check_flatseal           uninstall_flatseal          update_flatseal           get_version_flatseal
+register_utility "Gear Lever"         install_gear_lever       check_gear_lever         uninstall_gear_lever        update_gear_lever         get_version_gear_lever
+register_utility "Moonlight"          install_moonlight        check_moonlight          uninstall_moonlight         update_moonlight          get_version_moonlight
+register_utility "PPSSPP"             install_ppsspp           check_ppsspp             uninstall_ppsspp            update_ppsspp             get_version_ppsspp
+register_utility "Prism Launcher"     install_prism_launcher   check_prism_launcher     uninstall_prism_launcher    update_prism_launcher     get_version_prism_launcher
+register_utility "RetroArch"          install_retroarch        check_retroarch          uninstall_retroarch         update_retroarch          get_version_retroarch
+register_utility "Sunshine"           install_sunshine         check_sunshine           uninstall_sunshine          update_sunshine           get_version_sunshine
+# Backup tools (#91 follow-up, #92). Only the ones with no package on a family are held back; Alpine keeps only the three in alpine_packages.sh.
+register_utility "Grsync"             install_grsync           check_grsync             uninstall_grsync            update_grsync             get_version_grsync
+register_utility "Kopia"              install_kopia            check_kopia              uninstall_kopia             update_kopia              get_version_kopia
+register_utility "Pika Backup"        install_pika_backup      check_pika_backup        uninstall_pika_backup       update_pika_backup        get_version_pika_backup
+register_utility "rsnapshot"          install_rsnapshot        check_rsnapshot          uninstall_rsnapshot         update_rsnapshot          get_version_rsnapshot
+# restic and rclone: no package for Rocky/Alma 8.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%%.*}" -ge 9 ]]; then
+    register_utility "restic"             install_restic           check_restic             uninstall_restic            update_restic             get_version_restic
+    register_utility "rclone"             install_rclone           check_rclone             uninstall_rclone            update_rclone             get_version_rclone
+fi
+# Back In Time: EPEL carries it for RHEL clones 8 and 9, not 10.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%%.*}" -lt 10 ]]; then
+    register_utility "Back In Time"       install_back_in_time     check_back_in_time       uninstall_back_in_time      update_back_in_time       get_version_back_in_time
+fi
+# luckyBackup: no package for RHEL clones.
+if [[ "$DISTRO_FAMILY" != "rhel" ]]; then
+    register_utility "luckyBackup"        install_luckybackup      check_luckybackup        uninstall_luckybackup       update_luckybackup        get_version_luckybackup
+fi
+# Clonezilla: packaged for Debian, Ubuntu and Arch only.
+if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "arch" ]]; then
+    register_utility "Clonezilla"         install_clonezilla       check_clonezilla         uninstall_clonezilla        update_clonezilla         get_version_clonezilla
 fi
 
 # COSMIC: requires Ubuntu 24.10+/Debian Trixie, Fedora 42+, or Arch.
@@ -679,6 +792,15 @@ UTILITY_CATEGORY["Déjà Dup"]="Backup"
 UTILITY_CATEGORY["Kup"]="Backup"
 UTILITY_CATEGORY["Vorta"]="Backup"
 UTILITY_CATEGORY["Duplicati"]="Backup"
+UTILITY_CATEGORY["Back In Time"]="Backup"
+UTILITY_CATEGORY["Clonezilla"]="Backup"
+UTILITY_CATEGORY["Grsync"]="Backup"
+UTILITY_CATEGORY["Kopia"]="Backup"
+UTILITY_CATEGORY["luckyBackup"]="Backup"
+UTILITY_CATEGORY["Pika Backup"]="Backup"
+UTILITY_CATEGORY["rclone"]="Backup"
+UTILITY_CATEGORY["restic"]="Backup"
+UTILITY_CATEGORY["rsnapshot"]="Backup"
 UTILITY_CATEGORY["Visual Studio Code"]="Development"
 UTILITY_CATEGORY["VSCodium"]="Development"
 UTILITY_CATEGORY["Vivaldi Browser"]="Internet"
@@ -694,18 +816,6 @@ UTILITY_CATEGORY["Ansible"]="Development"
 UTILITY_CATEGORY["AnyDesk"]="Remote Admin Tools"
 UTILITY_CATEGORY["Audacity"]="Productivity"
 UTILITY_CATEGORY["ArtCraft Launcher"]="Productivity"
-UTILITY_CATEGORY["CADCraft"]="Productivity"
-UTILITY_CATEGORY["DeckCraft"]="Productivity"
-UTILITY_CATEGORY["DesignCraft"]="Productivity"
-UTILITY_CATEGORY["EffectCraft"]="Productivity"
-UTILITY_CATEGORY["FilmCraft"]="Productivity"
-UTILITY_CATEGORY["GridCraft"]="Productivity"
-UTILITY_CATEGORY["LightCraft"]="Productivity"
-UTILITY_CATEGORY["PdfCraft"]="Productivity"
-UTILITY_CATEGORY["PhotoCraft"]="Productivity"
-UTILITY_CATEGORY["SoundCraft"]="Productivity"
-UTILITY_CATEGORY["VectorCraft"]="Productivity"
-UTILITY_CATEGORY["WordCraft"]="Productivity"
 UTILITY_CATEGORY["ClamAV"]="System Tools"
 UTILITY_CATEGORY["Element (Matrix)"]="Internet"
 UTILITY_CATEGORY["Euro-Office"]="Productivity"
@@ -720,9 +830,80 @@ UTILITY_CATEGORY["firewall-config (GUI)"]="Firewalls"
 UTILITY_CATEGORY["HandBrake"]="Productivity"
 UTILITY_CATEGORY["Inkscape"]="Productivity"
 UTILITY_CATEGORY["Input Leap"]="System Tools"
+UTILITY_CATEGORY["Emacs"]="Development"
+UTILITY_CATEGORY["Helix"]="Development"
+UTILITY_CATEGORY["Helm"]="Development"
+UTILITY_CATEGORY["Java JDK"]="Development"
+UTILITY_CATEGORY["k3s"]="Development"
+UTILITY_CATEGORY["lazygit"]="Development"
+UTILITY_CATEGORY["minikube"]="Development"
+UTILITY_CATEGORY["nmap"]="Development"
+UTILITY_CATEGORY["Ollama"]="Development"
+UTILITY_CATEGORY["PHP"]="Development"
+UTILITY_CATEGORY["Podman Desktop"]="Development"
+UTILITY_CATEGORY["Python"]="Development"
+UTILITY_CATEGORY["Ruby"]="Development"
+UTILITY_CATEGORY["Sublime Text"]="Development"
+UTILITY_CATEGORY["Vim"]="Development"
+UTILITY_CATEGORY["VirtualBox"]="Development"
+UTILITY_CATEGORY["Wireshark"]="Development"
+UTILITY_CATEGORY["Zed"]="Development"
+UTILITY_CATEGORY["fzf"]="System Tools"
+UTILITY_CATEGORY["eza"]="System Tools"
+UTILITY_CATEGORY["starship"]="System Tools"
+UTILITY_CATEGORY["tldr"]="System Tools"
+UTILITY_CATEGORY["Mattermost"]="Internet"
+UTILITY_CATEGORY["Microsoft Teams"]="Internet"
+UTILITY_CATEGORY["Mullvad VPN"]="Internet"
+UTILITY_CATEGORY["NordVPN"]="Internet"
+UTILITY_CATEGORY["OpenVPN"]="Internet"
+UTILITY_CATEGORY["Opera"]="Internet"
+UTILITY_CATEGORY["WhatsApp"]="Internet"
+UTILITY_CATEGORY["Dolphin Emulator"]="Gaming"
+UTILITY_CATEGORY["Flatseal"]="Gaming"
+UTILITY_CATEGORY["Gear Lever"]="Gaming"
+UTILITY_CATEGORY["Moonlight"]="Gaming"
+UTILITY_CATEGORY["PPSSPP"]="Gaming"
+UTILITY_CATEGORY["Prism Launcher"]="Gaming"
+UTILITY_CATEGORY["RetroArch"]="Gaming"
+UTILITY_CATEGORY["Sunshine"]="Gaming"
+UTILITY_CATEGORY["zoxide"]="System Tools"
+UTILITY_CATEGORY["auto-cpufreq"]="System Tools"
+UTILITY_CATEGORY["BleachBit"]="System Tools"
+UTILITY_CATEGORY["CPU-X"]="System Tools"
+UTILITY_CATEGORY["CUPS"]="System Tools"
+UTILITY_CATEGORY["earlyoom"]="System Tools"
+UTILITY_CATEGORY["HardInfo"]="System Tools"
+UTILITY_CATEGORY["htop"]="System Tools"
+UTILITY_CATEGORY["kitty"]="System Tools"
+UTILITY_CATEGORY["ncdu"]="System Tools"
+UTILITY_CATEGORY["nvtop"]="System Tools"
+UTILITY_CATEGORY["smartmontools"]="System Tools"
+UTILITY_CATEGORY["zram"]="System Tools"
+UTILITY_CATEGORY["Alacritty"]="System Tools"
+UTILITY_CATEGORY["Ghostty"]="System Tools"
+UTILITY_CATEGORY["WezTerm"]="System Tools"
+UTILITY_CATEGORY["inxi"]="System Tools"
+UTILITY_CATEGORY["TLP"]="System Tools"
 UTILITY_CATEGORY["k9s"]="Development"
 UTILITY_CATEGORY["Kdenlive"]="Productivity"
 UTILITY_CATEGORY["Krita"]="Productivity"
+UTILITY_CATEGORY["1Password"]="Productivity"
+UTILITY_CATEGORY["Anki"]="Productivity"
+UTILITY_CATEGORY["Blender"]="Productivity"
+UTILITY_CATEGORY["Calibre"]="Productivity"
+UTILITY_CATEGORY["Cryptomator"]="Productivity"
+UTILITY_CATEGORY["Darktable"]="Productivity"
+UTILITY_CATEGORY["KeePassXC"]="Productivity"
+UTILITY_CATEGORY["Kodi"]="Productivity"
+UTILITY_CATEGORY["mpv"]="Productivity"
+UTILITY_CATEGORY["Okular"]="Productivity"
+UTILITY_CATEGORY["RawTherapee"]="Productivity"
+UTILITY_CATEGORY["Scribus"]="Productivity"
+UTILITY_CATEGORY["Shotcut"]="Productivity"
+UTILITY_CATEGORY["Spotify"]="Productivity"
+UTILITY_CATEGORY["VeraCrypt"]="Productivity"
+UTILITY_CATEGORY["Xournal++"]="Productivity"
 UTILITY_CATEGORY["kubectl"]="Development"
 UTILITY_CATEGORY["Libation"]="Productivity"
 UTILITY_CATEGORY["LibreWolf"]="Internet"
@@ -798,27 +979,45 @@ UTILITY_SUBCATEGORY["WireGuard Server"]="VPN"
 UTILITY_SUBCATEGORY["LibreOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["OnlyOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["WPS Office"]="Office Suites"
-UTILITY_SUBCATEGORY["ArtCraft Launcher"]="ArtCraft"
-UTILITY_SUBCATEGORY["CADCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["DeckCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["DesignCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["EffectCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["FilmCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["GridCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["LightCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["PdfCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["PhotoCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["SoundCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["VectorCraft"]="ArtCraft"
-UTILITY_SUBCATEGORY["WordCraft"]="ArtCraft"
+UTILITY_SUBCATEGORY["Euro-Office"]="Office Suites"
+UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
 UTILITY_SUBCATEGORY["Obsidian"]="Notes"
 UTILITY_SUBCATEGORY["Standard Notes"]="Notes"
-UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
-UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
-UTILITY_SUBCATEGORY["Claude Desktop"]="IDEs & Editors"
-UTILITY_SUBCATEGORY["Codex"]="IDEs & Editors"
-UTILITY_SUBCATEGORY["Hermes Agent"]="IDEs & Editors"
-UTILITY_SUBCATEGORY["LM Studio"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Anki"]="Notes"
+UTILITY_SUBCATEGORY["Xournal++"]="Notes"
+UTILITY_SUBCATEGORY["Logseq"]="Notes"
+UTILITY_SUBCATEGORY["Mark Text"]="Notes"
+UTILITY_SUBCATEGORY["Bitwarden Client"]="Password Managers"
+UTILITY_SUBCATEGORY["1Password"]="Password Managers"
+UTILITY_SUBCATEGORY["KeePassXC"]="Password Managers"
+UTILITY_SUBCATEGORY["Cryptomator"]="Encryption"
+UTILITY_SUBCATEGORY["VeraCrypt"]="Encryption"
+UTILITY_SUBCATEGORY["Calibre"]="Documents & Reading"
+UTILITY_SUBCATEGORY["Okular"]="Documents & Reading"
+UTILITY_SUBCATEGORY["Zotero"]="Documents & Reading"
+UTILITY_SUBCATEGORY["GIMP"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Inkscape"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Krita"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Blender"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Darktable"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["RawTherapee"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Scribus"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Kdenlive"]="Video & Audio"
+UTILITY_SUBCATEGORY["Shotcut"]="Video & Audio"
+UTILITY_SUBCATEGORY["HandBrake"]="Video & Audio"
+UTILITY_SUBCATEGORY["Audacity"]="Video & Audio"
+UTILITY_SUBCATEGORY["OBS Studio"]="Video & Audio"
+UTILITY_SUBCATEGORY["VLC"]="Media"
+UTILITY_SUBCATEGORY["mpv"]="Media"
+UTILITY_SUBCATEGORY["Kodi"]="Media"
+UTILITY_SUBCATEGORY["Spotify"]="Media"
+UTILITY_SUBCATEGORY["Multimedia Codecs"]="Media"
+UTILITY_SUBCATEGORY["Libation"]="Media"
+UTILITY_SUBCATEGORY["Claude Code"]="AI Tools"
+UTILITY_SUBCATEGORY["Claude Desktop"]="AI Tools"
+UTILITY_SUBCATEGORY["Codex"]="AI Tools"
+UTILITY_SUBCATEGORY["Hermes Agent"]="AI Tools"
+UTILITY_SUBCATEGORY["LM Studio"]="AI Tools"
 UTILITY_SUBCATEGORY["Cursor IDE"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["JetBrains Toolbox"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Visual Studio Code"]="IDEs & Editors"
@@ -845,6 +1044,21 @@ UTILITY_SUBCATEGORY["RustDesk"]="Remote Access"
 UTILITY_SUBCATEGORY["Slack"]="Messaging"
 UTILITY_SUBCATEGORY["Tor Browser"]="Web Browsers"
 UTILITY_SUBCATEGORY["Zoom"]="Messaging"
+UTILITY_SUBCATEGORY["Opera"]="Web Browsers"
+UTILITY_SUBCATEGORY["WhatsApp"]="Messaging"
+UTILITY_SUBCATEGORY["Microsoft Teams"]="Messaging"
+UTILITY_SUBCATEGORY["Mattermost"]="Messaging"
+UTILITY_SUBCATEGORY["Mullvad VPN"]="VPN"
+UTILITY_SUBCATEGORY["NordVPN"]="VPN"
+UTILITY_SUBCATEGORY["OpenVPN"]="VPN"
+UTILITY_SUBCATEGORY["Dolphin Emulator"]="Emulators"
+UTILITY_SUBCATEGORY["Flatseal"]="Gaming Utilities"
+UTILITY_SUBCATEGORY["Gear Lever"]="Gaming Utilities"
+UTILITY_SUBCATEGORY["Moonlight"]="Game Streaming"
+UTILITY_SUBCATEGORY["PPSSPP"]="Emulators"
+UTILITY_SUBCATEGORY["Prism Launcher"]="Game Launchers"
+UTILITY_SUBCATEGORY["RetroArch"]="Emulators"
+UTILITY_SUBCATEGORY["Sunshine"]="Game Streaming"
 UTILITY_SUBCATEGORY["Timeshift"]="Timeshift"
 UTILITY_SUBCATEGORY["Create Snapshot"]="Timeshift"
 UTILITY_SUBCATEGORY["Restore Snapshot"]="Timeshift"
@@ -862,6 +1076,14 @@ UTILITY_SUBCATEGORY["Déjà Dup"]="File Backup"
 UTILITY_SUBCATEGORY["Kup"]="File Backup"
 UTILITY_SUBCATEGORY["Vorta"]="File Backup"
 UTILITY_SUBCATEGORY["Duplicati"]="File Backup"
+UTILITY_SUBCATEGORY["Back In Time"]="File Backup"
+UTILITY_SUBCATEGORY["Pika Backup"]="File Backup"
+UTILITY_SUBCATEGORY["luckyBackup"]="File Backup"
+UTILITY_SUBCATEGORY["Grsync"]="File Backup"
+UTILITY_SUBCATEGORY["restic"]="Command Line"
+UTILITY_SUBCATEGORY["rclone"]="Command Line"
+UTILITY_SUBCATEGORY["Kopia"]="Command Line"
+UTILITY_SUBCATEGORY["rsnapshot"]="Command Line"
 UTILITY_SUBCATEGORY["AMD CPU Microcode & Firmware"]="CPU Microcode"
 UTILITY_SUBCATEGORY["AMD Drivers"]="GPU Drivers"
 UTILITY_SUBCATEGORY["Intel Drivers"]="GPU Drivers"
@@ -879,6 +1101,67 @@ UTILITY_SUBCATEGORY["Midnight Commander"]="Terminal"
 UTILITY_SUBCATEGORY["Ranger"]="Terminal"
 UTILITY_SUBCATEGORY["nnn"]="Terminal"
 UTILITY_SUBCATEGORY["Superfile"]="Terminal"
+UTILITY_SUBCATEGORY["Alacritty"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Ghostty"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["kitty"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["WezTerm"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Vim"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Emacs"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Helix"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Sublime Text"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Zed"]="IDEs & Editors"
+UTILITY_SUBCATEGORY["Ollama"]="AI Tools"
+UTILITY_SUBCATEGORY["GitHub CLI"]="Git"
+UTILITY_SUBCATEGORY["lazygit"]="Git"
+UTILITY_SUBCATEGORY["Docker"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["Podman"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["Podman Desktop"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["kubectl"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["k9s"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["Helm"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["minikube"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["k3s"]="Containers & Kubernetes"
+UTILITY_SUBCATEGORY["Python"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Java JDK"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["PHP"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Ruby"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Go SDK"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Node.js"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["Rustup"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["pyenv"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["NVM"]="Languages & Runtimes"
+UTILITY_SUBCATEGORY["VirtualBox"]="Virtualization"
+UTILITY_SUBCATEGORY["Virt-Manager"]="Virtualization"
+UTILITY_SUBCATEGORY["Firecracker"]="Virtualization"
+UTILITY_SUBCATEGORY["Wireshark"]="Network & Security"
+UTILITY_SUBCATEGORY["nmap"]="Network & Security"
+UTILITY_SUBCATEGORY["fzf"]="Shell Tools"
+UTILITY_SUBCATEGORY["eza"]="Shell Tools"
+UTILITY_SUBCATEGORY["zoxide"]="Shell Tools"
+UTILITY_SUBCATEGORY["starship"]="Shell Tools"
+UTILITY_SUBCATEGORY["tldr"]="Shell Tools"
+UTILITY_SUBCATEGORY["Btop"]="Monitors"
+UTILITY_SUBCATEGORY["htop"]="Monitors"
+UTILITY_SUBCATEGORY["nvtop"]="Monitors"
+UTILITY_SUBCATEGORY["GPU Task Manager"]="Monitors"
+UTILITY_SUBCATEGORY["TMOG"]="Monitors"
+UTILITY_SUBCATEGORY["Stacer"]="Monitors"
+UTILITY_SUBCATEGORY["TLP"]="Power & Memory"
+UTILITY_SUBCATEGORY["auto-cpufreq"]="Power & Memory"
+UTILITY_SUBCATEGORY["zram"]="Power & Memory"
+UTILITY_SUBCATEGORY["earlyoom"]="Power & Memory"
+UTILITY_SUBCATEGORY["smartmontools"]="Disk & Cleanup"
+UTILITY_SUBCATEGORY["ncdu"]="Disk & Cleanup"
+UTILITY_SUBCATEGORY["Filelight"]="Disk & Cleanup"
+UTILITY_SUBCATEGORY["BleachBit"]="Disk & Cleanup"
+UTILITY_SUBCATEGORY["Fastfetch"]="System Info"
+UTILITY_SUBCATEGORY["inxi"]="System Info"
+UTILITY_SUBCATEGORY["HardInfo"]="System Info"
+UTILITY_SUBCATEGORY["CPU-X"]="System Info"
+UTILITY_SUBCATEGORY["bat"]="Shell Tools"
+UTILITY_SUBCATEGORY["ripgrep"]="Shell Tools"
+UTILITY_SUBCATEGORY["Pay Respects"]="Shell Tools"
+UTILITY_SUBCATEGORY["Zsh + Oh My Zsh"]="Shell Tools"
 UTILITY_SUBCATEGORY["SDDM"]="Display Managers"
 UTILITY_SUBCATEGORY["GDM"]="Display Managers"
 UTILITY_SUBCATEGORY["LightDM"]="Display Managers"
@@ -921,14 +1204,17 @@ UTILITY_SUBCATEGORY["Mount SMB Share"]="Mount / Unmount Shares"
 UTILITY_SUBCATEGORY["Manage Share"]="Mount / Unmount Shares"
 
 # Explicit subcategory display order within each category tab
-SUBCATEGORY_ORDER["Development"]="IDEs & Editors|Distrobox"
+SUBCATEGORY_ORDER["Development"]="IDEs & Editors|AI Tools|Languages & Runtimes|Git|Containers & Kubernetes|Virtualization|Network & Security|Distrobox"
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
+SUBCATEGORY_ORDER["Gaming"]="Game Launchers|Emulators|Game Streaming|Gaming Utilities"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
+SUBCATEGORY_ORDER["Productivity"]="Office Suites|Notes|Password Managers|Encryption|Documents & Reading|Graphics & Photo|Video & Audio|Media"
 SUBCATEGORY_ORDER["Remote Admin Tools"]="Remote Access"
+SUBCATEGORY_ORDER["Backup"]="File Backup|Command Line|Timeshift|Snapper"
 SUBCATEGORY_ORDER["Bootloaders"]="GRUB Themes"
 SUBCATEGORY_ORDER["Login Screens"]="Display Managers|SDDM Themes|LightDM Greeters"
-SUBCATEGORY_ORDER["System Tools"]="Kernel Managers"
+SUBCATEGORY_ORDER["System Tools"]="Monitors|Power & Memory|Disk & Cleanup|System Info|Shell Tools|Terminal Emulators|Kernel Managers"
 
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
 
@@ -1096,19 +1382,7 @@ UTILITY_DESCRIPTION["WireGuard Server"]="Sets up a WireGuard VPN server for secu
 UTILITY_DESCRIPTION["Zoom"]="Video conferencing platform for meetings, webinars, and team collaboration."
 
 # Productivity
-UTILITY_DESCRIPTION["ArtCraft Launcher"]="The ArtCraft Launcher app: one place to install, update, and open the Craft App Suite (PhotoCraft, PdfCraft, and the rest). The Craft apps below can also be installed on their own."
-UTILITY_DESCRIPTION["CADCraft"]="Open-source, clean-room AutoCAD-style computer-aided design and drafting app, written in Rust."
-UTILITY_DESCRIPTION["DeckCraft"]="Open-source, clean-room PowerPoint-style presentation app, written in Rust."
-UTILITY_DESCRIPTION["DesignCraft"]="Open-source page layout and publishing app (InDesign-style), written in Rust."
-UTILITY_DESCRIPTION["EffectCraft"]="Open-source motion graphics and visual effects app (After Effects-style), written in Rust."
-UTILITY_DESCRIPTION["FilmCraft"]="Open-source video editor (Premiere Pro-style), written in Rust."
-UTILITY_DESCRIPTION["GridCraft"]="Open-source, clean-room Excel-style spreadsheet, written in Rust."
-UTILITY_DESCRIPTION["LightCraft"]="Open-source photo library and raw developer (Lightroom-style), written in Rust."
-UTILITY_DESCRIPTION["PdfCraft"]="Open-source PDF workbench (Acrobat-style) for reading, organizing, combining, splitting, and securing PDFs, written in Rust."
-UTILITY_DESCRIPTION["PhotoCraft"]="Open-source image editor (Photoshop-style), written in Rust."
-UTILITY_DESCRIPTION["SoundCraft"]="Open-source, clean-room Pro Tools-style audio workstation, written in Rust."
-UTILITY_DESCRIPTION["VectorCraft"]="Open-source vector illustration app (Illustrator-style), written in Rust."
-UTILITY_DESCRIPTION["WordCraft"]="Open-source, clean-room Word-style word processor, written in Rust."
+UTILITY_DESCRIPTION["ArtCraft Launcher"]="The ArtCraft Launcher app: one place to install, update, and open the Craft App Suite (PhotoCraft, PdfCraft, and the rest)."
 UTILITY_DESCRIPTION["Audacity"]="Free, open-source multi-track audio editor and recorder for recording, editing, and exporting audio files."
 UTILITY_DESCRIPTION["Bitwarden Client"]="Open-source password manager for securely storing and auto-filling credentials."
 UTILITY_DESCRIPTION["Flameshot"]="Powerful, customizable screenshot tool with built-in annotation and markup capabilities."
@@ -1117,6 +1391,22 @@ UTILITY_DESCRIPTION["HandBrake"]="Open-source video transcoder for converting vi
 UTILITY_DESCRIPTION["Inkscape"]="Professional vector graphics editor for creating illustrations, logos, and scalable artwork using SVG."
 UTILITY_DESCRIPTION["Kdenlive"]="KDE's powerful non-linear video editor with multi-track editing, effects, and broad format support."
 UTILITY_DESCRIPTION["Krita"]="Professional digital painting application designed for illustrators, concept artists, and texture artists."
+UTILITY_DESCRIPTION["1Password"]="Password manager and secrets vault from 1Password. Installed from 1Password's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and openSUSE, so updates arrive with the system; on Arch it comes from the AUR (only with AUR support enabled). Needs a 1Password account; not available on Alpine. Uninstall keeps your account data."
+UTILITY_DESCRIPTION["Anki"]="Spaced-repetition flashcard program for memorising anything, with sync across devices. Distro package where one exists (Arch, Alpine), otherwise Flathub. Uninstall keeps your decks."
+UTILITY_DESCRIPTION["Blender"]="Free 3D creation suite: modelling, sculpting, animation, rendering, video editing and compositing. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["Calibre"]="E-book library manager and reader: converts between formats, edits metadata, and syncs books to e-readers. Distro package, or Flathub on RHEL clones. Not available on Alpine."
+UTILITY_DESCRIPTION["Cryptomator"]="Client-side encryption for cloud storage: creates encrypted vaults as ordinary folders that Dropbox, Nextcloud, Google Drive and others sync. Installed from Flathub on every distro; not available on Alpine. Uninstall keeps your vaults."
+UTILITY_DESCRIPTION["Darktable"]="Open-source raw photo workflow and editor, a free alternative to Lightroom. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["KeePassXC"]="Offline, open-source password manager that keeps passwords in an encrypted file you control, with browser integration and TOTP. Distro package, or Flathub where the repository has none. Uninstall keeps your database."
+UTILITY_DESCRIPTION["Kodi"]="Home-theater media center for movies, TV, music and photos from local drives and the network. Distro package on Debian, Ubuntu and Arch, RPM Fusion Free on Fedora and RHEL clones, Flathub on openSUSE."
+UTILITY_DESCRIPTION["mpv"]="Minimal, scriptable media player for nearly every video and audio format, driven by keyboard shortcuts and a config file. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["Okular"]="KDE's document viewer for PDF, ePub, comic books and more, with annotations and signatures. Pulls in KDE libraries; works on any desktop. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["RawTherapee"]="Open-source raw photo developer with fine control over exposure, color and noise. Distro package, or Flathub where the repository has none (RHEL clones)."
+UTILITY_DESCRIPTION["Scribus"]="Desktop publishing: page layout for magazines, brochures and print-ready PDFs. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["Shotcut"]="Cross-platform video editor with a multi-track timeline, filters and wide format support. Distro package, or Flathub where the repository has none (RHEL clones)."
+UTILITY_DESCRIPTION["Spotify"]="Spotify music streaming client. Installed from Flathub on every distro; not available on Alpine. Needs a Spotify account. Uninstall keeps your login and cache."
+UTILITY_DESCRIPTION["VeraCrypt"]="Disk and file encryption: encrypted containers, whole partitions and hidden volumes, successor to TrueCrypt. Arch uses its repository package; Debian, Ubuntu, Fedora, RHEL clones and openSUSE use the package from VeraCrypt's own GitHub release, signature checked, for the releases it publishes. Not available on Alpine."
+UTILITY_DESCRIPTION["Xournal++"]="Handwriting notebook and PDF annotator for pen tablets and touchscreens. Distro package, or Flathub where the repository has none."
 UTILITY_DESCRIPTION["Libation"]="Open-source Audible audiobook manager for downloading, decrypting, and organizing your audiobook library."
 UTILITY_DESCRIPTION["Logseq"]="Open-source knowledge management and note-taking app based on linked, Markdown-formatted outliner blocks."
 UTILITY_DESCRIPTION["Mark Text"]="Simple, elegant Markdown editor focused on writing speed with live preview and multiple themes."
@@ -1144,6 +1434,61 @@ UTILITY_DESCRIPTION["linux-tkg"]="Frogging-Family custom-kernel builder. Unlike 
 UTILITY_DESCRIPTION["Btop"]="Modern terminal-based resource monitor with a rich visual interface showing CPU, memory, disk, and network."
 UTILITY_DESCRIPTION["bat"]="A cat clone with syntax highlighting, line numbers and Git change markers. On Debian/Ubuntu, where the command is named batcat, a bat link to it is added in ~/.local/bin."
 UTILITY_DESCRIPTION["ripgrep"]="rg: searches a folder tree for text much faster than grep -r, and skips files listed in .gitignore."
+UTILITY_DESCRIPTION["Emacs"]="GNU Emacs, the extensible editor and environment, with its graphical window. Distro package on every distro."
+UTILITY_DESCRIPTION["eza"]="ls replacement with colours, icons and git status. Distro package (Debian 13, Ubuntu 26.04, Fedora, Arch, openSUSE, Alpine); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin (x86_64 only)."
+UTILITY_DESCRIPTION["fzf"]="Command-line fuzzy finder that filters any list as you type, with Ctrl+R, Ctrl+T and Alt+C in the shell (loaded from ~/.bashrc, and ~/.zshrc when it exists). Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["Helix"]="Modal terminal editor with language-server support built in. Distro package (Fedora, Rocky/Alma 9 and 10, Arch, openSUSE, Alpine); on Debian, Ubuntu and Rocky/Alma 8 the GitHub release, SHA-256 checked, in /opt/helix."
+UTILITY_DESCRIPTION["Helm"]="The Kubernetes package manager. Distro package (Fedora, Rocky/Alma 9 and 10, Arch, openSUSE, Alpine); elsewhere the release from get.helm.sh, checked against Helm's published SHA-256, in /usr/local/bin."
+UTILITY_DESCRIPTION["Java JDK"]="OpenJDK with the compiler. Distro packages: default-jdk on Debian and Ubuntu, the newest long-term-support build elsewhere (25, 21 or 17)."
+UTILITY_DESCRIPTION["k3s"]="Lightweight Kubernetes: installs a cluster node and starts it as a service. Alpine: distro package. Elsewhere k3s's own install script from get.k3s.io, which checks the k3s binary itself. Uninstalling deletes the cluster data in /var/lib/rancher/k3s."
+UTILITY_DESCRIPTION["lazygit"]="Terminal UI for git: stage hunks, resolve conflicts and browse history from the keyboard. Distro package (Debian 13, Ubuntu 26.04, Fedora, Arch, openSUSE, Alpine); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin."
+UTILITY_DESCRIPTION["minikube"]="Runs a local single-node Kubernetes cluster for development. Distro package on Arch and openSUSE Tumbleweed; elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin. Needs a driver such as Docker, Podman or KVM, which this does not install. Not available on Alpine."
+UTILITY_DESCRIPTION["nmap"]="Network scanner: finds hosts and open ports. Distro package; not in openSUSE Leap."
+UTILITY_DESCRIPTION["Ollama"]="Runs large language models locally. Distro package (Fedora, Arch, openSUSE, Alpine) started as a service; elsewhere the GitHub release, SHA-256 checked, with an ollama user and systemd service. CPU and NVIDIA GPUs; AMD GPUs need Ollama's ROCm add-on, which is not installed. Uninstall keeps downloaded models."
+UTILITY_DESCRIPTION["PHP"]="The PHP command-line interpreter from the distro's packages (php-cli, php, php8 or php84). Not a web-server module."
+UTILITY_DESCRIPTION["Podman Desktop"]="Graphical manager for Podman containers, pods and Kubernetes. Distro package on Arch, Flathub elsewhere. Needs a Podman engine (the Podman entry). Not available on Alpine."
+UTILITY_DESCRIPTION["Python"]="The distro's Python 3 with pip, virtual environments and development headers. The version is the distro's; pyenv installs others. Uninstall keeps python3 itself, which the system needs."
+UTILITY_DESCRIPTION["Ruby"]="Ruby with the headers gems need to build native extensions, from the distro's packages."
+UTILITY_DESCRIPTION["starship"]="Fast, themeable shell prompt, loaded from ~/.bashrc (and ~/.zshrc when it exists). Distro package (Debian 13, Ubuntu 26.04, Arch, openSUSE, Alpine); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin."
+UTILITY_DESCRIPTION["Sublime Text"]="Fast, polished text and code editor (paid licence, free to evaluate). Installed from Sublime HQ's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and openSUSE, so updates arrive with the system; on Arch from the AUR (only with AUR support enabled). Not available on Alpine or Rocky/Alma 9 and 10 (their RPM refuses the key's SHA-1 signature). Uninstall keeps your settings and licence."
+UTILITY_DESCRIPTION["tldr"]="Short, example-first help pages for shell commands (tldr tar). Installs the distro's client (tealdeer, tlrc or the Python tldr; EPEL on Rocky/Alma). Not available on Alpine."
+UTILITY_DESCRIPTION["Vim"]="The classic modal editor (vim-enhanced on Fedora and RHEL clones). Distro package on every distro."
+UTILITY_DESCRIPTION["VirtualBox"]="Runs virtual machines. Distro package on Ubuntu, Arch and openSUSE; Oracle's own signed repository on Debian 12/13, Fedora up to 44 and Rocky/Alma 8 to 10. The kernel module is built for the running kernel and must be signed under Secure Boot. Your VMs are kept on uninstall. Not available on Alpine."
+UTILITY_DESCRIPTION["Wireshark"]="Network packet analyser. Distro package; the installing user joins the wireshark group to capture without root (log out and in)."
+UTILITY_DESCRIPTION["Zed"]="Fast code editor with built-in collaboration and AI. Distro package on Arch and openSUSE Tumbleweed, Flathub elsewhere. Not available on Alpine."
+UTILITY_DESCRIPTION["zoxide"]="Smarter cd: remembers the folders you use and jumps to them with z, loaded from ~/.bashrc (and ~/.zshrc when it exists). Distro package (every release except Rocky/Alma 10); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin."
+UTILITY_DESCRIPTION["Opera"]="Opera web browser with a built-in ad blocker, free VPN-style proxy and sidebar messengers. Installed from Opera's own signed repository on Debian, Ubuntu, Fedora, RHEL clones (x86_64) and openSUSE, so updates arrive with the system; on Arch from Flathub when Flatpak is set up, otherwise the AUR (only with AUR support enabled). Not available on Alpine. Uninstall keeps your profile."
+UTILITY_DESCRIPTION["WhatsApp"]="WhatsApp has no official Linux app; this installs ZapZap, an open-source desktop client that wraps WhatsApp Web (link it with your phone's QR code). Distro package on openSUSE, Flathub elsewhere. Not available on Alpine. Uninstall keeps the linked session."
+UTILITY_DESCRIPTION["Dolphin Emulator"]="Nintendo GameCube and Wii emulator. Distro package on Debian, Ubuntu, Fedora, Arch, openSUSE and Alpine; Flathub on RHEL clones. Uninstall keeps your saves and settings."
+UTILITY_DESCRIPTION["Flatseal"]="Shows and changes the permissions of Flatpak apps (files, devices, network), for example for the Flatpak game apps here. Distro package where a repository has one, otherwise Flathub. Not available on Alpine. Uninstall keeps your permission overrides."
+UTILITY_DESCRIPTION["Gear Lever"]="Manages AppImage files: menu entries, updates and removal. Distro package on openSUSE, Flathub elsewhere. Not available on Alpine. Uninstall keeps the AppImages it manages."
+UTILITY_DESCRIPTION["Moonlight"]="Streams games from a Sunshine or GeForce PC to this computer. Distro package on Fedora, Arch, openSUSE and Alpine; Flathub elsewhere. Uninstall keeps your paired hosts."
+UTILITY_DESCRIPTION["PPSSPP"]="Sony PSP emulator with upscaling and save states. Distro package on Arch, openSUSE and Alpine; Flathub elsewhere. Uninstall keeps your saves and settings."
+UTILITY_DESCRIPTION["Prism Launcher"]="Minecraft launcher with separate instances per game version and mod loader. Distro package on Ubuntu 26.04, Arch, openSUSE and Alpine; Flathub elsewhere. Uninstall keeps your instances and accounts."
+UTILITY_DESCRIPTION["RetroArch"]="Frontend for the libretro emulator cores (consoles, arcade, computers); fetch cores in the app's Online Updater. Distro package on Debian, Ubuntu, Fedora, Arch, openSUSE and Alpine; Flathub on RHEL clones. Uninstall keeps your saves and settings."
+UTILITY_DESCRIPTION["Sunshine"]="Self-hosted game-streaming server for Moonlight clients. Flathub on every family, plus Sunshine's own setup step (virtual keyboard and gamepad rules, asks for your password in a desktop session). Web page at https://localhost:47990. Not available on Alpine. Uninstall removes those rules and keeps your pairings."
+UTILITY_DESCRIPTION["Microsoft Teams"]="Microsoft stopped its own Linux Teams app in 2022; this installs Teams for Linux, the open-source client that wraps the Teams web app (chat, meetings, notifications, screen sharing). Flathub, or the distro package where a repository has one. Not available on Alpine. Uninstall keeps your sign-in."
+UTILITY_DESCRIPTION["Mattermost"]="Desktop app for Mattermost, the self-hosted team chat. Distro package on Arch, Flathub elsewhere. Not available on Alpine. Uninstall keeps your saved servers."
+UTILITY_DESCRIPTION["Mullvad VPN"]="Mullvad's VPN app (WireGuard, no account email needed). Installed from Mullvad's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and openSUSE, so updates arrive with the system; on Arch from the distro repository. The background service is enabled. Not available on Alpine."
+UTILITY_DESCRIPTION["NordVPN"]="NordVPN's command-line client and service. Installed from NordVPN's own signed repository on Debian, Ubuntu, Fedora, RHEL clones 10 and newer (x86_64) and openSUSE, so updates arrive with the system; on Arch from the AUR (only with AUR support enabled). Enables the service and adds you to the nordvpn group (log out and in again, then run nordvpn login). Not available on Alpine."
+UTILITY_DESCRIPTION["OpenVPN"]="The OpenVPN client for connecting with a provider's .ovpn file. The distro package on every family (RHEL clones take it from EPEL). Uninstall keeps your .ovpn files and /etc/openvpn."
+UTILITY_DESCRIPTION["Alacritty"]="Fast GPU-accelerated terminal emulator configured by a text file. Distro package; not available on Rocky/Alma/RHEL or Ubuntu 22.04, which have none."
+UTILITY_DESCRIPTION["auto-cpufreq"]="Adjusts CPU speed and power use to the battery and load, with a background service; for laptops. No distro carries it: on Arch it comes from the AUR (only with AUR support enabled), elsewhere upstream's own installer runs from the GitHub release (upstream publishes no checksum), into /opt/auto-cpufreq. Cannot run beside TLP. Not available on Alpine, openSUSE Leap or Rocky/Alma 8 and 9."
+UTILITY_DESCRIPTION["BleachBit"]="Disk cleaner that clears caches, logs, history and temporary files for the system and many applications. Distro package (EPEL on Rocky/Alma 8 and 9), or Flathub on Rocky/Alma 10. Not available on Alpine."
+UTILITY_DESCRIPTION["CPU-X"]="CPU-Z-style window showing the CPU, motherboard, memory, GPU and system. Distro package, or Flathub on Rocky/Alma/RHEL. Not available on Alpine."
+UTILITY_DESCRIPTION["CUPS"]="The printing system: installs the print server and starts it at boot. Add printers at http://localhost:631 or in the desktop's printer settings."
+UTILITY_DESCRIPTION["earlyoom"]="Ends the biggest memory hog before the machine freezes, instead of waiting for the kernel's slow out-of-memory killer. Started at boot."
+UTILITY_DESCRIPTION["Ghostty"]="Fast GPU-accelerated terminal emulator. Installed from the distro package, which exists on Arch, openSUSE Tumbleweed and Ubuntu 26.04 and newer; elsewhere it says so and changes nothing. Not offered on Fedora, Rocky/Alma/RHEL or Alpine."
+UTILITY_DESCRIPTION["HardInfo"]="System profiler and benchmark window: CPU, memory, storage, sensors and network. Installs HardInfo2, the maintained fork (the old HardInfo on Ubuntu 22.04). Distro package, or EPEL on Rocky/Alma. Not available on Alpine."
+UTILITY_DESCRIPTION["htop"]="Interactive process viewer with colours, a tree view and mouse support."
+UTILITY_DESCRIPTION["inxi"]="Prints a readable summary of the hardware and system: CPU, GPU, disks, network and sensors. Try inxi -Fxz. Not available on Rocky/Alma 10, where EPEL has no package."
+UTILITY_DESCRIPTION["kitty"]="Fast GPU-accelerated terminal emulator with tabs, splits and image display. Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["ncdu"]="Terminal disk-usage browser: shows which folders use the space and lets you delete from the list."
+UTILITY_DESCRIPTION["nvtop"]="htop-style monitor for GPUs (NVIDIA, AMD, Intel). Distro package (EPEL on Rocky/Alma). Not available on Alpine."
+UTILITY_DESCRIPTION["smartmontools"]="smartctl reads a drive's SMART health data and smartd watches it in the background. Installs the package and leaves its services as the package sets them."
+UTILITY_DESCRIPTION["TLP"]="Laptop battery and power tuning that works with its defaults and starts at boot. Replaces power-profiles-daemon and cannot run beside auto-cpufreq. Not available on Rocky/Alma 10, where EPEL has no package."
+UTILITY_DESCRIPTION["WezTerm"]="GPU-accelerated terminal emulator configured in Lua. Distro package on Arch, openSUSE and Alpine; not offered elsewhere, where upstream's stable build is from 2024 and the rest are nightlies."
+UTILITY_DESCRIPTION["zram"]="Compressed swap in RAM: the machine holds more before it slows down, with no swap partition. zram-tools on Debian and Ubuntu, zram-generator elsewhere (half of RAM, at most 4 GiB, unless the system already has a config). Not available on Alpine."
 UTILITY_DESCRIPTION["Filelight"]="KDE disk usage analyzer that visualizes storage consumption as an interactive radial map, making it easy to identify large files and directories."
 UTILITY_DESCRIPTION["ClamAV"]="Open-source antivirus engine for detecting trojans, viruses, malware, and other malicious threats. Asks which desktop front-end you want and defaults to ClamUI, a GTK4/libadwaita app from Flathub covering scanning, quarantine, and scheduled scans; ClamTk is offered too wherever the distro packages it. Enables the freshclam definition updater and the scan daemon."
 UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyboard and mouse across multiple computers on your local network."
@@ -1159,6 +1504,15 @@ UTILITY_DESCRIPTION["Déjà Dup"]="(GNOME) Simple, beginner-friendly backup tool
 UTILITY_DESCRIPTION["Kup"]="(KDE) Backup tool that integrates with Plasma System Settings. Supports incremental versioned backups (via bup) and synchronized folder copies (via rsync) to local drives or external media. On Fedora, installed from the zawertun/kde-kup Copr as it is not in the official repos. Not available for RHEL-based systems."
 UTILITY_DESCRIPTION["Vorta"]="GUI frontend for BorgBackup — a fast, deduplicating backup tool with encryption and compression. Installs both Borg (CLI) and Vorta (GUI). On RHEL-based systems, only BorgBackup is installed via EPEL as Vorta is not packaged there."
 UTILITY_DESCRIPTION["Duplicati"]="Cloud backup tool with a web-based GUI supporting S3, Google Drive, OneDrive, SFTP, and many more backends. Features encryption, deduplication, and scheduling. Installed via Flatpak — run 'Flatpak Setup' from the Package Managers category first if not already configured."
+UTILITY_DESCRIPTION["Back In Time"]="Simple snapshot backups of your files using rsync, with a Qt window; restore any snapshot. Distro package on Debian, Ubuntu, Fedora, RHEL clones 8 and 9 (EPEL) and openSUSE; on Arch from the AUR (only with AUR support enabled). Not available on Rocky/Alma 10 or Alpine. Uninstall keeps your snapshots and profiles."
+UTILITY_DESCRIPTION["Clonezilla"]="Disk and partition cloning and imaging. Installs the Clonezilla package (Debian, Ubuntu, Arch) for use on disks that are not mounted; cloning the running system's own disk needs the live Clonezilla disk (Ventoy can boot it). Not available on Fedora, RHEL clones, openSUSE or Alpine."
+UTILITY_DESCRIPTION["Grsync"]="Graphical front-end for rsync: sync and back up folders with saved presets. Distro package (EPEL on RHEL clones). Not available on Alpine. Uninstall keeps your saved sessions."
+UTILITY_DESCRIPTION["Kopia"]="Fast, encrypted, deduplicating backup with snapshots and a web page (kopia server start). The command-line program: distro package on Fedora and openSUSE; elsewhere Kopia's GitHub release, SHA-256 checked, in /usr/local/bin. The KopiaUI desktop app is not installed. Not available on Alpine. Uninstall keeps your repository connections."
+UTILITY_DESCRIPTION["luckyBackup"]="Graphical rsync-based backup and sync with profiles and scheduling. Distro package on Debian, Ubuntu, Fedora and openSUSE; on Arch from the AUR (only with AUR support enabled). Not available on RHEL clones or Alpine. Uninstall keeps your profiles."
+UTILITY_DESCRIPTION["Pika Backup"]="Simple scheduled backups of your home folder with BorgBackup, in a desktop window. Distro package on Arch and openSUSE Tumbleweed; Flathub elsewhere. Not available on Alpine. Uninstall keeps your schedule and repository settings."
+UTILITY_DESCRIPTION["rclone"]="Command-line tool that copies and syncs files to and from dozens of cloud storage services. Distro package (EPEL on RHEL clones 9 and newer). Not available on Rocky/Alma 8. Uninstall keeps your rclone.conf."
+UTILITY_DESCRIPTION["restic"]="Fast, encrypted, deduplicating command-line backup to a local folder, SFTP, S3 and many cloud stores. Distro package (EPEL on RHEL clones 9 and newer). Not available on Rocky/Alma 8. Uninstall keeps your repositories."
+UTILITY_DESCRIPTION["rsnapshot"]="Scheduled, space-saving snapshots of folders using rsync and hard links. Distro package (EPEL on RHEL clones). You write /etc/rsnapshot.conf and the cron or timer entry yourself; neither is created. Uninstall keeps /etc/rsnapshot.conf."
 UTILITY_DESCRIPTION["Snapper"]="Btrfs and LVM snapshot manager. Supports automatic pre/post snapshots on Arch, openSUSE, Debian/Ubuntu, and Fedora. Conflicts with Timeshift — the installer will prompt to remove it first."
 UTILITY_DESCRIPTION["Snapper GUI"]="GTK graphical interface for Snapper. Browse, create, delete, and compare snapshots visually. Works on any filesystem Snapper supports — does not require Btrfs."
 UTILITY_DESCRIPTION["Btrfs Assistant"]="Qt GUI for managing Btrfs filesystems and Snapper snapshots. Includes subvolume management, snapshot browsing, and scrub/balance operations. Available on Arch, Debian/Ubuntu, Fedora, and openSUSE."
@@ -1234,7 +1588,9 @@ mark_aur_only_arch \
     "Devolutions RDM=remote-desktop-manager" \
     "Euro-Office=euro-office-desktopeditors-git" \
     "Snap (snapd)=snapd" "Snapper GUI=snapper-gui-git" \
-    "Trojita=trojita" "Zotero=zotero"
+    "Trojita=trojita" "Zotero=zotero" "1Password=1password" \
+    "auto-cpufreq=auto-cpufreq" "Sublime Text=sublime-text-4" \
+    "NordVPN=nordvpn-bin" "Back In Time=backintime" "luckyBackup=luckybackup"
 
 # Utilities that can install from upstream's own binary when no package source
 # carries them (the third tier of arch_install_ordered, reached on Arch because
@@ -1254,23 +1610,22 @@ mark_upstream_binary \
     "PowerShell=/opt/microsoft/powershell" \
     "Libation=/usr/lib/libation" \
     "ArtCraft Launcher=$HOME/Applications/artcraft-launcher.AppImage" \
-    "CADCraft=$HOME/Applications/cadcraft.AppImage" \
-    "DeckCraft=$HOME/Applications/deckcraft.AppImage" \
-    "DesignCraft=$HOME/Applications/designcraft.AppImage" \
-    "EffectCraft=$HOME/Applications/effectcraft.AppImage" \
-    "FilmCraft=$HOME/Applications/filmcraft.AppImage" \
-    "GridCraft=$HOME/Applications/gridcraft.AppImage" \
-    "LightCraft=$HOME/Applications/lightcraft.AppImage" \
-    "PdfCraft=$HOME/Applications/pdfcraft.AppImage" \
-    "PhotoCraft=$HOME/Applications/photocraft.AppImage" \
-    "SoundCraft=$HOME/Applications/soundcraft.AppImage" \
-    "VectorCraft=$HOME/Applications/vectorcraft.AppImage" \
-    "WordCraft=$HOME/Applications/wordcraft.AppImage" \
     "Claude Desktop=$_CLAUDE_DESKTOP_BOX_VERSION_FILE" \
     "Xodus Nexus=$_XN_APPIMAGE" \
     "Hermes Agent=$HOME/.hermes/hermes-agent" \
     "LM Studio=$_LMS_APPIMAGE" \
-    "GPU Task Manager=$_GTM_DIR"
+    "GPU Task Manager=$_GTM_DIR" \
+    "auto-cpufreq=$_ACF_ROOT/current" \
+    "Helix=/opt/helix" \
+    "Helm=/usr/local/bin/helm" \
+    "lazygit=/usr/local/bin/lazygit" \
+    "eza=/usr/local/bin/eza" \
+    "zoxide=/usr/local/bin/zoxide" \
+    "starship=/usr/local/bin/starship" \
+    "minikube=/usr/local/bin/minikube" \
+    "k3s=/usr/local/bin/k3s-uninstall.sh" \
+    "Ollama=/usr/local/lib/ollama" \
+    "Kopia=/usr/local/bin/kopia"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1284,8 +1639,22 @@ mark_upstream_latest \
     "Claude Desktop=_claude_desktop_latest_version" \
     "Xodus Nexus=_xn_latest_version" \
     "LM Studio=_lms_latest_version" \
-    "GPU Task Manager=_gtm_latest_version"
+    "GPU Task Manager=_gtm_latest_version" \
+    "auto-cpufreq=_acf_latest_version" \
+    "Helix=_helix_latest_version" \
+    "Helm=_helm_latest_version" \
+    "lazygit=_lazygit_latest_version" \
+    "eza=_eza_latest_version" \
+    "zoxide=_zoxide_latest_version" \
+    "starship=_starship_latest_version" \
+    "minikube=_minikube_latest_version" \
+    "k3s=_k3s_latest_version" \
+    "Ollama=_ollama_latest_version" \
+    "Kopia=_kopia_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.
 mark_full_upgrade "System Updates"
+
+# Alpine: keep only the utilities that have an Alpine path (lib/installers/alpine_packages.sh).
+apply_alpine_registry

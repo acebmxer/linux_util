@@ -98,6 +98,7 @@ install_<slug>() {
         *)
             warn "<Utility Name> installation not implemented for ${DISTRO_NAME}."
             warn "Supported distros: Debian/Ubuntu, Fedora/RHEL, Arch/Manjaro, openSUSE."
+            warn "(Alpine utilities are listed in lib/installers/alpine_packages.sh, not here.)"
             return 1
             ;;
     esac

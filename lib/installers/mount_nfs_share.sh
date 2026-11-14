@@ -25,6 +25,7 @@ _mns_ensure_nfs_tools() {
         rhel)    pkg_install nfs-utils ;;
         arch)    pkg_install nfs-utils ;;
         suse)    pkg_install nfs-client ;;
+        alpine)  pkg_install nfs-utils ;;
         *)
             warn "Cannot auto-install NFS tools on this distro. Install nfs-common or nfs-utils manually."
             return 1

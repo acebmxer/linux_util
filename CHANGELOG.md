@@ -12,6 +12,134 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-11-14
+
+### Added
+
+- **9 more Backup tools** (fixes #92). Command line: restic, rclone, Kopia and
+  rsnapshot. Desktop: Back In Time, Pika Backup, luckyBackup and Grsync.
+  Also Clonezilla (the package, for disks that are not mounted; the live disk
+  is still needed to clone the running system). Each uses the distro package
+  (EPEL on RHEL clones); Kopia otherwise uses its GitHub release, checked
+  against its published SHA-256, and Pika Backup uses Flathub where there is no
+  package. rsnapshot needs your own config and schedule. Backup is now sorted
+  into **File Backup** and **Command Line** folders beside Timeshift and
+  Snapper. Not offered: restic and rclone on Rocky/Alma 8, Back In Time on
+  Rocky/Alma 10, luckyBackup on RHEL clones, Clonezilla on Fedora, RHEL clones
+  and openSUSE; Back In Time and luckyBackup on Arch need AUR support; on
+  Alpine only restic, rclone and rsnapshot.
+- **8 more Gaming apps** (part of #91). Launcher: Prism Launcher (Minecraft).
+  Emulators: RetroArch, Dolphin Emulator and PPSSPP. Game streaming: Sunshine
+  (host) and Moonlight (client). Utilities: Flatseal (Flatpak permissions) and
+  Gear Lever (AppImage manager). Each uses the distro package where a
+  repository has one, otherwise Flathub. Sunshine always uses Flathub and then
+  runs its documented setup step for virtual keyboards and gamepads, which asks
+  for your password in a desktop session (otherwise the command is printed);
+  uninstalling it removes the rules that step wrote. Gaming is now sorted into
+  folders: **Game Launchers**, **Emulators**, **Game Streaming** and **Gaming
+  Utilities**. Not offered on Alpine: Sunshine, Flatseal and Gear Lever.
+- **7 more Internet apps** (part of #91). Browser: Opera. Messaging: WhatsApp
+  (ZapZap, an open-source client for WhatsApp Web, as WhatsApp has no Linux
+  app), Microsoft Teams (Teams for Linux, as Microsoft ended its own Linux app
+  in 2022) and Mattermost. VPN: Mullvad VPN, NordVPN and OpenVPN. Opera,
+  Mullvad VPN and NordVPN use their vendor's signed repository (key fingerprint
+  checked), so updates arrive with the system; OpenVPN uses the distro package;
+  WhatsApp, Teams and Mattermost use the distro package where there is one, else
+  Flathub. NordVPN also starts its service and adds you to the `nordvpn` group
+  (log out and in again before `nordvpn login`). Not offered: Skype (Microsoft
+  closed it in May 2025), NordVPN on Rocky/Alma 8 and 9 (needs a newer glibc),
+  and on Alpine everything except OpenVPN.
+- **23 more Development apps and shell tools** (part of #91). Editors: Vim,
+  Emacs, Helix, Sublime Text and Zed. Shell tools: fzf, eza, zoxide, starship
+  and tldr (in System Tools > Shell Tools, beside bat and ripgrep); zoxide,
+  starship and fzf are loaded from `~/.bashrc` (and `~/.zshrc` when it exists).
+  Git: lazygit. Containers and Kubernetes: Podman Desktop, Helm, minikube and
+  k3s. Languages: Python, Java JDK, PHP and Ruby. Also VirtualBox, Wireshark,
+  nmap and Ollama. Each uses the distro's own package; where a release has
+  none, lazygit, eza, zoxide, starship, minikube, Helix, Helm and Ollama use
+  the upstream release, checked against its published SHA-256; Sublime Text
+  and (on Debian, Fedora and RHEL clones) VirtualBox use their vendor's signed
+  repository; Zed and Podman Desktop use Flathub; k3s uses its own install
+  script. Development is now sorted into folders: **IDEs & Editors**, **AI
+  Tools** (Claude Code, Claude Desktop, Codex, Hermes Agent and LM Studio
+  moved here, with Ollama), **Languages & Runtimes**, **Git**, **Containers &
+  Kubernetes**, **Virtualization**, **Network & Security** and Distrobox.
+  Uninstalling k3s deletes its cluster data; VirtualBox needs its kernel
+  module signed under Secure Boot. Not offered: Sublime Text on Rocky/Alma 9
+  and 10 (their RPM refuses its signing key), nmap on openSUSE Leap, and on
+  Alpine Sublime Text, Zed, tldr, Podman Desktop, minikube and VirtualBox.
+- **17 more System Tools** (part of #91). Monitors: htop and nvtop. Disk
+  health: smartmontools. Power and memory: TLP, auto-cpufreq, zram and
+  earlyoom. Cleanup: BleachBit and ncdu. Hardware info: HardInfo, inxi and
+  CPU-X. Printing: CUPS. Terminals: Alacritty, kitty, Ghostty and WezTerm.
+  System Tools is now sorted into folders: **Monitors**, **Power & Memory**,
+  **Disk & Cleanup**, **System Info**, **Shell Tools**, **Terminal Emulators**
+  and the existing Kernel Managers; ClamAV, CUPS, Input Leap and OCCT stay at
+  the top. Each uses the distro's own package (EPEL on Rocky/Alma), Flathub for
+  BleachBit and CPU-X where the repository has none, and, for auto-cpufreq
+  only, upstream's own installer from its GitHub release (the AUR on Arch,
+  only with AUR support on). TLP, earlyoom, CUPS and zram start their service.
+  Not offered: Alacritty on Rocky/Alma/RHEL and Ubuntu 22.04; auto-cpufreq on
+  openSUSE Leap, Rocky/Alma 8 and 9, and Alpine; Ghostty on Fedora and Rocky/Alma/RHEL, and on
+  Debian or Ubuntu releases whose repositories lack it; WezTerm except on
+  Arch, openSUSE and Alpine; TLP and inxi on Rocky/Alma 10. Alpine carries
+  htop, smartmontools, TLP, earlyoom, ncdu, inxi, Alacritty, kitty, WezTerm
+  and CUPS.
+- **16 more Productivity apps** (part of #91). Password managers and
+  encryption: 1Password, KeePassXC, Cryptomator and VeraCrypt. Media: mpv,
+  Kodi and Spotify. Creative: Blender, Darktable, RawTherapee, Shotcut and
+  Scribus. Documents and notes: Calibre, Anki, Okular and Xournal++. Each uses
+  the distro's own package where its repositories have one and Flathub where
+  they do not (Spotify and Cryptomator always use Flathub). 1Password adds
+  1Password's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and
+  openSUSE, and VeraCrypt installs the package from its GitHub release after
+  checking the signature against VeraCrypt's published key (Arch uses its
+  repository package). Uninstall keeps your vaults, databases and accounts.
+  Alpine offers the ones its repositories carry; Spotify, 1Password, VeraCrypt,
+  Cryptomator and Calibre are hidden there. Productivity is now sorted into folders: **Office Suites** (now
+  including Euro-Office), **Notes** (Obsidian, Standard Notes, Joplin, Anki,
+  Xournal++, Logseq, Mark Text), **Password Managers**, **Encryption**,
+  **Documents & Reading**, **Graphics & Photo**, **Video & Audio** and
+  **Media**. ArtCraft Launcher, Flameshot, Nextcloud Desktop, NVIDIA PAIR and
+  WinApps stay at the top level.
+- **Alpine Linux support** (#90). `./linux_util.sh` now runs on Alpine and
+  postmarketOS using `apk`, instead of stopping with "No supported package
+  manager found". System Updates, Full System Upgrade, Fix Broken Packages, the
+  mount tasks, XEN Guest Utilities and about 70 utilities that Alpine ships as
+  packages (browsers, editors, file managers, window managers, containers,
+  media and office apps) are listed; anything that needs glibc or a
+  `.deb`/`.rpm` is not offered, as on other distros. Alpine has no `sudo`, so
+  root commands use `sudo` or `doas` when installed and otherwise `su` with the
+  root password. On first run it offers to install the GNU `grep`, `sed`,
+  `gawk`, `coreutils` and `findutils` that BusyBox lacks. Services are started
+  through OpenRC, and the reboot offered after an update runs `reboot` where
+  there is no `systemctl`. Alpine 3.22, 3.23 and 3.24 and openSUSE Leap 16.0
+  join the CI distro-detection matrix.
+
+### Changed
+
+- **Utility catalogue is complete.** `docs/utilities.md` now lists every
+  utility and system task the menu offers, including the File Managers,
+  Firewalls, Login Screens and Window Managers categories and the entries that
+  were missing (Angry IP Scanner, Brave Debloat, LocalSend, PowerShell,
+  Snapper GUI, fail2ban, Unattended Upgrades, Configure Syncthing Folders).
+- **Weekly distro EOL check.** A scheduled workflow compares the CI distro
+  matrix with endoflife.date and keeps one issue open while a release needs
+  dropping (end of life) or adding (newly supported).
+- **ArtCraft Launcher** is now listed directly under Productivity instead of an
+  "ArtCraft" folder, and the separate CADCraft, DeckCraft, DesignCraft,
+  EffectCraft, FilmCraft, GridCraft, LightCraft, PdfCraft, PhotoCraft,
+  SoundCraft, VectorCraft and WordCraft entries are gone: install the Craft apps
+  from the launcher. Copies this tool installed earlier are no longer listed or
+  updated by System Updates.
+
+### Fixed
+
+- **XEN Guest Utilities** on Alpine installed from the `edge` repository, which
+  can break a stable release, and then checked its service with `systemctl`.
+  It now installs from the release's own repository, enables the OpenRC
+  service and verifies it with OpenRC.
+
 ## [1.12.0] - 2026-11-12
 
 ### Added

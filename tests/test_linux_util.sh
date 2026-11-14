@@ -588,14 +588,14 @@ test_detect_distro_valid_values() {
     _mgr=$(echo "$_out" | grep '^_RESULT_MGR='    | cut -d= -f2)
 
     case "$_fam" in
-        debian|fedora|rhel|arch|suse)
+        debian|fedora|rhel|arch|suse|alpine)
             _pass "detect_distro sets DISTRO_FAMILY to a known value ('${_fam}')" ;;
         *)
             _fail "detect_distro sets DISTRO_FAMILY to a known value (got: '${_fam}')" ;;
     esac
 
     case "$_mgr" in
-        apt|dnf|yum|pacman|zypper)
+        apt|dnf|yum|pacman|zypper|apk)
             _pass "detect_distro sets PKG_MGR to a known value ('${_mgr}')" ;;
         *)
             _fail "detect_distro sets PKG_MGR to a known value (got: '${_mgr}')" ;;
@@ -1470,6 +1470,7 @@ echo "=== Reboot Tests ==="
 test_do_reboot_host_uses_systemctl() {
     local out
     out=$(
+        has_systemd() { return 0; }
         sudo() { echo "SUDO:$*"; }
         do_reboot 2>&1
     )
@@ -1477,6 +1478,18 @@ test_do_reboot_host_uses_systemctl() {
         "do_reboot runs sudo systemctl reboot"
 }
 test_do_reboot_host_uses_systemctl
+
+# Without systemd (Alpine/OpenRC) there is no systemctl: it must run reboot.
+test_do_reboot_without_systemd_uses_reboot() {
+    local out
+    out=$(
+        has_systemd() { return 1; }
+        sudo() { echo "SUDO:$*"; }
+        do_reboot 2>&1
+    )
+    assert_eq "SUDO:reboot" "$out" "do_reboot runs sudo reboot when systemd is absent"
+}
+test_do_reboot_without_systemd_uses_reboot
 
 # ----------------------------------------------------------------------------
 # System info gatherer: Packages / WM / DE fields (lib/menu.sh)
@@ -3017,6 +3030,7 @@ echo ""
 echo "=== Pay Respects Tests ==="
 
 # Only defines functions, so sourcing is side-effect free.
+source "${SCRIPT_DIR}/lib/installers/_shared.sh"   # shell_rc_block_remove, used by _payr_remove_rc
 source "${SCRIPT_DIR}/lib/installers/pay_respects.sh"
 
 # Upstream's real release shape: a rolling "nightly" release sits at the top of
@@ -4722,7 +4736,7 @@ test_hermes_agent_registered() {
     local fn gaps=0
     grep -qE '^register_utility "Hermes Agent"[[:space:]]+install_hermes_agent ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_CATEGORY\["Hermes Agent"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
-    grep -q '^UTILITY_SUBCATEGORY\["Hermes Agent"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Hermes Agent"\]="AI Tools"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_DESCRIPTION\["Hermes Agent"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '"Hermes Agent=\$HOME/.hermes/hermes-agent"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     for fn in install check uninstall update get_version; do
@@ -4765,7 +4779,7 @@ test_codex_registered() {
     local fn gaps=0
     grep -qE '^register_utility "Codex"[[:space:]]+install_codex ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_CATEGORY\["Codex"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
-    grep -q '^UTILITY_SUBCATEGORY\["Codex"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["Codex"\]="AI Tools"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_DESCRIPTION\["Codex"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     for fn in install check uninstall update get_version; do
         grep -q "^${fn}_codex()" "${SCRIPT_DIR}/lib/installers/codex.sh" || gaps=1
@@ -4800,7 +4814,7 @@ test_lm_studio_registered() {
     local fn gaps=0
     grep -qE '^register_utility "LM Studio"[[:space:]]+install_lm_studio ' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_CATEGORY\["LM Studio"\]="Development"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
-    grep -q '^UTILITY_SUBCATEGORY\["LM Studio"\]="IDEs & Editors"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+    grep -q '^UTILITY_SUBCATEGORY\["LM Studio"\]="AI Tools"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '^UTILITY_DESCRIPTION\["LM Studio"\]=' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '"LM Studio=\$_LMS_APPIMAGE"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
     grep -q '"LM Studio=_lms_latest_version"' "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
@@ -5047,21 +5061,20 @@ test_bat_batcat_link
 echo ""
 echo "=== ArtCraft / Craft apps ==="
 
-test_craft_apps_registered_in_artcraft_subcategory() {
+test_artcraft_launcher_registered_in_productivity() {
     local name fn slug gaps=0
-    for name in "ArtCraft Launcher" CADCraft DeckCraft DesignCraft EffectCraft FilmCraft GridCraft \
-                LightCraft PdfCraft PhotoCraft SoundCraft VectorCraft WordCraft; do
+    for name in "ArtCraft Launcher"; do
         slug=$(printf '%s' "${name%% Launcher}" | tr '[:upper:]' '[:lower:]')
         grep -q "^register_utility \"${name}\" install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
         grep -q "^UTILITY_CATEGORY\[\"${name}\"\]=\"Productivity\"" "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
-        grep -q "^UTILITY_SUBCATEGORY\[\"${name}\"\]=\"ArtCraft\"" "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+        grep -q "^UTILITY_SUBCATEGORY\[\"${name}\"\]" "${SCRIPT_DIR}/lib/installers.sh" && gaps=1
         grep -q "^UTILITY_DESCRIPTION\[\"${name}\"\]=" "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
         for fn in install check uninstall update; do
             grep -qE "^${fn}_${slug}\(\)|^${fn}_${slug}[[:space:]]*\(\)" \
-                "${SCRIPT_DIR}/lib/installers/artcraft.sh" "${SCRIPT_DIR}/lib/installers/craft_apps.sh" 2>/dev/null || gaps=1
+                "${SCRIPT_DIR}/lib/installers/artcraft.sh" 2>/dev/null || gaps=1
         done
     done
-    assert_eq "0" "$gaps" "all 13 ArtCraft entries are registered with category, subcategory, description and functions"
+    assert_eq "0" "$gaps" "ArtCraft Launcher is registered in Productivity (no subcategory) with description and functions"
 }
 
 test_craft_asset_url_picks_package_not_sidecar() {
@@ -5085,7 +5098,7 @@ test_craft_asset_url_picks_package_not_sidecar() {
         "$out" "_craft_asset_url selects the exact package for this architecture, not a sidecar or the CLI tarball"
 }
 
-test_craft_apps_registered_in_artcraft_subcategory
+test_artcraft_launcher_registered_in_productivity
 test_craft_asset_url_picks_package_not_sidecar
 
 # ============================================================================
@@ -5225,6 +5238,1234 @@ test_front_end_hidden_question
 test_front_end_quiet_reads
 test_front_end_sudo_bash_keeps_read
 test_front_end_gate_in_main_script
+
+# ============================================================================
+# Test: Alpine Linux support
+# ============================================================================
+echo ""
+echo "=== Alpine Linux Tests ==="
+
+test_alpine_detect() {
+    local _out
+    _out=$(_run_detect_mock "alpine" "" "Alpine Linux" "3.24.4")
+    assert_eq "alpine" "$(echo "$_out" | grep '^_FAMILY=' | cut -d= -f2)" "Mock alpine → DISTRO_FAMILY=alpine"
+    assert_eq "apk"    "$(echo "$_out" | grep '^_MGR='    | cut -d= -f2)" "Mock alpine → PKG_MGR=apk"
+    _out=$(_run_detect_mock "someunknown" "alpine" "SomeDistro" "1.0")
+    assert_eq "apk"    "$(echo "$_out" | grep '^_MGR='    | cut -d= -f2)" "ID_LIKE=alpine derivative → PKG_MGR=apk"
+}
+
+# Each pkg_* wrapper must run the apk command, not fall through the case silently.
+test_alpine_pkg_wrappers() {
+    local _out
+    _out=$(
+        PKG_MGR=apk
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        run_with_spinner() { shift; "$@"; }
+        sudo() { echo "sudo $*"; }
+        pkg_install tmux git
+        pkg_remove tmux
+        pkg_upgrade tmux
+        pkg_install_local /tmp/x.apk
+        pkg_clean
+        PKG_REFRESH_TIMEOUT_SECS=5 pkg_refresh 2>&1
+    )
+    assert_contains "$_out" "sudo apk add tmux git"              "Alpine: pkg_install runs apk add"
+    assert_contains "$_out" "sudo apk del tmux"                  "Alpine: pkg_remove runs apk del"
+    assert_contains "$_out" "sudo apk add --upgrade tmux"        "Alpine: pkg_upgrade upgrades the named package"
+    assert_contains "$_out" "sudo apk add --allow-untrusted /tmp/x.apk" "Alpine: pkg_install_local runs apk add --allow-untrusted"
+    assert_contains "$_out" "sudo apk cache clean"               "Alpine: pkg_clean cleans the apk cache"
+}
+
+# The sudo stand-in: with doas it hands the same flags to doas; with only su it
+# quotes the command for su and cannot cache a login.
+test_alpine_sudo_shim() {
+    local _bin _out _rc
+    _bin=$(mktemp -d)
+    ln -s "$(command -v sh)" "$_bin/sh"; ln -s "$(command -v sed)" "$_bin/sed"
+    printf '#!/bin/sh\necho "doas $*"\n' > "$_bin/doas"; chmod +x "$_bin/doas"
+    _out=$(PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" -n -u bob echo hi)
+    assert_eq "doas -n -u bob echo hi" "$_out" "sudo shim: flags and command reach doas"
+    _out=$(PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" -v)
+    assert_eq "doas true" "$_out" "sudo shim: -v asks doas to validate the login"
+    rm -f "$_bin/doas"
+    printf '#!/bin/sh\nfor a in "$@"; do echo "[$a]"; done\n' > "$_bin/su"; chmod +x "$_bin/su"
+    _out=$(PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" sh -c "it's here")
+    assert_eq $'[-c]\n['"'sh' '-c' 'it'\\''s here'"$']\n[root]' "$_out" "sudo shim: su receives one quoted command for root"
+    PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" -v; _rc=$?
+    assert_eq "0" "$_rc" "sudo shim: -v succeeds without a password when only su exists"
+    PATH="$_bin" "${SCRIPT_DIR}/lib/shim/sudo" -n true; _rc=$?
+    assert_eq "1" "$_rc" "sudo shim: -n fails when only su exists (no cached login)"
+    rm -rf "$_bin"
+}
+
+# On Alpine only utilities with an Alpine path stay registered, and the generic
+# apk handlers replace the original ones.
+test_alpine_registry_filter() {
+    local _out
+    _out=$(
+        DISTRO_FAMILY=alpine
+        declare -a UTILITIES=(Chrome tmux "System Updates" Steam) SYSTEM_TASKS=("System Updates")
+        declare -A INSTALL_FUNCS=([Chrome]=i1 [tmux]=i2 ["System Updates"]=i3 [Steam]=i4)
+        declare -A UNINSTALL_FUNCS CHECK_FUNCS UPDATE_FUNCS VERSION_FUNCS
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        apply_alpine_registry
+        echo "utils=${UTILITIES[*]}"
+        echo "tasks=${SYSTEM_TASKS[*]}"
+        echo "tmux=${INSTALL_FUNCS[tmux]} ${CHECK_FUNCS[tmux]}"
+        echo "sys=${INSTALL_FUNCS["System Updates"]}"
+    )
+    assert_contains "$_out" "utils=tmux System Updates" "Alpine: utilities without an Alpine path are dropped"
+    assert_contains "$_out" "tasks=System Updates"      "Alpine: system tasks with their own Alpine handling stay"
+    assert_contains "$_out" "tmux=_alpine_install_tmux _alpine_check_tmux" "Alpine: listed utilities get the generic apk handlers"
+    assert_contains "$_out" "sys=i3"                    "Alpine: utilities with their own handlers keep them"
+    _out=$(
+        DISTRO_FAMILY=debian
+        declare -a UTILITIES=(Chrome tmux) SYSTEM_TASKS=()
+        declare -A INSTALL_FUNCS=([Chrome]=i1 [tmux]=i2)
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        apply_alpine_registry
+        echo "utils=${UTILITIES[*]}"
+    )
+    assert_eq "utils=Chrome tmux" "$_out" "Non-Alpine: the registry is left untouched"
+}
+
+# A typo in the table would silently hide a utility on Alpine.
+test_alpine_table_names_registered() {
+    local _row _name _missing=""
+    source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+    for _row in "${_ALPINE_TABLE[@]}" ; do
+        _name="${_row%%|*}"
+        grep -qF "\"${_name}\"" "${SCRIPT_DIR}/lib/installers.sh" || _missing+=" $_name"
+    done
+    for _name in "${_ALPINE_OWN_HANDLERS[@]}"; do
+        grep -qF "\"${_name}\"" "${SCRIPT_DIR}/lib/installers.sh" || _missing+=" $_name"
+    done
+    assert_eq "" "$_missing" "Alpine table: every name is registered in installers.sh"
+}
+
+test_alpine_detect
+test_alpine_pkg_wrappers
+test_alpine_sudo_shim
+test_alpine_registry_filter
+test_alpine_table_names_registered
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== Productivity apps: password managers, encryption, media, creative, documents (#91) ==="
+
+_PROD_APPS=(
+    "1Password|onepassword" "Anki|anki" "Blender|blender" "Calibre|calibre"
+    "Cryptomator|cryptomator" "Darktable|darktable" "KeePassXC|keepassxc" "Kodi|kodi"
+    "mpv|mpv" "Okular|okular" "RawTherapee|rawtherapee" "Scribus|scribus"
+    "Shotcut|shotcut" "Spotify|spotify" "VeraCrypt|veracrypt" "Xournal++|xournalpp"
+)
+
+test_productivity_apps_registered() {
+    local entry name slug fn gaps=0
+    for entry in "${_PROD_APPS[@]}"; do
+        IFS='|' read -r name slug <<<"$entry"
+        grep -qE "^register_utility \"${name//+/\\+}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"Productivity\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "The 16 new Productivity apps are registered with category, description, completions and all five functions"
+}
+
+# 1Password is AUR-only on Arch, so it must be hidden there while AUR support is off.
+# Every Productivity app sits in a folder, except the ones that belong to none.
+test_productivity_subcategories() {
+    local entry name sub gaps=0
+    for entry in "LibreOffice|Office Suites" \
+                 "OnlyOffice|Office Suites" \
+                 "WPS Office|Office Suites" \
+                 "Euro-Office|Office Suites" \
+                 "Joplin Client|Notes" \
+                 "Obsidian|Notes" \
+                 "Standard Notes|Notes" \
+                 "Anki|Notes" \
+                 "Xournal++|Notes" \
+                 "Logseq|Notes" \
+                 "Mark Text|Notes" \
+                 "Bitwarden Client|Password Managers" \
+                 "1Password|Password Managers" \
+                 "KeePassXC|Password Managers" \
+                 "Cryptomator|Encryption" \
+                 "VeraCrypt|Encryption" \
+                 "Calibre|Documents & Reading" \
+                 "Okular|Documents & Reading" \
+                 "Zotero|Documents & Reading" \
+                 "GIMP|Graphics & Photo" \
+                 "Inkscape|Graphics & Photo" \
+                 "Krita|Graphics & Photo" \
+                 "Blender|Graphics & Photo" \
+                 "Darktable|Graphics & Photo" \
+                 "RawTherapee|Graphics & Photo" \
+                 "Scribus|Graphics & Photo" \
+                 "Kdenlive|Video & Audio" \
+                 "Shotcut|Video & Audio" \
+                 "HandBrake|Video & Audio" \
+                 "Audacity|Video & Audio" \
+                 "OBS Studio|Video & Audio" \
+                 "VLC|Media" \
+                 "mpv|Media" \
+                 "Kodi|Media" \
+                 "Spotify|Media" \
+                 "Multimedia Codecs|Media" \
+                 "Libation|Media"; do
+        IFS='|' read -r name sub <<<"$entry"
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["Productivity"]="Office Suites|Notes|Password Managers|Encryption|Documents & Reading|Graphics & Photo|Video & Audio|Media"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no folder order"; }
+    assert_eq "0" "$gaps" "Productivity apps are sorted into Office Suites, Notes, Password Managers, Encryption, Documents & Reading, Graphics & Photo, Video & Audio and Media"
+}
+
+test_onepassword_marked_aur_only_on_arch() {
+    assert_true "1Password is marked AUR-only on Arch with its package name" \
+        grep -q '"1Password=1password"' "${SCRIPT_DIR}/lib/installers.sh"
+}
+
+# Alpine: apk-packaged apps are offered, the rest are hidden.
+test_productivity_apps_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in mpv Kodi Blender Darktable RawTherapee Shotcut Scribus Anki Okular "Xournal++" KeePassXC; do
+            [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"
+        done
+        for n in Spotify 1Password VeraCrypt Cryptomator Calibre; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        echo done
+    )
+    assert_eq "done" "$out" "Alpine lists the apps its repositories carry and hides Spotify, 1Password, VeraCrypt, Cryptomator and Calibre"
+}
+
+# pkg_in_repo: one answer per package manager, from that manager's own query.
+test_pkg_in_repo_per_manager() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        r() { "$@" && printf Y || printf n; }
+        PKG_MGR=apt
+        # Long output after the Candidate line: under pipefail a "| grep -q" would
+        # kill this early and report the package missing (SIGPIPE, status 141).
+        apt-cache() { printf 'x:\n  Installed: (none)\n  Candidate: %s\n' "${APT_CAND:-1.0-1}"; seq 1 30000; }
+        r pkg_in_repo mpv; APT_CAND="(none)"; r pkg_in_repo anki
+        PKG_MGR=dnf
+        dnf() { [[ "$*" == *"repoquery"* ]] && printf '%s\n' "${RPM_NAME:-}"; }
+        RPM_NAME=mpv; r pkg_in_repo mpv; RPM_NAME=""; r pkg_in_repo mpv; RPM_NAME=mpv-libs; r pkg_in_repo mpv
+        PKG_MGR=pacman
+        arch_repo_has() { [[ "$1" == mpv ]]; }
+        r pkg_in_repo mpv; r pkg_in_repo anki
+        PKG_MGR=zypper
+        zypper() { [[ "$*" == *"info mpv"* ]] && printf 'Name : mpv\nVersion : 0.42\n'; }
+        r pkg_in_repo mpv; r pkg_in_repo kodi
+        PKG_MGR=apk
+        apk() { [[ "$3" == mpv ]] && echo "mpv-0.41"; }
+        r pkg_in_repo mpv; r pkg_in_repo calibre
+    )
+    assert_eq "YnYnnYnYnYn" "$out" "pkg_in_repo asks each package manager and needs an exact name match"
+}
+
+# native_or_flatpak_install: repository first, Flathub only when the repository has no such package.
+_nof_run() {   # $1 family, $2 in-repo (y/n)
+    (
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        DISTRO_FAMILY="$1"; DISTRO_NAME="Test"; _log=$(mktemp); _inrepo="$2"
+        pkg_refresh() { :; }; info() { :; }
+        pkg_in_repo() { [[ "$_inrepo" == y ]]; }
+        pkg_install() { echo "pkg_install $*" >> "$_log"; }
+        flatpak_install_flathub() { echo "flatpak $*" >> "$_log"; }
+        enable_crb() { echo "crb" >> "$_log"; }
+        rpm() { return 1; }
+        native_or_flatpak_install org.example.App app; echo "rc=$?" >> "$_log"
+        tr '\n' ' ' < "$_log"; rm -f "$_log"
+    )
+}
+test_native_or_flatpak_install_order() {
+    assert_eq "pkg_install app rc=0 " "$(_nof_run debian y)" "native_or_flatpak_install uses the distro package when the repository has it"
+    assert_eq "flatpak org.example.App rc=0 " "$(_nof_run debian n)" "native_or_flatpak_install uses Flathub when the repository has no such package"
+    assert_eq "pkg_install epel-release crb pkg_install app rc=0 " "$(_nof_run rhel y)" "native_or_flatpak_install enables EPEL and CRB first on RHEL clones"
+}
+
+# Uninstall and update follow whichever route installed the app.
+test_native_or_flatpak_uninstall_update_route() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        _log=$(mktemp)
+        flatpak_is_installed() { [[ "$FP" == y ]]; }
+        flatpak() { echo "flatpak $*" >> "$_log"; }
+        pkg_remove() { echo "pkg_remove $*" >> "$_log"; }
+        pkg_upgrade() { echo "pkg_upgrade $*" >> "$_log"; }
+        FP=y; native_or_flatpak_uninstall org.example.App app; native_or_flatpak_update org.example.App app
+        FP=n; native_or_flatpak_uninstall org.example.App app; native_or_flatpak_update org.example.App app
+        tr '\n' '|' < "$_log"; rm -f "$_log"
+    )
+    assert_eq "flatpak uninstall -y --user org.example.App|flatpak update -y --user org.example.App|pkg_remove app|pkg_upgrade app|" "$out" \
+        "uninstall and update use Flatpak for a Flatpak install and the package manager otherwise"
+}
+
+# VeraCrypt: which release file fits which system. Names are upstream's fixed pattern.
+_VC_FIXTURE='{"assets":[
+ {"name": "veracrypt-1.26.31-Debian-12-amd64.deb"},{"name": "veracrypt-1.26.31-Debian-13-amd64.deb"},{"name": "veracrypt-1.26.31-Debian-13-arm64.deb"},
+ {"name": "veracrypt-console-1.26.31-Debian-13-amd64.deb"},{"name": "veracrypt-1.26.31-Ubuntu-26.04-amd64.deb"},
+ {"name": "veracrypt-1.26.31-Fedora-43-x86_64.rpm"},{"name": "veracrypt-1.26.31-Fedora-44-x86_64.rpm"},
+ {"name": "veracrypt-1.26.31-CentOS-8-x86_64.rpm"},{"name": "veracrypt-1.26.31-openSUSE-15-x86_64.rpm"},
+ {"name": "veracrypt-1.26.31-Debian-13-amd64.deb.sig"}]}'
+_vc_pick() {   # $1 family, $2 id, $3 version id, $4 dpkg arch
+    (
+        source "${SCRIPT_DIR}/lib/installers/veracrypt.sh"
+        DISTRO_FAMILY="$1"; DISTRO_ID="$2"; DISTRO_VERSION_ID="$3"; _arch="${4:-amd64}"
+        dpkg() { echo "$_arch"; }
+        _VC_JSON="$_VC_FIXTURE"
+        _veracrypt_package_name 1.26.31
+    )
+}
+test_veracrypt_picks_release_file() {
+    assert_eq "veracrypt-1.26.31-Debian-13-amd64.deb" "$(_vc_pick debian debian 13.7)" "VeraCrypt: Debian 13 gets the Debian-13 .deb, not the console one"
+    assert_eq "veracrypt-1.26.31-Debian-13-arm64.deb" "$(_vc_pick debian debian 13.7 arm64)" "VeraCrypt: Debian arm64 gets the arm64 .deb"
+    assert_eq "veracrypt-1.26.31-Ubuntu-26.04-amd64.deb" "$(_vc_pick debian ubuntu 26.04.2)" "VeraCrypt: Ubuntu 26.04.2 gets the Ubuntu-26.04 .deb"
+    assert_eq "veracrypt-1.26.31-Ubuntu-26.04-amd64.deb" "$(_vc_pick debian kubuntu 26.04.0)" "VeraCrypt: Kubuntu counts as Ubuntu"
+    assert_eq "" "$(_vc_pick debian linuxmint 22)" "VeraCrypt: a Debian derivative with no matching build gets nothing"
+    assert_eq "" "$(_vc_pick debian ubuntu 25.10)" "VeraCrypt: an Ubuntu release upstream does not build for gets nothing"
+    assert_eq "veracrypt-1.26.31-Fedora-44-x86_64.rpm" "$(_vc_pick fedora fedora 44)" "VeraCrypt: Fedora 44 gets its own .rpm"
+    assert_eq "veracrypt-1.26.31-Fedora-44-x86_64.rpm" "$(_vc_pick fedora fedora 45)" "VeraCrypt: Fedora 45 (no build yet) gets the newest Fedora .rpm"
+    assert_eq "veracrypt-1.26.31-CentOS-8-x86_64.rpm" "$(_vc_pick rhel rocky 9.8)" "VeraCrypt: RHEL clones get the CentOS 8 .rpm"
+    assert_eq "veracrypt-1.26.31-openSUSE-15-x86_64.rpm" "$(_vc_pick suse opensuse-tumbleweed 20261101)" "VeraCrypt: openSUSE gets the openSUSE 15 .rpm"
+}
+
+# Signature check: only a VALIDSIG whose primary key is the pinned VeraCrypt fingerprint passes.
+_vc_sig_run() {   # $1 gpg VALIDSIG status line (empty = bad signature), $2 fingerprints gpg reports for the key file
+    (
+        source "${SCRIPT_DIR}/lib/installers/veracrypt.sh"
+        DISTRO_FAMILY=debian; error() { :; }
+        d=$(mktemp -d); echo data > "$d/pkg"
+        curl() { while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && : > "$2"; shift; done; return 0; }
+        download_file() { : > "$2"; }
+        _st="$1"; _fp="$2"
+        gpg() {
+            case "$*" in
+                *--show-keys*) printf 'fpr:::::::::%s:\n' "$_fp" ;;
+                *--verify*)    printf '%s\n' "$_st" ;;
+            esac
+        }
+        _veracrypt_verify_signature "$d/pkg" "https://x/pkg.sig" && echo pass || echo fail
+        rm -rf "$d"
+    )
+}
+test_veracrypt_signature_check() {
+    local good="5069A233D55A0EEB174A5FC3821ACD02680D16DE" sub="BB335DCA0D75325C6126BAB6200B5A9D26878A32"
+    assert_eq "pass" "$(_vc_sig_run "[GNUPG:] VALIDSIG ${sub} 2026-01-01 1 0 4 0 1 10 00 ${good}" "$good")" "VeraCrypt: a valid signature from a subkey of the pinned key passes"
+    assert_eq "fail" "$(_vc_sig_run "[GNUPG:] VALIDSIG ${sub} 2026-01-01 1 0 4 0 1 10 00 0000000000000000000000000000000000000000" "$good")" "VeraCrypt: a valid signature from another key fails"
+    assert_eq "fail" "$(_vc_sig_run "[GNUPG:] BADSIG 821ACD02680D16DE VeraCrypt Team" "$good")" "VeraCrypt: a bad signature fails"
+    assert_eq "fail" "$(_vc_sig_run "[GNUPG:] VALIDSIG ${sub} 2026-01-01 1 0 4 0 1 10 00 ${good}" "AAAA")" "VeraCrypt: a downloaded key with another fingerprint fails"
+}
+
+# The download URL must be the file itself, never its .sig next to it.
+test_veracrypt_asset_url_exact() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/veracrypt.sh"
+        _VC_JSON='"browser_download_url": "https://x/veracrypt-1.26.31-Debian-13-amd64.deb.sig"
+"browser_download_url": "https://x/veracrypt-1.26.31-Debian-13-amd64.deb"'
+        _veracrypt_asset_url veracrypt-1.26.31-Debian-13-amd64.deb
+    )
+    assert_eq "https://x/veracrypt-1.26.31-Debian-13-amd64.deb" "$out" "VeraCrypt: the download URL is the package, not its signature file"
+}
+
+# 1Password: the vendor repository is added with the key fingerprint pinned.
+test_onepassword_repo_setup() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/onepassword.sh"
+        _log=$(mktemp); info() { :; }; ensure_tools() { :; }
+        DISTRO_FAMILY=debian
+        dpkg() { echo amd64; }
+        _add_apt_repo() { printf 'key=%s ring=%s line=%s list=%s fpr=%s\n' "$1" "$2" "$3" "$4" "$5" >> "$_log"; }
+        pkg_install() { echo "pkg_install $*" >> "$_log"; }
+        install_onepassword
+        cat "$_log"; rm -f "$_log"
+    )
+    assert_contains "$out" "key=https://downloads.1password.com/linux/keys/1password.asc" "1Password: apt repo uses the vendor key URL"
+    assert_contains "$out" "line=deb \[arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg\] https://downloads.1password.com/linux/debian/amd64 stable main" "1Password: apt source line pins the keyring and architecture"
+    assert_contains "$out" "fpr=3FEF9748469ADBE15DA7CA80AC2D62742012EA22" "1Password: the key fingerprint is checked"
+    assert_contains "$out" "pkg_install 1password" "1password package installed after the repo is added"
+}
+
+test_productivity_apps_registered
+test_productivity_subcategories
+test_onepassword_marked_aur_only_on_arch
+test_productivity_apps_alpine_rows
+test_pkg_in_repo_per_manager
+test_native_or_flatpak_install_order
+test_native_or_flatpak_uninstall_update_route
+test_veracrypt_picks_release_file
+test_veracrypt_asset_url_exact
+test_veracrypt_signature_check
+test_onepassword_repo_setup
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== System Tools: monitors, power, disk, hardware info, terminals, printing (#91) ==="
+
+_SYSTOOLS_APPS=(
+    "Alacritty|alacritty" "auto-cpufreq|auto_cpufreq" "BleachBit|bleachbit" "CPU-X|cpu_x"
+    "CUPS|cups" "earlyoom|earlyoom" "Ghostty|ghostty" "HardInfo|hardinfo" "htop|htop"
+    "inxi|inxi" "kitty|kitty" "ncdu|ncdu" "nvtop|nvtop" "smartmontools|smartmontools"
+    "TLP|tlp" "WezTerm|wezterm" "zram|zram"
+)
+
+test_system_tools_registered() {
+    local entry name slug fn gaps=0
+    for entry in "${_SYSTOOLS_APPS[@]}"; do
+        IFS='|' read -r name slug <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"System Tools\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "The 17 new System Tools are registered with category, description, completions and all five functions"
+}
+
+test_system_tools_subcategories() {
+    local entry name sub gaps=0
+    for entry in "Btop|Monitors" "htop|Monitors" "nvtop|Monitors" "GPU Task Manager|Monitors" "TMOG|Monitors" "Stacer|Monitors" \
+                 "TLP|Power & Memory" "auto-cpufreq|Power & Memory" "zram|Power & Memory" "earlyoom|Power & Memory" \
+                 "smartmontools|Disk & Cleanup" "ncdu|Disk & Cleanup" "Filelight|Disk & Cleanup" "BleachBit|Disk & Cleanup" \
+                 "Fastfetch|System Info" "inxi|System Info" "HardInfo|System Info" "CPU-X|System Info" \
+                 "bat|Shell Tools" "ripgrep|Shell Tools" "Pay Respects|Shell Tools" "Zsh + Oh My Zsh|Shell Tools" \
+                 "Alacritty|Terminal Emulators" "Ghostty|Terminal Emulators" "kitty|Terminal Emulators" "WezTerm|Terminal Emulators" \
+                 "Mainline|Kernel Managers" "linux-tkg|Kernel Managers"; do
+        IFS='|' read -r name sub <<<"$entry"
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["System Tools"]="Monitors|Power & Memory|Disk & Cleanup|System Info|Shell Tools|Terminal Emulators|Kernel Managers"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no folder order"; }
+    assert_eq "0" "$gaps" "System Tools are sorted into Monitors, Power & Memory, Disk & Cleanup, System Info, Shell Tools, Terminal Emulators and Kernel Managers"
+}
+
+# Held back on the families that cannot install them.
+test_system_tools_family_gates() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0 line
+    line=$(grep -n 'register_utility "Alacritty"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'DISTRO_FAMILY" != "rhel"' || { gaps=1; echo "  Alacritty not held back on RHEL clones"; }
+    sed -n "$((line-1))p" "$f" | grep -qF 'DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -lt 23' || { gaps=1; echo "  Alacritty not held back on Ubuntu 22.04"; }
+    line=$(grep -n 'register_utility "auto-cpufreq"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'opensuse-leap' || { gaps=1; echo "  auto-cpufreq not held back on openSUSE Leap"; }
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-ge 10' || { gaps=1; echo "  auto-cpufreq not held back on Rocky/Alma 8 and 9"; }
+    line=$(grep -n 'register_utility "Ghostty"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'debian" || "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse"' || { gaps=1; echo "  Ghostty not limited to Debian, Arch, openSUSE"; }
+    line=$(grep -n 'register_utility "WezTerm"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "alpine"' || { gaps=1; echo "  WezTerm not limited to Arch, openSUSE, Alpine"; }
+    for n in TLP inxi; do
+        line=$(grep -n "register_utility \"$n\"" "$f" | cut -d: -f1)
+        sed -n "$((line-2)),$((line-1))p" "$f" | grep -qF -- '-lt 10' || { gaps=1; echo "  $n not held back on Rocky/Alma 10"; }
+    done
+    assert_eq "0" "$gaps" "Alacritty, auto-cpufreq, Ghostty, WezTerm, TLP and inxi are registered only where they can install"
+}
+
+test_system_tools_auto_cpufreq_aur_and_upstream() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0
+    grep -qF '"auto-cpufreq=auto-cpufreq"' "$f" || { gaps=1; echo "  not marked AUR-only on Arch"; }
+    grep -qF '"auto-cpufreq=$_ACF_ROOT/current"' "$f" || { gaps=1; echo "  not marked as an upstream install"; }
+    grep -qF '"auto-cpufreq=_acf_latest_version"' "$f" || { gaps=1; echo "  no latest-version lookup"; }
+    assert_eq "0" "$gaps" "auto-cpufreq is AUR-only on Arch and refreshed by System Updates when installed from upstream"
+}
+
+# Alpine offers what apk carries, with the right OpenRC services, and hides the rest.
+test_system_tools_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in htop smartmontools TLP earlyoom ncdu inxi Alacritty kitty WezTerm CUPS; do
+            [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"
+        done
+        for n in nvtop auto-cpufreq zram BleachBit HardInfo CPU-X Ghostty; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        printf 'tlp=%s cups=%s oom=%s ' "$(_alpine_field TLP 4)" "$(_alpine_field CUPS 4)" "$(_alpine_field earlyoom 4)"
+        echo done
+    )
+    assert_eq "tlp=tlp cups=cupsd oom=earlyoom done" "$out" "Alpine offers its ten System Tools with their services and hides the rest"
+}
+
+# EPEL and CRB are enabled on RHEL clones only.
+test_ensure_epel() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        _log=$(mktemp)
+        rpm() { return 1; }; pkg_install() { echo "pkg_install $*" >> "$_log"; }; enable_crb() { echo crb >> "$_log"; }
+        DISTRO_FAMILY=debian; ensure_epel; DISTRO_FAMILY=fedora; ensure_epel
+        echo "--" >> "$_log"
+        DISTRO_FAMILY=rhel; ensure_epel
+        tr '\n' ' ' < "$_log"; rm -f "$_log"
+    )
+    assert_eq "-- pkg_install epel-release crb " "$out" "ensure_epel does nothing off RHEL clones and enables EPEL and CRB on them"
+}
+
+# zram: the right package per family, and a config is written only when none exists.
+_zram_run() {   # $1 family, $2 has-config (y/n)
+    (
+        source "${SCRIPT_DIR}/lib/installers/zram.sh"
+        DISTRO_FAMILY="$1"; _hc="$2"; _log=$(mktemp); _cap=$(mktemp)
+        info() { :; }; warn() { :; }
+        pkg_install() { echo "pkg_install $*" >> "$_log"; }
+        svc_enable_now() { echo "svc $*" >> "$_log"; }
+        _zram_has_config() { [[ "$_hc" == y ]]; }
+        sudo() { if [[ "$1" == tee ]]; then cat > "$_cap"; else echo "sudo $*" >> "$_log"; fi; }
+        install_zram
+        tr '\n' '|' < "$_log"; echo; cat "$_cap"; rm -f "$_log" "$_cap"
+    )
+}
+test_zram_per_family() {
+    local out
+    out=$(_zram_run debian n)
+    assert_true "zram: Debian and Ubuntu use zram-tools and start zramswap" \
+        grep -qF "pkg_install zram-tools|svc zramswap|" <<<"$out"
+    assert_false "zram: Debian does not write a zram-generator config" grep -q 'zram-size' <<<"$out"
+    out=$(_zram_run arch n)
+    assert_true "zram: Arch uses zram-generator" grep -qF "pkg_install zram-generator|" <<<"$out"
+    assert_true "zram: with no config the installer writes half of RAM, at most 4 GiB" \
+        grep -qF "zram-size = min(ram / 2, 4096)" <<<"$out"
+    assert_true "zram: the config it writes is marked so uninstall removes only that file" \
+        grep -qxF "# Written by linux_util" <<<"$out"
+    assert_true "zram: the device is started after the config is written" \
+        grep -qF "sudo systemctl start systemd-zram-setup@zram0.service" <<<"$out"
+    out=$(_zram_run fedora y)
+    assert_true "zram: Fedora installs zram-generator" grep -qF "pkg_install zram-generator|" <<<"$out"
+    assert_false "zram: an existing config is left alone" grep -q 'zram-size' <<<"$out"
+}
+
+# HardInfo prefers the maintained HardInfo2 and falls back to the old package.
+test_hardinfo_package_choice() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/hardinfo.sh"
+        pkg_in_repo() { [[ " $_have " == *" $1 "* ]]; }
+        _have="hardinfo2 hardinfo"; printf '%s,' "$(_hardinfo_package)"
+        _have="hardinfo";           printf '%s,' "$(_hardinfo_package)"
+        _have="";                   _hardinfo_package || printf 'none'
+    )
+    assert_eq "hardinfo2,hardinfo,none" "$out" "HardInfo: hardinfo2 first, hardinfo when that is all there is, nothing otherwise"
+}
+
+# Ghostty and WezTerm change nothing when the repository has no package.
+test_terminal_installers_refuse_without_package() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/ghostty.sh"
+        source "${SCRIPT_DIR}/lib/installers/wezterm.sh"
+        info() { :; }; error() { :; }; pkg_refresh() { :; }; pkg_in_repo() { return 1; }
+        pkg_install() { printf 'INSTALLED '; }
+        install_ghostty; printf 'g=%s ' "$?"
+        install_wezterm; printf 'w=%s' "$?"
+    )
+    assert_eq "g=1 w=1" "$out" "Ghostty and WezTerm stop without installing when the repository lacks them"
+}
+
+# TLP and auto-cpufreq must not be installed together.
+test_tlp_and_auto_cpufreq_exclude_each_other() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/tlp.sh"
+        source "${SCRIPT_DIR}/lib/installers/auto_cpufreq.sh"
+        info() { :; }; error() { :; }; warn() { :; }
+        pkg_install() { printf 'INSTALLED '; }
+        _have_cmd() { [[ "$1" == auto-cpufreq ]]; }
+        install_tlp; printf 't=%s ' "$?"
+        pkg_check_installed() { [[ "$1" == tlp ]]; }
+        _acf_latest_version() { printf 'DOWNLOADED '; }
+        install_auto_cpufreq; printf 'a=%s' "$?"
+    )
+    assert_eq "t=1 a=1" "$out" "TLP refuses beside auto-cpufreq and auto-cpufreq refuses beside TLP, before changing anything"
+}
+
+# auto-cpufreq: the latest version is read from the release JSON, and an update that finds the same version does nothing.
+test_auto_cpufreq_version_and_update() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/auto_cpufreq.sh"
+        curl() { printf '{"url":"x","tag_name": "v3.2.0","name":"v3.2.0"}'; }
+        printf '%s,' "$(_acf_latest_version)"
+        info() { :; }; error() { :; }
+        _ACF_ROOT=$(mktemp -d); mkdir -p "$_ACF_ROOT"; touch "$_ACF_ROOT/current"
+        get_version_auto_cpufreq() { echo 3.2.0; }
+        _acf_deploy() { printf 'REINSTALLED'; }
+        update_auto_cpufreq; printf 'rc=%s,' "$?"
+        get_version_auto_cpufreq() { echo 3.1.0; }
+        update_auto_cpufreq; printf 'rc=%s' "$?"
+        rm -rf "$_ACF_ROOT"
+    )
+    assert_eq "3.2.0,rc=0,REINSTALLEDrc=0" "$out" "auto-cpufreq: reads the release version, skips an update at the same version and reinstalls an older one"
+}
+
+# CUPS service name: cups on systemd, cupsd on Alpine's OpenRC.
+test_cups_service_name() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/cups.sh"
+        DISTRO_FAMILY=debian; printf '%s,' "$(_cups_service)"
+        DISTRO_FAMILY=alpine; printf '%s' "$(_cups_service)"
+    )
+    assert_eq "cups,cupsd" "$out" "CUPS: the service is cups everywhere and cupsd on Alpine"
+}
+
+test_system_tools_registered
+test_system_tools_subcategories
+test_system_tools_family_gates
+test_system_tools_auto_cpufreq_aur_and_upstream
+test_system_tools_alpine_rows
+test_ensure_epel
+test_zram_per_family
+test_hardinfo_package_choice
+test_terminal_installers_refuse_without_package
+test_tlp_and_auto_cpufreq_exclude_each_other
+test_auto_cpufreq_version_and_update
+test_cups_service_name
+
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== Development apps and shell tools (#91) ==="
+
+_DEV_APPS=(
+    "Emacs|emacs|Development" "eza|eza|System Tools" "fzf|fzf|System Tools" "Helix|helix|Development"
+    "Helm|helm|Development" "Java JDK|java_jdk|Development" "k3s|k3s|Development"
+    "lazygit|lazygit|Development" "minikube|minikube|Development" "nmap|nmap|Development"
+    "Ollama|ollama|Development" "PHP|php|Development" "Podman Desktop|podman_desktop|Development"
+    "Python|python|Development" "Ruby|ruby|Development" "starship|starship|System Tools"
+    "Sublime Text|sublime_text|Development" "tldr|tldr|System Tools" "Vim|vim|Development"
+    "VirtualBox|virtualbox|Development" "Wireshark|wireshark|Development" "Zed|zed|Development"
+    "zoxide|zoxide|System Tools"
+)
+
+test_dev_apps_registered() {
+    local entry name slug cat fn gaps=0
+    for entry in "${_DEV_APPS[@]}"; do
+        IFS='|' read -r name slug cat <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"${cat}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "The 23 new Development apps and shell tools are registered with category, description, completions and all five functions"
+}
+
+test_dev_subcategories() {
+    local entry name sub gaps=0
+    for entry in "Vim|IDEs & Editors" "Emacs|IDEs & Editors" "Helix|IDEs & Editors" "Sublime Text|IDEs & Editors" "Zed|IDEs & Editors" "Neovim|IDEs & Editors" "Visual Studio Code|IDEs & Editors" \
+                 "Claude Code|AI Tools" "Claude Desktop|AI Tools" "Codex|AI Tools" "Hermes Agent|AI Tools" "LM Studio|AI Tools" "Ollama|AI Tools" \
+                 "Python|Languages & Runtimes" "Java JDK|Languages & Runtimes" "PHP|Languages & Runtimes" "Ruby|Languages & Runtimes" "Go SDK|Languages & Runtimes" "Node.js|Languages & Runtimes" "Rustup|Languages & Runtimes" "pyenv|Languages & Runtimes" "NVM|Languages & Runtimes" \
+                 "GitHub CLI|Git" "lazygit|Git" \
+                 "Docker|Containers & Kubernetes" "Podman|Containers & Kubernetes" "Podman Desktop|Containers & Kubernetes" "kubectl|Containers & Kubernetes" "k9s|Containers & Kubernetes" "Helm|Containers & Kubernetes" "minikube|Containers & Kubernetes" "k3s|Containers & Kubernetes" \
+                 "VirtualBox|Virtualization" "Virt-Manager|Virtualization" "Firecracker|Virtualization" \
+                 "Wireshark|Network & Security" "nmap|Network & Security" \
+                 "fzf|Shell Tools" "eza|Shell Tools" "zoxide|Shell Tools" "starship|Shell Tools" "tldr|Shell Tools" \
+                 "Distrobox|Distrobox"; do
+        IFS='|' read -r name sub <<<"$entry"
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["Development"]="IDEs & Editors|AI Tools|Languages & Runtimes|Git|Containers & Kubernetes|Virtualization|Network & Security|Distrobox"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no folder order"; }
+    assert_eq "0" "$gaps" "Development apps are sorted into IDEs & Editors, AI Tools, Languages & Runtimes, Git, Containers & Kubernetes, Virtualization and Network & Security"
+}
+
+test_dev_upstream_marks() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0 n
+    grep -qF '"Sublime Text=sublime-text-4"' "$f" || { gaps=1; echo "  Sublime Text not AUR-only on Arch"; }
+    for n in Helix Helm lazygit eza zoxide starship minikube k3s Ollama; do
+        grep -qE "\"${n}=[^\"]+\"" "$f" || { gaps=1; echo "  $n has no upstream marker"; }
+        grep -qE "\"${n}=_[a-z0-9]+_latest_version\"" "$f" || { gaps=1; echo "  $n has no latest-version lookup"; }
+    done
+    local line
+    line=$(grep -n 'register_utility "Sublime Text"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-lt 9' || { gaps=1; echo "  Sublime Text not held back on Rocky/Alma 9 and 10"; }
+    line=$(grep -n 'register_utility "nmap"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'opensuse-leap' || { gaps=1; echo "  nmap not held back on openSUSE Leap"; }
+    assert_eq "0" "$gaps" "Upstream-installed apps are marked so System Updates refreshes them; Sublime Text is AUR-only on Arch; Sublime Text and nmap are held back where they cannot install"
+}
+
+test_dev_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in Vim Emacs Helix fzf eza zoxide starship lazygit Helm k3s Python "Java JDK" PHP Ruby Wireshark nmap Ollama; do
+            [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"
+        done
+        for n in "Sublime Text" Zed tldr "Podman Desktop" minikube VirtualBox; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        printf 'k3s=%s ollama=%s ' "$(_alpine_field k3s 4)" "$(_alpine_field Ollama 4)"
+        echo done
+    )
+    assert_eq "k3s=k3s ollama=ollama done" "$out" "Alpine offers the apps its repositories carry, with their services, and hides the rest"
+}
+
+# --- Internet apps (#91, stage 4) ---
+echo ""
+echo "=== Internet apps and VPNs (#91) ==="
+
+_NET_APPS=(
+    "Mattermost|mattermost|Messaging" "Microsoft Teams|microsoft_teams|Messaging" "Mullvad VPN|mullvad_vpn|VPN"
+    "NordVPN|nordvpn|VPN" "OpenVPN|openvpn|VPN" "Opera|opera|Web Browsers" "WhatsApp|whatsapp|Messaging"
+)
+
+test_net_apps_registered() {
+    local entry name slug sub fn gaps=0
+    for entry in "${_NET_APPS[@]}"; do
+        IFS='|' read -r name slug sub <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"Internet\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+        grep -qF "| **${name}** |" "${SCRIPT_DIR}/docs/utilities.md" || { gaps=1; echo "  missing docs row: $name"; }
+    done
+    assert_eq "0" "$gaps" "The 7 new Internet apps are registered with category, folder, description, completions, docs row and all five functions"
+}
+
+test_net_apps_held_back() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0 line out
+    grep -qF '"NordVPN=nordvpn-bin"' "$f" || { gaps=1; echo "  NordVPN not AUR-only on Arch"; }
+    line=$(grep -n 'register_utility "NordVPN"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-ge 10' || { gaps=1; echo "  NordVPN not held back on Rocky/Alma 8 and 9"; }
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        [[ " $have " == *" OpenVPN "* ]] || printf 'missing:OpenVPN '
+        for n in Opera "Mullvad VPN" NordVPN WhatsApp "Microsoft Teams" Mattermost; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        echo done
+    )
+    assert_eq "0 done" "${gaps} ${out}" "NordVPN is AUR-only on Arch and held back on Rocky/Alma 8 and 9; Alpine offers OpenVPN only"
+}
+
+# A repository whose signing key does not match the pinned fingerprint must stop the install
+# before any package is touched; a failed package install must not be reported as installed.
+test_net_vendor_repo_installs_stop_on_failure() {
+    local out slug fn
+    out=$(
+        for slug in opera mullvad_vpn nordvpn; do
+            (
+                source "${SCRIPT_DIR}/lib/installers/${slug}.sh"
+                info() { printf 'INFO(%s) ' "$*"; }; error() { :; }; warn() { :; }; ensure_tools() { :; }
+                dpkg() { echo amd64; }
+                pkg_install() { printf 'PKG '; return "$_pkg_rc"; }
+                DISTRO_FAMILY=debian
+                _add_apt_repo() { return 1; }
+                _pkg_rc=0; "install_${slug}"; printf '%s:repo-fail=%s ' "$slug" "$?"
+                _add_apt_repo() { return 0; }
+                _pkg_rc=1; "install_${slug}"; printf '%s:pkg-fail=%s ' "$slug" "$?"
+            ) 2>/dev/null
+        done
+    )
+    assert_eq "INFO(Installing Opera...) opera:repo-fail=1 INFO(Installing Opera...) PKG opera:pkg-fail=1 INFO(Installing Mullvad VPN...) mullvad_vpn:repo-fail=1 INFO(Installing Mullvad VPN...) PKG mullvad_vpn:pkg-fail=1 INFO(Installing NordVPN...) nordvpn:repo-fail=1 INFO(Installing NordVPN...) PKG nordvpn:pkg-fail=1 " "$out" "Opera, Mullvad VPN and NordVPN stop without installing when the key or the package step fails"
+}
+
+test_nordvpn_adds_user_to_group() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/nordvpn.sh"
+        info() { :; }; warn() { :; }
+        systemctl() { :; }
+        # Only the group command is recorded: whether the service is also enabled depends on the machine having systemd.
+        sudo() { [[ "$1" == usermod ]] && printf 'sudo(%s) ' "$*"; return 0; }
+        getent() { return 0; }
+        SUDO_USER=""; USER=nick; _nordvpn_setup_access
+        USER=root; _nordvpn_setup_access
+        getent() { return 2; }; USER=nick; _nordvpn_setup_access
+        echo done
+    )
+    assert_eq "sudo(usermod -aG nordvpn nick) done" "$out" "NordVPN adds the installing user to the nordvpn group, but not root and not when the group is missing"
+}
+
+# Opera's package writes its own repository entry (opera-stable.sources), so uninstall removes that too.
+test_opera_uninstall_removes_repo_entries() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/opera.sh"
+        info() { :; }; flatpak_is_installed() { return 1; }
+        pkg_remove() { printf 'pkg_remove(%s) ' "$*"; }
+        sudo() { printf 'sudo(%s) ' "$*"; }
+        DISTRO_FAMILY=debian; uninstall_opera
+    )
+    assert_eq "pkg_remove(opera-stable) sudo(rm -f /etc/apt/sources.list.d/opera-stable.list /etc/apt/sources.list.d/opera-stable.sources /usr/share/keyrings/opera-archive-keyring.gpg) " "$out" "Opera uninstall removes its repository entries and key"
+}
+
+# --- Gaming apps (#91, stage 5) ---
+echo ""
+echo "=== Gaming apps (#91) ==="
+
+_GAME_APPS=(
+    "Dolphin Emulator|dolphin_emulator|Emulators" "Flatseal|flatseal|Gaming Utilities" "Gear Lever|gear_lever|Gaming Utilities"
+    "Moonlight|moonlight|Game Streaming" "PPSSPP|ppsspp|Emulators" "Prism Launcher|prism_launcher|Game Launchers"
+    "RetroArch|retroarch|Emulators" "Sunshine|sunshine|Game Streaming"
+)
+
+test_game_apps_registered() {
+    local entry name slug sub fn gaps=0
+    for entry in "${_GAME_APPS[@]}"; do
+        IFS='|' read -r name slug sub <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"Gaming\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+        grep -qF "| **${name}** |" "${SCRIPT_DIR}/docs/utilities.md" || { gaps=1; echo "  missing docs row: $name"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["Gaming"]="Game Launchers|Emulators|Game Streaming|Gaming Utilities"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no Gaming folder order"; }
+    assert_eq "0" "$gaps" "The 8 new Gaming apps are registered with category, folder, description, completions, docs row and all five functions"
+}
+
+test_game_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in "Prism Launcher" Moonlight RetroArch "Dolphin Emulator" PPSSPP; do
+            [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"
+        done
+        for n in Sunshine Flatseal "Gear Lever"; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        echo done
+    )
+    assert_eq "done" "$out" "Alpine offers Prism Launcher, Moonlight, RetroArch, Dolphin Emulator and PPSSPP, and hides Sunshine, Flatseal and Gear Lever"
+}
+
+# openSUSE calls the Moonlight package "moonlight"; every other family "moonlight-qt".
+test_moonlight_package_name() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/moonlight.sh"
+        info() { :; }
+        native_or_flatpak_install() { printf '%s:%s ' "$1" "$2"; }
+        DISTRO_FAMILY=suse; install_moonlight
+        DISTRO_FAMILY=fedora; install_moonlight
+    )
+    assert_eq "com.moonlight_stream.Moonlight:moonlight com.moonlight_stream.Moonlight:moonlight-qt " "$out" "Moonlight installs moonlight on openSUSE and moonlight-qt elsewhere"
+}
+
+# Sunshine's input setup needs a desktop session; without one the command is printed, not run.
+test_sunshine_setup_step() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/sunshine.sh"
+        info() { :; }; warn() { printf 'WARN(%s) ' "$*"; }
+        flatpak_install_flathub() { printf 'flathub(%s) ' "$1"; }
+        flatpak() { printf 'flatpak(%s) ' "$*"; }
+        pkexec() { :; }
+        DISPLAY=""; WAYLAND_DISPLAY=""; install_sunshine
+        DISPLAY=":0"; install_sunshine
+    )
+    assert_eq "flathub(dev.lizardbyte.app.Sunshine) WARN(Sunshine needs one more step, from a desktop session: flatpak run --command=additional-install.sh dev.lizardbyte.app.Sunshine) flathub(dev.lizardbyte.app.Sunshine) flatpak(run --command=additional-install.sh dev.lizardbyte.app.Sunshine) " "$out" "Sunshine runs its setup step in a desktop session and prints the command otherwise"
+}
+
+test_sunshine_uninstall_removes_rules() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/sunshine.sh"
+        info() { :; }
+        tmp=$(mktemp -d)
+        _SUNSHINE_UDEV="$tmp/60-sunshine.rules"; _SUNSHINE_MODULES="$tmp/60-sunshine.conf"; _SUNSHINE_SERVICE="$tmp/svc"
+        : >"$_SUNSHINE_UDEV"; : >"$_SUNSHINE_MODULES"; : >"$_SUNSHINE_SERVICE"
+        systemctl() { :; }; udevadm() { :; }; flatpak() { printf 'flatpak(%s) ' "$*"; }
+        sudo() { "$@"; }
+        uninstall_sunshine
+        ls "$tmp" | wc -l
+        rm -rf "$tmp"
+    )
+    assert_eq "flatpak(uninstall -y --user dev.lizardbyte.app.Sunshine) 0" "$out" "Sunshine uninstall removes the rules and service its setup step wrote, then the app"
+}
+
+# --- Backup tools (#92) ---
+echo ""
+echo "=== Backup tools (#92) ==="
+
+_BACKUP_APPS=(
+    "Back In Time|back_in_time|File Backup" "Clonezilla|clonezilla|" "Grsync|grsync|File Backup" "Kopia|kopia|Command Line"
+    "luckyBackup|luckybackup|File Backup" "Pika Backup|pika_backup|File Backup" "rclone|rclone|Command Line"
+    "restic|restic|Command Line" "rsnapshot|rsnapshot|Command Line"
+)
+
+test_backup_apps_registered() {
+    local entry name slug sub fn gaps=0
+    for entry in "${_BACKUP_APPS[@]}"; do
+        IFS='|' read -r name slug sub <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"Backup\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        if [[ -n "$sub" ]]; then
+            grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+        fi
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+        grep -qF "| **${name}** |" "${SCRIPT_DIR}/docs/utilities.md" || { gaps=1; echo "  missing docs row: $name"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["Backup"]="File Backup|Command Line|Timeshift|Snapper"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no Backup folder order"; }
+    assert_eq "0" "$gaps" "The 9 new Backup tools are registered with category, folder, description, completions, docs row and all five functions"
+}
+
+# Each tool is held back (or marked AUR-only) exactly where no package or safe download exists for it.
+test_backup_apps_held_back() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0 line out
+    grep -qF '"Back In Time=backintime"' "$f" && grep -qF '"luckyBackup=luckybackup"' "$f" || { gaps=1; echo "  Back In Time / luckyBackup not AUR-only on Arch"; }
+    grep -qF '"Kopia=/usr/local/bin/kopia"' "$f" && grep -qF '"Kopia=_kopia_latest_version"' "$f" || { gaps=1; echo "  Kopia has no upstream marker"; }
+    line=$(grep -n 'register_utility "restic"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-ge 9' || { gaps=1; echo "  restic/rclone not held back on Rocky/Alma 8"; }
+    line=$(grep -n 'register_utility "Back In Time"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-lt 10' || { gaps=1; echo "  Back In Time not held back on Rocky/Alma 10"; }
+    line=$(grep -n 'register_utility "luckyBackup"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF '!= "rhel"' || { gaps=1; echo "  luckyBackup not held back on RHEL clones"; }
+    line=$(grep -n 'register_utility "Clonezilla"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF '"debian"' || { gaps=1; echo "  Clonezilla not limited to Debian family and Arch"; }
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in restic rclone rsnapshot; do [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"; done
+        for n in Kopia Grsync "Pika Backup" "Back In Time" luckyBackup Clonezilla; do [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"; done
+        echo done
+    )
+    assert_eq "0 done" "${gaps} ${out}" "Backup tools are held back where they have no package, and Alpine offers restic, rclone and rsnapshot only"
+}
+
+# Kopia's release files say x64, not x86_64 or amd64.
+test_kopia_release_name() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        source "${SCRIPT_DIR}/lib/installers/kopia.sh"
+        error() { :; }
+        uname() { echo "$_m"; }
+        _m=x86_64;  printf '%s,' "$(_upstream_expand_regex "$_kopia_RE")"
+        _m=aarch64; printf '%s' "$(_upstream_expand_regex "$_kopia_RE")"
+        [[ "kopia-0.23.1-linux-x64.tar.gz" =~ ^(kopia-[0-9.]+-linux-x64\.tar\.gz)$ ]] && printf ',match'
+    )
+    assert_eq 'kopia-[0-9.]+-linux-x64\.tar\.gz,kopia-[0-9.]+-linux-arm64\.tar\.gz,match' "$out" "Kopia's release file pattern follows the CPU (x64, arm64)"
+}
+
+# Back In Time's command-line half comes with it and goes with it; a missing half must not fail the uninstall.
+test_back_in_time_uninstall_removes_dependency() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/back_in_time.sh"
+        info() { :; }
+        pkg_remove() { printf 'remove(%s) ' "$*"; }
+        pkg_check_installed() { [[ "$1" == backintime-common ]]; }
+        DISTRO_FAMILY=debian; uninstall_back_in_time; printf 'rc=%s' "$?"
+    )
+    assert_eq "remove(backintime-qt) remove(backintime-common) rc=0" "$out" "Back In Time uninstall removes the app and its command-line package and still succeeds"
+}
+
+# A minimal image has no find; the unpacked release binary is still found.
+test_github_binary_install_without_find() {
+    local out d
+    d=$(mktemp -d)
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        error() { :; }; info() { :; }
+        mktemp() { echo "$d/w"; }
+        mkdir -p "$d/w/pkg"; printf '#!/bin/sh\n' > "$d/w/pkg/tool"; (cd "$d/w" && tar -czf "$d/t.tar.gz" pkg)
+        rm -rf "$d/w"; mkdir "$d/w"
+        github_asset_download() { cp "$d/t.tar.gz" "$3/t.tar.gz"; echo "$3/t.tar.gz"; }
+        upstream_arch() { echo x86_64; }
+        find() { return 127; }
+        command() { [[ "$2" == find ]] && return 1; builtin command "$@"; }
+        sudo() { printf '%s' "$*"; }
+        github_binary_install o/r 'x' tool
+    )
+    rm -rf "$d"
+    assert_eq "install -Dm755 $d/w/pkg/tool /usr/local/bin/tool" "$out" "A release binary one folder deep is found without find"
+}
+
+# --- Verified GitHub downloads ---
+_GH_FIXTURE='{"tag_name": "v1.2.3","assets": [
+ {"name": "tool_1.2.3_linux_x86_64.tar.gz","uploader": {"login": "bot"},"size": 9,"digest": "sha256:'"$(printf 'a%.0s' {1..64})"'","browser_download_url": "https://x/tool_1.2.3_linux_x86_64.tar.gz"},
+ {"name": "tool_1.2.3_linux_arm64.tar.gz","uploader": {"login": "bot"},"size": 9,"browser_download_url": "https://x/tool_1.2.3_linux_arm64.tar.gz"},
+ {"name": "tool_1.2.3_darwin.tar.gz","uploader": {"login": "bot"},"digest": "sha256:'"$(printf 'b%.0s' {1..64})"'","browser_download_url": "https://x/tool_1.2.3_darwin.tar.gz"}]}'
+
+test_github_asset_info() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        curl() { printf '%s' "$_GH_FIXTURE"; }
+        github_asset_info o/r 'tool_[0-9.]+_linux_x86_64\.tar\.gz'
+        echo "tag=$(github_latest_tag o/r)"
+        github_asset_info o/r 'tool_[0-9.]+_linux_arm64\.tar\.gz' || echo "arm64-none"
+        github_asset_info o/r 'tool_[0-9.]+_darwin\.tar\.gz'
+    )
+    assert_contains "$out" "^tool_1.2.3_linux_x86_64.tar.gz https://x/tool_1.2.3_linux_x86_64.tar.gz a{64}$" "github_asset_info returns the file's own URL and digest"
+    assert_contains "$out" "^tag=v1.2.3$" "github_latest_tag reads the release tag"
+    assert_contains "$out" "^arm64-none$" "a file with no published digest is never returned, and no other file's digest is borrowed"
+    assert_contains "$out" "^tool_1.2.3_darwin.tar.gz https://x/tool_1.2.3_darwin.tar.gz b{64}$" "each file keeps its own digest"
+}
+
+test_github_asset_download_checks_digest() {
+    local out good bad
+    good=$(printf 'a%.0s' {1..64})
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        error() { printf 'ERR:%s ' "$*"; }; info() { :; }
+        verify_sha256() { [[ "$2" == "$_want" ]]; }
+        _gh_release_json() { return 0; }
+        github_asset_info() { echo "f.tar.gz https://x/f.tar.gz $good"; }
+        curl() { while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && echo data > "$2"; shift; done; }
+        d=$(mktemp -d)
+        _want="$good"; r=$(github_asset_download o/r 'f\\.tar\\.gz' "$d") && echo "ok:${r##*/}"
+        _want="$bad"; github_asset_download o/r 'f\\.tar\\.gz' "$d" >/dev/null || echo "mismatch-refused"
+        github_asset_info() { return 1; }
+        github_asset_download o/r 'f\\.tar\\.gz' "$d" >/dev/null || echo "no-digest-refused"
+        rm -rf "$d"
+    )
+    assert_contains "$out" "ok:f.tar.gz" "github_asset_download returns the file when the digest matches"
+    assert_contains "$out" "mismatch-refused" "github_asset_download refuses a file whose digest differs"
+    assert_contains "$out" "no-digest-refused" "github_asset_download refuses a release file with no published digest"
+}
+
+# A rate-limit answer from GitHub is not a release, and the message says so.
+test_github_rate_limit_message() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        error() { printf 'ERR:%s' "$*"; }
+        curl() { printf '{"message": "API rate limit exceeded for 1.2.3.4."}'; }
+        github_asset_download o/r 'f' "$(mktemp -d)" || printf ' rc=1'
+        github_latest_tag o/r || printf ' no-tag'
+    )
+    assert_contains "$out" "ERR:Could not read the latest o/r release from GitHub \(offline, or its rate limit is used up" "a GitHub rate-limit answer is reported as such, not as a missing file"
+    assert_contains "$out" "rc=1 no-tag$" "a rate-limit answer yields no release tag"
+}
+
+test_upstream_arch_and_regex() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        error() { :; }
+        uname() { echo "$_m"; }
+        _m=x86_64;  printf '%s,' "$(upstream_arch gnu)" "$(upstream_arch go)" "$(_upstream_expand_regex 'a_@GOX@_@GNU@_@GO@')"
+        _m=aarch64; printf '%s,' "$(upstream_arch gnu)" "$(upstream_arch go)" "$(_upstream_expand_regex 'a_@GOX@_@GNU@_@GO@')"
+        _m=riscv64; upstream_arch go || printf 'none'
+    )
+    assert_eq "x86_64,amd64,a_x86_64_x86_64_amd64,aarch64,arm64,a_arm64_aarch64_arm64,none" "$out" "upstream_arch maps the CPU to each upstream naming style and refuses unknown CPUs"
+}
+
+# --- Shell profile blocks ---
+test_shell_rc_blocks() {
+    local out d
+    d=$(mktemp -d)
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        info() { :; }
+        export HOME="$d"
+        printf 'export A=1\n' > "$d/.bashrc"
+        shell_init_setup tool 'eval "$(tool init bash)"' 'eval "$(tool init zsh)"'
+        shell_init_setup tool 'eval "$(tool init bash)"' 'eval "$(tool init zsh)"'
+        printf 'bash-blocks=%s zsh-file=%s ' "$(grep -c 'tool init bash' "$d/.bashrc")" "$([[ -f "$d/.zshrc" ]] && echo yes || echo no)"
+        printf 'export Z=1\n' > "$d/.zshrc"
+        shell_init_setup tool 'eval "$(tool init bash)"' 'eval "$(tool init zsh)"'
+        printf 'zsh-blocks=%s ' "$(grep -c 'tool init zsh' "$d/.zshrc")"
+        shell_init_remove tool
+        printf 'after-remove=%s,%s ' "$(grep -c 'tool init' "$d/.bashrc")" "$(grep -c 'tool init' "$d/.zshrc")"
+        printf 'kept=%s' "$(grep -c '^export' "$d/.bashrc")"
+    )
+    rm -rf "$d"
+    assert_eq "bash-blocks=1 zsh-file=no zsh-blocks=1 after-remove=0,0 kept=1" "$out" "shell blocks are added once, only to an existing .zshrc, and removed leaving the rest of the file"
+}
+
+# --- Package or upstream binary ---
+_nog_run() {   # $1 in-repo (y/n)
+    (
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        _log=$(mktemp); _inrepo="$1"
+        pkg_refresh() { :; }; ensure_epel() { :; }; info() { :; }
+        pkg_in_repo() { [[ "$_inrepo" == y ]]; }
+        pkg_install() { echo "pkg_install $*" >> "$_log"; }
+        github_binary_install() { echo "github $*" >> "$_log"; }
+        native_or_github_install tool o/r 're' tool
+        tr '\n' '|' < "$_log"; rm -f "$_log"
+    )
+}
+test_native_or_github_install_order() {
+    assert_eq "pkg_install tool|" "$(_nog_run y)" "native_or_github_install uses the distro package when the repository has it"
+    assert_eq "github o/r re tool|" "$(_nog_run n)" "native_or_github_install uses the verified release when the repository has no such package"
+}
+
+test_native_or_github_update_route() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        info() { :; }; error() { :; }
+        pkg_upgrade() { printf 'pkg_upgrade '; }
+        github_binary_install() { printf 'reinstall '; }
+        github_latest_tag() { echo v2.0.0; }
+        upstream_binary_present() { [[ "$UP" == y ]]; }
+        UP=n; native_or_github_update tool o/r re tool tool 1.0.0
+        UP=y; native_or_github_update tool o/r re tool tool 1.0.0
+        UP=y; native_or_github_update tool o/r re tool tool 2.0.0; printf 'rc=%s' "$?"
+    )
+    assert_eq "pkg_upgrade reinstall rc=0" "$out" "update follows the install route: the package manager, or the release only when it is newer"
+}
+
+# --- Choosing the package this system carries ---
+test_tldr_and_java_package_choice() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/tldr.sh"
+        source "${SCRIPT_DIR}/lib/installers/java_jdk.sh"
+        pkg_in_repo() { [[ " $_have " == *" $1 "* ]]; }
+        _have="tealdeer tldr"; printf '%s,' "$(_tldr_package)"
+        _have="tlrc";          printf '%s,' "$(_tldr_package)"
+        _have="tldr";          printf '%s,' "$(_tldr_package)"
+        _have="";              _tldr_package || printf 'none,'
+        DISTRO_FAMILY=rhel; _have="java-17-openjdk-devel java-21-openjdk-devel"; printf '%s,' "$(_java_package)"
+        _have="java-25-openjdk-devel java-21-openjdk-devel";                      printf '%s,' "$(_java_package)"
+        DISTRO_FAMILY=debian; _have="default-jdk";                                printf '%s,' "$(_java_package)"
+        DISTRO_FAMILY=arch;   _have="";                                           _java_package || printf 'none'
+    )
+    assert_eq "tealdeer,tlrc,tldr,none,java-21-openjdk-devel,java-25-openjdk-devel,default-jdk,none" "$out" "tldr and the JDK pick the newest client or build the repositories carry"
+}
+
+# --- Per-family package names ---
+test_runtime_package_names() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/php.sh"
+        source "${SCRIPT_DIR}/lib/installers/ruby.sh"
+        source "${SCRIPT_DIR}/lib/installers/python.sh"
+        source "${SCRIPT_DIR}/lib/installers/vim.sh"
+        source "${SCRIPT_DIR}/lib/installers/wireshark.sh"
+        for f in debian fedora rhel arch suse alpine; do
+            DISTRO_FAMILY=$f
+            printf '%s: %s | %s | %s | %s | %s\n' "$f" "$(_php_pkg)" "$(_ruby_pkgs)" "$(_python_pkgs)" "$(_vim_pkg)" "$(_ws_pkgs)"
+        done
+    )
+    assert_contains "$out" "^debian: php-cli \| ruby-full \| python3 python3-pip python3-venv python3-dev \| vim \| wireshark$" "Debian package names for PHP, Ruby, Python, Vim and Wireshark"
+    assert_contains "$out" "^rhel: php-cli \| ruby ruby-devel \| python3 python3-pip python3-devel \| vim-enhanced \| wireshark wireshark-cli$" "RHEL package names for PHP, Ruby, Python, Vim and Wireshark"
+    assert_contains "$out" "^arch: php \| ruby \| python python-pip \| vim \| wireshark-qt wireshark-cli$" "Arch package names for PHP, Ruby, Python, Vim and Wireshark"
+    assert_contains "$out" "^alpine: php84 \| ruby ruby-dev \| python3 py3-pip python3-dev \| vim \| wireshark$" "Alpine package names for PHP, Ruby, Python, Vim and Wireshark"
+}
+
+# Uninstalling Python keeps python3 itself.
+test_python_uninstall_keeps_interpreter() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/python.sh"
+        info() { :; }; pkg_remove() { echo "$*"; }
+        DISTRO_FAMILY=debian; uninstall_python
+        DISTRO_FAMILY=arch;   uninstall_python
+    )
+    assert_eq "python3-pip python3-venv python3-dev
+python-pip" "$out" "Python uninstall removes pip, venv and headers but never python3 itself"
+}
+
+# Helix and Helm choose the package when the repository has one.
+test_helix_helm_route() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/helix.sh"
+        source "${SCRIPT_DIR}/lib/installers/helm.sh"
+        info() { :; }; error() { :; }; pkg_refresh() { :; }; ensure_epel() { :; }
+        pkg_in_repo() { [[ "$_in" == y ]]; }
+        pkg_install() { printf 'pkg(%s) ' "$*"; }
+        _helix_install_release() { printf 'helix-release '; }
+        _helm_install_release() { printf 'helm-release '; }
+        _in=y; install_helix; install_helm
+        _in=n; install_helix; install_helm
+    )
+    assert_eq "pkg(helix) pkg(helm) helix-release helm-release " "$out" "Helix and Helm use the distro package when there is one and the verified release otherwise"
+}
+
+# Ollama: package route starts the service; release route needs systemd.
+test_ollama_routes() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/ollama.sh"
+        info() { :; }; error() { printf 'ERR '; }; warn() { :; }; pkg_refresh() { :; }
+        pkg_in_repo() { [[ "$_in" == y ]]; }
+        pkg_install() { printf 'pkg(%s) ' "$*"; }
+        svc_enable_now() { printf 'svc(%s) ' "$1"; }
+        has_systemd() { return 1; }
+        _in=y; install_ollama
+        _in=n; install_ollama; printf 'rc=%s' "$?"
+    )
+    assert_eq "pkg(ollama) svc(ollama) ERR rc=1" "$out" "Ollama: the package route starts the service; the release route stops without systemd"
+}
+
+# VirtualBox and Sublime Text refuse on releases their vendor does not cover, changing nothing.
+test_virtualbox_refuses_unsupported_release() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/virtualbox.sh"
+        info() { :; }; error() { printf 'ERR '; }; pkg_refresh() { :; }; ensure_tools() { :; }; ensure_epel() { :; }
+        pkg_in_repo() { return 1; }
+        _vb_url_exists() { return 1; }
+        pkg_install() { printf 'INSTALLED '; }
+        _add_apt_repo() { printf 'REPO '; }
+        DISTRO_FAMILY=fedora; DISTRO_NAME=Fedora; DISTRO_VERSION_ID=99; install_virtualbox; printf 'f=%s ' "$?"
+        DISTRO_FAMILY=debian; DISTRO_NAME=Debian; DISTRO_ID=debian; install_virtualbox; printf 'd=%s' "$?"
+    )
+    assert_eq "ERR f=1 ERR d=1" "$out" "VirtualBox stops without adding a repository or installing when Oracle has none for the release"
+}
+
+test_dev_apps_registered
+test_dev_subcategories
+test_dev_upstream_marks
+test_dev_alpine_rows
+test_net_apps_registered
+test_net_apps_held_back
+test_net_vendor_repo_installs_stop_on_failure
+test_nordvpn_adds_user_to_group
+test_opera_uninstall_removes_repo_entries
+test_game_apps_registered
+test_game_alpine_rows
+test_moonlight_package_name
+test_sunshine_setup_step
+test_sunshine_uninstall_removes_rules
+test_backup_apps_registered
+test_backup_apps_held_back
+test_kopia_release_name
+test_back_in_time_uninstall_removes_dependency
+test_github_binary_install_without_find
+test_github_asset_info
+test_github_asset_download_checks_digest
+test_upstream_arch_and_regex
+test_github_rate_limit_message
+test_shell_rc_blocks
+test_native_or_github_install_order
+test_native_or_github_update_route
+test_tldr_and_java_package_choice
+test_runtime_package_names
+test_python_uninstall_keeps_interpreter
+test_helix_helm_route
+test_ollama_routes
+test_virtualbox_refuses_unsupported_release
 
 echo ""
 echo "════════════════════════════════════════════════════════════════"

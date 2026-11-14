@@ -7,11 +7,11 @@
 [![Issues](https://img.shields.io/github/issues/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/issues)
 [![Stars](https://img.shields.io/github/stars/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/stargazers)
 [![Forks](https://img.shields.io/github/forks/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/forks)
-[![Unique cloners](https://img.shields.io/badge/unique%20cloners-30-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
+[![Unique cloners](https://img.shields.io/badge/unique%20cloners-54-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
-[![Tests](https://img.shields.io/badge/tests-502%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
-[![Distros tested](https://img.shields.io/badge/distros%20tested-6-informational)](#supported-distributions)
+[![Tests](https://img.shields.io/badge/tests-606%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Distros tested](https://img.shields.io/badge/distros%20tested-7-informational)](#supported-distributions)
 [![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
 An interactive multi-select TUI for installing, uninstalling, and updating system
@@ -125,19 +125,19 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Bootloaders** | GRUB, Limine, systemd-boot, switching between them, and five GRUB theme packs |
 | **Drivers** | NVIDIA, AMD and Intel GPU (with video acceleration), Intel and AMD microcode, LACT, OpenLogi, Thermalright TRCC, XEN guest tools |
 | **Desktop Environments** | KDE Plasma, GNOME, Xfce, Cinnamon, MATE, LXQt, Budgie, COSMIC, Deepin, Pantheon |
-| **Backup** | Timeshift and Snapper (create/restore/delete), Déjà Dup, Kup, Vorta, Duplicati |
+| **Backup** | Folders for File Backup (Déjà Dup, Kup, Vorta, Duplicati, Back In Time, Pika Backup, luckyBackup, Grsync), Command Line (restic, rclone, Kopia, rsnapshot), Timeshift and Snapper (create/restore/delete), plus Clonezilla |
 | **Disk Utilities** | GParted, Ventoy, KDiskMark, and a Btrfs toolset (Assistant, btrfsmaintenance, btrbk, duperemove) |
-| **Development** | Docker, Podman, Distrobox, Toolbx, VS Code, VSCodium, Cursor, Claude Code, Claude Desktop, Codex, Hermes Agent, LM Studio, Node/NVM, Go, Rust, pyenv, Terraform, OpenTofu, Ansible, kubectl, k9s, DBeaver, Virt-Manager, Firecracker |
-| **Gaming** | Steam, Lutris, Heroic, Bottles, Xodus Nexus, Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat |
-| **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, LibreWolf, Zen, Thorium, Tor), email clients, messaging, and VPNs (ProtonVPN, PIA, Tailscale, WireGuard) |
+| **Development** | Folders for IDEs & Editors (VS Code, VSCodium, Cursor, JetBrains Toolbox, Neovim, Vim, Emacs, Helix, Sublime Text, Zed), AI Tools (Claude Code, Claude Desktop, Codex, Hermes Agent, LM Studio, Ollama), Languages & Runtimes (Python, Java JDK, PHP, Ruby, Go, Node/NVM, Rust, pyenv), Git (GitHub CLI, lazygit), Containers & Kubernetes (Docker, Podman, Podman Desktop, kubectl, k9s, Helm, minikube, k3s), Virtualization (VirtualBox, Virt-Manager, Firecracker), Network & Security (Wireshark, nmap) and Distrobox, plus Terraform, OpenTofu, Ansible, DBeaver, Postman, PowerShell and Toolbx |
+| **Gaming** | Folders for Game Launchers (Steam, Lutris, Heroic, Bottles, Prism Launcher, Xodus Nexus), Emulators (RetroArch, Dolphin Emulator, PPSSPP), Game Streaming (Sunshine, Moonlight) and Gaming Utilities (Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat, Flatseal, Gear Lever) |
+| **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, Opera, LibreWolf, Zen, Thorium, Tor), email clients, messaging (Signal, Discord, Slack, Telegram, Zoom, WhatsApp, Microsoft Teams, Mattermost), and VPNs (ProtonVPN, Mullvad, NordVPN, OpenVPN, PIA, Tailscale, WireGuard) |
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
-| **Productivity** | ArtCraft Launcher and the Craft App Suite, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Multimedia Codecs, Obsidian, Joplin, Logseq, Bitwarden, Nextcloud, NVIDIA PAIR, WinApps |
+| **Productivity** | ArtCraft Launcher, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Multimedia Codecs, Obsidian, Joplin, Logseq, Bitwarden, 1Password, KeePassXC, Cryptomator, VeraCrypt, Nextcloud, NVIDIA PAIR, WinApps, and more: media (mpv, Kodi, Spotify), creative (Blender, Darktable, RawTherapee, Shotcut, Scribus) and documents (Calibre, Anki, Okular, Xournal++) |
 | **Remote Admin** | Cockpit, Enable RDP (xrdp or krdp), OpenSSH, Remmina, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
 | **File Managers** | Nautilus, Dolphin, Thunar, Nemo, Caja, PCManFM-Qt, Krusader, and the terminal managers (Midnight Commander, Ranger, nnn, Superfile) |
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
 | **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |
 | **Window Managers** | Hyprland, Sway, i3, bspwm, awesome, dwm, Openbox |
-| **System Tools** | Btop, GPU Task Manager, Fastfetch, bat, ripgrep, ClamAV, Stacer, Filelight, Input Leap, OCCT, Pay Respects, Zsh + Oh My Zsh, and a Kernel Managers folder |
+| **System Tools** | Folders for Monitors (Btop, htop, nvtop, GPU Task Manager, TMOG, Stacer), Power & Memory (TLP, auto-cpufreq, zram, earlyoom), Disk & Cleanup (smartmontools, ncdu, Filelight, BleachBit), System Info (Fastfetch, inxi, HardInfo, CPU-X), Shell Tools (bat, ripgrep, fzf, eza, zoxide, starship, tldr, Pay Respects, Zsh + Oh My Zsh), Terminal Emulators (Alacritty, kitty, Ghostty, WezTerm) and Kernel Managers, plus ClamAV, CUPS, Input Leap and OCCT |
 
 Every entry, with its per-utility description and any distro limits, is in
 [docs/utilities.md](docs/utilities.md). For what is installed on *this* machine,
@@ -194,13 +194,22 @@ Tab-completion for bash and zsh ships in `completions/` — setup is in
 | RHEL | RHEL, CentOS, Rocky Linux, AlmaLinux, Oracle Linux | `dnf` / `yum` |
 | Arch | Arch Linux, Manjaro, EndeavourOS, Garuda, Artix, CachyOS | `pacman` + AUR |
 | openSUSE | openSUSE Leap, Tumbleweed, SLES | `zypper` |
+| Alpine | Alpine Linux, postmarketOS | `apk` |
+
+On Alpine only the utilities Alpine's own repositories carry are listed; anything
+that needs glibc or a `.deb`/`.rpm` is not offered there. Alpine has no `sudo` by
+default: linux_util uses `sudo` or `doas` if installed and otherwise `su`, which
+asks for the root password for every root command (`su -c 'apk add doas'` once
+makes that a single prompt). On first run it offers to install the GNU versions
+of `grep`, `sed`, `gawk`, `coreutils` and `findutils` that BusyBox lacks.
 
 Unrecognised distributions are matched via `ID_LIKE` in `/etc/os-release`, then
 by auto-detecting the available package manager.
 
-CI checks distro detection on every release of Debian, Ubuntu, Fedora and Rocky
-Linux that is still supported, plus Arch Linux and openSUSE Tumbleweed (see the
-`distro-smoke` job in [ci.yml](.github/workflows/ci.yml)).
+CI checks distro detection on every release of Debian, Ubuntu, Fedora, Rocky
+Linux, openSUSE Leap and Alpine that is still supported, plus Arch Linux and
+openSUSE Tumbleweed (see the `distro-smoke` job in
+[ci.yml](.github/workflows/ci.yml)).
 
 ---
 

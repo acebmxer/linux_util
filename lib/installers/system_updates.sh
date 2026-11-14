@@ -233,6 +233,11 @@ get_version_system_updates() {
         zypper)
             total=$(zypper --non-interactive list-updates 2>/dev/null | grep -cE '^\s*v\s*\|' || true)
             ;;
+        apk)
+            # "-l '<'" lists installed packages that have a newer version in the
+            # already-downloaded index; no network call, no root.
+            total=$(apk version -l '<' 2>/dev/null | grep -c '<' || true)
+            ;;
     esac
 
     # Count pending device firmware updates (fwupd/LVFS). Reads whatever

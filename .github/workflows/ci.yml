@@ -45,54 +45,68 @@ jobs:
         # Every release still supported by its distro (https://endoflife.date),
         # so keep this list current: add a release when it ships, drop it at
         # end of life. Arch and Tumbleweed are rolling, so one image each.
+        # Each entry carries its EOL date; next due: Fedora 43 on 2026-12-01.
+        # Also add Debian 14 / Fedora 46 / Ubuntu 27.04 / Alpine 3.25 when they ship.
         include:
           - image: debian:13
+            # EOL 2030-06-30 (endoflife.date): drop this entry on or just after that day
             name: Debian 13
             family: debian
             pkg_mgr: apt
           - image: debian:12
+            # EOL 2028-06-30 (endoflife.date): drop this entry on or just after that day
             name: Debian 12
             family: debian
             pkg_mgr: apt
           - image: ubuntu:26.10
+            # EOL 2027-07-01 (endoflife.date): drop this entry on or just after that day
             name: Ubuntu 26.10
             family: debian
             pkg_mgr: apt
           - image: ubuntu:26.04
+            # EOL 2031-05-29 (endoflife.date): drop this entry on or just after that day
             name: Ubuntu 26.04
             family: debian
             pkg_mgr: apt
           - image: ubuntu:24.04
+            # EOL 2029-05-31 (endoflife.date): drop this entry on or just after that day
             name: Ubuntu 24.04
             family: debian
             pkg_mgr: apt
           - image: ubuntu:22.04
+            # EOL 2027-06-01 (endoflife.date): drop this entry on or just after that day
             name: Ubuntu 22.04
             family: debian
             pkg_mgr: apt
           - image: fedora:45
+            # EOL 2027-12-08 (endoflife.date): drop this entry on or just after that day
             name: Fedora 45
             family: fedora
             pkg_mgr: dnf
           - image: fedora:44
+            # EOL 2027-06-02 (endoflife.date): drop this entry on or just after that day
             name: Fedora 44
             family: fedora
             pkg_mgr: dnf
           - image: fedora:43
+            # EOL 2026-12-01 (endoflife.date): drop this entry on or just after that day
             name: Fedora 43
             family: fedora
             pkg_mgr: dnf
           # Rocky 10 is published only under rockylinux/rockylinux, not the
           # Docker Official Images name used for Rocky 8 and 9.
           - image: rockylinux/rockylinux:10
+            # EOL 2035-05-31 (endoflife.date): drop this entry on or just after that day
             name: Rocky Linux 10
             family: rhel
             pkg_mgr: dnf
           - image: rockylinux:9
+            # EOL 2032-05-31 (endoflife.date): drop this entry on or just after that day
             name: Rocky Linux 9
             family: rhel
             pkg_mgr: dnf
           - image: rockylinux:8
+            # EOL 2029-05-31 (endoflife.date): drop this entry on or just after that day
             name: Rocky Linux 8
             family: rhel
             pkg_mgr: dnf
@@ -104,6 +118,26 @@ jobs:
             name: openSUSE Tumbleweed
             family: suse
             pkg_mgr: zypper
+          - image: opensuse/leap:16.0
+            # EOL 2027-10-31 (endoflife.date): drop this entry on or just after that day
+            name: openSUSE Leap 16.0
+            family: suse
+            pkg_mgr: zypper
+          - image: alpine:3.24
+            # EOL 2028-06-01 (endoflife.date): drop this entry on or just after that day
+            name: Alpine 3.24
+            family: alpine
+            pkg_mgr: apk
+          - image: alpine:3.23
+            # EOL 2027-11-01 (endoflife.date): drop this entry on or just after that day
+            name: Alpine 3.23
+            family: alpine
+            pkg_mgr: apk
+          - image: alpine:3.22
+            # EOL 2027-05-01 (endoflife.date): drop this entry on or just after that day
+            name: Alpine 3.22
+            family: alpine
+            pkg_mgr: apk
     container:
       image: ${{ matrix.image }}
     steps:
@@ -119,8 +153,11 @@ jobs:
             suse)
               zypper --non-interactive install -y gawk
               ;;
+            alpine)
+              apk add bash gawk grep sed coreutils findutils util-linux curl wget tar
+              ;;
           esac
-          useradd -m testuser
+          if [ "${{ matrix.family }}" = alpine ]; then adduser -D testuser; else useradd -m testuser; fi
           chown -R testuser:testuser "$GITHUB_WORKSPACE"
 
       - name: Run detect_distro as a non-root user

@@ -122,6 +122,7 @@ _mld_ensure_fs_tools() {
                     rhel)    pkg_install ntfs-3g ;;
                     arch)    pkg_install ntfs-3g ;;
                     suse)    pkg_install ntfs-3g ;;
+                    alpine)  pkg_install ntfs-3g ;;
                     *)       warn "Cannot auto-install ntfs-3g on this distro. Install it manually."; return 1 ;;
                 esac
             fi
@@ -136,6 +137,7 @@ _mld_ensure_fs_tools() {
                     rhel)    pkg_install exfatprogs 2>/dev/null || true ;;
                     arch)    pkg_install exfatprogs ;;
                     suse)    pkg_install exfatprogs 2>/dev/null || true ;;
+                    alpine)  pkg_install exfatprogs ;;
                     *)       warn "Cannot auto-install exfat support on this distro. Install it manually."; return 1 ;;
                 esac
             fi

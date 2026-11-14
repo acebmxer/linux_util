@@ -10,9 +10,8 @@ uninstall_xen_guest_utilities() {
     info "Uninstalling XEN Guest Utilities..."
 
     # Stop and disable known XEN guest services
-    for svc in xe-linux-distribution xe-daemon; do
-        sudo systemctl stop "$svc" 2>/dev/null || true
-        sudo systemctl disable "$svc" 2>/dev/null || true
+    for svc in xe-linux-distribution xe-daemon xe-guest-utilities; do
+        svc_disable_now "$svc" 2>/dev/null || true
     done
 
     # Remove all known package variants
@@ -255,15 +254,14 @@ _install_from_iso_tgz() {
 # Verify that XEN guest services are running after installation.
 # The ISO installs xe-linux-distribution; the apt package installs xe-daemon.
 _verify_xen_services() {
-    local services=("xe-linux-distribution" "xe-daemon")
+    local services=("xe-linux-distribution" "xe-daemon" "xe-guest-utilities")
     local max_attempts=6
     local wait_seconds=5
 
     # Find which service exists on this system
     local svc=""
     for s in "${services[@]}"; do
-        if systemctl list-unit-files "${s}.service" &>/dev/null && \
-           systemctl list-unit-files "${s}.service" 2>/dev/null | grep -q "${s}"; then
+        if svc_exists "$s"; then
             svc="$s"
             break
         fi
@@ -277,7 +275,7 @@ _verify_xen_services() {
     info "Verifying ${svc} service started..."
     local attempt=0
     while (( attempt < max_attempts )); do
-        if systemctl is-active --quiet "${svc}"; then
+        if svc_is_active "$svc"; then
             info "${svc} service is running."
             return 0
         fi
@@ -289,7 +287,7 @@ _verify_xen_services() {
 
     warn "${svc} service failed to start within $(( max_attempts * wait_seconds )) seconds."
     warn "Service status:"
-    systemctl status "${svc}" --no-pager 2>&1 | head -20
+    svc_status "$svc"
     return 1
 }
 
@@ -356,7 +354,11 @@ _install_from_repository() {
 
         alpine)
             info "Installing xe-guest-utilities via apk..."
-            if run_as_root apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/community xe-guest-utilities; then
+            # The release's own repositories carry it; edge is only a fallback
+            # for a release that does not.
+            if run_as_root apk add xe-guest-utilities xe-guest-utilities-openrc \
+               || run_as_root apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/community xe-guest-utilities xe-guest-utilities-openrc; then
+                svc_enable_now xe-guest-utilities || warn "Failed to enable xe-guest-utilities"
                 if _verify_xen_services; then
                     info "XEN Guest Utilities installed and services are running."
                 else
