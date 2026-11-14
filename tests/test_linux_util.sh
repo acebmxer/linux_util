@@ -5610,6 +5610,230 @@ test_veracrypt_asset_url_exact
 test_veracrypt_signature_check
 test_onepassword_repo_setup
 
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== System Tools: monitors, power, disk, hardware info, terminals, printing (#91) ==="
+
+_SYSTOOLS_APPS=(
+    "Alacritty|alacritty" "auto-cpufreq|auto_cpufreq" "BleachBit|bleachbit" "CPU-X|cpu_x"
+    "CUPS|cups" "earlyoom|earlyoom" "Ghostty|ghostty" "HardInfo|hardinfo" "htop|htop"
+    "inxi|inxi" "kitty|kitty" "ncdu|ncdu" "nvtop|nvtop" "smartmontools|smartmontools"
+    "TLP|tlp" "WezTerm|wezterm" "zram|zram"
+)
+
+test_system_tools_registered() {
+    local entry name slug fn gaps=0
+    for entry in "${_SYSTOOLS_APPS[@]}"; do
+        IFS='|' read -r name slug <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"System Tools\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "The 17 new System Tools are registered with category, description, completions and all five functions"
+}
+
+test_system_tools_subcategories() {
+    local entry name sub gaps=0
+    for entry in "Btop|Monitors" "htop|Monitors" "nvtop|Monitors" "GPU Task Manager|Monitors" "TMOG|Monitors" "Stacer|Monitors" \
+                 "TLP|Power & Memory" "auto-cpufreq|Power & Memory" "zram|Power & Memory" "earlyoom|Power & Memory" \
+                 "smartmontools|Disk & Cleanup" "ncdu|Disk & Cleanup" "Filelight|Disk & Cleanup" "BleachBit|Disk & Cleanup" \
+                 "Fastfetch|System Info" "inxi|System Info" "HardInfo|System Info" "CPU-X|System Info" \
+                 "bat|Shell Tools" "ripgrep|Shell Tools" "Pay Respects|Shell Tools" "Zsh + Oh My Zsh|Shell Tools" \
+                 "Alacritty|Terminal Emulators" "Ghostty|Terminal Emulators" "kitty|Terminal Emulators" "WezTerm|Terminal Emulators" \
+                 "Mainline|Kernel Managers" "linux-tkg|Kernel Managers"; do
+        IFS='|' read -r name sub <<<"$entry"
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["System Tools"]="Monitors|Power & Memory|Disk & Cleanup|System Info|Shell Tools|Terminal Emulators|Kernel Managers"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no folder order"; }
+    assert_eq "0" "$gaps" "System Tools are sorted into Monitors, Power & Memory, Disk & Cleanup, System Info, Shell Tools, Terminal Emulators and Kernel Managers"
+}
+
+# Held back on the families that cannot install them.
+test_system_tools_family_gates() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0 line
+    line=$(grep -n 'register_utility "Alacritty"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'DISTRO_FAMILY" != "rhel"' || { gaps=1; echo "  Alacritty not held back on RHEL clones"; }
+    sed -n "$((line-1))p" "$f" | grep -qF 'DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -lt 23' || { gaps=1; echo "  Alacritty not held back on Ubuntu 22.04"; }
+    line=$(grep -n 'register_utility "auto-cpufreq"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'opensuse-leap' || { gaps=1; echo "  auto-cpufreq not held back on openSUSE Leap"; }
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-ge 10' || { gaps=1; echo "  auto-cpufreq not held back on Rocky/Alma 8 and 9"; }
+    line=$(grep -n 'register_utility "Ghostty"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'debian" || "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse"' || { gaps=1; echo "  Ghostty not limited to Debian, Arch, openSUSE"; }
+    line=$(grep -n 'register_utility "WezTerm"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF 'arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "alpine"' || { gaps=1; echo "  WezTerm not limited to Arch, openSUSE, Alpine"; }
+    for n in TLP inxi; do
+        line=$(grep -n "register_utility \"$n\"" "$f" | cut -d: -f1)
+        sed -n "$((line-2)),$((line-1))p" "$f" | grep -qF -- '-lt 10' || { gaps=1; echo "  $n not held back on Rocky/Alma 10"; }
+    done
+    assert_eq "0" "$gaps" "Alacritty, auto-cpufreq, Ghostty, WezTerm, TLP and inxi are registered only where they can install"
+}
+
+test_system_tools_auto_cpufreq_aur_and_upstream() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0
+    grep -qF '"auto-cpufreq=auto-cpufreq"' "$f" || { gaps=1; echo "  not marked AUR-only on Arch"; }
+    grep -qF '"auto-cpufreq=$_ACF_ROOT/current"' "$f" || { gaps=1; echo "  not marked as an upstream install"; }
+    grep -qF '"auto-cpufreq=_acf_latest_version"' "$f" || { gaps=1; echo "  no latest-version lookup"; }
+    assert_eq "0" "$gaps" "auto-cpufreq is AUR-only on Arch and refreshed by System Updates when installed from upstream"
+}
+
+# Alpine offers what apk carries, with the right OpenRC services, and hides the rest.
+test_system_tools_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in htop smartmontools TLP earlyoom ncdu inxi Alacritty kitty WezTerm CUPS; do
+            [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"
+        done
+        for n in nvtop auto-cpufreq zram BleachBit HardInfo CPU-X Ghostty; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        printf 'tlp=%s cups=%s oom=%s ' "$(_alpine_field TLP 4)" "$(_alpine_field CUPS 4)" "$(_alpine_field earlyoom 4)"
+        echo done
+    )
+    assert_eq "tlp=tlp cups=cupsd oom=earlyoom done" "$out" "Alpine offers its ten System Tools with their services and hides the rest"
+}
+
+# EPEL and CRB are enabled on RHEL clones only.
+test_ensure_epel() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        _log=$(mktemp)
+        rpm() { return 1; }; pkg_install() { echo "pkg_install $*" >> "$_log"; }; enable_crb() { echo crb >> "$_log"; }
+        DISTRO_FAMILY=debian; ensure_epel; DISTRO_FAMILY=fedora; ensure_epel
+        echo "--" >> "$_log"
+        DISTRO_FAMILY=rhel; ensure_epel
+        tr '\n' ' ' < "$_log"; rm -f "$_log"
+    )
+    assert_eq "-- pkg_install epel-release crb " "$out" "ensure_epel does nothing off RHEL clones and enables EPEL and CRB on them"
+}
+
+# zram: the right package per family, and a config is written only when none exists.
+_zram_run() {   # $1 family, $2 has-config (y/n)
+    (
+        source "${SCRIPT_DIR}/lib/installers/zram.sh"
+        DISTRO_FAMILY="$1"; _hc="$2"; _log=$(mktemp); _cap=$(mktemp)
+        info() { :; }; warn() { :; }
+        pkg_install() { echo "pkg_install $*" >> "$_log"; }
+        svc_enable_now() { echo "svc $*" >> "$_log"; }
+        _zram_has_config() { [[ "$_hc" == y ]]; }
+        sudo() { if [[ "$1" == tee ]]; then cat > "$_cap"; else echo "sudo $*" >> "$_log"; fi; }
+        install_zram
+        tr '\n' '|' < "$_log"; echo; cat "$_cap"; rm -f "$_log" "$_cap"
+    )
+}
+test_zram_per_family() {
+    local out
+    out=$(_zram_run debian n)
+    assert_true "zram: Debian and Ubuntu use zram-tools and start zramswap" \
+        grep -qF "pkg_install zram-tools|svc zramswap|" <<<"$out"
+    assert_false "zram: Debian does not write a zram-generator config" grep -q 'zram-size' <<<"$out"
+    out=$(_zram_run arch n)
+    assert_true "zram: Arch uses zram-generator" grep -qF "pkg_install zram-generator|" <<<"$out"
+    assert_true "zram: with no config the installer writes half of RAM, at most 4 GiB" \
+        grep -qF "zram-size = min(ram / 2, 4096)" <<<"$out"
+    assert_true "zram: the config it writes is marked so uninstall removes only that file" \
+        grep -qxF "# Written by linux_util" <<<"$out"
+    assert_true "zram: the device is started after the config is written" \
+        grep -qF "sudo systemctl start systemd-zram-setup@zram0.service" <<<"$out"
+    out=$(_zram_run fedora y)
+    assert_true "zram: Fedora installs zram-generator" grep -qF "pkg_install zram-generator|" <<<"$out"
+    assert_false "zram: an existing config is left alone" grep -q 'zram-size' <<<"$out"
+}
+
+# HardInfo prefers the maintained HardInfo2 and falls back to the old package.
+test_hardinfo_package_choice() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/hardinfo.sh"
+        pkg_in_repo() { [[ " $_have " == *" $1 "* ]]; }
+        _have="hardinfo2 hardinfo"; printf '%s,' "$(_hardinfo_package)"
+        _have="hardinfo";           printf '%s,' "$(_hardinfo_package)"
+        _have="";                   _hardinfo_package || printf 'none'
+    )
+    assert_eq "hardinfo2,hardinfo,none" "$out" "HardInfo: hardinfo2 first, hardinfo when that is all there is, nothing otherwise"
+}
+
+# Ghostty and WezTerm change nothing when the repository has no package.
+test_terminal_installers_refuse_without_package() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/ghostty.sh"
+        source "${SCRIPT_DIR}/lib/installers/wezterm.sh"
+        info() { :; }; error() { :; }; pkg_refresh() { :; }; pkg_in_repo() { return 1; }
+        pkg_install() { printf 'INSTALLED '; }
+        install_ghostty; printf 'g=%s ' "$?"
+        install_wezterm; printf 'w=%s' "$?"
+    )
+    assert_eq "g=1 w=1" "$out" "Ghostty and WezTerm stop without installing when the repository lacks them"
+}
+
+# TLP and auto-cpufreq must not be installed together.
+test_tlp_and_auto_cpufreq_exclude_each_other() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/tlp.sh"
+        source "${SCRIPT_DIR}/lib/installers/auto_cpufreq.sh"
+        info() { :; }; error() { :; }; warn() { :; }
+        pkg_install() { printf 'INSTALLED '; }
+        _have_cmd() { [[ "$1" == auto-cpufreq ]]; }
+        install_tlp; printf 't=%s ' "$?"
+        pkg_check_installed() { [[ "$1" == tlp ]]; }
+        _acf_latest_version() { printf 'DOWNLOADED '; }
+        install_auto_cpufreq; printf 'a=%s' "$?"
+    )
+    assert_eq "t=1 a=1" "$out" "TLP refuses beside auto-cpufreq and auto-cpufreq refuses beside TLP, before changing anything"
+}
+
+# auto-cpufreq: the latest version is read from the release JSON, and an update that finds the same version does nothing.
+test_auto_cpufreq_version_and_update() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/auto_cpufreq.sh"
+        curl() { printf '{"url":"x","tag_name": "v3.2.0","name":"v3.2.0"}'; }
+        printf '%s,' "$(_acf_latest_version)"
+        info() { :; }; error() { :; }
+        _ACF_ROOT=$(mktemp -d); mkdir -p "$_ACF_ROOT"; touch "$_ACF_ROOT/current"
+        get_version_auto_cpufreq() { echo 3.2.0; }
+        _acf_deploy() { printf 'REINSTALLED'; }
+        update_auto_cpufreq; printf 'rc=%s,' "$?"
+        get_version_auto_cpufreq() { echo 3.1.0; }
+        update_auto_cpufreq; printf 'rc=%s' "$?"
+        rm -rf "$_ACF_ROOT"
+    )
+    assert_eq "3.2.0,rc=0,REINSTALLEDrc=0" "$out" "auto-cpufreq: reads the release version, skips an update at the same version and reinstalls an older one"
+}
+
+# CUPS service name: cups on systemd, cupsd on Alpine's OpenRC.
+test_cups_service_name() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/cups.sh"
+        DISTRO_FAMILY=debian; printf '%s,' "$(_cups_service)"
+        DISTRO_FAMILY=alpine; printf '%s' "$(_cups_service)"
+    )
+    assert_eq "cups,cupsd" "$out" "CUPS: the service is cups everywhere and cupsd on Alpine"
+}
+
+test_system_tools_registered
+test_system_tools_subcategories
+test_system_tools_family_gates
+test_system_tools_auto_cpufreq_aur_and_upstream
+test_system_tools_alpine_rows
+test_ensure_epel
+test_zram_per_family
+test_hardinfo_package_choice
+test_terminal_installers_refuse_without_package
+test_tlp_and_auto_cpufreq_exclude_each_other
+test_auto_cpufreq_version_and_update
+test_cups_service_name
+
 echo ""
 echo "════════════════════════════════════════════════════════════════"
 echo "Test Results: ${_TESTS_PASSED} passed, ${_TESTS_FAILED} failed, ${_TESTS_SKIPPED} skipped"

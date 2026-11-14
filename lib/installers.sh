@@ -396,6 +396,44 @@ if [[ "$DISTRO_ID" != "elementary" && "$_rhel10_plus" == "false" ]]; then
     register_utility "Cinnamon Desktop"    install_cinnamon         check_cinnamon         uninstall_cinnamon         update_cinnamon            get_version_cinnamon
 fi
 
+# System Tools (#91): monitors, disk health, power and memory, cleanup, hardware
+# info, terminal emulators and printing. Only the ones that cannot install on a
+# family are held back (the reason is in each installer's header and in
+# docs/utilities.md). Alpine keeps only the ones in alpine_packages.sh.
+register_utility "BleachBit"         install_bleachbit          check_bleachbit          uninstall_bleachbit          update_bleachbit          get_version_bleachbit
+register_utility "CPU-X"             install_cpu_x              check_cpu_x              uninstall_cpu_x              update_cpu_x              get_version_cpu_x
+register_utility "CUPS"              install_cups               check_cups               uninstall_cups               update_cups               get_version_cups
+register_utility "earlyoom"          install_earlyoom           check_earlyoom           uninstall_earlyoom           update_earlyoom           get_version_earlyoom
+register_utility "HardInfo"          install_hardinfo           check_hardinfo           uninstall_hardinfo           update_hardinfo           get_version_hardinfo
+register_utility "htop"              install_htop               check_htop               uninstall_htop               update_htop               get_version_htop
+register_utility "kitty"             install_kitty              check_kitty              uninstall_kitty              update_kitty              get_version_kitty
+register_utility "ncdu"              install_ncdu               check_ncdu               uninstall_ncdu               update_ncdu               get_version_ncdu
+register_utility "nvtop"             install_nvtop              check_nvtop              uninstall_nvtop              update_nvtop              get_version_nvtop
+register_utility "smartmontools"     install_smartmontools      check_smartmontools      uninstall_smartmontools      update_smartmontools      get_version_smartmontools
+register_utility "zram"              install_zram               check_zram               uninstall_zram               update_zram               get_version_zram
+# Alacritty: no package for Rocky/Alma/RHEL (no upstream binary either) or Ubuntu 22.04.
+if [[ "$DISTRO_FAMILY" != "rhel" ]] && ! [[ "$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -lt 23 ]]; then
+    register_utility "Alacritty"         install_alacritty          check_alacritty          uninstall_alacritty          update_alacritty          get_version_alacritty
+fi
+# auto-cpufreq: upstream's installer asks openSUSE Leap for Python packages Leap does not have,
+# and the program needs Python 3.10, which Rocky/Alma 8 and 9 do not ship.
+if [[ "$DISTRO_ID" != "opensuse-leap" && "$DISTRO_ID" != "sles" ]] && { [[ "$DISTRO_FAMILY" != "rhel" ]] || [[ "${DISTRO_VERSION_ID%%.*}" -ge 10 ]]; }; then
+    register_utility "auto-cpufreq"      install_auto_cpufreq       check_auto_cpufreq       uninstall_auto_cpufreq       update_auto_cpufreq       get_version_auto_cpufreq
+fi
+# Ghostty: only the Debian family, Arch and openSUSE carry a package.
+if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]]; then
+    register_utility "Ghostty"           install_ghostty            check_ghostty            uninstall_ghostty            update_ghostty            get_version_ghostty
+fi
+# WezTerm: only Arch, openSUSE and Alpine carry a maintained package.
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "alpine" ]]; then
+    register_utility "WezTerm"           install_wezterm            check_wezterm            uninstall_wezterm            update_wezterm            get_version_wezterm
+fi
+# EPEL 10 has neither TLP nor inxi.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%.*}" -lt 10 ]]; then
+    register_utility "inxi"              install_inxi               check_inxi               uninstall_inxi               update_inxi               get_version_inxi
+    register_utility "TLP"               install_tlp                check_tlp                uninstall_tlp                update_tlp                get_version_tlp
+fi
+
 # COSMIC: requires Ubuntu 24.10+/Debian Trixie, Fedora 42+, or Arch.
 # Not packaged for the RHEL ecosystem or openSUSE Leap/SLES.
 if [[ "$DISTRO_ID" != "elementary" ]] && \
@@ -711,6 +749,23 @@ UTILITY_CATEGORY["firewall-config (GUI)"]="Firewalls"
 UTILITY_CATEGORY["HandBrake"]="Productivity"
 UTILITY_CATEGORY["Inkscape"]="Productivity"
 UTILITY_CATEGORY["Input Leap"]="System Tools"
+UTILITY_CATEGORY["auto-cpufreq"]="System Tools"
+UTILITY_CATEGORY["BleachBit"]="System Tools"
+UTILITY_CATEGORY["CPU-X"]="System Tools"
+UTILITY_CATEGORY["CUPS"]="System Tools"
+UTILITY_CATEGORY["earlyoom"]="System Tools"
+UTILITY_CATEGORY["HardInfo"]="System Tools"
+UTILITY_CATEGORY["htop"]="System Tools"
+UTILITY_CATEGORY["kitty"]="System Tools"
+UTILITY_CATEGORY["ncdu"]="System Tools"
+UTILITY_CATEGORY["nvtop"]="System Tools"
+UTILITY_CATEGORY["smartmontools"]="System Tools"
+UTILITY_CATEGORY["zram"]="System Tools"
+UTILITY_CATEGORY["Alacritty"]="System Tools"
+UTILITY_CATEGORY["Ghostty"]="System Tools"
+UTILITY_CATEGORY["WezTerm"]="System Tools"
+UTILITY_CATEGORY["inxi"]="System Tools"
+UTILITY_CATEGORY["TLP"]="System Tools"
 UTILITY_CATEGORY["k9s"]="Development"
 UTILITY_CATEGORY["Kdenlive"]="Productivity"
 UTILITY_CATEGORY["Krita"]="Productivity"
@@ -904,6 +959,32 @@ UTILITY_SUBCATEGORY["Midnight Commander"]="Terminal"
 UTILITY_SUBCATEGORY["Ranger"]="Terminal"
 UTILITY_SUBCATEGORY["nnn"]="Terminal"
 UTILITY_SUBCATEGORY["Superfile"]="Terminal"
+UTILITY_SUBCATEGORY["Alacritty"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Ghostty"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["kitty"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["WezTerm"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Btop"]="Monitors"
+UTILITY_SUBCATEGORY["htop"]="Monitors"
+UTILITY_SUBCATEGORY["nvtop"]="Monitors"
+UTILITY_SUBCATEGORY["GPU Task Manager"]="Monitors"
+UTILITY_SUBCATEGORY["TMOG"]="Monitors"
+UTILITY_SUBCATEGORY["Stacer"]="Monitors"
+UTILITY_SUBCATEGORY["TLP"]="Power & Memory"
+UTILITY_SUBCATEGORY["auto-cpufreq"]="Power & Memory"
+UTILITY_SUBCATEGORY["zram"]="Power & Memory"
+UTILITY_SUBCATEGORY["earlyoom"]="Power & Memory"
+UTILITY_SUBCATEGORY["smartmontools"]="Disk & Cleanup"
+UTILITY_SUBCATEGORY["ncdu"]="Disk & Cleanup"
+UTILITY_SUBCATEGORY["Filelight"]="Disk & Cleanup"
+UTILITY_SUBCATEGORY["BleachBit"]="Disk & Cleanup"
+UTILITY_SUBCATEGORY["Fastfetch"]="System Info"
+UTILITY_SUBCATEGORY["inxi"]="System Info"
+UTILITY_SUBCATEGORY["HardInfo"]="System Info"
+UTILITY_SUBCATEGORY["CPU-X"]="System Info"
+UTILITY_SUBCATEGORY["bat"]="Shell Tools"
+UTILITY_SUBCATEGORY["ripgrep"]="Shell Tools"
+UTILITY_SUBCATEGORY["Pay Respects"]="Shell Tools"
+UTILITY_SUBCATEGORY["Zsh + Oh My Zsh"]="Shell Tools"
 UTILITY_SUBCATEGORY["SDDM"]="Display Managers"
 UTILITY_SUBCATEGORY["GDM"]="Display Managers"
 UTILITY_SUBCATEGORY["LightDM"]="Display Managers"
@@ -954,7 +1035,7 @@ SUBCATEGORY_ORDER["Productivity"]="Office Suites|Notes|Password Managers|Encrypt
 SUBCATEGORY_ORDER["Remote Admin Tools"]="Remote Access"
 SUBCATEGORY_ORDER["Bootloaders"]="GRUB Themes"
 SUBCATEGORY_ORDER["Login Screens"]="Display Managers|SDDM Themes|LightDM Greeters"
-SUBCATEGORY_ORDER["System Tools"]="Kernel Managers"
+SUBCATEGORY_ORDER["System Tools"]="Monitors|Power & Memory|Disk & Cleanup|System Info|Shell Tools|Terminal Emulators|Kernel Managers"
 
 # --- Descriptions (shown in the info panel when an item is highlighted) ---
 
@@ -1174,6 +1255,23 @@ UTILITY_DESCRIPTION["linux-tkg"]="Frogging-Family custom-kernel builder. Unlike 
 UTILITY_DESCRIPTION["Btop"]="Modern terminal-based resource monitor with a rich visual interface showing CPU, memory, disk, and network."
 UTILITY_DESCRIPTION["bat"]="A cat clone with syntax highlighting, line numbers and Git change markers. On Debian/Ubuntu, where the command is named batcat, a bat link to it is added in ~/.local/bin."
 UTILITY_DESCRIPTION["ripgrep"]="rg: searches a folder tree for text much faster than grep -r, and skips files listed in .gitignore."
+UTILITY_DESCRIPTION["Alacritty"]="Fast GPU-accelerated terminal emulator configured by a text file. Distro package; not available on Rocky/Alma/RHEL or Ubuntu 22.04, which have none."
+UTILITY_DESCRIPTION["auto-cpufreq"]="Adjusts CPU speed and power use to the battery and load, with a background service; for laptops. No distro carries it: on Arch it comes from the AUR (only with AUR support enabled), elsewhere upstream's own installer runs from the GitHub release (upstream publishes no checksum), into /opt/auto-cpufreq. Cannot run beside TLP. Not available on Alpine, openSUSE Leap or Rocky/Alma 8 and 9."
+UTILITY_DESCRIPTION["BleachBit"]="Disk cleaner that clears caches, logs, history and temporary files for the system and many applications. Distro package (EPEL on Rocky/Alma 8 and 9), or Flathub on Rocky/Alma 10. Not available on Alpine."
+UTILITY_DESCRIPTION["CPU-X"]="CPU-Z-style window showing the CPU, motherboard, memory, GPU and system. Distro package, or Flathub on Rocky/Alma/RHEL. Not available on Alpine."
+UTILITY_DESCRIPTION["CUPS"]="The printing system: installs the print server and starts it at boot. Add printers at http://localhost:631 or in the desktop's printer settings."
+UTILITY_DESCRIPTION["earlyoom"]="Ends the biggest memory hog before the machine freezes, instead of waiting for the kernel's slow out-of-memory killer. Started at boot."
+UTILITY_DESCRIPTION["Ghostty"]="Fast GPU-accelerated terminal emulator. Installed from the distro package, which exists on Arch, openSUSE Tumbleweed and Ubuntu 26.04 and newer; elsewhere it says so and changes nothing. Not offered on Fedora, Rocky/Alma/RHEL or Alpine."
+UTILITY_DESCRIPTION["HardInfo"]="System profiler and benchmark window: CPU, memory, storage, sensors and network. Installs HardInfo2, the maintained fork (the old HardInfo on Ubuntu 22.04). Distro package, or EPEL on Rocky/Alma. Not available on Alpine."
+UTILITY_DESCRIPTION["htop"]="Interactive process viewer with colours, a tree view and mouse support."
+UTILITY_DESCRIPTION["inxi"]="Prints a readable summary of the hardware and system: CPU, GPU, disks, network and sensors. Try inxi -Fxz. Not available on Rocky/Alma 10, where EPEL has no package."
+UTILITY_DESCRIPTION["kitty"]="Fast GPU-accelerated terminal emulator with tabs, splits and image display. Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["ncdu"]="Terminal disk-usage browser: shows which folders use the space and lets you delete from the list."
+UTILITY_DESCRIPTION["nvtop"]="htop-style monitor for GPUs (NVIDIA, AMD, Intel). Distro package (EPEL on Rocky/Alma). Not available on Alpine."
+UTILITY_DESCRIPTION["smartmontools"]="smartctl reads a drive's SMART health data and smartd watches it in the background. Installs the package and leaves its services as the package sets them."
+UTILITY_DESCRIPTION["TLP"]="Laptop battery and power tuning that works with its defaults and starts at boot. Replaces power-profiles-daemon and cannot run beside auto-cpufreq. Not available on Rocky/Alma 10, where EPEL has no package."
+UTILITY_DESCRIPTION["WezTerm"]="GPU-accelerated terminal emulator configured in Lua. Distro package on Arch, openSUSE and Alpine; not offered elsewhere, where upstream's stable build is from 2024 and the rest are nightlies."
+UTILITY_DESCRIPTION["zram"]="Compressed swap in RAM: the machine holds more before it slows down, with no swap partition. zram-tools on Debian and Ubuntu, zram-generator elsewhere (half of RAM, at most 4 GiB, unless the system already has a config). Not available on Alpine."
 UTILITY_DESCRIPTION["Filelight"]="KDE disk usage analyzer that visualizes storage consumption as an interactive radial map, making it easy to identify large files and directories."
 UTILITY_DESCRIPTION["ClamAV"]="Open-source antivirus engine for detecting trojans, viruses, malware, and other malicious threats. Asks which desktop front-end you want and defaults to ClamUI, a GTK4/libadwaita app from Flathub covering scanning, quarantine, and scheduled scans; ClamTk is offered too wherever the distro packages it. Enables the freshclam definition updater and the scan daemon."
 UTILITY_DESCRIPTION["Input Leap"]="Open-source KVM software that shares one keyboard and mouse across multiple computers on your local network."
@@ -1264,7 +1362,8 @@ mark_aur_only_arch \
     "Devolutions RDM=remote-desktop-manager" \
     "Euro-Office=euro-office-desktopeditors-git" \
     "Snap (snapd)=snapd" "Snapper GUI=snapper-gui-git" \
-    "Trojita=trojita" "Zotero=zotero" "1Password=1password"
+    "Trojita=trojita" "Zotero=zotero" "1Password=1password" \
+    "auto-cpufreq=auto-cpufreq"
 
 # Utilities that can install from upstream's own binary when no package source
 # carries them (the third tier of arch_install_ordered, reached on Arch because
@@ -1288,7 +1387,8 @@ mark_upstream_binary \
     "Xodus Nexus=$_XN_APPIMAGE" \
     "Hermes Agent=$HOME/.hermes/hermes-agent" \
     "LM Studio=$_LMS_APPIMAGE" \
-    "GPU Task Manager=$_GTM_DIR"
+    "GPU Task Manager=$_GTM_DIR" \
+    "auto-cpufreq=$_ACF_ROOT/current"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1302,7 +1402,8 @@ mark_upstream_latest \
     "Claude Desktop=_claude_desktop_latest_version" \
     "Xodus Nexus=_xn_latest_version" \
     "LM Studio=_lms_latest_version" \
-    "GPU Task Manager=_gtm_latest_version"
+    "GPU Task Manager=_gtm_latest_version" \
+    "auto-cpufreq=_acf_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

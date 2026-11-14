@@ -99,6 +99,16 @@ _ALPINE_TABLE=(
     "Scribus|scribus|scribus||"
     "Shotcut|shotcut|shotcut||"
     "Xournal++|xournalpp|xournalpp||"
+    "htop|htop|htop||"
+    "smartmontools|smartmontools|||"
+    "TLP|tlp||tlp|"
+    "earlyoom|earlyoom|earlyoom|earlyoom|"
+    "ncdu|ncdu|ncdu||"
+    "inxi|inxi|inxi||"
+    "Alacritty|alacritty|alacritty||"
+    "kitty|kitty|kitty||"
+    "WezTerm|wezterm|wezterm||"
+    "CUPS|cups||cupsd|"
 )
 
 # Registered utilities whose own installer file has an Alpine branch.

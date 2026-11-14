@@ -453,6 +453,15 @@ pkg_in_repo() {
     esac
 }
 
+# RHEL clones carry much of this software in EPEL (which needs CRB). A no-op
+# on every other family. Used by native_or_flatpak_install and the installers
+# that take a package from EPEL.
+ensure_epel() {
+    [[ "${DISTRO_FAMILY:-}" == "rhel" ]] || return 0
+    rpm -q epel-release &>/dev/null || pkg_install epel-release || true
+    enable_crb
+}
+
 # Install a Flathub app system-wide, adding flatpak and the flathub remote first.
 # sudo, not a bare flatpak: ensure_flatpak adds flathub as a SYSTEM remote (see
 # the note in flatpak_or_aur in aur.sh).
@@ -467,11 +476,7 @@ flatpak_install_flathub() {
 native_or_flatpak_install() {
     local flatpak_id="$1" pkg="$2"
     pkg_refresh
-    # RHEL clones carry much of this software in EPEL (which needs CRB).
-    if [[ "${DISTRO_FAMILY:-}" == "rhel" ]]; then
-        rpm -q epel-release &>/dev/null || pkg_install epel-release || true
-        enable_crb
-    fi
+    ensure_epel
     if pkg_in_repo "$pkg"; then
         pkg_install "$pkg"
         return $?

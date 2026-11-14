@@ -345,21 +345,82 @@ UFW Firewall is listed under [System Tasks](#system-tasks).
 
 | Utility | Description |
 |---------|-------------|
-| **bat** | `cat` with syntax highlighting, line numbers and Git change markers — on Debian/Ubuntu, where the command is `batcat`, a `bat` link to it is added in `~/.local/bin` |
-| **Btop** | Terminal-based resource monitor with rich visuals |
 | **ClamAV** | Open-source antivirus engine — prompts for a desktop front-end, defaulting to ClamUI (Flathub) |
-| **Fastfetch** | Fast system information display tool |
-| **Filelight** | Disk usage analyzer with interactive sunburst chart |
-| **GPU Task Manager** | Terminal task manager for the GPU (`gputaskman`): per-process VRAM and GPU load, and which runtimes and model files use it — NVIDIA, AMD (amdgpu) and Intel (i915). Upstream's portable build, SHA-256 checked, installed per user in `~/.local/opt/gputaskman`; needs glibc 2.35 or newer (not Rocky/RHEL 9) |
+| **CUPS** | The printing system; starts at boot, printers are added at `http://localhost:631` |
 | **Input Leap** | Software KVM — share keyboard and mouse across machines |
 | **OCCT** | CPU/RAM/GPU stability and stress testing — free Personal edition, x86_64 binary from ocbase.com, installed per-user under `~/.local/share/occt` |
-| **Pay Respects** | Press `F` to fix the last failed command — Rust `thefuck` replacement with inline `Ctrl+X` correction. Installed from upstream's `.deb`/`.rpm` (in no distro repo; AUR on Arch) and wired into `~/.bashrc`/`~/.zshrc`; its AI module is disabled by default |
-| **ripgrep** | `rg`: searches a folder tree for text much faster than `grep -r`, skipping files in `.gitignore` |
-| **Stacer** | Graphical system optimizer and monitor |
+
+Grouped into folders inside the System Tools tab:
+
+### Monitors
+
+Resource, GPU and task monitors.
+
+| Utility | Description |
+|---------|-------------|
+| **Btop** | Terminal-based resource monitor with rich visuals |
+| **htop** | Interactive process viewer |
+| **nvtop** | `htop` for GPUs (NVIDIA, AMD, Intel); not available on Alpine |
+| **GPU Task Manager** | Terminal task manager for the GPU (`gputaskman`): per-process VRAM and GPU load, and which runtimes and model files use it — NVIDIA, AMD (amdgpu) and Intel (i915). Upstream's portable build, SHA-256 checked, installed per user in `~/.local/opt/gputaskman`; needs glibc 2.35 or newer (not Rocky/RHEL 9) |
 | **TMOG** | Native Qt task manager with real-time system metrics — no repo, AUR, or checksums upstream; installed from tmog.org's `.deb` on Debian/Ubuntu, AppImage elsewhere |
+| **Stacer** | Graphical system optimizer and monitor |
+
+### Power & Memory
+
+Battery, CPU power and memory-pressure tools.
+
+| Utility | Description |
+|---------|-------------|
+| **TLP** | Laptop battery and power tuning, started at boot. Replaces power-profiles-daemon, cannot run beside auto-cpufreq; not available on Rocky/Alma 10, where EPEL has no package |
+| **auto-cpufreq** | Adjusts CPU speed and power use to the battery and load, with a background service, for laptops. Arch: the AUR (only with AUR support on). Elsewhere upstream's own installer runs from the GitHub release into `/opt/auto-cpufreq` — upstream publishes no checksum. Cannot run beside TLP; not available on Alpine, on openSUSE Leap (upstream's installer cannot find its Python packages) or on Rocky/Alma 8 and 9 (the program needs Python 3.10) |
+| **zram** | Compressed swap in RAM. `zram-tools` on Debian/Ubuntu, `zram-generator` elsewhere (half of RAM, at most 4 GiB, unless a config already exists); not available on Alpine |
+| **earlyoom** | Ends the biggest memory hog before the machine freezes; started at boot |
+
+### Disk & Cleanup
+
+Drive health, disk usage and cleaning.
+
+| Utility | Description |
+|---------|-------------|
+| **smartmontools** | `smartctl` and `smartd` for drive health; services left as the package sets them |
+| **ncdu** | Terminal disk-usage browser |
+| **Filelight** | Disk usage analyzer with interactive sunburst chart |
+| **BleachBit** | Disk cleaner for caches, logs, history and temporary files. Distro package (EPEL on Rocky/Alma 8 and 9), Flathub on Rocky/Alma 10; not available on Alpine |
+
+### System Info
+
+Hardware and system information.
+
+| Utility | Description |
+|---------|-------------|
+| **Fastfetch** | Fast system information display tool |
+| **inxi** | Readable hardware and system summary (`inxi -Fxz`); not available on Rocky/Alma 10, where EPEL has no package |
+| **HardInfo** | System profiler and benchmark window. Installs HardInfo2 (the old HardInfo on Ubuntu 22.04); EPEL on Rocky/Alma; not available on Alpine |
+| **CPU-X** | CPU-Z-style window for CPU, motherboard, memory and GPU details. Distro package, Flathub on Rocky/Alma/RHEL; not available on Alpine |
+
+### Shell Tools
+
+Command-line helpers and shells.
+
+| Utility | Description |
+|---------|-------------|
+| **bat** | `cat` with syntax highlighting, line numbers and Git change markers — on Debian/Ubuntu, where the command is `batcat`, a `bat` link to it is added in `~/.local/bin` |
+| **ripgrep** | `rg`: searches a folder tree for text much faster than `grep -r`, skipping files in `.gitignore` |
+| **Pay Respects** | Press `F` to fix the last failed command — Rust `thefuck` replacement with inline `Ctrl+X` correction. Installed from upstream's `.deb`/`.rpm` (in no distro repo; AUR on Arch) and wired into `~/.bashrc`/`~/.zshrc`; its AI module is disabled by default |
 | **Zsh + Oh My Zsh** | Z shell with Oh My Zsh framework, themes, and plugins |
 
-Grouped under a **Kernel Managers** folder inside the System Tools tab — tools for installing and switching alternate kernels. Each is listed on every distro but installs only on the family it supports (warning and stopping otherwise):
+### Terminal Emulators
+
+| Utility | Description |
+|---------|-------------|
+| **Alacritty** | GPU-accelerated terminal emulator configured by a text file. Distro package; not offered on Rocky/Alma/RHEL or Ubuntu 22.04, which have none |
+| **Ghostty** | Fast GPU-accelerated terminal emulator. From the distro package: Arch, openSUSE Tumbleweed, Ubuntu 26.04 and newer. Upstream publishes no Linux packages, so elsewhere it says so and changes nothing; not offered on Fedora, Rocky/Alma/RHEL or Alpine |
+| **kitty** | GPU-accelerated terminal emulator with tabs, splits and image display |
+| **WezTerm** | GPU-accelerated terminal emulator configured in Lua. Offered on Arch, openSUSE and Alpine only: upstream's stable build is from 2024 and its other channels are nightlies |
+
+### Kernel Managers
+
+Tools for installing and switching alternate kernels. Each is listed on every distro but installs only on the family it supports (warning and stopping otherwise).
 
 | Utility | Description |
 |---------|-------------|

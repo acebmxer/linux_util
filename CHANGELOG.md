@@ -14,6 +14,23 @@ when a release is cut.
 
 ### Added
 
+- **17 more System Tools** (part of #91). Monitors: htop and nvtop. Disk
+  health: smartmontools. Power and memory: TLP, auto-cpufreq, zram and
+  earlyoom. Cleanup: BleachBit and ncdu. Hardware info: HardInfo, inxi and
+  CPU-X. Printing: CUPS. Terminals: Alacritty, kitty, Ghostty and WezTerm.
+  System Tools is now sorted into folders: **Monitors**, **Power & Memory**,
+  **Disk & Cleanup**, **System Info**, **Shell Tools**, **Terminal Emulators**
+  and the existing Kernel Managers; ClamAV, CUPS, Input Leap and OCCT stay at
+  the top. Each uses the distro's own package (EPEL on Rocky/Alma), Flathub for
+  BleachBit and CPU-X where the repository has none, and, for auto-cpufreq
+  only, upstream's own installer from its GitHub release (the AUR on Arch,
+  only with AUR support on). TLP, earlyoom, CUPS and zram start their service.
+  Not offered: Alacritty on Rocky/Alma/RHEL and Ubuntu 22.04; auto-cpufreq on
+  openSUSE Leap, Rocky/Alma 8 and 9, and Alpine; Ghostty on Fedora and Rocky/Alma/RHEL, and on
+  Debian or Ubuntu releases whose repositories lack it; WezTerm except on
+  Arch, openSUSE and Alpine; TLP and inxi on Rocky/Alma 10. Alpine carries
+  htop, smartmontools, TLP, earlyoom, ncdu, inxi, Alacritty, kitty, WezTerm
+  and CUPS.
 - **16 more Productivity apps** (part of #91). Password managers and
   encryption: 1Password, KeePassXC, Cryptomator and VeraCrypt. Media: mpv,
   Kodi and Spotify. Creative: Blender, Darktable, RawTherapee, Shotcut and

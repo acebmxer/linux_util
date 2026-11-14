@@ -4,13 +4,16 @@
 _linux_util_utilities() {
     cat <<'EOF'
 1Password
+Alacritty
 AMD Drivers
 Anki
 ArtCraft Launcher
+auto-cpufreq
 bat
 Betterbird
 Bitwarden Client
 Bitwarden Extension
+BleachBit
 Blender
 Bottles
 Boxflat
@@ -28,8 +31,10 @@ Cockpit
 Codex
 Command-Not-Found Prompt
 COSMIC Desktop
+CPU-X
 Create Snapshot
 Cryptomator
+CUPS
 Cursor IDE
 Darktable
 DBeaver
@@ -37,6 +42,7 @@ Deepin Desktop
 Devolutions RDM
 Discord
 Docker
+earlyoom
 Enable RDP
 Euro-Office
 Evolution
@@ -49,21 +55,26 @@ Firefox
 Flatpak Setup
 Full System Upgrade/Update
 Geary
+Ghostty
 GIMP
 GitHub CLI
 GNOME Desktop
 Google Chrome
 GPU Task Manager
 GTK Window Fix
+HardInfo
 Hermes Agent
 Heroic Games Launcher
+htop
 Intel Drivers
+inxi
 JetBrains Toolbox
 Joplin Client
 Joplin Web Clipper
 KDE Desktop
 KDiskMark
 KeePassXC
+kitty
 KMail
 Kodi
 LibreOffice
@@ -78,11 +89,13 @@ MangoHud
 MATE Desktop
 mpv
 Multimedia Codecs
+ncdu
 NeoMutt
 Nextcloud Desktop
 NVIDIA Drivers
 NVIDIA PAIR
 NVM
+nvtop
 OBS Studio
 Obsidian
 Okular
@@ -92,7 +105,9 @@ OpenSSH Server
 RawTherapee
 Scribus
 Shotcut
+smartmontools
 Spotify
+TLP
 tmux
 tmux Resurrect
 Pantheon Desktop
@@ -130,6 +145,7 @@ VeraCrypt
 Visual Studio Code
 VSCodium
 Vivaldi Browser
+WezTerm
 WinApps
 Wine
 WireGuard Client
@@ -139,6 +155,7 @@ XEN Guest Utilities
 Xfce Desktop
 Xodus Nexus
 Xournal++
+zram
 Zsh + Oh My Zsh
 EOF
 }

@@ -137,7 +137,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
 | **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |
 | **Window Managers** | Hyprland, Sway, i3, bspwm, awesome, dwm, Openbox |
-| **System Tools** | Btop, GPU Task Manager, Fastfetch, bat, ripgrep, ClamAV, Stacer, Filelight, Input Leap, OCCT, Pay Respects, Zsh + Oh My Zsh, and a Kernel Managers folder |
+| **System Tools** | Folders for Monitors (Btop, htop, nvtop, GPU Task Manager, TMOG, Stacer), Power & Memory (TLP, auto-cpufreq, zram, earlyoom), Disk & Cleanup (smartmontools, ncdu, Filelight, BleachBit), System Info (Fastfetch, inxi, HardInfo, CPU-X), Shell Tools (bat, ripgrep, Pay Respects, Zsh + Oh My Zsh), Terminal Emulators (Alacritty, kitty, Ghostty, WezTerm) and Kernel Managers, plus ClamAV, CUPS, Input Leap and OCCT |
 
 Every entry, with its per-utility description and any distro limits, is in
 [docs/utilities.md](docs/utilities.md). For what is installed on *this* machine,
