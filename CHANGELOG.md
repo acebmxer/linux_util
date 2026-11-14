@@ -24,7 +24,8 @@ when a release is cut.
   root commands use `sudo` or `doas` when installed and otherwise `su` with the
   root password. On first run it offers to install the GNU `grep`, `sed`,
   `gawk`, `coreutils` and `findutils` that BusyBox lacks. Services are started
-  through OpenRC. Alpine joins the CI distro-detection matrix.
+  through OpenRC, and the reboot offered after an update runs `reboot` where
+  there is no `systemctl`. Alpine joins the CI distro-detection matrix.
 
 ### Fixed
 

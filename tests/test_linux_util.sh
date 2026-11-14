@@ -1470,6 +1470,7 @@ echo "=== Reboot Tests ==="
 test_do_reboot_host_uses_systemctl() {
     local out
     out=$(
+        has_systemd() { return 0; }
         sudo() { echo "SUDO:$*"; }
         do_reboot 2>&1
     )
@@ -1477,6 +1478,18 @@ test_do_reboot_host_uses_systemctl() {
         "do_reboot runs sudo systemctl reboot"
 }
 test_do_reboot_host_uses_systemctl
+
+# Without systemd (Alpine/OpenRC) there is no systemctl: it must run reboot.
+test_do_reboot_without_systemd_uses_reboot() {
+    local out
+    out=$(
+        has_systemd() { return 1; }
+        sudo() { echo "SUDO:$*"; }
+        do_reboot 2>&1
+    )
+    assert_eq "SUDO:reboot" "$out" "do_reboot runs sudo reboot when systemd is absent"
+}
+test_do_reboot_without_systemd_uses_reboot
 
 # ----------------------------------------------------------------------------
 # System info gatherer: Packages / WM / DE fields (lib/menu.sh)

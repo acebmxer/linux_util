@@ -143,6 +143,7 @@ preflight_checks() {
         yum)     pm_names=(yum rpm) ;;
         pacman)  pm_names=(pacman) ;;
         zypper)  pm_names=(zypper rpm) ;;
+        apk)     pm_names=(apk) ;;
     esac
     if [[ ${#pm_names[@]} -gt 0 ]]; then
         local _pm_conflict=false
@@ -190,6 +191,12 @@ preflight_checks() {
         zypper)
             # Check that at least one repo is registered.
             if zypper repos 2>/dev/null | grep -q 'http'; then
+                repo_ok=true
+            fi
+            ;;
+        apk)
+            # At least one active (non-comment) repository line.
+            if grep -qv '^[[:space:]]*\(#\|$\)' /etc/apk/repositories 2>/dev/null; then
                 repo_ok=true
             fi
             ;;
@@ -243,8 +250,14 @@ setup_logrotate() {
 }
 
 # do_reboot reboots the system.
+# systemd hosts use systemctl; OpenRC hosts (Alpine) have no systemctl, so
+# they use the reboot command.
 do_reboot() {
-    sudo systemctl reboot
+    if has_systemd; then
+        sudo systemctl reboot
+    else
+        sudo reboot
+    fi
 }
 
 # ============================================================================
