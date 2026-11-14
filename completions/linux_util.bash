@@ -15,7 +15,6 @@ Brave Browser
 Btop
 Budgie Desktop
 CachyOS Kernel Manager
-CADCraft
 Chromium
 Cinnamon Desktop
 Claude Code
@@ -28,13 +27,10 @@ COSMIC Desktop
 Create Snapshot
 Cursor IDE
 DBeaver
-DeckCraft
 Deepin Desktop
-DesignCraft
 Devolutions RDM
 Discord
 Docker
-EffectCraft
 Enable RDP
 Euro-Office
 Evolution
@@ -42,7 +38,6 @@ Fastfetch
 Fedora Mainline Kernel
 Feral Gamemode
 FileZilla
-FilmCraft
 Firecracker
 Firefox
 Flatpak Setup
@@ -53,7 +48,6 @@ GitHub CLI
 GNOME Desktop
 Google Chrome
 GPU Task Manager
-GridCraft
 GTK Window Fix
 Hermes Agent
 Heroic Games Launcher
@@ -65,7 +59,6 @@ KDE Desktop
 KDiskMark
 KMail
 LibreOffice
-LightCraft
 linux-tkg
 Local Time Zone / Locale
 LM Studio
@@ -86,9 +79,6 @@ Obsidian
 OnlyOffice
 OpenLogi
 OpenSSH Server
-PdfCraft
-PhotoCraft
-SoundCraft
 tmux
 tmux Resurrect
 Pantheon Desktop
@@ -122,7 +112,6 @@ Toolbx
 Trojita
 Num Lock at Boot
 UFW Firewall
-VectorCraft
 Visual Studio Code
 VSCodium
 Vivaldi Browser
@@ -130,7 +119,6 @@ WinApps
 Wine
 WireGuard Client
 WireGuard Server
-WordCraft
 WPS Office
 XEN Guest Utilities
 Xfce Desktop

@@ -234,8 +234,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 
 | Utility | Description |
 |---------|-------------|
-| **ArtCraft Launcher** *(ArtCraft folder)* | The launcher app that installs and updates the Craft apps — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
-| **CADCraft, DeckCraft, DesignCraft, EffectCraft, FilmCraft, GridCraft, LightCraft, PdfCraft, PhotoCraft, SoundCraft, VectorCraft, WordCraft** *(ArtCraft folder)* | The open-source Craft App Suite, each installed on its own from its latest GitHub release — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
+| **ArtCraft Launcher** | The launcher app that installs and updates the Craft apps — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
 | **NVIDIA PAIR** | NVIDIA's Personal AI Router, which links home-network machines into one local AI inference cluster (Ollama, llama.cpp, LM Studio). Upstream ships a `.deb` only: installed as-is on Debian/Ubuntu, unpacked into `/opt/PAIR` elsewhere |
 | **Audacity** | Open-source audio editor and recorder |
 | **Bitwarden Client** | Open-source password manager — `.deb` / `.rpm` / AUR / snap / flatpak |

@@ -1,19 +1,15 @@
 #!/bin/bash
-# ArtCraft installer functions
-# ArtCraft Launcher, plus the helpers shared with the individual Craft apps
-# (lib/installers/craft_apps.sh).
+# ArtCraft Launcher installer functions
 
 # --- ArtCraft ---
 
-# Every Craft app, and the launcher, publishes the same release layout on
-# GitHub: <name>-<version>-linux-<x86_64|aarch64>.{deb,rpm,AppImage,flatpak}
-# with a SHA256SUMS.txt beside them, and the .deb/.rpm package is named after
-# the app. That is why one set of helpers serves all of them. The main ArtCraft
-# desktop app (storytold/artcraft) is deliberately not what "ArtCraft" installs:
-# it publishes Windows and macOS builds only.
-#
-# This is deliberately the only copy of the download/install logic for these
-# apps -- craft_apps.sh calls it, so do not add a second one.
+# The launcher publishes its releases on GitHub as
+# <name>-<version>-linux-<x86_64|aarch64>.{deb,rpm,AppImage,flatpak} with a
+# SHA256SUMS.txt beside them, and the .deb/.rpm package is named after the app.
+# The Craft apps it installs (PhotoCraft, PdfCraft, ...) are left to the
+# launcher; they are not separate entries here. The main ArtCraft desktop app
+# (storytold/artcraft) is deliberately not what "ArtCraft" installs: it
+# publishes Windows and macOS builds only.
 
 _craft_arch() {
     case "$(uname -m)" in

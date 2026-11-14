@@ -27,6 +27,15 @@ when a release is cut.
   through OpenRC, and the reboot offered after an update runs `reboot` where
   there is no `systemctl`. Alpine joins the CI distro-detection matrix.
 
+### Changed
+
+- **ArtCraft Launcher** is now listed directly under Productivity instead of an
+  "ArtCraft" folder, and the separate CADCraft, DeckCraft, DesignCraft,
+  EffectCraft, FilmCraft, GridCraft, LightCraft, PdfCraft, PhotoCraft,
+  SoundCraft, VectorCraft and WordCraft entries are gone: install the Craft apps
+  from the launcher. Copies this tool installed earlier are no longer listed or
+  updated by System Updates.
+
 ### Fixed
 
 - **XEN Guest Utilities** on Alpine installed from the `edge` repository, which

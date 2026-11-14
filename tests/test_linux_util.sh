@@ -5060,21 +5060,20 @@ test_bat_batcat_link
 echo ""
 echo "=== ArtCraft / Craft apps ==="
 
-test_craft_apps_registered_in_artcraft_subcategory() {
+test_artcraft_launcher_registered_in_productivity() {
     local name fn slug gaps=0
-    for name in "ArtCraft Launcher" CADCraft DeckCraft DesignCraft EffectCraft FilmCraft GridCraft \
-                LightCraft PdfCraft PhotoCraft SoundCraft VectorCraft WordCraft; do
+    for name in "ArtCraft Launcher"; do
         slug=$(printf '%s' "${name%% Launcher}" | tr '[:upper:]' '[:lower:]')
         grep -q "^register_utility \"${name}\" install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
         grep -q "^UTILITY_CATEGORY\[\"${name}\"\]=\"Productivity\"" "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
-        grep -q "^UTILITY_SUBCATEGORY\[\"${name}\"\]=\"ArtCraft\"" "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
+        grep -q "^UTILITY_SUBCATEGORY\[\"${name}\"\]" "${SCRIPT_DIR}/lib/installers.sh" && gaps=1
         grep -q "^UTILITY_DESCRIPTION\[\"${name}\"\]=" "${SCRIPT_DIR}/lib/installers.sh" || gaps=1
         for fn in install check uninstall update; do
             grep -qE "^${fn}_${slug}\(\)|^${fn}_${slug}[[:space:]]*\(\)" \
-                "${SCRIPT_DIR}/lib/installers/artcraft.sh" "${SCRIPT_DIR}/lib/installers/craft_apps.sh" 2>/dev/null || gaps=1
+                "${SCRIPT_DIR}/lib/installers/artcraft.sh" 2>/dev/null || gaps=1
         done
     done
-    assert_eq "0" "$gaps" "all 13 ArtCraft entries are registered with category, subcategory, description and functions"
+    assert_eq "0" "$gaps" "ArtCraft Launcher is registered in Productivity (no subcategory) with description and functions"
 }
 
 test_craft_asset_url_picks_package_not_sidecar() {
@@ -5098,7 +5097,7 @@ test_craft_asset_url_picks_package_not_sidecar() {
         "$out" "_craft_asset_url selects the exact package for this architecture, not a sidecar or the CLI tarball"
 }
 
-test_craft_apps_registered_in_artcraft_subcategory
+test_artcraft_launcher_registered_in_productivity
 test_craft_asset_url_picks_package_not_sidecar
 
 # ============================================================================
