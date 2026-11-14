@@ -95,13 +95,17 @@ LXQt Desktop
 Mainline
 MangoHud
 MATE Desktop
+Mattermost
+Microsoft Teams
 minikube
 mpv
+Mullvad VPN
 Multimedia Codecs
 ncdu
 NeoMutt
 Nextcloud Desktop
 nmap
+NordVPN
 NVIDIA Drivers
 NVIDIA PAIR
 NVM
@@ -113,6 +117,8 @@ Ollama
 OnlyOffice
 OpenLogi
 OpenSSH Server
+OpenVPN
+Opera
 PHP
 Podman Desktop
 Python
@@ -166,6 +172,7 @@ Visual Studio Code
 VSCodium
 Vivaldi Browser
 WezTerm
+WhatsApp
 WinApps
 Wine
 WireGuard Client

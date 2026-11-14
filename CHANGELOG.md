@@ -14,6 +14,17 @@ when a release is cut.
 
 ### Added
 
+- **7 more Internet apps** (part of #91). Browser: Opera. Messaging: WhatsApp
+  (ZapZap, an open-source client for WhatsApp Web, as WhatsApp has no Linux
+  app), Microsoft Teams (Teams for Linux, as Microsoft ended its own Linux app
+  in 2022) and Mattermost. VPN: Mullvad VPN, NordVPN and OpenVPN. Opera,
+  Mullvad VPN and NordVPN use their vendor's signed repository (key fingerprint
+  checked), so updates arrive with the system; OpenVPN uses the distro package;
+  WhatsApp, Teams and Mattermost use the distro package where there is one, else
+  Flathub. NordVPN also starts its service and adds you to the `nordvpn` group
+  (log out and in again before `nordvpn login`). Not offered: Skype (Microsoft
+  closed it in May 2025), NordVPN on Rocky/Alma 8 and 9 (needs a newer glibc),
+  and on Alpine everything except OpenVPN.
 - **23 more Development apps and shell tools** (part of #91). Editors: Vim,
   Emacs, Helix, Sublime Text and Zed. Shell tools: fzf, eza, zoxide, starship
   and tldr (in System Tools > Shell Tools, beside bat and ripgrep); zoxide,

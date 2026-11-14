@@ -39,6 +39,7 @@ _ALPINE_TABLE=(
     "Krita|krita|krita||"
     "LibreOffice|libreoffice|soffice||"
     "Neovim|neovim|nvim||"
+    "OpenVPN|openvpn|openvpn||"
     "Node.js|nodejs npm|node||"
     "OpenSSH Server|openssh-server|sshd|sshd|"
     "tmux|tmux|tmux||"

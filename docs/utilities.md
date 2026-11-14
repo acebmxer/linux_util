@@ -259,7 +259,13 @@ Grouped into folders inside the Development tab:
 | **KMail** | KDE's email client with PGP encryption |
 | **LibreWolf** | Privacy-hardened Firefox fork |
 | **LocalSend** | Open-source AirDrop alternative — sends files and text between devices on the same network with no account or cloud; uses port 53317. Official `.deb` on Debian/Ubuntu, Flathub elsewhere *(File Transfer)* |
+| **Mattermost** | Desktop app for Mattermost team chat. Distro package on Arch, Flathub elsewhere; not available on Alpine *(Messaging)* |
+| **Microsoft Teams** | Teams for Linux, the open-source client that wraps the Teams web app (Microsoft stopped its own Linux app in 2022). Flathub, or the distro package where one exists; not available on Alpine *(Messaging)* |
+| **Mullvad VPN** | Mullvad's VPN app. Mullvad's signed repository on Debian, Ubuntu, Fedora, RHEL clones and openSUSE, the distro package on Arch; not available on Alpine *(VPN)* |
 | **NeoMutt** | Terminal email client, a maintained fork of Mutt |
+| **NordVPN** | NordVPN client and service; adds you to the `nordvpn` group. NordVPN's signed repository on Debian, Ubuntu, Fedora, RHEL clones 10+ (x86_64) and openSUSE, the AUR on Arch (AUR support must be on); not available on Alpine or Rocky/Alma 8 and 9 *(VPN)* |
+| **OpenVPN** | OpenVPN client for `.ovpn` profiles. Distro package on every family (EPEL on RHEL clones) *(VPN)* |
+| **Opera** | Browser with built-in ad blocker and sidebar messengers. Opera's signed repository on Debian, Ubuntu, Fedora, RHEL clones (x86_64) and openSUSE; Flathub, else the AUR, on Arch; not available on Alpine *(Web Browsers)* |
 | **PIA VPN** | Private Internet Access VPN client |
 | **Proton Mail Bridge** | Local IMAP/SMTP gateway for Proton Mail — needs a paid plan |
 | **ProtonVPN** | Free and open-source VPN by Proton |
@@ -276,6 +282,7 @@ Grouped into folders inside the Development tab:
 | **Trojita** | Fast Qt-native IMAP client — Fedora, Arch (AUR), and openSUSE only |
 | **UniFi Endpoint** | Ubiquiti's UniFi Identity VPN client for UniFi-managed networks — `.deb` / `.rpm` |
 | **Vivaldi Browser** | Highly customizable Chromium browser |
+| **WhatsApp** | ZapZap, an open-source desktop client that wraps WhatsApp Web (WhatsApp has no official Linux app). Distro package on openSUSE, Flathub elsewhere; not available on Alpine *(Messaging)* |
 | **WireGuard Client** | Lightweight VPN client using WireGuard protocol |
 | **WireGuard Server** | Sets up a WireGuard VPN server |
 | **Zen Browser** | Privacy-focused Firefox-based browser with vertical tabs and split view (beta) |

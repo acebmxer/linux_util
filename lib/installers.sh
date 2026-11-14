@@ -463,6 +463,17 @@ if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%.*}" -lt 10 ]]; then
     register_utility "inxi"              install_inxi               check_inxi               uninstall_inxi               update_inxi               get_version_inxi
     register_utility "TLP"               install_tlp                check_tlp                uninstall_tlp                update_tlp                get_version_tlp
 fi
+# Internet (#91): browser, messengers and VPNs. Alpine keeps only OpenVPN (alpine_packages.sh).
+register_utility "Mattermost"         install_mattermost       check_mattermost         uninstall_mattermost        update_mattermost         get_version_mattermost
+register_utility "Microsoft Teams"    install_microsoft_teams  check_microsoft_teams    uninstall_microsoft_teams   update_microsoft_teams    get_version_microsoft_teams
+register_utility "Mullvad VPN"        install_mullvad_vpn      check_mullvad_vpn        uninstall_mullvad_vpn       update_mullvad_vpn        get_version_mullvad_vpn
+# NordVPN's package needs glibc 2.35: RHEL clones have it from release 10.
+if [[ "$DISTRO_FAMILY" != "rhel" || "${DISTRO_VERSION_ID%%.*}" -ge 10 ]]; then
+    register_utility "NordVPN"            install_nordvpn          check_nordvpn            uninstall_nordvpn           update_nordvpn            get_version_nordvpn
+fi
+register_utility "OpenVPN"            install_openvpn          check_openvpn            uninstall_openvpn           update_openvpn            get_version_openvpn
+register_utility "Opera"              install_opera            check_opera              uninstall_opera             update_opera              get_version_opera
+register_utility "WhatsApp"           install_whatsapp         check_whatsapp           uninstall_whatsapp          update_whatsapp           get_version_whatsapp
 
 # COSMIC: requires Ubuntu 24.10+/Debian Trixie, Fedora 42+, or Arch.
 # Not packaged for the RHEL ecosystem or openSUSE Leap/SLES.
@@ -801,6 +812,13 @@ UTILITY_CATEGORY["fzf"]="System Tools"
 UTILITY_CATEGORY["eza"]="System Tools"
 UTILITY_CATEGORY["starship"]="System Tools"
 UTILITY_CATEGORY["tldr"]="System Tools"
+UTILITY_CATEGORY["Mattermost"]="Internet"
+UTILITY_CATEGORY["Microsoft Teams"]="Internet"
+UTILITY_CATEGORY["Mullvad VPN"]="Internet"
+UTILITY_CATEGORY["NordVPN"]="Internet"
+UTILITY_CATEGORY["OpenVPN"]="Internet"
+UTILITY_CATEGORY["Opera"]="Internet"
+UTILITY_CATEGORY["WhatsApp"]="Internet"
 UTILITY_CATEGORY["zoxide"]="System Tools"
 UTILITY_CATEGORY["auto-cpufreq"]="System Tools"
 UTILITY_CATEGORY["BleachBit"]="System Tools"
@@ -978,6 +996,13 @@ UTILITY_SUBCATEGORY["RustDesk"]="Remote Access"
 UTILITY_SUBCATEGORY["Slack"]="Messaging"
 UTILITY_SUBCATEGORY["Tor Browser"]="Web Browsers"
 UTILITY_SUBCATEGORY["Zoom"]="Messaging"
+UTILITY_SUBCATEGORY["Opera"]="Web Browsers"
+UTILITY_SUBCATEGORY["WhatsApp"]="Messaging"
+UTILITY_SUBCATEGORY["Microsoft Teams"]="Messaging"
+UTILITY_SUBCATEGORY["Mattermost"]="Messaging"
+UTILITY_SUBCATEGORY["Mullvad VPN"]="VPN"
+UTILITY_SUBCATEGORY["NordVPN"]="VPN"
+UTILITY_SUBCATEGORY["OpenVPN"]="VPN"
 UTILITY_SUBCATEGORY["Timeshift"]="Timeshift"
 UTILITY_SUBCATEGORY["Create Snapshot"]="Timeshift"
 UTILITY_SUBCATEGORY["Restore Snapshot"]="Timeshift"
@@ -1366,6 +1391,13 @@ UTILITY_DESCRIPTION["VirtualBox"]="Runs virtual machines. Distro package on Ubun
 UTILITY_DESCRIPTION["Wireshark"]="Network packet analyser. Distro package; the installing user joins the wireshark group to capture without root (log out and in)."
 UTILITY_DESCRIPTION["Zed"]="Fast code editor with built-in collaboration and AI. Distro package on Arch and openSUSE Tumbleweed, Flathub elsewhere. Not available on Alpine."
 UTILITY_DESCRIPTION["zoxide"]="Smarter cd: remembers the folders you use and jumps to them with z, loaded from ~/.bashrc (and ~/.zshrc when it exists). Distro package (every release except Rocky/Alma 10); elsewhere the GitHub release, SHA-256 checked, in /usr/local/bin."
+UTILITY_DESCRIPTION["Opera"]="Opera web browser with a built-in ad blocker, free VPN-style proxy and sidebar messengers. Installed from Opera's own signed repository on Debian, Ubuntu, Fedora, RHEL clones (x86_64) and openSUSE, so updates arrive with the system; on Arch from Flathub when Flatpak is set up, otherwise the AUR (only with AUR support enabled). Not available on Alpine. Uninstall keeps your profile."
+UTILITY_DESCRIPTION["WhatsApp"]="WhatsApp has no official Linux app; this installs ZapZap, an open-source desktop client that wraps WhatsApp Web (link it with your phone's QR code). Distro package on openSUSE, Flathub elsewhere. Not available on Alpine. Uninstall keeps the linked session."
+UTILITY_DESCRIPTION["Microsoft Teams"]="Microsoft stopped its own Linux Teams app in 2022; this installs Teams for Linux, the open-source client that wraps the Teams web app (chat, meetings, notifications, screen sharing). Flathub, or the distro package where a repository has one. Not available on Alpine. Uninstall keeps your sign-in."
+UTILITY_DESCRIPTION["Mattermost"]="Desktop app for Mattermost, the self-hosted team chat. Distro package on Arch, Flathub elsewhere. Not available on Alpine. Uninstall keeps your saved servers."
+UTILITY_DESCRIPTION["Mullvad VPN"]="Mullvad's VPN app (WireGuard, no account email needed). Installed from Mullvad's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and openSUSE, so updates arrive with the system; on Arch from the distro repository. The background service is enabled. Not available on Alpine."
+UTILITY_DESCRIPTION["NordVPN"]="NordVPN's command-line client and service. Installed from NordVPN's own signed repository on Debian, Ubuntu, Fedora, RHEL clones 10 and newer (x86_64) and openSUSE, so updates arrive with the system; on Arch from the AUR (only with AUR support enabled). Enables the service and adds you to the nordvpn group (log out and in again, then run nordvpn login). Not available on Alpine."
+UTILITY_DESCRIPTION["OpenVPN"]="The OpenVPN client for connecting with a provider's .ovpn file. The distro package on every family (RHEL clones take it from EPEL). Uninstall keeps your .ovpn files and /etc/openvpn."
 UTILITY_DESCRIPTION["Alacritty"]="Fast GPU-accelerated terminal emulator configured by a text file. Distro package; not available on Rocky/Alma/RHEL or Ubuntu 22.04, which have none."
 UTILITY_DESCRIPTION["auto-cpufreq"]="Adjusts CPU speed and power use to the battery and load, with a background service; for laptops. No distro carries it: on Arch it comes from the AUR (only with AUR support enabled), elsewhere upstream's own installer runs from the GitHub release (upstream publishes no checksum), into /opt/auto-cpufreq. Cannot run beside TLP. Not available on Alpine, openSUSE Leap or Rocky/Alma 8 and 9."
 UTILITY_DESCRIPTION["BleachBit"]="Disk cleaner that clears caches, logs, history and temporary files for the system and many applications. Distro package (EPEL on Rocky/Alma 8 and 9), or Flathub on Rocky/Alma 10. Not available on Alpine."
@@ -1474,7 +1506,8 @@ mark_aur_only_arch \
     "Euro-Office=euro-office-desktopeditors-git" \
     "Snap (snapd)=snapd" "Snapper GUI=snapper-gui-git" \
     "Trojita=trojita" "Zotero=zotero" "1Password=1password" \
-    "auto-cpufreq=auto-cpufreq" "Sublime Text=sublime-text-4"
+    "auto-cpufreq=auto-cpufreq" "Sublime Text=sublime-text-4" \
+    "NordVPN=nordvpn-bin"
 
 # Utilities that can install from upstream's own binary when no package source
 # carries them (the third tier of arch_install_ordered, reached on Arch because

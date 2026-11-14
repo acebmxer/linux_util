@@ -5916,6 +5916,101 @@ test_dev_alpine_rows() {
     assert_eq "k3s=k3s ollama=ollama done" "$out" "Alpine offers the apps its repositories carry, with their services, and hides the rest"
 }
 
+# --- Internet apps (#91, stage 4) ---
+echo ""
+echo "=== Internet apps and VPNs (#91) ==="
+
+_NET_APPS=(
+    "Mattermost|mattermost|Messaging" "Microsoft Teams|microsoft_teams|Messaging" "Mullvad VPN|mullvad_vpn|VPN"
+    "NordVPN|nordvpn|VPN" "OpenVPN|openvpn|VPN" "Opera|opera|Web Browsers" "WhatsApp|whatsapp|Messaging"
+)
+
+test_net_apps_registered() {
+    local entry name slug sub fn gaps=0
+    for entry in "${_NET_APPS[@]}"; do
+        IFS='|' read -r name slug sub <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"Internet\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+        grep -qF "| **${name}** |" "${SCRIPT_DIR}/docs/utilities.md" || { gaps=1; echo "  missing docs row: $name"; }
+    done
+    assert_eq "0" "$gaps" "The 7 new Internet apps are registered with category, folder, description, completions, docs row and all five functions"
+}
+
+test_net_apps_held_back() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0 line out
+    grep -qF '"NordVPN=nordvpn-bin"' "$f" || { gaps=1; echo "  NordVPN not AUR-only on Arch"; }
+    line=$(grep -n 'register_utility "NordVPN"' "$f" | cut -d: -f1)
+    sed -n "$((line-1))p" "$f" | grep -qF -- '-ge 10' || { gaps=1; echo "  NordVPN not held back on Rocky/Alma 8 and 9"; }
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        [[ " $have " == *" OpenVPN "* ]] || printf 'missing:OpenVPN '
+        for n in Opera "Mullvad VPN" NordVPN WhatsApp "Microsoft Teams" Mattermost; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        echo done
+    )
+    assert_eq "0 done" "${gaps} ${out}" "NordVPN is AUR-only on Arch and held back on Rocky/Alma 8 and 9; Alpine offers OpenVPN only"
+}
+
+# A repository whose signing key does not match the pinned fingerprint must stop the install
+# before any package is touched; a failed package install must not be reported as installed.
+test_net_vendor_repo_installs_stop_on_failure() {
+    local out slug fn
+    out=$(
+        for slug in opera mullvad_vpn nordvpn; do
+            (
+                source "${SCRIPT_DIR}/lib/installers/${slug}.sh"
+                info() { printf 'INFO(%s) ' "$*"; }; error() { :; }; warn() { :; }; ensure_tools() { :; }
+                dpkg() { echo amd64; }
+                pkg_install() { printf 'PKG '; return "$_pkg_rc"; }
+                DISTRO_FAMILY=debian
+                _add_apt_repo() { return 1; }
+                _pkg_rc=0; "install_${slug}"; printf '%s:repo-fail=%s ' "$slug" "$?"
+                _add_apt_repo() { return 0; }
+                _pkg_rc=1; "install_${slug}"; printf '%s:pkg-fail=%s ' "$slug" "$?"
+            ) 2>/dev/null
+        done
+    )
+    assert_eq "INFO(Installing Opera...) opera:repo-fail=1 INFO(Installing Opera...) PKG opera:pkg-fail=1 INFO(Installing Mullvad VPN...) mullvad_vpn:repo-fail=1 INFO(Installing Mullvad VPN...) PKG mullvad_vpn:pkg-fail=1 INFO(Installing NordVPN...) nordvpn:repo-fail=1 INFO(Installing NordVPN...) PKG nordvpn:pkg-fail=1 " "$out" "Opera, Mullvad VPN and NordVPN stop without installing when the key or the package step fails"
+}
+
+test_nordvpn_adds_user_to_group() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/nordvpn.sh"
+        info() { :; }; warn() { :; }
+        systemctl() { :; }
+        sudo() { printf 'sudo(%s) ' "$*"; }
+        getent() { return 0; }
+        SUDO_USER=""; USER=nick; _nordvpn_setup_access
+        USER=root; _nordvpn_setup_access
+        getent() { return 2; }; USER=nick; _nordvpn_setup_access
+        echo done
+    )
+    assert_eq "sudo(usermod -aG nordvpn nick) done" "$out" "NordVPN adds the installing user to the nordvpn group, but not root and not when the group is missing"
+}
+
+# Opera's package writes its own repository entry (opera-stable.sources), so uninstall removes that too.
+test_opera_uninstall_removes_repo_entries() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/opera.sh"
+        info() { :; }; flatpak_is_installed() { return 1; }
+        pkg_remove() { printf 'pkg_remove(%s) ' "$*"; }
+        sudo() { printf 'sudo(%s) ' "$*"; }
+        DISTRO_FAMILY=debian; uninstall_opera
+    )
+    assert_eq "pkg_remove(opera-stable) sudo(rm -f /etc/apt/sources.list.d/opera-stable.list /etc/apt/sources.list.d/opera-stable.sources /usr/share/keyrings/opera-archive-keyring.gpg) " "$out" "Opera uninstall removes its repository entries and key"
+}
+
 # --- Verified GitHub downloads ---
 _GH_FIXTURE='{"tag_name": "v1.2.3","assets": [
  {"name": "tool_1.2.3_linux_x86_64.tar.gz","uploader": {"login": "bot"},"size": 9,"digest": "sha256:'"$(printf 'a%.0s' {1..64})"'","browser_download_url": "https://x/tool_1.2.3_linux_x86_64.tar.gz"},
@@ -6149,6 +6244,11 @@ test_dev_apps_registered
 test_dev_subcategories
 test_dev_upstream_marks
 test_dev_alpine_rows
+test_net_apps_registered
+test_net_apps_held_back
+test_net_vendor_repo_installs_stop_on_failure
+test_nordvpn_adds_user_to_group
+test_opera_uninstall_removes_repo_entries
 test_github_asset_info
 test_github_asset_download_checks_digest
 test_upstream_arch_and_regex
