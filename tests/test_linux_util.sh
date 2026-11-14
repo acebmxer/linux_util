@@ -5988,7 +5988,8 @@ test_nordvpn_adds_user_to_group() {
         source "${SCRIPT_DIR}/lib/installers/nordvpn.sh"
         info() { :; }; warn() { :; }
         systemctl() { :; }
-        sudo() { printf 'sudo(%s) ' "$*"; }
+        # Only the group command is recorded: whether the service is also enabled depends on the machine having systemd.
+        sudo() { [[ "$1" == usermod ]] && printf 'sudo(%s) ' "$*"; return 0; }
         getent() { return 0; }
         SUDO_USER=""; USER=nick; _nordvpn_setup_access
         USER=root; _nordvpn_setup_access
