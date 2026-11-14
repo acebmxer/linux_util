@@ -131,7 +131,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Gaming** | Steam, Lutris, Heroic, Bottles, Xodus Nexus, Wine, ProtonUp-Qt, MangoHud, Gamemode, Boxflat |
 | **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, LibreWolf, Zen, Thorium, Tor), email clients, messaging, and VPNs (ProtonVPN, PIA, Tailscale, WireGuard) |
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
-| **Productivity** | ArtCraft Launcher, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Multimedia Codecs, Obsidian, Joplin, Logseq, Bitwarden, Nextcloud, NVIDIA PAIR, WinApps |
+| **Productivity** | ArtCraft Launcher, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Multimedia Codecs, Obsidian, Joplin, Logseq, Bitwarden, 1Password, KeePassXC, Cryptomator, VeraCrypt, Nextcloud, NVIDIA PAIR, WinApps, and more: media (mpv, Kodi, Spotify), creative (Blender, Darktable, RawTherapee, Shotcut, Scribus) and documents (Calibre, Anki, Okular, Xournal++) |
 | **Remote Admin** | Cockpit, Enable RDP (xrdp or krdp), OpenSSH, Remmina, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
 | **File Managers** | Nautilus, Dolphin, Thunar, Nemo, Caja, PCManFM-Qt, Krusader, and the terminal managers (Midnight Commander, Ranger, nnn, Superfile) |
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |

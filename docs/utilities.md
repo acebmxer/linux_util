@@ -242,30 +242,46 @@ Additional, cross-distro managers that run alongside the native package manager 
 |---------|-------------|
 | **ArtCraft Launcher** | The launcher app that installs and updates the Craft apps — `.deb` / `.rpm` / AppImage with menu entry (Arch family) |
 | **NVIDIA PAIR** | NVIDIA's Personal AI Router, which links home-network machines into one local AI inference cluster (Ollama, llama.cpp, LM Studio). Upstream ships a `.deb` only: installed as-is on Debian/Ubuntu, unpacked into `/opt/PAIR` elsewhere |
-| **Audacity** | Open-source audio editor and recorder |
-| **Bitwarden Client** | Open-source password manager — `.deb` / `.rpm` / AUR / snap / flatpak |
-| **Euro-Office** | European community fork of ONLYOFFICE — **built from source**, since upstream ships no desktop binaries. Runs their `docker buildx bake` build and installs the resulting `.deb`/`.rpm` (AUR on Arch). Needs Docker + Buildx; the compile takes hours and tens of GB |
+| **Audacity** | Open-source audio editor and recorder *(Video & Audio)* |
+| **1Password** | Password manager and secrets vault. 1Password's own signed repository on Debian/Ubuntu, Fedora, RHEL clones and openSUSE (updates arrive with the system); AUR on Arch, only with AUR support enabled. Needs a 1Password account; not on Alpine. Uninstall keeps your account data *(Password Managers)* |
+| **Anki** | Spaced-repetition flashcards with sync. Distro package on Arch and Alpine, otherwise Flathub. Uninstall keeps your decks *(Notes)* |
+| **Bitwarden Client** | Open-source password manager — `.deb` / `.rpm` / AUR / snap / flatpak *(Password Managers)* |
+| **Blender** | Free 3D creation suite — modelling, sculpting, animation, rendering and video editing. Distro package, Flathub where the repository has none *(Graphics & Photo)* |
+| **Calibre** | E-book library manager and reader with format conversion and e-reader sync. Distro package, Flathub on RHEL clones; not on Alpine *(Documents & Reading)* |
+| **Cryptomator** | Client-side encryption for cloud storage — vaults are ordinary folders your sync tool uploads. Flathub on every distro; not on Alpine. Uninstall keeps your vaults *(Encryption)* |
+| **Darktable** | Open-source raw photo workflow and editor. Distro package, Flathub where the repository has none *(Graphics & Photo)* |
+| **Euro-Office** | European community fork of ONLYOFFICE — **built from source**, since upstream ships no desktop binaries. Runs their `docker buildx bake` build and installs the resulting `.deb`/`.rpm` (AUR on Arch). Needs Docker + Buildx; the compile takes hours and tens of GB *(Office Suites)* |
 | **Flameshot** | Feature-rich screenshot tool with annotation support |
-| **GIMP** | GNU Image Manipulation Program |
-| **HandBrake** | Open-source video transcoder |
-| **Inkscape** | Professional vector graphics editor |
-| **Joplin Client** | Note-taking app with Markdown and sync (AppImage) |
-| **Kdenlive** | Open-source video editor by KDE |
-| **Krita** | Professional digital painting application |
-| **Libation** | Audible audiobook manager — `.deb` / `.rpm` / AUR |
-| **LibreOffice** | Open-source office suite — direct download / native packages / flatpak |
-| **Logseq** | Privacy-first knowledge management and outliner |
-| **Mark Text** | Simple and elegant Markdown editor |
-| **Multimedia Codecs** | Full audio and video codecs (H.264, HEVC, AAC and more) for FFmpeg and GStreamer apps. Fedora: enables RPM Fusion, replaces `ffmpeg-free` with the full `ffmpeg` and installs the `multimedia` group; RHEL clones: RPM Fusion for EL (with EPEL and CRB); Debian/Ubuntu and Arch: `ffmpeg` and the GStreamer plugin sets (Ubuntu needs universe); openSUSE: Packman through `opi codecs`. Uninstall is not offered, since media apps link against the codecs |
+| **GIMP** | GNU Image Manipulation Program *(Graphics & Photo)* |
+| **HandBrake** | Open-source video transcoder *(Video & Audio)* |
+| **Inkscape** | Professional vector graphics editor *(Graphics & Photo)* |
+| **Joplin Client** | Note-taking app with Markdown and sync (AppImage) *(Notes)* |
+| **Kdenlive** | Open-source video editor by KDE *(Video & Audio)* |
+| **KeePassXC** | Offline password manager that keeps passwords in an encrypted file you control, with browser integration and TOTP. Distro package, Flathub where the repository has none. Uninstall keeps your database *(Password Managers)* |
+| **Kodi** | Home-theater media center for local and network media. Distro package on Debian/Ubuntu and Arch, RPM Fusion Free on Fedora and RHEL clones, Flathub on openSUSE *(Media)* |
+| **Krita** | Professional digital painting application *(Graphics & Photo)* |
+| **Libation** | Audible audiobook manager — `.deb` / `.rpm` / AUR *(Media)* |
+| **LibreOffice** | Open-source office suite — direct download / native packages / flatpak *(Office Suites)* |
+| **Logseq** | Privacy-first knowledge management and outliner *(Notes)* |
+| **Mark Text** | Simple and elegant Markdown editor *(Notes)* |
+| **mpv** | Minimal, scriptable media player for nearly every video and audio format. Distro package, Flathub where the repository has none *(Media)* |
+| **Multimedia Codecs** | Full audio and video codecs (H.264, HEVC, AAC and more) for FFmpeg and GStreamer apps. Fedora: enables RPM Fusion, replaces `ffmpeg-free` with the full `ffmpeg` and installs the `multimedia` group; RHEL clones: RPM Fusion for EL (with EPEL and CRB); Debian/Ubuntu and Arch: `ffmpeg` and the GStreamer plugin sets (Ubuntu needs universe); openSUSE: Packman through `opi codecs`. Uninstall is not offered, since media apps link against the codecs *(Media)* |
 | **Nextcloud Desktop** | Sync client for self-hosted Nextcloud cloud storage |
-| **OBS Studio** | Video recording and live streaming |
-| **Obsidian** | Markdown-based knowledge base with graphs and plugins |
-| **OnlyOffice** | Office suite with MS Office format compatibility |
-| **Standard Notes** | End-to-end encrypted notes with cross-platform sync |
-| **VLC** | Versatile media player supporting virtually all formats |
+| **OBS Studio** | Video recording and live streaming *(Video & Audio)* |
+| **Obsidian** | Markdown-based knowledge base with graphs and plugins *(Notes)* |
+| **Okular** | KDE's document viewer — PDF, ePub, comics, annotations and signatures; works on any desktop. Distro package, Flathub where the repository has none *(Documents & Reading)* |
+| **OnlyOffice** | Office suite with MS Office format compatibility *(Office Suites)* |
+| **RawTherapee** | Open-source raw photo developer. Distro package, Flathub where the repository has none (RHEL clones) *(Graphics & Photo)* |
+| **Scribus** | Desktop publishing — page layout and print-ready PDFs. Distro package, Flathub where the repository has none *(Graphics & Photo)* |
+| **Shotcut** | Cross-platform video editor with a multi-track timeline. Distro package, Flathub where the repository has none (RHEL clones) *(Video & Audio)* |
+| **Spotify** | Spotify music streaming client — Flathub on every distro; not on Alpine. Needs a Spotify account. Uninstall keeps your login and cache *(Media)* |
+| **Standard Notes** | End-to-end encrypted notes with cross-platform sync *(Notes)* |
+| **VeraCrypt** | Disk and file encryption — containers, partitions and hidden volumes. Arch repository package; on Debian/Ubuntu (12/13, 22.04+), Fedora, RHEL clones and openSUSE the package from VeraCrypt's GitHub release, signature checked against its pinned key; not on Alpine *(Encryption)* |
+| **VLC** | Versatile media player supporting virtually all formats *(Media)* |
 | **WinApps** | Run Windows apps as native-feeling windows via a Windows VM + FreeRDP RemoteApp — installs prerequisites, writes a config template, and optionally creates the Windows VM via Docker/Podman (needs KVM; Windows licensed separately) |
-| **WPS Office** | MS Office-compatible office suite |
-| **Zotero** | Reference manager and research tool |
+| **WPS Office** | MS Office-compatible office suite *(Office Suites)* |
+| **Xournal++** | Handwriting notebook and PDF annotator for pen tablets and touchscreens. Distro package, Flathub where the repository has none *(Notes)* |
+| **Zotero** | Reference manager and research tool *(Documents & Reading)* |
 
 ## Remote Admin Tools
 

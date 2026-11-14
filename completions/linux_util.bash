@@ -3,18 +3,22 @@
 
 _linux_util_utilities() {
     cat <<'EOF'
+1Password
 AMD Drivers
+Anki
 ArtCraft Launcher
 bat
 Betterbird
 Bitwarden Client
 Bitwarden Extension
+Blender
 Bottles
 Boxflat
 Brave Browser
 Btop
 Budgie Desktop
 CachyOS Kernel Manager
+Calibre
 Chromium
 Cinnamon Desktop
 Claude Code
@@ -25,7 +29,9 @@ Codex
 Command-Not-Found Prompt
 COSMIC Desktop
 Create Snapshot
+Cryptomator
 Cursor IDE
+Darktable
 DBeaver
 Deepin Desktop
 Devolutions RDM
@@ -57,7 +63,9 @@ Joplin Client
 Joplin Web Clipper
 KDE Desktop
 KDiskMark
+KeePassXC
 KMail
+Kodi
 LibreOffice
 linux-tkg
 Local Time Zone / Locale
@@ -68,6 +76,7 @@ LXQt Desktop
 Mainline
 MangoHud
 MATE Desktop
+mpv
 Multimedia Codecs
 NeoMutt
 Nextcloud Desktop
@@ -76,9 +85,14 @@ NVIDIA PAIR
 NVM
 OBS Studio
 Obsidian
+Okular
 OnlyOffice
 OpenLogi
 OpenSSH Server
+RawTherapee
+Scribus
+Shotcut
+Spotify
 tmux
 tmux Resurrect
 Pantheon Desktop
@@ -112,6 +126,7 @@ Toolbx
 Trojita
 Num Lock at Boot
 UFW Firewall
+VeraCrypt
 Visual Studio Code
 VSCodium
 Vivaldi Browser
@@ -123,6 +138,7 @@ WPS Office
 XEN Guest Utilities
 Xfce Desktop
 Xodus Nexus
+Xournal++
 Zsh + Oh My Zsh
 EOF
 }

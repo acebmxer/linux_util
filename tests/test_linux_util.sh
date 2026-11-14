@@ -5348,6 +5348,268 @@ test_alpine_sudo_shim
 test_alpine_registry_filter
 test_alpine_table_names_registered
 
+# ----------------------------------------------------------------------------
+echo ""
+echo "=== Productivity apps: password managers, encryption, media, creative, documents (#91) ==="
+
+_PROD_APPS=(
+    "1Password|onepassword" "Anki|anki" "Blender|blender" "Calibre|calibre"
+    "Cryptomator|cryptomator" "Darktable|darktable" "KeePassXC|keepassxc" "Kodi|kodi"
+    "mpv|mpv" "Okular|okular" "RawTherapee|rawtherapee" "Scribus|scribus"
+    "Shotcut|shotcut" "Spotify|spotify" "VeraCrypt|veracrypt" "Xournal++|xournalpp"
+)
+
+test_productivity_apps_registered() {
+    local entry name slug fn gaps=0
+    for entry in "${_PROD_APPS[@]}"; do
+        IFS='|' read -r name slug <<<"$entry"
+        grep -qE "^register_utility \"${name//+/\\+}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"Productivity\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "The 16 new Productivity apps are registered with category, description, completions and all five functions"
+}
+
+# 1Password is AUR-only on Arch, so it must be hidden there while AUR support is off.
+# Every Productivity app sits in a folder, except the ones that belong to none.
+test_productivity_subcategories() {
+    local entry name sub gaps=0
+    for entry in "LibreOffice|Office Suites" \
+                 "OnlyOffice|Office Suites" \
+                 "WPS Office|Office Suites" \
+                 "Euro-Office|Office Suites" \
+                 "Joplin Client|Notes" \
+                 "Obsidian|Notes" \
+                 "Standard Notes|Notes" \
+                 "Anki|Notes" \
+                 "Xournal++|Notes" \
+                 "Logseq|Notes" \
+                 "Mark Text|Notes" \
+                 "Bitwarden Client|Password Managers" \
+                 "1Password|Password Managers" \
+                 "KeePassXC|Password Managers" \
+                 "Cryptomator|Encryption" \
+                 "VeraCrypt|Encryption" \
+                 "Calibre|Documents & Reading" \
+                 "Okular|Documents & Reading" \
+                 "Zotero|Documents & Reading" \
+                 "GIMP|Graphics & Photo" \
+                 "Inkscape|Graphics & Photo" \
+                 "Krita|Graphics & Photo" \
+                 "Blender|Graphics & Photo" \
+                 "Darktable|Graphics & Photo" \
+                 "RawTherapee|Graphics & Photo" \
+                 "Scribus|Graphics & Photo" \
+                 "Kdenlive|Video & Audio" \
+                 "Shotcut|Video & Audio" \
+                 "HandBrake|Video & Audio" \
+                 "Audacity|Video & Audio" \
+                 "OBS Studio|Video & Audio" \
+                 "VLC|Media" \
+                 "mpv|Media" \
+                 "Kodi|Media" \
+                 "Spotify|Media" \
+                 "Multimedia Codecs|Media" \
+                 "Libation|Media"; do
+        IFS='|' read -r name sub <<<"$entry"
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"${sub}\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  ${name} not in ${sub}"; }
+    done
+    grep -qF 'SUBCATEGORY_ORDER["Productivity"]="Office Suites|Notes|Password Managers|Encryption|Documents & Reading|Graphics & Photo|Video & Audio|Media"' "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  no folder order"; }
+    assert_eq "0" "$gaps" "Productivity apps are sorted into Office Suites, Notes, Password Managers, Encryption, Documents & Reading, Graphics & Photo, Video & Audio and Media"
+}
+
+test_onepassword_marked_aur_only_on_arch() {
+    assert_true "1Password is marked AUR-only on Arch with its package name" \
+        grep -q '"1Password=1password"' "${SCRIPT_DIR}/lib/installers.sh"
+}
+
+# Alpine: apk-packaged apps are offered, the rest are hidden.
+test_productivity_apps_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+=" ${row%%|*}"; done
+        for n in mpv Kodi Blender Darktable RawTherapee Shotcut Scribus Anki Okular "Xournal++" KeePassXC; do
+            [[ " $have " == *" $n "* ]] || printf 'missing:%s ' "$n"
+        done
+        for n in Spotify 1Password VeraCrypt Cryptomator Calibre; do
+            [[ " $have " == *" $n "* ]] && printf 'unexpected:%s ' "$n"
+        done
+        echo done
+    )
+    assert_eq "done" "$out" "Alpine lists the apps its repositories carry and hides Spotify, 1Password, VeraCrypt, Cryptomator and Calibre"
+}
+
+# pkg_in_repo: one answer per package manager, from that manager's own query.
+test_pkg_in_repo_per_manager() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        r() { "$@" && printf Y || printf n; }
+        PKG_MGR=apt
+        # Long output after the Candidate line: under pipefail a "| grep -q" would
+        # kill this early and report the package missing (SIGPIPE, status 141).
+        apt-cache() { printf 'x:\n  Installed: (none)\n  Candidate: %s\n' "${APT_CAND:-1.0-1}"; seq 1 30000; }
+        r pkg_in_repo mpv; APT_CAND="(none)"; r pkg_in_repo anki
+        PKG_MGR=dnf
+        dnf() { [[ "$*" == *"repoquery"* ]] && printf '%s\n' "${RPM_NAME:-}"; }
+        RPM_NAME=mpv; r pkg_in_repo mpv; RPM_NAME=""; r pkg_in_repo mpv; RPM_NAME=mpv-libs; r pkg_in_repo mpv
+        PKG_MGR=pacman
+        arch_repo_has() { [[ "$1" == mpv ]]; }
+        r pkg_in_repo mpv; r pkg_in_repo anki
+        PKG_MGR=zypper
+        zypper() { [[ "$*" == *"info mpv"* ]] && printf 'Name : mpv\nVersion : 0.42\n'; }
+        r pkg_in_repo mpv; r pkg_in_repo kodi
+        PKG_MGR=apk
+        apk() { [[ "$3" == mpv ]] && echo "mpv-0.41"; }
+        r pkg_in_repo mpv; r pkg_in_repo calibre
+    )
+    assert_eq "YnYnnYnYnYn" "$out" "pkg_in_repo asks each package manager and needs an exact name match"
+}
+
+# native_or_flatpak_install: repository first, Flathub only when the repository has no such package.
+_nof_run() {   # $1 family, $2 in-repo (y/n)
+    (
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        DISTRO_FAMILY="$1"; DISTRO_NAME="Test"; _log=$(mktemp); _inrepo="$2"
+        pkg_refresh() { :; }; info() { :; }
+        pkg_in_repo() { [[ "$_inrepo" == y ]]; }
+        pkg_install() { echo "pkg_install $*" >> "$_log"; }
+        flatpak_install_flathub() { echo "flatpak $*" >> "$_log"; }
+        enable_crb() { echo "crb" >> "$_log"; }
+        rpm() { return 1; }
+        native_or_flatpak_install org.example.App app; echo "rc=$?" >> "$_log"
+        tr '\n' ' ' < "$_log"; rm -f "$_log"
+    )
+}
+test_native_or_flatpak_install_order() {
+    assert_eq "pkg_install app rc=0 " "$(_nof_run debian y)" "native_or_flatpak_install uses the distro package when the repository has it"
+    assert_eq "flatpak org.example.App rc=0 " "$(_nof_run debian n)" "native_or_flatpak_install uses Flathub when the repository has no such package"
+    assert_eq "pkg_install epel-release crb pkg_install app rc=0 " "$(_nof_run rhel y)" "native_or_flatpak_install enables EPEL and CRB first on RHEL clones"
+}
+
+# Uninstall and update follow whichever route installed the app.
+test_native_or_flatpak_uninstall_update_route() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        _log=$(mktemp)
+        flatpak_is_installed() { [[ "$FP" == y ]]; }
+        flatpak() { echo "flatpak $*" >> "$_log"; }
+        pkg_remove() { echo "pkg_remove $*" >> "$_log"; }
+        pkg_upgrade() { echo "pkg_upgrade $*" >> "$_log"; }
+        FP=y; native_or_flatpak_uninstall org.example.App app; native_or_flatpak_update org.example.App app
+        FP=n; native_or_flatpak_uninstall org.example.App app; native_or_flatpak_update org.example.App app
+        tr '\n' '|' < "$_log"; rm -f "$_log"
+    )
+    assert_eq "flatpak uninstall -y --user org.example.App|flatpak update -y --user org.example.App|pkg_remove app|pkg_upgrade app|" "$out" \
+        "uninstall and update use Flatpak for a Flatpak install and the package manager otherwise"
+}
+
+# VeraCrypt: which release file fits which system. Names are upstream's fixed pattern.
+_VC_FIXTURE='{"assets":[
+ {"name": "veracrypt-1.26.31-Debian-12-amd64.deb"},{"name": "veracrypt-1.26.31-Debian-13-amd64.deb"},{"name": "veracrypt-1.26.31-Debian-13-arm64.deb"},
+ {"name": "veracrypt-console-1.26.31-Debian-13-amd64.deb"},{"name": "veracrypt-1.26.31-Ubuntu-26.04-amd64.deb"},
+ {"name": "veracrypt-1.26.31-Fedora-43-x86_64.rpm"},{"name": "veracrypt-1.26.31-Fedora-44-x86_64.rpm"},
+ {"name": "veracrypt-1.26.31-CentOS-8-x86_64.rpm"},{"name": "veracrypt-1.26.31-openSUSE-15-x86_64.rpm"},
+ {"name": "veracrypt-1.26.31-Debian-13-amd64.deb.sig"}]}'
+_vc_pick() {   # $1 family, $2 id, $3 version id, $4 dpkg arch
+    (
+        source "${SCRIPT_DIR}/lib/installers/veracrypt.sh"
+        DISTRO_FAMILY="$1"; DISTRO_ID="$2"; DISTRO_VERSION_ID="$3"; _arch="${4:-amd64}"
+        dpkg() { echo "$_arch"; }
+        _VC_JSON="$_VC_FIXTURE"
+        _veracrypt_package_name 1.26.31
+    )
+}
+test_veracrypt_picks_release_file() {
+    assert_eq "veracrypt-1.26.31-Debian-13-amd64.deb" "$(_vc_pick debian debian 13.7)" "VeraCrypt: Debian 13 gets the Debian-13 .deb, not the console one"
+    assert_eq "veracrypt-1.26.31-Debian-13-arm64.deb" "$(_vc_pick debian debian 13.7 arm64)" "VeraCrypt: Debian arm64 gets the arm64 .deb"
+    assert_eq "veracrypt-1.26.31-Ubuntu-26.04-amd64.deb" "$(_vc_pick debian ubuntu 26.04.2)" "VeraCrypt: Ubuntu 26.04.2 gets the Ubuntu-26.04 .deb"
+    assert_eq "veracrypt-1.26.31-Ubuntu-26.04-amd64.deb" "$(_vc_pick debian kubuntu 26.04.0)" "VeraCrypt: Kubuntu counts as Ubuntu"
+    assert_eq "" "$(_vc_pick debian linuxmint 22)" "VeraCrypt: a Debian derivative with no matching build gets nothing"
+    assert_eq "" "$(_vc_pick debian ubuntu 25.10)" "VeraCrypt: an Ubuntu release upstream does not build for gets nothing"
+    assert_eq "veracrypt-1.26.31-Fedora-44-x86_64.rpm" "$(_vc_pick fedora fedora 44)" "VeraCrypt: Fedora 44 gets its own .rpm"
+    assert_eq "veracrypt-1.26.31-Fedora-44-x86_64.rpm" "$(_vc_pick fedora fedora 45)" "VeraCrypt: Fedora 45 (no build yet) gets the newest Fedora .rpm"
+    assert_eq "veracrypt-1.26.31-CentOS-8-x86_64.rpm" "$(_vc_pick rhel rocky 9.8)" "VeraCrypt: RHEL clones get the CentOS 8 .rpm"
+    assert_eq "veracrypt-1.26.31-openSUSE-15-x86_64.rpm" "$(_vc_pick suse opensuse-tumbleweed 20261101)" "VeraCrypt: openSUSE gets the openSUSE 15 .rpm"
+}
+
+# Signature check: only a VALIDSIG whose primary key is the pinned VeraCrypt fingerprint passes.
+_vc_sig_run() {   # $1 gpg VALIDSIG status line (empty = bad signature), $2 fingerprints gpg reports for the key file
+    (
+        source "${SCRIPT_DIR}/lib/installers/veracrypt.sh"
+        DISTRO_FAMILY=debian; error() { :; }
+        d=$(mktemp -d); echo data > "$d/pkg"
+        curl() { while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && : > "$2"; shift; done; return 0; }
+        download_file() { : > "$2"; }
+        _st="$1"; _fp="$2"
+        gpg() {
+            case "$*" in
+                *--show-keys*) printf 'fpr:::::::::%s:\n' "$_fp" ;;
+                *--verify*)    printf '%s\n' "$_st" ;;
+            esac
+        }
+        _veracrypt_verify_signature "$d/pkg" "https://x/pkg.sig" && echo pass || echo fail
+        rm -rf "$d"
+    )
+}
+test_veracrypt_signature_check() {
+    local good="5069A233D55A0EEB174A5FC3821ACD02680D16DE" sub="BB335DCA0D75325C6126BAB6200B5A9D26878A32"
+    assert_eq "pass" "$(_vc_sig_run "[GNUPG:] VALIDSIG ${sub} 2026-01-01 1 0 4 0 1 10 00 ${good}" "$good")" "VeraCrypt: a valid signature from a subkey of the pinned key passes"
+    assert_eq "fail" "$(_vc_sig_run "[GNUPG:] VALIDSIG ${sub} 2026-01-01 1 0 4 0 1 10 00 0000000000000000000000000000000000000000" "$good")" "VeraCrypt: a valid signature from another key fails"
+    assert_eq "fail" "$(_vc_sig_run "[GNUPG:] BADSIG 821ACD02680D16DE VeraCrypt Team" "$good")" "VeraCrypt: a bad signature fails"
+    assert_eq "fail" "$(_vc_sig_run "[GNUPG:] VALIDSIG ${sub} 2026-01-01 1 0 4 0 1 10 00 ${good}" "AAAA")" "VeraCrypt: a downloaded key with another fingerprint fails"
+}
+
+# The download URL must be the file itself, never its .sig next to it.
+test_veracrypt_asset_url_exact() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/veracrypt.sh"
+        _VC_JSON='"browser_download_url": "https://x/veracrypt-1.26.31-Debian-13-amd64.deb.sig"
+"browser_download_url": "https://x/veracrypt-1.26.31-Debian-13-amd64.deb"'
+        _veracrypt_asset_url veracrypt-1.26.31-Debian-13-amd64.deb
+    )
+    assert_eq "https://x/veracrypt-1.26.31-Debian-13-amd64.deb" "$out" "VeraCrypt: the download URL is the package, not its signature file"
+}
+
+# 1Password: the vendor repository is added with the key fingerprint pinned.
+test_onepassword_repo_setup() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/onepassword.sh"
+        _log=$(mktemp); info() { :; }; ensure_tools() { :; }
+        DISTRO_FAMILY=debian
+        dpkg() { echo amd64; }
+        _add_apt_repo() { printf 'key=%s ring=%s line=%s list=%s fpr=%s\n' "$1" "$2" "$3" "$4" "$5" >> "$_log"; }
+        pkg_install() { echo "pkg_install $*" >> "$_log"; }
+        install_onepassword
+        cat "$_log"; rm -f "$_log"
+    )
+    assert_contains "$out" "key=https://downloads.1password.com/linux/keys/1password.asc" "1Password: apt repo uses the vendor key URL"
+    assert_contains "$out" "line=deb \[arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg\] https://downloads.1password.com/linux/debian/amd64 stable main" "1Password: apt source line pins the keyring and architecture"
+    assert_contains "$out" "fpr=3FEF9748469ADBE15DA7CA80AC2D62742012EA22" "1Password: the key fingerprint is checked"
+    assert_contains "$out" "pkg_install 1password" "1password package installed after the repo is added"
+}
+
+test_productivity_apps_registered
+test_productivity_subcategories
+test_onepassword_marked_aur_only_on_arch
+test_productivity_apps_alpine_rows
+test_pkg_in_repo_per_manager
+test_native_or_flatpak_install_order
+test_native_or_flatpak_uninstall_update_route
+test_veracrypt_picks_release_file
+test_veracrypt_asset_url_exact
+test_veracrypt_signature_check
+test_onepassword_repo_setup
+
 echo ""
 echo "════════════════════════════════════════════════════════════════"
 echo "Test Results: ${_TESTS_PASSED} passed, ${_TESTS_FAILED} failed, ${_TESTS_SKIPPED} skipped"

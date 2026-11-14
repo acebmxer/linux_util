@@ -88,6 +88,17 @@ _ALPINE_TABLE=(
     "Nextcloud Desktop|nextcloud-client|nextcloud||"
     "MangoHud|mangohud|mangohud||"
     "Feral Gamemode|gamemode|gamemoded||"
+    "Anki|anki|anki||"
+    "Blender|blender|blender||"
+    "Darktable|darktable|darktable||"
+    "KeePassXC|keepassxc|keepassxc||"
+    "Kodi|kodi|kodi||"
+    "mpv|mpv|mpv||"
+    "Okular|okular|okular||"
+    "RawTherapee|rawtherapee|rawtherapee||"
+    "Scribus|scribus|scribus||"
+    "Shotcut|shotcut|shotcut||"
+    "Xournal++|xournalpp|xournalpp||"
 )
 
 # Registered utilities whose own installer file has an Alpine branch.

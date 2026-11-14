@@ -412,3 +412,97 @@ ensure_electron_runtime_deps() {
     fi
     return 0
 }
+
+# ============================================================================
+# Native package, else Flathub
+#
+# Install source policy for apps that most distros package but some do not
+# (Anki, Calibre on RHEL clones, Kodi on openSUSE, ...): the distro's own
+# repository first, because it is signed by the distro and tracks the system;
+# Flathub only where the repository has no such package. Used by mpv, Kodi,
+# Blender, Darktable, RawTherapee, Shotcut, Scribus, Calibre, Anki, Okular,
+# Xournal++ and KeePassXC. Older installers carry their own copy of this
+# fallback inline; do not add another one, use these.
+# ============================================================================
+
+# Whether a package manager repository that is configured right now offers PKG.
+# The query output is captured first and tested afterwards: piping it into
+# grep -q would end the query early and, under pipefail, report "not found"
+# for a package that is there (SIGPIPE, status 141).
+pkg_in_repo() {
+    local pkg="$1" out
+    case "${PKG_MGR:-}" in
+        apt)
+            out=$(apt-cache policy "$pkg" 2>/dev/null)
+            [[ "$out" == *"Candidate: "[!\(]* ]]
+            ;;
+        dnf|yum)
+            out=$("$PKG_MGR" -q repoquery --latest-limit=1 --qf '%{name}\n' "$pkg" 2>/dev/null)
+            grep -qx "$pkg" <<<"$out"
+            ;;
+        pacman)  arch_repo_has "$pkg" ;;
+        zypper)
+            out=$(zypper -q info "$pkg" 2>/dev/null)
+            grep -q '^Version' <<<"$out"
+            ;;
+        apk)
+            out=$(apk search -e "$pkg" 2>/dev/null)
+            [[ -n "$out" ]]
+            ;;
+        *)       return 1 ;;
+    esac
+}
+
+# Install a Flathub app system-wide, adding flatpak and the flathub remote first.
+# sudo, not a bare flatpak: ensure_flatpak adds flathub as a SYSTEM remote (see
+# the note in flatpak_or_aur in aur.sh).
+flatpak_install_flathub() {
+    local flatpak_id="$1"
+    ensure_flatpak || { error "Flatpak is needed for ${flatpak_id} and could not be set up."; return 1; }
+    sudo flatpak install -y flathub "$flatpak_id" || return 1
+    flatpak_refresh_dbus
+}
+
+# native_or_flatpak_install FLATPAK_ID PKG
+native_or_flatpak_install() {
+    local flatpak_id="$1" pkg="$2"
+    pkg_refresh
+    # RHEL clones carry much of this software in EPEL (which needs CRB).
+    if [[ "${DISTRO_FAMILY:-}" == "rhel" ]]; then
+        rpm -q epel-release &>/dev/null || pkg_install epel-release || true
+        enable_crb
+    fi
+    if pkg_in_repo "$pkg"; then
+        pkg_install "$pkg"
+        return $?
+    fi
+    info "${pkg} is not in the ${DISTRO_NAME:-system} repositories; installing the Flatpak from Flathub."
+    flatpak_install_flathub "$flatpak_id"
+}
+
+# User settings and data stay: these apps hold notes, vaults and libraries.
+native_or_flatpak_uninstall() {
+    local flatpak_id="$1" pkg="$2"
+    if flatpak_is_installed "$flatpak_id"; then
+        flatpak uninstall -y --user "$flatpak_id" 2>/dev/null || \
+            sudo flatpak uninstall -y --system "$flatpak_id"
+    else
+        pkg_remove "$pkg"
+    fi
+}
+
+native_or_flatpak_update() {
+    local flatpak_id="$1" pkg="$2"
+    if flatpak_is_installed "$flatpak_id"; then
+        flatpak update -y --user "$flatpak_id" 2>/dev/null || \
+            sudo flatpak update -y --system "$flatpak_id"
+    else
+        pkg_upgrade "$pkg"
+    fi
+}
+
+# Version from the package manager or Flatpak. The program itself is never run:
+# several of these are GUI apps that open a window for --version.
+native_or_flatpak_version() {
+    _ver_from_pkg "$2" || _ver_from_flatpak "$1" || echo ""
+}

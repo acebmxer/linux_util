@@ -14,6 +14,23 @@ when a release is cut.
 
 ### Added
 
+- **16 more Productivity apps** (part of #91). Password managers and
+  encryption: 1Password, KeePassXC, Cryptomator and VeraCrypt. Media: mpv,
+  Kodi and Spotify. Creative: Blender, Darktable, RawTherapee, Shotcut and
+  Scribus. Documents and notes: Calibre, Anki, Okular and Xournal++. Each uses
+  the distro's own package where its repositories have one and Flathub where
+  they do not (Spotify and Cryptomator always use Flathub). 1Password adds
+  1Password's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and
+  openSUSE, and VeraCrypt installs the package from its GitHub release after
+  checking the signature against VeraCrypt's published key (Arch uses its
+  repository package). Uninstall keeps your vaults, databases and accounts.
+  Alpine offers the ones its repositories carry; Spotify, 1Password, VeraCrypt,
+  Cryptomator and Calibre are hidden there. Productivity is now sorted into folders: **Office Suites** (now
+  including Euro-Office), **Notes** (Obsidian, Standard Notes, Joplin, Anki,
+  Xournal++, Logseq, Mark Text), **Password Managers**, **Encryption**,
+  **Documents & Reading**, **Graphics & Photo**, **Video & Audio** and
+  **Media**. ArtCraft Launcher, Flameshot, Nextcloud Desktop, NVIDIA PAIR and
+  WinApps stay at the top level.
 - **Alpine Linux support** (#90). `./linux_util.sh` now runs on Alpine and
   postmarketOS using `apk`, instead of stopping with "No supported package
   manager found". System Updates, Full System Upgrade, Fix Broken Packages, the

@@ -124,20 +124,35 @@ NO_RETRY["DistroShelf"]=1
 NO_RETRY["Kontainer"]=1
 
 # --- Utilities (alphabetical order) ---
+register_utility "1Password"            install_onepassword      check_onepassword      uninstall_onepassword      update_onepassword        get_version_onepassword
 register_utility "AMD CPU Microcode & Firmware"  install_amd_chipset_drivers   check_amd_chipset_drivers   uninstall_amd_chipset_drivers   update_amd_chipset_drivers   get_version_amd_chipset_drivers
 register_utility "Angry IP Scanner"    install_angry_ip_scanner check_angry_ip_scanner uninstall_angry_ip_scanner update_angry_ip_scanner    get_version_angry_ip_scanner
+register_utility "Anki"                 install_anki             check_anki             uninstall_anki             update_anki               get_version_anki
 register_utility "Ansible"             install_ansible          check_ansible          uninstall_ansible          update_ansible             get_version_ansible
 register_utility "AnyDesk"             install_anydesk          check_anydesk          uninstall_anydesk          update_anydesk             get_version_anydesk
 register_utility "ArtCraft Launcher" install_artcraft check_artcraft uninstall_artcraft update_artcraft get_version_artcraft
 register_utility "Audacity"            install_audacity         check_audacity         uninstall_audacity         update_audacity            get_version_audacity
 register_utility "Bitwarden Client"       install_bitwarden           check_bitwarden           uninstall_bitwarden           update_bitwarden              get_version_bitwarden
+register_utility "Blender"              install_blender          check_blender          uninstall_blender          update_blender            get_version_blender
+register_utility "Calibre"              install_calibre          check_calibre          uninstall_calibre          update_calibre            get_version_calibre
+register_utility "Cryptomator"          install_cryptomator      check_cryptomator      uninstall_cryptomator      update_cryptomator        get_version_cryptomator
+register_utility "Darktable"            install_darktable        check_darktable        uninstall_darktable        update_darktable          get_version_darktable
 register_utility "GRUB"                install_grub             check_grub             uninstall_grub             update_grub                get_version_grub
+register_utility "KeePassXC"            install_keepassxc        check_keepassxc        uninstall_keepassxc        update_keepassxc          get_version_keepassxc
+register_utility "Kodi"                 install_kodi             check_kodi             uninstall_kodi             update_kodi               get_version_kodi
 register_utility "Limine"              install_limine           check_limine           uninstall_limine           update_limine              get_version_limine
+register_utility "mpv"                  install_mpv              check_mpv              uninstall_mpv              update_mpv                get_version_mpv
+register_utility "Okular"               install_okular           check_okular           uninstall_okular           update_okular             get_version_okular
+register_utility "RawTherapee"          install_rawtherapee      check_rawtherapee      uninstall_rawtherapee      update_rawtherapee        get_version_rawtherapee
+register_utility "Scribus"              install_scribus          check_scribus          uninstall_scribus          update_scribus            get_version_scribus
+register_utility "Shotcut"              install_shotcut          check_shotcut          uninstall_shotcut          update_shotcut            get_version_shotcut
+register_utility "Spotify"              install_spotify          check_spotify          uninstall_spotify          update_spotify            get_version_spotify
 register_utility "systemd-boot"        install_systemd_boot     check_systemd_boot     uninstall_systemd_boot     update_systemd_boot        get_version_systemd_boot
 register_utility "Switch Bootloader"   setup_switch_bootloader  check_always_false         noop_switch_bootloader    update_switch_bootloader    get_version_switch_bootloader
 register_utility "Configure Bootloader" setup_configure_bootloader check_always_false noop_function update_configure_bootloader get_version_configure_bootloader
 register_utility "GRUB Theme Selector" install_grubtheme_selector    check_always_false          noop_function                   update_grubtheme_selector    get_version_grubtheme_selector
 register_utility "Distro GRUB Themes"  install_grubtheme_distro      check_grubtheme_distro      uninstall_grubtheme_distro      update_grubtheme_distro      get_version_grubtheme_distro
+register_utility "VeraCrypt"            install_veracrypt        check_veracrypt        uninstall_veracrypt        update_veracrypt          get_version_veracrypt
 register_utility "vinceliuice GRUB Themes" install_grubtheme_vinceliuice check_grubtheme_vinceliuice uninstall_grubtheme_vinceliuice update_grubtheme_vinceliuice get_version_grubtheme_vinceliuice
 register_utility "Catppuccin GRUB Theme" install_grubtheme_catppuccin check_grubtheme_catppuccin  uninstall_grubtheme_catppuccin  update_grubtheme_catppuccin  get_version_grubtheme_catppuccin
 register_utility "HyperFluent GRUB Theme" install_grubtheme_hyperfluent check_grubtheme_hyperfluent uninstall_grubtheme_hyperfluent update_grubtheme_hyperfluent get_version_grubtheme_hyperfluent
@@ -338,6 +353,7 @@ register_utility "WireGuard Client"    install_wireguard_client check_wireguard_
 register_utility "WireGuard Server"    install_wireguard_server check_wireguard_server uninstall_wireguard_server update_wireguard_server    get_version_wireguard_server
 register_utility "WPS Office"          install_wps_office       check_wps_office       uninstall_wps_office       update_wps_office          get_version_wps_office
 register_utility "Xodus Nexus"         install_xodus_nexus      check_xodus_nexus      uninstall_xodus_nexus      update_xodus_nexus         get_version_xodus_nexus
+register_utility "Xournal++"            install_xournalpp        check_xournalpp        uninstall_xournalpp        update_xournalpp          get_version_xournalpp
 register_utility "Zen Browser"         install_zen_browser      check_zen_browser      uninstall_zen_browser      update_zen_browser         get_version_zen_browser
 register_utility "Zoom"                install_zoom             check_zoom             uninstall_zoom             update_zoom                get_version_zoom
 register_utility "Zotero"              install_zotero           check_zotero           uninstall_zotero           update_zotero              get_version_zotero
@@ -698,6 +714,22 @@ UTILITY_CATEGORY["Input Leap"]="System Tools"
 UTILITY_CATEGORY["k9s"]="Development"
 UTILITY_CATEGORY["Kdenlive"]="Productivity"
 UTILITY_CATEGORY["Krita"]="Productivity"
+UTILITY_CATEGORY["1Password"]="Productivity"
+UTILITY_CATEGORY["Anki"]="Productivity"
+UTILITY_CATEGORY["Blender"]="Productivity"
+UTILITY_CATEGORY["Calibre"]="Productivity"
+UTILITY_CATEGORY["Cryptomator"]="Productivity"
+UTILITY_CATEGORY["Darktable"]="Productivity"
+UTILITY_CATEGORY["KeePassXC"]="Productivity"
+UTILITY_CATEGORY["Kodi"]="Productivity"
+UTILITY_CATEGORY["mpv"]="Productivity"
+UTILITY_CATEGORY["Okular"]="Productivity"
+UTILITY_CATEGORY["RawTherapee"]="Productivity"
+UTILITY_CATEGORY["Scribus"]="Productivity"
+UTILITY_CATEGORY["Shotcut"]="Productivity"
+UTILITY_CATEGORY["Spotify"]="Productivity"
+UTILITY_CATEGORY["VeraCrypt"]="Productivity"
+UTILITY_CATEGORY["Xournal++"]="Productivity"
 UTILITY_CATEGORY["kubectl"]="Development"
 UTILITY_CATEGORY["Libation"]="Productivity"
 UTILITY_CATEGORY["LibreWolf"]="Internet"
@@ -773,9 +805,40 @@ UTILITY_SUBCATEGORY["WireGuard Server"]="VPN"
 UTILITY_SUBCATEGORY["LibreOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["OnlyOffice"]="Office Suites"
 UTILITY_SUBCATEGORY["WPS Office"]="Office Suites"
+UTILITY_SUBCATEGORY["Euro-Office"]="Office Suites"
+UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
 UTILITY_SUBCATEGORY["Obsidian"]="Notes"
 UTILITY_SUBCATEGORY["Standard Notes"]="Notes"
-UTILITY_SUBCATEGORY["Joplin Client"]="Notes"
+UTILITY_SUBCATEGORY["Anki"]="Notes"
+UTILITY_SUBCATEGORY["Xournal++"]="Notes"
+UTILITY_SUBCATEGORY["Logseq"]="Notes"
+UTILITY_SUBCATEGORY["Mark Text"]="Notes"
+UTILITY_SUBCATEGORY["Bitwarden Client"]="Password Managers"
+UTILITY_SUBCATEGORY["1Password"]="Password Managers"
+UTILITY_SUBCATEGORY["KeePassXC"]="Password Managers"
+UTILITY_SUBCATEGORY["Cryptomator"]="Encryption"
+UTILITY_SUBCATEGORY["VeraCrypt"]="Encryption"
+UTILITY_SUBCATEGORY["Calibre"]="Documents & Reading"
+UTILITY_SUBCATEGORY["Okular"]="Documents & Reading"
+UTILITY_SUBCATEGORY["Zotero"]="Documents & Reading"
+UTILITY_SUBCATEGORY["GIMP"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Inkscape"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Krita"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Blender"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Darktable"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["RawTherapee"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Scribus"]="Graphics & Photo"
+UTILITY_SUBCATEGORY["Kdenlive"]="Video & Audio"
+UTILITY_SUBCATEGORY["Shotcut"]="Video & Audio"
+UTILITY_SUBCATEGORY["HandBrake"]="Video & Audio"
+UTILITY_SUBCATEGORY["Audacity"]="Video & Audio"
+UTILITY_SUBCATEGORY["OBS Studio"]="Video & Audio"
+UTILITY_SUBCATEGORY["VLC"]="Media"
+UTILITY_SUBCATEGORY["mpv"]="Media"
+UTILITY_SUBCATEGORY["Kodi"]="Media"
+UTILITY_SUBCATEGORY["Spotify"]="Media"
+UTILITY_SUBCATEGORY["Multimedia Codecs"]="Media"
+UTILITY_SUBCATEGORY["Libation"]="Media"
 UTILITY_SUBCATEGORY["Claude Code"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Claude Desktop"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Codex"]="IDEs & Editors"
@@ -887,6 +950,7 @@ SUBCATEGORY_ORDER["Development"]="IDEs & Editors|Distrobox"
 SUBCATEGORY_ORDER["Drivers"]="CPU Microcode|GPU Drivers"
 SUBCATEGORY_ORDER["File Managers"]="Graphical|Terminal"
 SUBCATEGORY_ORDER["Internet"]="Web Browsers|Web Browser Tweaks|Web Browser Extensions|Messaging|Email Clients|File Transfer|VPN"
+SUBCATEGORY_ORDER["Productivity"]="Office Suites|Notes|Password Managers|Encryption|Documents & Reading|Graphics & Photo|Video & Audio|Media"
 SUBCATEGORY_ORDER["Remote Admin Tools"]="Remote Access"
 SUBCATEGORY_ORDER["Bootloaders"]="GRUB Themes"
 SUBCATEGORY_ORDER["Login Screens"]="Display Managers|SDDM Themes|LightDM Greeters"
@@ -1067,6 +1131,22 @@ UTILITY_DESCRIPTION["HandBrake"]="Open-source video transcoder for converting vi
 UTILITY_DESCRIPTION["Inkscape"]="Professional vector graphics editor for creating illustrations, logos, and scalable artwork using SVG."
 UTILITY_DESCRIPTION["Kdenlive"]="KDE's powerful non-linear video editor with multi-track editing, effects, and broad format support."
 UTILITY_DESCRIPTION["Krita"]="Professional digital painting application designed for illustrators, concept artists, and texture artists."
+UTILITY_DESCRIPTION["1Password"]="Password manager and secrets vault from 1Password. Installed from 1Password's own signed repository on Debian, Ubuntu, Fedora, RHEL clones and openSUSE, so updates arrive with the system; on Arch it comes from the AUR (only with AUR support enabled). Needs a 1Password account; not available on Alpine. Uninstall keeps your account data."
+UTILITY_DESCRIPTION["Anki"]="Spaced-repetition flashcard program for memorising anything, with sync across devices. Distro package where one exists (Arch, Alpine), otherwise Flathub. Uninstall keeps your decks."
+UTILITY_DESCRIPTION["Blender"]="Free 3D creation suite: modelling, sculpting, animation, rendering, video editing and compositing. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["Calibre"]="E-book library manager and reader: converts between formats, edits metadata, and syncs books to e-readers. Distro package, or Flathub on RHEL clones. Not available on Alpine."
+UTILITY_DESCRIPTION["Cryptomator"]="Client-side encryption for cloud storage: creates encrypted vaults as ordinary folders that Dropbox, Nextcloud, Google Drive and others sync. Installed from Flathub on every distro; not available on Alpine. Uninstall keeps your vaults."
+UTILITY_DESCRIPTION["Darktable"]="Open-source raw photo workflow and editor, a free alternative to Lightroom. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["KeePassXC"]="Offline, open-source password manager that keeps passwords in an encrypted file you control, with browser integration and TOTP. Distro package, or Flathub where the repository has none. Uninstall keeps your database."
+UTILITY_DESCRIPTION["Kodi"]="Home-theater media center for movies, TV, music and photos from local drives and the network. Distro package on Debian, Ubuntu and Arch, RPM Fusion Free on Fedora and RHEL clones, Flathub on openSUSE."
+UTILITY_DESCRIPTION["mpv"]="Minimal, scriptable media player for nearly every video and audio format, driven by keyboard shortcuts and a config file. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["Okular"]="KDE's document viewer for PDF, ePub, comic books and more, with annotations and signatures. Pulls in KDE libraries; works on any desktop. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["RawTherapee"]="Open-source raw photo developer with fine control over exposure, color and noise. Distro package, or Flathub where the repository has none (RHEL clones)."
+UTILITY_DESCRIPTION["Scribus"]="Desktop publishing: page layout for magazines, brochures and print-ready PDFs. Distro package, or Flathub where the repository has none."
+UTILITY_DESCRIPTION["Shotcut"]="Cross-platform video editor with a multi-track timeline, filters and wide format support. Distro package, or Flathub where the repository has none (RHEL clones)."
+UTILITY_DESCRIPTION["Spotify"]="Spotify music streaming client. Installed from Flathub on every distro; not available on Alpine. Needs a Spotify account. Uninstall keeps your login and cache."
+UTILITY_DESCRIPTION["VeraCrypt"]="Disk and file encryption: encrypted containers, whole partitions and hidden volumes, successor to TrueCrypt. Arch uses its repository package; Debian, Ubuntu, Fedora, RHEL clones and openSUSE use the package from VeraCrypt's own GitHub release, signature checked, for the releases it publishes. Not available on Alpine."
+UTILITY_DESCRIPTION["Xournal++"]="Handwriting notebook and PDF annotator for pen tablets and touchscreens. Distro package, or Flathub where the repository has none."
 UTILITY_DESCRIPTION["Libation"]="Open-source Audible audiobook manager for downloading, decrypting, and organizing your audiobook library."
 UTILITY_DESCRIPTION["Logseq"]="Open-source knowledge management and note-taking app based on linked, Markdown-formatted outliner blocks."
 UTILITY_DESCRIPTION["Mark Text"]="Simple, elegant Markdown editor focused on writing speed with live preview and multiple themes."
@@ -1184,7 +1264,7 @@ mark_aur_only_arch \
     "Devolutions RDM=remote-desktop-manager" \
     "Euro-Office=euro-office-desktopeditors-git" \
     "Snap (snapd)=snapd" "Snapper GUI=snapper-gui-git" \
-    "Trojita=trojita" "Zotero=zotero"
+    "Trojita=trojita" "Zotero=zotero" "1Password=1password"
 
 # Utilities that can install from upstream's own binary when no package source
 # carries them (the third tier of arch_install_ordered, reached on Arch because
