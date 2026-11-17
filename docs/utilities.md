@@ -379,6 +379,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **tmux** | Terminal multiplexer; SSH sessions survive dropped connections *(Remote Access)* |
 | **tmux Resurrect** | Saves and restores tmux session layout across reboots *(Remote Access)* |
 | **Remmina** | Remote desktop client (RDP, VNC, SSH, SPICE) *(Remote Access)* |
+| **krdpc** | KDE app that keeps a list of your remote computers and opens each with FreeRDP, laid out like Remmina; RDP only, passwords in KDE Wallet. Installed from its own GitHub release (SHA-256 checked) through the distro package tool; beta. Fedora 45+, Debian 13, Ubuntu 26.04+ and Arch only *(Remote Access)* |
 | **RustDesk** | Open-source remote desktop and remote assistance tool *(Remote Access)* |
 | **Termius SSH Client** | Modern SSH client with cross-device sync *(Remote Access)* |
 | **OpenRSAT** | Active Directory management console (Microsoft RSAT-like) from Tranquil IT — installs the latest GitHub release as a `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL x86_64), or standalone binary (openSUSE); not available on Arch |

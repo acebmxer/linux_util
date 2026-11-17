@@ -6205,6 +6205,76 @@ test_github_binary_install_without_find() {
     assert_eq "install -Dm755 $d/w/pkg/tool /usr/local/bin/tool" "$out" "A release binary one folder deep is found without find"
 }
 
+# --- krdpc ---
+echo ""
+echo "=== krdpc ==="
+
+test_krdpc_registered() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" gaps=0 fn line
+    grep -qE '^[[:space:]]*register_utility "krdpc"[[:space:]]+install_krdpc ' "$f" || { gaps=1; echo "  not registered"; }
+    grep -qF 'UTILITY_CATEGORY["krdpc"]="Remote Admin Tools"' "$f" || { gaps=1; echo "  no category"; }
+    grep -qF 'UTILITY_SUBCATEGORY["krdpc"]="Remote Access"' "$f" || { gaps=1; echo "  no folder"; }
+    grep -qF 'UTILITY_DESCRIPTION["krdpc"]=' "$f" || { gaps=1; echo "  no description"; }
+    grep -qF '"krdpc=/usr/bin/krdpc"' "$f" && grep -qF '"krdpc=_krdpc_latest_version"' "$f" || { gaps=1; echo "  no upstream marker"; }
+    for fn in install check uninstall update get_version; do
+        grep -q "^${fn}_krdpc()" "${SCRIPT_DIR}/lib/installers/krdpc.sh" || { gaps=1; echo "  missing ${fn}_krdpc"; }
+    done
+    grep -qxF "    'krdpc'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion"; }
+    grep -qxF "krdpc" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion"; }
+    grep -qF '| **krdpc** |' "${SCRIPT_DIR}/docs/utilities.md" || { gaps=1; echo "  missing docs row"; }
+    # Offered only where its release has a package that installs.
+    line=$(grep -n 'register_utility "krdpc"' "$f" | cut -d: -f1)
+    sed -n "$((line-5)),$((line-1))p" "$f" | grep -qF '"fedora" && "${DISTRO_VERSION_ID%%.*}" -ge 45' && \
+        sed -n "$((line-5)),$((line-1))p" "$f" | grep -qF '"debian" && "${DISTRO_VERSION_ID%%.*}" -ge 13' && \
+        sed -n "$((line-5)),$((line-1))p" "$f" | grep -qF '"ubuntu" && "${DISTRO_VERSION_ID%%.*}" -ge 26' || { gaps=1; echo "  distro gate wrong"; }
+    assert_eq "0" "$gaps" "krdpc is registered with category, folder, description, upstream marker, completions, docs row and all five functions"
+}
+
+# krdpc has only pre-releases, which GitHub's "latest" answer skips; the file
+# names and versions must match what its release really publishes.
+test_krdpc_release_lookup() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh"
+        source "${SCRIPT_DIR}/lib/installers/krdpc.sh"
+        _log=$(mktemp)
+        curl() { printf 'URL:%s\n' "${@: -1}" >>"$_log"; printf '[{"tag_name": "v0.1.0-beta.7","prerelease": true,"assets": []}]'; }
+        github_latest_tag acebmxer/krdpc
+        github_latest_tag someone/else
+        cat "$_log"; rm -f "$_log"
+        for fam in fedora debian arch; do
+            DISTRO_FAMILY=$fam
+            case $fam in
+                fedora) n=krdpc-0.1.0-beta.7-1.noarch.rpm ;;
+                debian) n=krdpc_0.1.0-beta.7_all.deb ;;
+                arch)   n=krdpc-0.1.0_beta.7-1-any.pkg.tar.zst ;;
+            esac
+            [[ "$n" =~ ^($(_krdpc_asset_re))$ ]] && echo "match:$fam"
+        done
+        DISTRO_FAMILY=fedora; [[ "krdpc-0.1.0-beta.7-1.src.rpm" =~ ^($(_krdpc_asset_re))$ ]] || echo "src-skipped"
+    )
+    assert_contains "$out" "URL:https://api.github.com/repos/acebmxer/krdpc/releases\?per_page=1" "krdpc asks for the newest release of any kind"
+    assert_contains "$out" "URL:https://api.github.com/repos/someone/else/releases/latest" "other repositories still ask for the latest stable release"
+    assert_contains "$out" "^v0.1.0-beta.7$" "the pre-release's tag is read"
+    assert_contains "$out" "match:fedora" "the rpm file name is matched"
+    assert_contains "$out" "match:debian" "the deb file name is matched"
+    assert_contains "$out" "match:arch" "the Arch package file name is matched"
+}
+
+# The installed version reads the same as the release tag on every family, so
+# System Updates sees "up to date" and no false update.
+test_krdpc_version_spelling() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/krdpc.sh"
+        _ver_from_pkg() { printf '%s\n' "$_fake"; }
+        _fake='0.1.0~beta.7'; get_version_krdpc
+        _fake='0.1.0_beta.7'; get_version_krdpc
+        _ver_from_pkg() { return 1; }; echo "none=[$(get_version_krdpc)]"
+    )
+    assert_eq $'0.1.0-beta.7\n0.1.0-beta.7\nnone=[]' "$out" "rpm, deb and Arch spellings of the version all read like the release tag"
+}
+
 # --- Verified GitHub downloads ---
 _GH_FIXTURE='{"tag_name": "v1.2.3","assets": [
  {"name": "tool_1.2.3_linux_x86_64.tar.gz","uploader": {"login": "bot"},"size": 9,"digest": "sha256:'"$(printf 'a%.0s' {1..64})"'","browser_download_url": "https://x/tool_1.2.3_linux_x86_64.tar.gz"},
@@ -6453,6 +6523,9 @@ test_backup_apps_held_back
 test_kopia_release_name
 test_back_in_time_uninstall_removes_dependency
 test_github_binary_install_without_find
+test_krdpc_registered
+test_krdpc_release_lookup
+test_krdpc_version_spelling
 test_github_asset_info
 test_github_asset_download_checks_digest
 test_upstream_arch_and_regex

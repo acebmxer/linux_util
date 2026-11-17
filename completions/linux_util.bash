@@ -91,6 +91,7 @@ kitty
 KMail
 Kodi
 Kopia
+krdpc
 lazygit
 LibreOffice
 linux-tkg

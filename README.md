@@ -132,7 +132,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, Opera, LibreWolf, Zen, Thorium, Tor), email clients, messaging (Signal, Discord, Slack, Telegram, Zoom, WhatsApp, Microsoft Teams, Mattermost), and VPNs (ProtonVPN, Mullvad, NordVPN, OpenVPN, PIA, Tailscale, WireGuard) |
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
 | **Productivity** | ArtCraft Launcher, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Multimedia Codecs, Obsidian, Joplin, Logseq, Bitwarden, 1Password, KeePassXC, Cryptomator, VeraCrypt, Nextcloud, NVIDIA PAIR, WinApps, and more: media (mpv, Kodi, Spotify), creative (Blender, Darktable, RawTherapee, Shotcut, Scribus) and documents (Calibre, Anki, Okular, Xournal++) |
-| **Remote Admin** | Cockpit, Enable RDP (xrdp or krdp), OpenSSH, Remmina, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
+| **Remote Admin** | Cockpit, Enable RDP (xrdp or krdp), OpenSSH, Remmina, krdpc, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
 | **File Managers** | Nautilus, Dolphin, Thunar, Nemo, Caja, PCManFM-Qt, Krusader, and the terminal managers (Midnight Commander, Ranger, nnn, Superfile) |
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
 | **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |

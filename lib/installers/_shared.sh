@@ -524,12 +524,20 @@ native_or_flatpak_version() {
 
 declare -A _GH_RELEASE_JSON=()
 
+# Repositories whose newest release may be a pre-release. GitHub's "latest"
+# endpoint skips pre-releases and answers 404 for a repository that has only
+# them, so these ask for the newest release of any kind instead. Opt in with
+# github_allow_prerelease REPO; every other repository keeps stable-only.
+declare -A _GH_PRERELEASE_OK=()
+github_allow_prerelease() { _GH_PRERELEASE_OK["$1"]=1; }
+
 # Release JSON for REPO, fetched once per run, flattened to one line.
 _gh_release_json() {
-    local repo="$1"
+    local repo="$1" path=releases/latest
+    [[ -n "${_GH_PRERELEASE_OK[$repo]:-}" ]] && path="releases?per_page=1"
     if [[ -z "${_GH_RELEASE_JSON[$repo]:-}" ]]; then
         _GH_RELEASE_JSON["$repo"]=$(curl -fsSL --max-time 30 \
-            "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null | tr -d '\n') || return 1
+            "https://api.github.com/repos/${repo}/${path}" 2>/dev/null | tr -d '\n') || return 1
     fi
     # A rate-limit or error answer is JSON too, but has no release in it.
     if [[ "${_GH_RELEASE_JSON[$repo]}" != *'"tag_name"'* ]]; then

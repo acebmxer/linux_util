@@ -273,6 +273,13 @@ register_utility "ProtonVPN"           install_protonvpn        check_protonvpn 
 register_utility "pyenv"               install_pyenv            check_pyenv            uninstall_pyenv            update_pyenv               get_version_pyenv
 register_utility "QBittorrent"         install_qbittorrent      check_qbittorrent      uninstall_qbittorrent      update_qbittorrent         get_version_qbittorrent
 register_utility "Remmina"             install_remmina          check_remmina          uninstall_remmina          update_remmina             get_version_remmina
+# krdpc: its own GitHub release is a .rpm (needs Fedora 45's Python), a .deb (needs PySide6, so Debian 13, Ubuntu 26.04 or newer) or an Arch package.
+if [[ "$DISTRO_ID" == "fedora" && "${DISTRO_VERSION_ID%%.*}" -ge 45 ]] || \
+   [[ "$DISTRO_FAMILY" == "arch" ]] || \
+   [[ "$DISTRO_ID" == "debian" && "${DISTRO_VERSION_ID%%.*}" -ge 13 ]] || \
+   [[ "$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -ge 26 ]]; then
+    register_utility "krdpc"             install_krdpc            check_krdpc            uninstall_krdpc            update_krdpc               get_version_krdpc
+fi
 register_utility "ripgrep"             install_ripgrep          check_ripgrep          uninstall_ripgrep          update_ripgrep             get_version_ripgrep
 register_utility "RustDesk"            install_rustdesk         check_rustdesk         uninstall_rustdesk         update_rustdesk            get_version_rustdesk
 register_utility "Rustup"              install_rustup           check_rustup           uninstall_rustup           update_rustup              get_version_rustup
@@ -762,6 +769,7 @@ UTILITY_CATEGORY["ProtonUp-Qt"]="Gaming"
 UTILITY_CATEGORY["ProtonVPN"]="Internet"
 UTILITY_CATEGORY["QBittorrent"]="Internet"
 UTILITY_CATEGORY["Remmina"]="Remote Admin Tools"
+UTILITY_CATEGORY["krdpc"]="Remote Admin Tools"
 UTILITY_CATEGORY["Signal Desktop"]="Internet"
 UTILITY_CATEGORY["SponsorBlock Extension"]="Internet"
 UTILITY_CATEGORY["Stacer"]="System Tools"
@@ -963,6 +971,7 @@ UTILITY_SUBCATEGORY["Trojita"]="Email Clients"
 UTILITY_SUBCATEGORY["FileZilla"]="File Transfer"
 UTILITY_SUBCATEGORY["LocalSend"]="File Transfer"
 UTILITY_SUBCATEGORY["Remmina"]="Remote Access"
+UTILITY_SUBCATEGORY["krdpc"]="Remote Access"
 UTILITY_SUBCATEGORY["Termius SSH Client"]="Remote Access"
 UTILITY_SUBCATEGORY["OpenSSH Server"]="Remote Access"
 UTILITY_SUBCATEGORY["tmux"]="Remote Access"
@@ -1357,6 +1366,7 @@ UTILITY_DESCRIPTION["PIA VPN"]="Private Internet Access VPN client for encrypted
 UTILITY_DESCRIPTION["ProtonVPN"]="Free and open-source VPN service by Proton for secure and private browsing."
 UTILITY_DESCRIPTION["QBittorrent"]="Open-source BitTorrent client with a clean interface and no ads."
 UTILITY_DESCRIPTION["Remmina"]="Remote desktop client supporting RDP, VNC, SSH, SPICE, and other protocols."
+UTILITY_DESCRIPTION["krdpc"]="KDE desktop app that keeps a list of your remote computers and opens each with FreeRDP (xfreerdp), laid out like Remmina and following your Plasma theme; remembers passwords in KDE Wallet. RDP only. Installed from krdpc's own GitHub release (SHA-256 checked) with the distro package tool, so FreeRDP 3, PySide6 and keyring come from your distro: Fedora 45 and newer, Debian 13, Ubuntu 26.04 and newer, Arch. krdpc is still in beta. Uninstall keeps your computers and saved passwords."
 UTILITY_DESCRIPTION["Signal Desktop"]="End-to-end encrypted messaging application focused on privacy and security."
 UTILITY_DESCRIPTION["SponsorBlock Extension"]="Deploys SponsorBlock browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, LibreWolf, Thorium, Vivaldi). Automatically skips YouTube sponsors, intros, outros, and other unwanted segments using a crowdsourced database."
 UTILITY_DESCRIPTION["Syncthing"]="Continuous peer-to-peer file synchronization between your devices without a central server."
@@ -1625,7 +1635,8 @@ mark_upstream_binary \
     "minikube=/usr/local/bin/minikube" \
     "k3s=/usr/local/bin/k3s-uninstall.sh" \
     "Ollama=/usr/local/lib/ollama" \
-    "Kopia=/usr/local/bin/kopia"
+    "Kopia=/usr/local/bin/kopia" \
+    "krdpc=/usr/bin/krdpc"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1650,7 +1661,8 @@ mark_upstream_latest \
     "minikube=_minikube_latest_version" \
     "k3s=_k3s_latest_version" \
     "Ollama=_ollama_latest_version" \
-    "Kopia=_kopia_latest_version"
+    "Kopia=_kopia_latest_version" \
+    "krdpc=_krdpc_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.

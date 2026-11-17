@@ -12,6 +12,18 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **krdpc** (Remote Admin Tools, Remote Access): a KDE app that keeps a list of
+  your remote computers and opens each with FreeRDP, laid out like Remmina. It
+  is in no distribution's repositories, so it is installed from krdpc's own
+  GitHub release (its .rpm, .deb or Arch package, checked against the SHA-256
+  GitHub publishes) with your package tool, which brings FreeRDP 3, PySide6
+  and keyring from your distribution. krdpc is still in beta, so the newest
+  release of any kind is used; System Updates and Update install a newer one.
+  Offered on Fedora 45 and newer, Debian 13, Ubuntu 26.04 and newer, and Arch.
+  Uninstall keeps your computers and saved passwords.
+
 ## [1.13.0] - 2026-11-14
 
 ### Added
