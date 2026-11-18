@@ -21,6 +21,8 @@ when a release is cut.
   downloads updates by default) and turns on its daily timer. The machine is
   never rebooted for you. Uninstall turns the timer off and removes the
   package. "Configure Unattended Upgrades" opens that file in your editor.
+  Neither Unattended Upgrades task asks to reboot afterwards any more (on
+  Debian and Ubuntu too), since neither needs one.
 - **krdpc** (Remote Admin Tools, Remote Access): a KDE app that keeps a list of
   your remote computers and opens each with FreeRDP, laid out like Remmina. It
   is in no distribution's repositories, so it is installed from krdpc's own

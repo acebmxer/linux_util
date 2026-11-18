@@ -2371,6 +2371,8 @@ test_task_wants_reboot_outside_wsl_unchanged() {
     assert_eq "no" "$(_wslr_probe 0 Remmina false 0)" "an app install offers no reboot outside WSL"
     assert_eq "no" "$(_wslr_probe 0 "Create Snapshot" true 0)" "a no-reboot System Task offers no reboot outside WSL"
     assert_eq "no" "$(_wslr_probe 0 "System Updates" true 3)" "exit 3 (nothing changed) offers no reboot"
+    assert_eq "no" "$(_wslr_probe 0 "Unattended Upgrades" true 0)" "Unattended Upgrades offers no reboot"
+    assert_eq "no" "$(_wslr_probe 0 "Configure Unattended Upgrades" true 0)" "Configure Unattended Upgrades offers no reboot"
 }
 
 test_task_wants_reboot_under_wsl2() {
