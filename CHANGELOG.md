@@ -14,6 +14,13 @@ when a release is cut.
 
 ### Added
 
+- **Unattended Upgrades on Fedora and RHEL-based systems** (fixes #95). The task
+  that was Debian/Ubuntu-only now also installs dnf's automatic-update package
+  (Fedora Server included), sets `apply_updates = yes` in
+  `/etc/dnf/automatic.conf` (the file is backed up first; the package only
+  downloads updates by default) and turns on its daily timer. The machine is
+  never rebooted for you. Uninstall turns the timer off and removes the
+  package. "Configure Unattended Upgrades" opens that file in your editor.
 - **krdpc** (Remote Admin Tools, Remote Access): a KDE app that keeps a list of
   your remote computers and opens each with FreeRDP, laid out like Remmina. It
   is in no distribution's repositories, so it is installed from krdpc's own

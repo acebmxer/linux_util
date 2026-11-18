@@ -4508,6 +4508,182 @@ test_pardl_conf_unsupported_pkg_mgr
 rm -rf "$_PARDL_TEST_DIR"
 
 # ============================================================================
+# Unattended Upgrades (Fedora / RHEL, issue #95) Tests
+# ============================================================================
+echo ""
+echo "=== Unattended Upgrades (dnf) Tests ==="
+
+# Only defines functions, so sourcing is side-effect free. It reuses the ini
+# helpers from parallel_downloads.sh (sourced above).
+source "${SCRIPT_DIR}/lib/installers/unattended_upgrades.sh"
+
+_UU_TEST_DIR=$(mktemp -d)
+
+# dnf stub reporting a dnf5 or dnf4 version line.
+_uu_stub_dnf() {
+    if [[ "$1" == 5 ]]; then
+        dnf() { printf '%s\n' "dnf5 version 5.4.8.0" "dnf5 plugin API version 2.0"; }
+    else
+        dnf() { printf '%s\n' "4.20.0" "  Installed: dnf-0:4.20.0-1.el9.noarch"; }
+    fi
+}
+
+test_uu_value_reads_key_in_section() {
+    printf '%s\n' '[commands]' 'apply_updates = yes' '[emitters]' 'apply_updates = no' > "${_UU_TEST_DIR}/a.conf"
+    assert_eq "yes" "$(_pardl_value "${_UU_TEST_DIR}/a.conf" commands apply_updates)" \
+        "_pardl_value reads the key from the named section only"
+    assert_eq "" "$(_pardl_value "${_UU_TEST_DIR}/missing.conf" commands apply_updates)" \
+        "_pardl_value prints nothing for a missing file"
+}
+
+test_uu_dnf_package_and_timer_follow_dnf_version() {
+    _uu_stub_dnf 5
+    assert_eq "dnf5-plugin-automatic" "$(_uu_dnf_pkg)" "dnf5 uses dnf5-plugin-automatic"
+    assert_eq "dnf5-automatic.timer" "$(_uu_dnf_timer)" "dnf5 uses dnf5-automatic.timer"
+    _uu_stub_dnf 4
+    assert_eq "dnf-automatic" "$(_uu_dnf_pkg)" "dnf4 uses dnf-automatic"
+    assert_eq "dnf-automatic.timer" "$(_uu_dnf_timer)" "dnf4 uses dnf-automatic.timer"
+    unset -f dnf
+}
+
+test_uu_install_dnf4_flips_shipped_default() {
+    local saved_pkg_mgr="$PKG_MGR" uu_conf="${_UU_TEST_DIR}/dnf4.conf" installed=""
+    PKG_MGR=dnf
+    _uu_stub_dnf 4
+    _uu_dnf_conf() { printf '%s\n' "$uu_conf"; }
+    pkg_install() { installed="$*"; }
+    has_systemd() { return 1; }
+    run_as_root() { "$@"; }
+    printf '%s\n' '[commands]' '# comment' 'apply_updates = no' 'download_updates = yes' > "$uu_conf"
+
+    install_unattended_upgrades >/dev/null 2>&1
+    assert_eq "dnf-automatic" "$installed" "dnf4 install installs dnf-automatic"
+    assert_eq "yes" "$(_pardl_value "$uu_conf" commands apply_updates)" "install sets apply_updates = yes"
+    assert_eq "yes" "$(_pardl_value "$uu_conf" commands download_updates)" "install keeps the other settings"
+    assert_eq "1" "$(grep -c '^apply_updates' "$uu_conf")" "apply_updates appears once"
+    assert_eq "1" "$(ls "${uu_conf}".bak.* 2>/dev/null | wc -l)" "install backs up the existing config"
+
+    unset -f dnf pkg_install has_systemd run_as_root
+    PKG_MGR="$saved_pkg_mgr"
+    _uu_dnf_conf() { printf '%s\n' /etc/dnf/automatic.conf; }
+}
+
+test_uu_install_dnf5_creates_missing_config() {
+    local saved_pkg_mgr="$PKG_MGR" uu_conf="${_UU_TEST_DIR}/dnf5.conf" enabled=""
+    PKG_MGR=dnf
+    _uu_stub_dnf 5
+    _uu_dnf_conf() { printf '%s\n' "$uu_conf"; }
+    pkg_install() { :; }
+    has_systemd() { return 0; }
+    svc_enable_now() { enabled="$1"; }
+    run_as_root() { "$@"; }
+
+    install_unattended_upgrades >/dev/null 2>&1
+    assert_eq $'[commands]\napply_updates = yes' "$(cat "$uu_conf")" "dnf5 install creates the config with only apply_updates"
+    assert_eq "dnf5-automatic.timer" "$enabled" "install turns on the dnf5 timer"
+    assert_eq "0" "$(ls "${uu_conf}".bak.* 2>/dev/null | wc -l)" "no backup when there was no file"
+
+    unset -f dnf pkg_install has_systemd svc_enable_now run_as_root
+    PKG_MGR="$saved_pkg_mgr"
+    _uu_dnf_conf() { printf '%s\n' /etc/dnf/automatic.conf; }
+}
+
+test_uu_check_needs_package_setting_and_timer() {
+    local saved_pkg_mgr="$PKG_MGR" uu_conf="${_UU_TEST_DIR}/check.conf" have_pkg=1 timer_on=1
+    PKG_MGR=dnf
+    _uu_stub_dnf 5
+    _uu_dnf_conf() { printf '%s\n' "$uu_conf"; }
+    pkg_check_installed() { (( have_pkg )); }
+    has_systemd() { return 0; }
+    systemctl() { (( timer_on )); }
+
+    printf '[commands]\napply_updates = yes\n' > "$uu_conf"
+    assert_true "check passes with package, apply_updates = yes and the timer on" check_unattended_upgrades
+    timer_on=0
+    assert_false "check fails when the timer is not enabled" check_unattended_upgrades
+    timer_on=1
+    printf '[commands]\napply_updates = no\n' > "$uu_conf"
+    assert_false "check fails when apply_updates is no (updates only downloaded)" check_unattended_upgrades
+    printf '[commands]\napply_updates = yes\n' > "$uu_conf"
+    have_pkg=0
+    assert_false "check fails when the package is missing" check_unattended_upgrades
+    have_pkg=1
+    has_systemd() { return 1; }
+    timer_on=0
+    assert_true "check ignores the timer where there is no systemd" check_unattended_upgrades
+
+    unset -f dnf pkg_check_installed has_systemd systemctl
+    PKG_MGR="$saved_pkg_mgr"
+    _uu_dnf_conf() { printf '%s\n' /etc/dnf/automatic.conf; }
+}
+
+test_uu_uninstall_dnf_turns_timer_off_then_removes_package() {
+    local saved_pkg_mgr="$PKG_MGR" calls=""
+    PKG_MGR=dnf
+    _uu_stub_dnf 4
+    has_systemd() { return 0; }
+    svc_disable_now() { calls+="disable:$1 "; }
+    pkg_remove() { calls+="remove:$*"; }
+
+    uninstall_unattended_upgrades >/dev/null 2>&1
+    assert_eq "disable:dnf-automatic.timer remove:dnf-automatic" "$calls" \
+        "uninstall disables the timer, then removes the package"
+
+    unset -f dnf has_systemd svc_disable_now pkg_remove
+    PKG_MGR="$saved_pkg_mgr"
+}
+
+test_uu_uninstall_dnf_puts_setting_back_before_removing() {
+    local saved_pkg_mgr="$PKG_MGR" uu_conf="${_UU_TEST_DIR}/uninstall.conf" calls=""
+    PKG_MGR=dnf
+    _uu_stub_dnf 5
+    _uu_dnf_conf() { printf '%s\n' "$uu_conf"; }
+    has_systemd() { return 1; }
+    pkg_remove() { calls+="remove:$*"; }
+    run_as_root() { "$@"; }
+    printf '[commands]\napply_updates = yes\n' > "$uu_conf"
+
+    uninstall_unattended_upgrades >/dev/null 2>&1
+    assert_eq "no" "$(_pardl_value "$uu_conf" commands apply_updates)" \
+        "uninstall puts apply_updates back to no, so a reinstall never applies updates by itself"
+    assert_eq "remove:dnf5-plugin-automatic" "$calls" "uninstall then removes the package"
+
+    unset -f dnf has_systemd pkg_remove run_as_root
+    PKG_MGR="$saved_pkg_mgr"
+    _uu_dnf_conf() { printf '%s\n' /etc/dnf/automatic.conf; }
+}
+
+test_uu_dnf5_detection_survives_pipefail() {
+    # A long --version output used to kill dnf with SIGPIPE inside a pipe, which
+    # pipefail turned into "not dnf5" at random.
+    dnf() { printf '%s\n' "dnf5 version 5.4.8.0"; seq 1 200000; }
+    assert_true "dnf5 is detected under pipefail with long output" \
+        bash -c "set -o pipefail; $(declare -f dnf _uu_dnf5); _uu_dnf5"
+    unset -f dnf
+}
+
+test_uu_debian_path_is_unchanged() {
+    local saved_pkg_mgr="$PKG_MGR"
+    PKG_MGR=apt
+    assert_false "apt systems do not take the dnf path" _uu_dnf
+    PKG_MGR=dnf
+    assert_true "dnf systems take the dnf path" _uu_dnf
+    PKG_MGR="$saved_pkg_mgr"
+}
+
+test_uu_value_reads_key_in_section
+test_uu_dnf_package_and_timer_follow_dnf_version
+test_uu_install_dnf4_flips_shipped_default
+test_uu_install_dnf5_creates_missing_config
+test_uu_check_needs_package_setting_and_timer
+test_uu_uninstall_dnf_turns_timer_off_then_removes_package
+test_uu_uninstall_dnf_puts_setting_back_before_removing
+test_uu_dnf5_detection_survives_pipefail
+test_uu_debian_path_is_unchanged
+
+rm -rf "$_UU_TEST_DIR"
+
+# ============================================================================
 # Intel Drivers Tests
 # ============================================================================
 echo ""
