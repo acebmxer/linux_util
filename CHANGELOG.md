@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-11-24
+
 ### Added
 
 - **Unattended Upgrades on Fedora and RHEL-based systems** (fixes #95). The task
