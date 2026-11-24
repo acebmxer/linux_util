@@ -278,7 +278,7 @@ _task_wants_reboot() {
     [[ "$rc" -eq 3 ]] && return 1
 
     # These tasks do not require a reboot after successful completion
-    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1 ["Configure Syncthing Folders"]=1 ["Parallel Downloads"]=1)
+    local -A NO_REBOOT=(["Create Snapshot"]=1 ["Restore Snapshot"]=1 ["Delete Snapshot"]=1 ["Local Time Zone / Locale"]=1 ["Mount Local Drive"]=1 ["Mount NFS Share"]=1 ["Mount SMB Share"]=1 ["Manage Share"]=1 ["Configure Syncthing Folders"]=1 ["Parallel Downloads"]=1 ["Unattended Upgrades"]=1 ["Configure Unattended Upgrades"]=1)
 
     # Reboot required for system tasks (except no-reboot list), Docker, and Drivers
     if [[ -z "${NO_REBOOT[$util]:-}" ]]; then

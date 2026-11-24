@@ -7,10 +7,10 @@
 [![Issues](https://img.shields.io/github/issues/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/issues)
 [![Stars](https://img.shields.io/github/stars/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/stargazers)
 [![Forks](https://img.shields.io/github/forks/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/forks)
-[![Unique cloners](https://img.shields.io/badge/unique%20cloners-54-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
+[![Unique cloners](https://img.shields.io/badge/unique%20cloners-87-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
-[![Tests](https://img.shields.io/badge/tests-606%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-644%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 [![Distros tested](https://img.shields.io/badge/distros%20tested-7-informational)](#supported-distributions)
 [![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
@@ -132,7 +132,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Internet** | Browsers (Firefox, Brave, Chrome, Chromium, Vivaldi, Opera, LibreWolf, Zen, Thorium, Tor), email clients, messaging (Signal, Discord, Slack, Telegram, Zoom, WhatsApp, Microsoft Teams, Mattermost), and VPNs (ProtonVPN, Mullvad, NordVPN, OpenVPN, PIA, Tailscale, WireGuard) |
 | **Package Managers** | Flatpak, Homebrew, Nix, Snap, deb-get, Pacstall, yay, paru — added alongside the native manager, never replacing it |
 | **Productivity** | ArtCraft Launcher, LibreOffice, OnlyOffice, WPS, GIMP, Inkscape, Krita, Kdenlive, OBS, VLC, Multimedia Codecs, Obsidian, Joplin, Logseq, Bitwarden, 1Password, KeePassXC, Cryptomator, VeraCrypt, Nextcloud, NVIDIA PAIR, WinApps, and more: media (mpv, Kodi, Spotify), creative (Blender, Darktable, RawTherapee, Shotcut, Scribus) and documents (Calibre, Anki, Okular, Xournal++) |
-| **Remote Admin** | Cockpit, Enable RDP (xrdp or krdp), OpenSSH, Remmina, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
+| **Remote Admin** | Cockpit, Enable RDP (xrdp or krdp), OpenSSH, Remmina, krdpc, RustDesk, AnyDesk, Termius, Devolutions RDM, OpenRSAT |
 | **File Managers** | Nautilus, Dolphin, Thunar, Nemo, Caja, PCManFM-Qt, Krusader, and the terminal managers (Midnight Commander, Ranger, nnn, Superfile) |
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
 | **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |

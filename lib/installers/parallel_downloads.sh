@@ -19,10 +19,10 @@ _pardl_conf() {
     esac
 }
 
-# Current value of the key inside its section, or nothing if unset.
-_pardl_current() {
-    local conf section key sep
-    { IFS= read -r conf; IFS= read -r section; IFS= read -r key; IFS= read -r sep; } < <(_pardl_conf) || return 1
+# Value of <key> inside [<section>] of <conf>, or nothing if the file or the
+# key is missing. Also used by Unattended Upgrades (unattended_upgrades.sh).
+_pardl_value() {
+    local conf="$1" section="$2" key="$3"
     [[ -f "$conf" ]] || return 0
     awk -v section="$section" -v key="$key" '
         /^[[:space:]]*\[/ { insec = ($0 ~ "^[[:space:]]*\\[" section "\\]"); next }
@@ -30,6 +30,13 @@ _pardl_current() {
             sub("^[^=]*=[[:space:]]*", ""); sub("[[:space:]]*$", ""); print; exit
         }
     ' "$conf"
+}
+
+# Current value of the key inside its section, or nothing if unset.
+_pardl_current() {
+    local conf section key sep
+    { IFS= read -r conf; IFS= read -r section; IFS= read -r key; IFS= read -r sep; } < <(_pardl_conf) || return 1
+    _pardl_value "$conf" "$section" "$key"
 }
 
 # Emit the config on stdin to stdout with the key set to <value> directly under

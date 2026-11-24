@@ -41,8 +41,8 @@ appear when it applies.
 | **Parallel Downloads** | Raises parallel package downloads to 10 — `max_parallel_downloads` in `/etc/dnf/dnf.conf` or `ParallelDownloads` in `/etc/pacman.conf`; backs up the file first and is reversible *(Fedora/RHEL/Arch only)* |
 | **Configure Syncthing Folders** | Wizard that picks which folders Syncthing syncs, following Linux best practice — nothing changes without your confirmation |
 | **Local Time Zone / Locale** | Interactive wizard to set system time zone, locale, or both |
-| **Unattended Upgrades** | Enables the `unattended-upgrades` package so security (and optionally other) updates install automatically in the background, using the package's own debconf setup *(Debian/Ubuntu only)* |
-| **Configure Unattended Upgrades** | Opens `/etc/apt/apt.conf.d/50unattended-upgrades` in your editor to choose update origins, blacklist packages and set auto-reboot and notifications; only shown once the package is installed *(Debian/Ubuntu only)* |
+| **Unattended Upgrades** | Installs updates automatically in the background. Debian/Ubuntu: enables the `unattended-upgrades` package, using its own debconf setup. Fedora/RHEL (Fedora Server included): installs dnf's automatic-update package, sets `apply_updates = yes` in `/etc/dnf/automatic.conf` (backed up first) and turns on its daily timer; never reboots for you. Uninstall turns the timer off and removes the package *(Debian/Ubuntu, Fedora/RHEL)* |
+| **Configure Unattended Upgrades** | Opens the config file in your editor: `/etc/apt/apt.conf.d/50unattended-upgrades` (update origins, blacklisted packages, auto-reboot, notifications) or `/etc/dnf/automatic.conf` on Fedora/RHEL (security-only upgrades, reboot after updates, notices); only shown once Unattended Upgrades is installed *(Debian/Ubuntu, Fedora/RHEL)* |
 | **Install fail2ban** | Installs fail2ban and enables its service, banning IPs that repeatedly fail logins *(Debian/Ubuntu only)* |
 | **GTK Window Fix** | Restores minimize/maximize/close on window title bars for GTK apps (GNOME/Cinnamon/MATE/Xfce); GNOME's default window-manager button layout omits them |
 | **Command-Not-Found Prompt** | Enables auto-suggestion to install missing command packages *(Ubuntu/Kubuntu/KDE Neon only)* |
@@ -379,6 +379,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **tmux** | Terminal multiplexer; SSH sessions survive dropped connections *(Remote Access)* |
 | **tmux Resurrect** | Saves and restores tmux session layout across reboots *(Remote Access)* |
 | **Remmina** | Remote desktop client (RDP, VNC, SSH, SPICE) *(Remote Access)* |
+| **krdpc** | KDE app that keeps a list of your remote computers and opens each with FreeRDP, laid out like Remmina; RDP only, passwords in KDE Wallet. Installed from its own GitHub release (SHA-256 checked) through the distro package tool; beta. Fedora 45+, Debian 13, Ubuntu 26.04+ and Arch only *(Remote Access)* |
 | **RustDesk** | Open-source remote desktop and remote assistance tool *(Remote Access)* |
 | **Termius SSH Client** | Modern SSH client with cross-device sync *(Remote Access)* |
 | **OpenRSAT** | Active Directory management console (Microsoft RSAT-like) from Tranquil IT — installs the latest GitHub release as a `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL x86_64), or standalone binary (openSUSE); not available on Arch |

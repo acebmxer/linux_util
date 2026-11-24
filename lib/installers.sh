@@ -68,13 +68,17 @@ register_system_task "Local Time Zone / Locale" setup_timezone_locale check_alwa
 NO_RETRY["Local Time Zone / Locale"]=1
 register_system_task "GTK Window Fix"     install_window_buttons  check_always_false    noop_function             install_window_buttons    get_version_window_buttons
 
-# Debian/Ubuntu-only system tasks
-if [[ "$DISTRO_FAMILY" == "debian" ]]; then
+# Unattended Upgrades: Debian/Ubuntu (unattended-upgrades) and Fedora/RHEL (dnf automatic)
+if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "fedora" || "$DISTRO_FAMILY" == "rhel" ]]; then
     register_system_task "Unattended Upgrades" install_unattended_upgrades check_unattended_upgrades uninstall_unattended_upgrades update_unattended_upgrades get_version_unattended_upgrades
     # Only offer the config editor when the package (and thus its config file) is present.
     if check_unattended_upgrades; then
         register_system_task "Configure Unattended Upgrades" configure_unattended_upgrades check_always_false noop_function configure_unattended_upgrades
     fi
+fi
+
+# Debian/Ubuntu-only system tasks
+if [[ "$DISTRO_FAMILY" == "debian" ]]; then
     register_system_task "Install fail2ban"              install_fail2ban            check_fail2ban            uninstall_fail2ban            update_fail2ban            get_version_fail2ban
 fi
 
@@ -273,6 +277,13 @@ register_utility "ProtonVPN"           install_protonvpn        check_protonvpn 
 register_utility "pyenv"               install_pyenv            check_pyenv            uninstall_pyenv            update_pyenv               get_version_pyenv
 register_utility "QBittorrent"         install_qbittorrent      check_qbittorrent      uninstall_qbittorrent      update_qbittorrent         get_version_qbittorrent
 register_utility "Remmina"             install_remmina          check_remmina          uninstall_remmina          update_remmina             get_version_remmina
+# krdpc: its own GitHub release is a .rpm (needs Fedora 45's Python), a .deb (needs PySide6, so Debian 13, Ubuntu 26.04 or newer) or an Arch package.
+if [[ "$DISTRO_ID" == "fedora" && "${DISTRO_VERSION_ID%%.*}" -ge 45 ]] || \
+   [[ "$DISTRO_FAMILY" == "arch" ]] || \
+   [[ "$DISTRO_ID" == "debian" && "${DISTRO_VERSION_ID%%.*}" -ge 13 ]] || \
+   [[ "$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -ge 26 ]]; then
+    register_utility "krdpc"             install_krdpc            check_krdpc            uninstall_krdpc            update_krdpc               get_version_krdpc
+fi
 register_utility "ripgrep"             install_ripgrep          check_ripgrep          uninstall_ripgrep          update_ripgrep             get_version_ripgrep
 register_utility "RustDesk"            install_rustdesk         check_rustdesk         uninstall_rustdesk         update_rustdesk            get_version_rustdesk
 register_utility "Rustup"              install_rustup           check_rustup           uninstall_rustup           update_rustup              get_version_rustup
@@ -762,6 +773,7 @@ UTILITY_CATEGORY["ProtonUp-Qt"]="Gaming"
 UTILITY_CATEGORY["ProtonVPN"]="Internet"
 UTILITY_CATEGORY["QBittorrent"]="Internet"
 UTILITY_CATEGORY["Remmina"]="Remote Admin Tools"
+UTILITY_CATEGORY["krdpc"]="Remote Admin Tools"
 UTILITY_CATEGORY["Signal Desktop"]="Internet"
 UTILITY_CATEGORY["SponsorBlock Extension"]="Internet"
 UTILITY_CATEGORY["Stacer"]="System Tools"
@@ -963,6 +975,7 @@ UTILITY_SUBCATEGORY["Trojita"]="Email Clients"
 UTILITY_SUBCATEGORY["FileZilla"]="File Transfer"
 UTILITY_SUBCATEGORY["LocalSend"]="File Transfer"
 UTILITY_SUBCATEGORY["Remmina"]="Remote Access"
+UTILITY_SUBCATEGORY["krdpc"]="Remote Access"
 UTILITY_SUBCATEGORY["Termius SSH Client"]="Remote Access"
 UTILITY_SUBCATEGORY["OpenSSH Server"]="Remote Access"
 UTILITY_SUBCATEGORY["tmux"]="Remote Access"
@@ -1221,8 +1234,8 @@ SUBCATEGORY_ORDER["System Tools"]="Monitors|Power & Memory|Disk & Cleanup|System
 # System Tasks
 UTILITY_DESCRIPTION["Full System Upgrade"]="Upgrades to the next OS release when one is available and confirmed, installing pending packages first since the release upgrade requires it. Does nothing when no upgrade is available, it's declined, or it fails -- use System Updates for regular package updates. Arch-family systems defer to their own full-update tool instead."
 UTILITY_DESCRIPTION["System Updates"]="Installs and configures automatic system update scheduling via systemd timers or cron."
-UTILITY_DESCRIPTION["Unattended Upgrades"]="Enables the Debian/Ubuntu unattended-upgrades package so security (and optionally other) updates install automatically in the background. Runs the package's own debconf setup so you can choose what gets updated. The package must already be present (it ships by default on most Ubuntu installs)."
-UTILITY_DESCRIPTION["Configure Unattended Upgrades"]="Opens /etc/apt/apt.conf.d/50unattended-upgrades in your editor (\$EDITOR, or nano) so you can choose which update origins auto-install, blacklist packages, and set auto-reboot and notification behavior. Only appears when the unattended-upgrades package is installed."
+UTILITY_DESCRIPTION["Unattended Upgrades"]="Installs updates automatically in the background. On Debian/Ubuntu it enables the unattended-upgrades package so security (and optionally other) updates install on their own, running the package's own debconf setup so you can choose what gets updated (the package must already be present; it ships by default on most Ubuntu installs). On Fedora and RHEL-based systems (Fedora Server included) it installs dnf's automatic-update package, sets apply_updates = yes in /etc/dnf/automatic.conf (backed up first) and turns on its daily timer; every update installs, and the machine is never rebooted for you. Uninstall turns the timer off and removes the package."
+UTILITY_DESCRIPTION["Configure Unattended Upgrades"]="Opens the automatic-update config file in your editor (\$EDITOR, or nano) so you can choose what auto-installs and how: /etc/apt/apt.conf.d/50unattended-upgrades on Debian/Ubuntu (update origins, blacklisted packages, auto-reboot, notifications) or /etc/dnf/automatic.conf on Fedora/RHEL (security-only upgrades, reboot after updates, email or message notices). Only appears when Unattended Upgrades is installed."
 UTILITY_DESCRIPTION["Mount Local Drive"]="Interactively selects an unmounted block device and adds it to /etc/fstab, mounting it permanently under ~/media/<name>. Supports ext4, xfs, btrfs, NTFS, exFAT, and vFAT. Backs up fstab before any changes."
 UTILITY_DESCRIPTION["Mount NFS Share"]="Discovers NFS exports from a remote server via showmount and mounts the chosen share persistently via /etc/fstab. Installs NFS client tools if needed and backs up fstab before any changes."
 UTILITY_DESCRIPTION["Mount SMB Share"]="Connects to an SMB/CIFS server, prompts for credentials, lists available shares, and mounts the chosen share persistently via /etc/fstab. Credentials are stored in a private file under HOME. Installs cifs-utils if needed and backs up fstab before any changes."
@@ -1357,6 +1370,7 @@ UTILITY_DESCRIPTION["PIA VPN"]="Private Internet Access VPN client for encrypted
 UTILITY_DESCRIPTION["ProtonVPN"]="Free and open-source VPN service by Proton for secure and private browsing."
 UTILITY_DESCRIPTION["QBittorrent"]="Open-source BitTorrent client with a clean interface and no ads."
 UTILITY_DESCRIPTION["Remmina"]="Remote desktop client supporting RDP, VNC, SSH, SPICE, and other protocols."
+UTILITY_DESCRIPTION["krdpc"]="KDE desktop app that keeps a list of your remote computers and opens each with FreeRDP (xfreerdp), laid out like Remmina and following your Plasma theme; remembers passwords in KDE Wallet. RDP only. Installed from krdpc's own GitHub release (SHA-256 checked) with the distro package tool, so FreeRDP 3, PySide6 and keyring come from your distro: Fedora 45 and newer, Debian 13, Ubuntu 26.04 and newer, Arch. krdpc is still in beta. Uninstall keeps your computers and saved passwords."
 UTILITY_DESCRIPTION["Signal Desktop"]="End-to-end encrypted messaging application focused on privacy and security."
 UTILITY_DESCRIPTION["SponsorBlock Extension"]="Deploys SponsorBlock browser extension via policy files for all detected browsers (Brave, Chrome, Chromium, Firefox, LibreWolf, Thorium, Vivaldi). Automatically skips YouTube sponsors, intros, outros, and other unwanted segments using a crowdsourced database."
 UTILITY_DESCRIPTION["Syncthing"]="Continuous peer-to-peer file synchronization between your devices without a central server."
@@ -1625,7 +1639,8 @@ mark_upstream_binary \
     "minikube=/usr/local/bin/minikube" \
     "k3s=/usr/local/bin/k3s-uninstall.sh" \
     "Ollama=/usr/local/lib/ollama" \
-    "Kopia=/usr/local/bin/kopia"
+    "Kopia=/usr/local/bin/kopia" \
+    "krdpc=/usr/bin/krdpc"
 
 # Where the current upstream version can be read for those installs. Registered
 # only for the ones with a cheap, stable version endpoint: these lookups gate
@@ -1650,7 +1665,8 @@ mark_upstream_latest \
     "minikube=_minikube_latest_version" \
     "k3s=_k3s_latest_version" \
     "Ollama=_ollama_latest_version" \
-    "Kopia=_kopia_latest_version"
+    "Kopia=_kopia_latest_version" \
+    "krdpc=_krdpc_latest_version"
 
 # Utilities whose own run is a complete system upgrade, so the pre-flight package
 # refresh must not upgrade ahead of them -- see mark_full_upgrade in utilities.sh.
