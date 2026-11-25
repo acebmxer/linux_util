@@ -5878,6 +5878,82 @@ test_system_tools_alpine_rows() {
     assert_eq "tlp=tlp cups=cupsd oom=earlyoom done" "$out" "Alpine offers its ten System Tools with their services and hides the rest"
 }
 
+# More terminals: Konsole, Kwi, Ptyxis, Terminator, Xfce Terminal, Yakuake.
+_MORE_TERMINALS=(
+    "Konsole|konsole" "Kwi|kwi" "Ptyxis|ptyxis" "Terminator|terminator"
+    "Xfce Terminal|xfce_terminal" "Yakuake|yakuake"
+)
+
+test_more_terminals_registered() {
+    local entry name slug fn gaps=0
+    for entry in "${_MORE_TERMINALS[@]}"; do
+        IFS='|' read -r name slug <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"System Tools\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"Terminal Emulators\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  not in Terminal Emulators: $name"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "The six new terminals are in Terminal Emulators with description, completions and all five functions"
+}
+
+# Xfce Terminal is held back on Rocky/Alma 10 (no Xfce in EPEL 10).
+test_xfce_terminal_rhel10_gate() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" line
+    line=$(grep -n 'register_utility "Xfce Terminal"' "$f" | cut -d: -f1)
+    if sed -n "$((line-1))p" "$f" | grep -qF '"$_rhel10_plus" == "false"'; then
+        assert_eq "gated" "gated" "Xfce Terminal is not offered on Rocky/Alma 10"
+    else
+        assert_eq "gated" "not gated" "Xfce Terminal is not offered on Rocky/Alma 10"
+    fi
+}
+
+# Rocky/Alma 8 and 9 name the Konsole package konsole5.
+test_konsole_package_per_family() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/konsole.sh"
+        DISTRO_FAMILY=rhel; DISTRO_VERSION_ID=8.10; printf '%s ' "$(_konsole_pkg)"
+        DISTRO_VERSION_ID=9.6; printf '%s ' "$(_konsole_pkg)"
+        DISTRO_VERSION_ID=10.1; printf '%s ' "$(_konsole_pkg)"
+        DISTRO_FAMILY=fedora; DISTRO_VERSION_ID=45; printf '%s ' "$(_konsole_pkg)"
+        DISTRO_FAMILY=debian; DISTRO_VERSION_ID=13; printf '%s' "$(_konsole_pkg)"
+    )
+    assert_eq "konsole5 konsole5 konsole konsole konsole" "$out" "Konsole installs konsole5 on Rocky/Alma 8 and 9 and konsole everywhere else"
+}
+
+# Kwi and Ptyxis fall back to their Flathub listings.
+test_kwi_ptyxis_flathub_ids() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/kwi.sh"; source "${SCRIPT_DIR}/lib/installers/ptyxis.sh"
+        native_or_flatpak_install() { printf '%s:%s ' "$1" "$2"; }
+        info() { :; }
+        install_kwi; install_ptyxis
+    )
+    assert_eq "org.kde.kwi:kwi app.devsuite.Ptyxis:ptyxis " "$out" "Kwi and Ptyxis use the distro package or their Flathub listing"
+}
+
+# Alpine offers the five that apk carries; Kwi is hidden there.
+test_more_terminals_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+="|${row%%|*}"; done; have+="|"
+        for n in Konsole Ptyxis Terminator "Xfce Terminal" Yakuake; do
+            [[ "$have" == *"|$n|"* ]] || printf 'missing:%s ' "$n"
+        done
+        [[ "$have" == *"|Kwi|"* ]] && printf 'unexpected:Kwi '
+        printf 'xfce=%s ' "$(_alpine_field "Xfce Terminal" 2)"
+        echo done
+    )
+    assert_eq "xfce=xfce4-terminal done" "$out" "Alpine offers Konsole, Ptyxis, Terminator, Xfce Terminal and Yakuake, and hides Kwi"
+}
+
 # EPEL and CRB are enabled on RHEL clones only.
 test_ensure_epel() {
     local out
@@ -6005,6 +6081,11 @@ test_system_tools_subcategories
 test_system_tools_family_gates
 test_system_tools_auto_cpufreq_aur_and_upstream
 test_system_tools_alpine_rows
+test_more_terminals_registered
+test_xfce_terminal_rhel10_gate
+test_konsole_package_per_family
+test_kwi_ptyxis_flathub_ids
+test_more_terminals_alpine_rows
 test_ensure_epel
 test_zram_per_family
 test_hardinfo_package_choice

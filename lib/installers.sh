@@ -418,9 +418,14 @@ register_utility "earlyoom"          install_earlyoom           check_earlyoom  
 register_utility "HardInfo"          install_hardinfo           check_hardinfo           uninstall_hardinfo           update_hardinfo           get_version_hardinfo
 register_utility "htop"              install_htop               check_htop               uninstall_htop               update_htop               get_version_htop
 register_utility "kitty"             install_kitty              check_kitty              uninstall_kitty              update_kitty              get_version_kitty
+register_utility "Konsole"           install_konsole            check_konsole            uninstall_konsole            update_konsole            get_version_konsole
+register_utility "Kwi"               install_kwi                check_kwi                uninstall_kwi                update_kwi                get_version_kwi
 register_utility "ncdu"              install_ncdu               check_ncdu               uninstall_ncdu               update_ncdu               get_version_ncdu
 register_utility "nvtop"             install_nvtop              check_nvtop              uninstall_nvtop              update_nvtop              get_version_nvtop
+register_utility "Ptyxis"            install_ptyxis             check_ptyxis             uninstall_ptyxis             update_ptyxis             get_version_ptyxis
 register_utility "smartmontools"     install_smartmontools      check_smartmontools      uninstall_smartmontools      update_smartmontools      get_version_smartmontools
+register_utility "Terminator"        install_terminator         check_terminator         uninstall_terminator         update_terminator         get_version_terminator
+register_utility "Yakuake"           install_yakuake            check_yakuake            uninstall_yakuake            update_yakuake            get_version_yakuake
 register_utility "zram"              install_zram               check_zram               uninstall_zram               update_zram               get_version_zram
 # Development and shell tools (#91). Alpine keeps only the ones in alpine_packages.sh.
 register_utility "Emacs"             install_emacs              check_emacs              uninstall_emacs              update_emacs              get_version_emacs
@@ -464,6 +469,10 @@ fi
 # Ghostty: only the Debian family, Arch and openSUSE carry a package.
 if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]]; then
     register_utility "Ghostty"           install_ghostty            check_ghostty            uninstall_ghostty            update_ghostty            get_version_ghostty
+fi
+# Xfce Terminal: EPEL 10 has no Xfce.
+if [[ "$_rhel10_plus" == "false" ]]; then
+    register_utility "Xfce Terminal"     install_xfce_terminal      check_xfce_terminal      uninstall_xfce_terminal      update_xfce_terminal      get_version_xfce_terminal
 fi
 # WezTerm: only Arch, openSUSE and Alpine carry a maintained package.
 if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "alpine" ]]; then
@@ -895,6 +904,12 @@ UTILITY_CATEGORY["zram"]="System Tools"
 UTILITY_CATEGORY["Alacritty"]="System Tools"
 UTILITY_CATEGORY["Ghostty"]="System Tools"
 UTILITY_CATEGORY["WezTerm"]="System Tools"
+UTILITY_CATEGORY["Konsole"]="System Tools"
+UTILITY_CATEGORY["Kwi"]="System Tools"
+UTILITY_CATEGORY["Ptyxis"]="System Tools"
+UTILITY_CATEGORY["Terminator"]="System Tools"
+UTILITY_CATEGORY["Xfce Terminal"]="System Tools"
+UTILITY_CATEGORY["Yakuake"]="System Tools"
 UTILITY_CATEGORY["inxi"]="System Tools"
 UTILITY_CATEGORY["TLP"]="System Tools"
 UTILITY_CATEGORY["k9s"]="Development"
@@ -1118,6 +1133,12 @@ UTILITY_SUBCATEGORY["Alacritty"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["Ghostty"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["kitty"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["WezTerm"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Konsole"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Kwi"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Ptyxis"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Terminator"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Xfce Terminal"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Yakuake"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["Vim"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Emacs"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Helix"]="IDEs & Editors"
@@ -1497,6 +1518,12 @@ UTILITY_DESCRIPTION["HardInfo"]="System profiler and benchmark window: CPU, memo
 UTILITY_DESCRIPTION["htop"]="Interactive process viewer with colours, a tree view and mouse support."
 UTILITY_DESCRIPTION["inxi"]="Prints a readable summary of the hardware and system: CPU, GPU, disks, network and sensors. Try inxi -Fxz. Not available on Rocky/Alma 10, where EPEL has no package."
 UTILITY_DESCRIPTION["kitty"]="Fast GPU-accelerated terminal emulator with tabs, splits and image display. Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["Konsole"]="KDE's terminal emulator with tabs, split views and profiles. Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["Kwi"]="KDE's new fast terminal emulator, still in early development. Distro package on Arch; Flathub elsewhere. Not available on Alpine."
+UTILITY_DESCRIPTION["Ptyxis"]="GNOME's terminal emulator, the default on Ubuntu 26.04 and RHEL 10, with tabs that open straight into Toolbox, Distrobox and Podman containers. Distro package where there is one; Flathub elsewhere."
+UTILITY_DESCRIPTION["Terminator"]="Terminal emulator that splits one window into a grid of terminals. Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["Xfce Terminal"]="Xfce's light terminal emulator with tabs and a drop-down mode. Distro package (EPEL on Rocky/Alma 8 and 9); not available on Rocky/Alma 10, which has no Xfce."
+UTILITY_DESCRIPTION["Yakuake"]="KDE's drop-down terminal: press F12 to slide it down from the top of the screen. Distro package (EPEL on Rocky/Alma)."
 UTILITY_DESCRIPTION["ncdu"]="Terminal disk-usage browser: shows which folders use the space and lets you delete from the list."
 UTILITY_DESCRIPTION["nvtop"]="htop-style monitor for GPUs (NVIDIA, AMD, Intel). Distro package (EPEL on Rocky/Alma). Not available on Alpine."
 UTILITY_DESCRIPTION["smartmontools"]="smartctl reads a drive's SMART health data and smartd watches it in the background. Installs the package and leaves its services as the package sets them."
