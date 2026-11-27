@@ -20,20 +20,14 @@ install_k9s() {
 }
 
 _install_k9s_binary() {
-    local version arch tmpfile
-    version=$(curl -fsSL https://api.github.com/repos/derailed/k9s/releases/latest \
-        | grep -oP '"tag_name"\s*:\s*"\K[^"]+')
-    [[ -z "$version" ]] && { error "Could not determine latest k9s version."; return 1; }
-    arch="amd64"
-    [[ "$(uname -m)" == "aarch64" ]] && arch="arm64"
-    tmpfile=$(mktemp /tmp/k9s-XXXXXX.tar.gz)
-    CLEANUP_FILES+=("$tmpfile")
-    if ! wget -qO "$tmpfile" \
-        "https://github.com/derailed/k9s/releases/download/${version}/k9s_Linux_${arch}.tar.gz"; then
-        error "Failed to download k9s."
-        return 1
-    fi
-    sudo tar -xzf "$tmpfile" -C /usr/local/bin k9s
+    # Installed as root into /usr/local/bin, so the archive must match the
+    # SHA-256 GitHub publishes for it (github_asset_download refuses otherwise).
+    local arch tmpdir tarball
+    arch=$(upstream_arch go) || return 1
+    tmpdir=$(mktemp -d /tmp/k9s-XXXXXX) || return 1
+    CLEANUP_FILES+=("$tmpdir")
+    tarball=$(github_asset_download derailed/k9s "k9s_Linux_${arch}\.tar\.gz" "$tmpdir") || return 1
+    sudo tar -xzf "$tarball" -C /usr/local/bin k9s || { error "Failed to unpack k9s."; return 1; }
     sudo chmod +x /usr/local/bin/k9s
 }
 

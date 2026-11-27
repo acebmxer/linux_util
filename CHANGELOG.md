@@ -75,6 +75,17 @@ when a release is cut.
   pattern meant to hide snapshot 0 matched every line, so the banner said "No
   snapshots found" and Restore Snapshot and Delete Snapshot reported none even
   when snapshots existed.
+- **k9s, Ventoy, Zen Browser, Neovim (AppImage), kubectl (openSUSE fallback)
+  and PowerShell downloads are now checked before they are installed** (fixes
+  #110). They were unpacked or installed as root with no check at all, or, for
+  PowerShell, with a check that never ran: Microsoft's `hashes.sha256` is a
+  Windows-format file the old code could not read, so it found no entry and
+  skipped the check without a message. k9s, Ventoy, Zen Browser and Neovim now
+  have to match the SHA-256 GitHub publishes for the file, kubectl the checksum
+  Kubernetes publishes beside it, and PowerShell its manifest; a missing or
+  wrong checksum stops the install. The Distrobox and Joplin scripts are
+  unchanged: they run upstream's own installer from its repository, which has no
+  published checksum.
 - **"github_allow_prerelease: command not found" when starting** (fixes #98). On
   systems set to `en_US.UTF-8` the installer files were loaded in an order that
   read krdpc's before the shared helpers, so the message appeared on every start

@@ -41,14 +41,14 @@ install_neovim() {
 
 # Install the stable AppImage from GitHub releases
 _install_neovim_appimage() {
-    local tmpfile install_dir="/usr/local/bin"
-    tmpfile=$(mktemp /tmp/nvim-XXXXXX.appimage)
-    CLEANUP_FILES+=("$tmpfile")
-    if ! wget -qO "$tmpfile" \
-        "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage"; then
+    local tmpdir tmpfile install_dir="/usr/local/bin"
+    tmpdir=$(mktemp -d /tmp/nvim-XXXXXX) || return 1
+    CLEANUP_FILES+=("$tmpdir")
+    # Checked against the SHA-256 GitHub publishes for the release file.
+    tmpfile=$(github_asset_download neovim/neovim 'nvim-linux-x86_64\.appimage' "$tmpdir") || {
         error "Failed to download Neovim AppImage."
         return 1
-    fi
+    }
     sudo install -m 755 "$tmpfile" "$install_dir/nvim"
     info "Neovim AppImage installed to $install_dir/nvim."
 }

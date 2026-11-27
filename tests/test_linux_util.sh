@@ -7034,6 +7034,67 @@ pending=no
 pending=yes" "$out" "Reboot-pending check works through 'dnf needs-restarting -r' and treats a missing plugin as not pending"
 }
 
+# #110: downloads installed as root are checked against a published digest and
+# refused when it is missing or wrong. PowerShell's manifest is UTF-16 with CRLF
+# line ends (Windows-made), which the old check could not read: it matched no
+# name, so it silently verified nothing.
+test_powershell_verification_fails_closed() {
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_pwsh_XXXXXX)
+    printf 'payload' > "$dir/file"
+    local good; good=$(sha256sum "$dir/file" | cut -d' ' -f1)
+    out=$(
+        source "${SCRIPT_DIR}/lib/verify.sh"
+        source "${SCRIPT_DIR}/lib/installers/powershell.sh"
+        info() { :; }; warn() { :; }; verbose() { :; }; error() { echo "ERR"; }
+        curl() {
+            case "$*" in
+                *api.github.com*) [[ "$MANIFEST" == none ]] && echo '{}' || echo '"browser_download_url": "https://x/hashes.sha256"' ;;
+                *hashes.sha256*)  { printf '\xff\xfe'; printf '%s *%s\r\n' "$MANIFEST_HASH" "other.tar.gz" "$MANIFEST_HASH" "pwsh.tar.gz" | sed 's/./&\x00/g'; } ;;
+            esac
+        }
+        MANIFEST=utf16 MANIFEST_HASH="$good";  _pwsh_verify_file "$dir/file" pwsh.tar.gz >/dev/null && echo "good=ok"
+        MANIFEST=utf16 MANIFEST_HASH="0$good"; _pwsh_verify_file "$dir/file" pwsh.tar.gz >/dev/null 2>&1 || echo "wrong=refused"
+        MANIFEST=utf16 MANIFEST_HASH="$good";  _pwsh_verify_file "$dir/file" missing.tar.gz >/dev/null 2>&1 || echo "unlisted=refused"
+        MANIFEST=none;                         _pwsh_verify_file "$dir/file" pwsh.tar.gz >/dev/null 2>&1 || echo "nomanifest=refused"
+    )
+    assert_eq "good=ok
+wrong=refused
+unlisted=refused
+nomanifest=refused" "$out" "PowerShell downloads are accepted only when hashes.sha256 (UTF-16/CRLF) lists a matching checksum"
+    rm -rf "$dir"
+}
+
+test_kubectl_binary_fallback_verifies_checksum() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/verify.sh"
+        source "${SCRIPT_DIR}/lib/installers/kubectl.sh"
+        info() { :; }; warn() { :; }; verbose() { :; }; error() { echo "ERR: $*"; }
+        CLEANUP_FILES=()
+        sudo() { echo "SUDO-CALLED"; }
+        GOOD=$(printf 'bin' | sha256sum | cut -d' ' -f1)
+        curl() {
+            local o=""; local a=("$@")
+            for ((i=0; i<${#a[@]}; i++)); do [[ "${a[i]}" == -o ]] && o="${a[i+1]}"; done
+            case "$*" in
+                *stable.txt*) echo v9.9.9 ;;
+                *.sha256*)    printf '%s\n' "$SHA" ;;
+                *)            printf 'bin' > "$o" ;;
+            esac
+        }
+        SHA="0${GOOD:1}";  _install_kubectl_binary; echo "wrong rc=$?"
+        SHA="";            _install_kubectl_binary; echo "none rc=$?"
+        SHA="$GOOD";       _install_kubectl_binary; echo "right rc=$?"
+    )
+    assert_eq "ERR: Checksum verification FAILED for kubectl v9.9.9
+wrong rc=1
+ERR: Could not read the published SHA-256 for kubectl v9.9.9; kubectl was not installed.
+none rc=1
+SUDO-CALLED
+right rc=0" "$(grep -v '^ERR:   ' <<<"$out")" "kubectl binary fallback installs only a download that matches the published SHA-256"
+}
+
 # Helix and Helm choose the package when the repository has one.
 test_helix_helm_route() {
     local out
@@ -7122,6 +7183,8 @@ test_zsh_and_homebrew_installs_fail_when_download_fails
 test_docker_and_opentofu_report_failed_steps
 test_go_binary_install_verifies_before_replacing
 test_tailscale_repository_path
+test_powershell_verification_fails_closed
+test_kubectl_binary_fallback_verifies_checksum
 test_snapper_snapshot_list_not_empty
 test_dnf_autoremove_finds_orphans
 test_rpm_reboot_pending
