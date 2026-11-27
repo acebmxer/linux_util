@@ -1324,12 +1324,34 @@ test_cli_info_commands_run_no_root_command() {
     done
 }
 
+# #120: the lock lives in a private per-user directory, and a pid file nobody
+# wrote for us must not get an unrelated process killed.
+test_cli_lock_is_private_and_pid_file_not_trusted() {
+    local rundir user sleeper_pid
+    rundir=$(mktemp -d /tmp/linux_util_run_XXXXXX)
+    user="${USER:-$UID}"
+    sleep 60 & sleeper_pid=$!
+    # Planted in the private directory and in the old fixed /tmp location.
+    echo "$sleeper_pid" > "$rundir/linux_util_${user}.lock.pid"
+    echo "$sleeper_pid" > "/tmp/linux_util_${user}.lock.pid"
+    XDG_RUNTIME_DIR="$rundir" _run_cli_logged_root --dry-run --install htop
+    local alive=no
+    kill -0 "$sleeper_pid" 2>/dev/null && alive=yes
+    assert_eq "yes" "$alive" "A planted pid file does not get an unrelated process killed"
+    local lock_here=no
+    compgen -G "$rundir/linux_util_*.lock" >/dev/null && lock_here=yes
+    assert_eq "yes" "$lock_here" "The lock file is created in the private runtime directory"
+    kill "$sleeper_pid" 2>/dev/null; wait "$sleeper_pid" 2>/dev/null
+    rm -rf "$rundir" "/tmp/linux_util_${user}.lock.pid"
+}
+
 test_cli_dry_run_install_exits_zero
 test_cli_dry_run_install_output_indicator
 test_cli_dry_run_update_all_exits_zero
 test_cli_dry_run_install_runs_no_root_command
 test_cli_dry_run_update_all_runs_no_root_command
 test_cli_info_commands_run_no_root_command
+test_cli_lock_is_private_and_pid_file_not_trusted
 
 # _FAKE_BIN is kept alive until all _run_cli tests (including profile export/import
 # below) are done. The cleanup at the end of this file removes it.

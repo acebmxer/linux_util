@@ -144,6 +144,15 @@ when a release is cut.
   says its distro package is on openSUSE only (Fedora has it only in
   updates-testing), and the Ptyxis entry says Ubuntu's default terminal since
   25.10.
+- **The start-up lock, the sudo keep-alive pid file and the kubectl download no
+  longer use predictable names in `/tmp`** (fixes #120). On a shared machine
+  another user could pre-create `/tmp/linux_util_<name>.lock.pid` holding a
+  process number and have the next start stop that process, or block start-up
+  by creating the lock name. The lock and pid file now live in your private
+  runtime folder (`$XDG_RUNTIME_DIR`, else a `/tmp/linux_util-<uid>` folder that
+  must be yours), and a pid file is only acted on when it names one of your own
+  linux_util processes. The kubectl fallback download uses a private temporary
+  file.
 - **"github_allow_prerelease: command not found" when starting** (fixes #98). On
   systems set to `en_US.UTF-8` the installer files were loaded in an order that
   read krdpc's before the shared helpers, so the message appeared on every start

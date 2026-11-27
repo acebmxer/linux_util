@@ -71,7 +71,29 @@ ORIGINAL_ARGS=("$@")
 # operation. Skipping the lock also means that if such a command is killed
 # (e.g. by a `timeout` in the test suite) it cannot orphan a child holding the
 # lock fd and block subsequent invocations.
-LOCK_FILE="/tmp/linux_util_${USER:-$UID}.lock"
+#
+# The lock and the sudo keep-alive pid file live in a directory only this user
+# can write: $XDG_RUNTIME_DIR (/run/user/<uid>) where the session has one, else a
+# private per-user folder under /tmp that is checked to be a real directory
+# owned by us. A fixed, shared /tmp name could be pre-created by another user
+# (blocking start-up, or planting a pid that the next start would kill).
+_lu_private_dir() {
+    local d
+    if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" && -w "$XDG_RUNTIME_DIR" ]]; then
+        printf '%s' "$XDG_RUNTIME_DIR"
+        return 0
+    fi
+    d="/tmp/linux_util-$(id -u)"
+    mkdir -m 700 "$d" 2>/dev/null
+    if [[ -d "$d" && ! -L "$d" && -O "$d" && -w "$d" ]]; then
+        printf '%s' "$d"
+        return 0
+    fi
+    echo "Error: $d exists but is not a private folder owned by you; remove it or set XDG_RUNTIME_DIR." >&2
+    return 1
+}
+_LU_RUN_DIR=$(_lu_private_dir) || exit 1
+LOCK_FILE="${_LU_RUN_DIR}/linux_util_${USER:-$UID}.lock"
 _lu_needs_lock=true
 for _lu_arg in "$@"; do
     case "$_lu_arg" in
@@ -217,7 +239,11 @@ SUDO_PID_FILE="${LOCK_FILE}.pid"
 readonly SUDO_PID_FILE
 if [[ -f "$SUDO_PID_FILE" ]]; then
     _orphan_pid=$(<"$SUDO_PID_FILE")
-    if [[ -n "$_orphan_pid" ]] && kill -0 "$_orphan_pid" 2>/dev/null; then
+    # Only a process that is ours AND is a linux_util keep-alive is stopped: the
+    # file's content is not trusted to name a process of any other program.
+    if [[ "$_orphan_pid" =~ ^[0-9]+$ ]] && kill -0 "$_orphan_pid" 2>/dev/null \
+       && [[ "$(stat -c %u "/proc/${_orphan_pid}" 2>/dev/null)" == "$(id -u)" ]] \
+       && tr '\0' ' ' < "/proc/${_orphan_pid}/cmdline" 2>/dev/null | grep -q 'linux_util'; then
         kill "$_orphan_pid" 2>/dev/null || true
     fi
     rm -f "$SUDO_PID_FILE"
