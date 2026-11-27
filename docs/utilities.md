@@ -170,14 +170,14 @@ Grouped into folders inside the Development tab:
 | **Codex** | OpenAI's AI coding agent for the terminal (npm; settings in `~/.codex` are kept on uninstall) |
 | **Hermes Agent** | Nous Research's open-source AI agent for the terminal (installed per user; update and uninstall use its own commands, settings in `~/.hermes` are kept) |
 | **LM Studio** | Desktop app for running large language models locally (AppImage, about 1 GB; models in `~/.lmstudio` are kept on uninstall) |
-| **Ollama** | Runs large language models locally, as a service. Distro package (Fedora, Arch, openSUSE, Alpine); elsewhere the GitHub release, SHA-256 checked, with an `ollama` user and systemd service. CPU and NVIDIA GPUs; AMD GPUs need Ollama's ROCm add-on, which is not installed. Uninstall keeps downloaded models |
+| **Ollama** | Runs large language models locally, as a service. Distro package (Fedora, Arch, openSUSE, Alpine 3.23 and newer); elsewhere the GitHub release, SHA-256 checked, with an `ollama` user and systemd service. CPU and NVIDIA GPUs; AMD GPUs need Ollama's ROCm add-on, which is not installed. Uninstall keeps downloaded models |
 
 ### Languages & Runtimes
 
 | Utility | Description |
 |---------|-------------|
 | **Python** | The distro's Python 3 with pip, venv and development headers (pyenv installs other versions). Uninstall keeps `python3` itself |
-| **Java JDK** | OpenJDK with the compiler: `default-jdk` on Debian/Ubuntu, otherwise the newest long-term-support build the repositories carry (25, 21 or 17) |
+| **Java JDK** | OpenJDK with the compiler: `default-jdk` on Debian/Ubuntu, otherwise the newest long-term-support build the repositories carry (25, 21 or 17); on Alpine from 3.23 |
 | **PHP** | The PHP command-line interpreter from the distro's packages (not a web-server module) |
 | **Ruby** | Ruby with the headers gems need to build native extensions |
 | **Go SDK** | Official Go programming language toolchain |
@@ -237,7 +237,7 @@ Grouped into folders inside the Development tab:
 | **Bottles** | Wine prefix manager for running Windows software. Uninstall keeps your Wine prefixes |
 | **Boxflat** | Settings manager for Moza Racing sim-racing hardware (Flatpak) |
 | **Dolphin Emulator** | Nintendo GameCube and Wii emulator. Distro package; Flathub on RHEL clones *(Emulators)* |
-| **Feral Gamemode** | Optimizes system performance while gaming |
+| **Feral Gamemode** | Optimizes system performance while gaming; on Alpine from 3.24 |
 | **Flatseal** | Shows and changes the permissions of Flatpak apps. Distro package where there is one, else Flathub; not available on Alpine *(Gaming Utilities)* |
 | **Gear Lever** | Manages AppImage files (menu entries, updates, removal). Distro package on openSUSE, Flathub elsewhere; not available on Alpine *(Gaming Utilities)* |
 | **Heroic Games Launcher** | Open-source launcher for Epic, GOG, and Amazon Prime Gaming |
@@ -504,7 +504,7 @@ Command-line helpers and shells.
 | Utility | Description |
 |---------|-------------|
 | **Alacritty** | GPU-accelerated terminal emulator configured by a text file. Distro package; not offered on Rocky/Alma/RHEL or Ubuntu 22.04, which have none |
-| **Ghostty** | Fast GPU-accelerated terminal emulator. From the distro package: Arch, openSUSE Tumbleweed, Ubuntu 26.04 and newer. Upstream publishes no Linux packages, so elsewhere it says so and changes nothing; not offered on Fedora, Rocky/Alma/RHEL or Alpine |
+| **Ghostty** | Fast GPU-accelerated terminal emulator. From the distro package: Arch, openSUSE Tumbleweed, Ubuntu 26.04 and newer. Upstream publishes no Linux packages, so elsewhere it says so and changes nothing; not offered on Debian, Ubuntu 22.04/24.04, Fedora, Rocky/Alma/RHEL or Alpine |
 | **kitty** | GPU-accelerated terminal emulator with tabs, splits and image display |
 | **Konsole** | KDE's terminal emulator with tabs, split views and profiles. Distro package (EPEL on Rocky/Alma) |
 | **Kwi** | KDE's new fast terminal emulator, still in early development. Distro package on Arch, KDE's Flathub listing elsewhere; not offered on Alpine |

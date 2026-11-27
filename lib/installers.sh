@@ -471,8 +471,10 @@ fi
 if [[ "$DISTRO_ID" != "opensuse-leap" && "$DISTRO_ID" != "sles" ]] && { [[ "$DISTRO_FAMILY" != "rhel" ]] || [[ "${DISTRO_VERSION_ID%%.*}" -ge 10 ]]; }; then
     register_utility "auto-cpufreq"      install_auto_cpufreq       check_auto_cpufreq       uninstall_auto_cpufreq       update_auto_cpufreq       get_version_auto_cpufreq
 fi
-# Ghostty: only the Debian family, Arch and openSUSE carry a package.
-if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]]; then
+# Ghostty: only Arch, openSUSE and Ubuntu 26.04 and newer carry a package (Debian 13,
+# Ubuntu 22.04 and 24.04 have none).
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]] || \
+   [[ "$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -ge 26 ]]; then
     register_utility "Ghostty"           install_ghostty            check_ghostty            uninstall_ghostty            update_ghostty            get_version_ghostty
 fi
 # Xfce Terminal: EPEL 10 has no Xfce.
@@ -1518,7 +1520,7 @@ UTILITY_DESCRIPTION["BleachBit"]="Disk cleaner that clears caches, logs, history
 UTILITY_DESCRIPTION["CPU-X"]="CPU-Z-style window showing the CPU, motherboard, memory, GPU and system. Distro package, or Flathub on Rocky/Alma/RHEL. Not available on Alpine."
 UTILITY_DESCRIPTION["CUPS"]="The printing system: installs the print server and starts it at boot. Add printers at http://localhost:631 or in the desktop's printer settings."
 UTILITY_DESCRIPTION["earlyoom"]="Ends the biggest memory hog before the machine freezes, instead of waiting for the kernel's slow out-of-memory killer. Started at boot."
-UTILITY_DESCRIPTION["Ghostty"]="Fast GPU-accelerated terminal emulator. Installed from the distro package, which exists on Arch, openSUSE Tumbleweed and Ubuntu 26.04 and newer; elsewhere it says so and changes nothing. Not offered on Fedora, Rocky/Alma/RHEL or Alpine."
+UTILITY_DESCRIPTION["Ghostty"]="Fast GPU-accelerated terminal emulator. Installed from the distro package, which exists on Arch, openSUSE Tumbleweed and Ubuntu 26.04 and newer; elsewhere it says so and changes nothing. Not offered on Debian, Ubuntu 22.04/24.04, Fedora, Rocky/Alma/RHEL or Alpine."
 UTILITY_DESCRIPTION["HardInfo"]="System profiler and benchmark window: CPU, memory, storage, sensors and network. Installs HardInfo2, the maintained fork (the old HardInfo on Ubuntu 22.04). Distro package, or EPEL on Rocky/Alma. Not available on Alpine."
 UTILITY_DESCRIPTION["htop"]="Interactive process viewer with colours, a tree view and mouse support."
 UTILITY_DESCRIPTION["inxi"]="Prints a readable summary of the hardware and system: CPU, GPU, disks, network and sensors. Try inxi -Fxz. Not available on Rocky/Alma 10, where EPEL has no package."

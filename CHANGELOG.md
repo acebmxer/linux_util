@@ -119,6 +119,20 @@ when a release is cut.
   not recognised as an error page, and a file named `*.rpm` always passed the
   package-type check because `file` prints the file's name first. Both checks
   now look at the content only.
+- **Ghostty is now offered only where a package exists** (fixes #116). It was
+  listed on every Debian and Ubuntu release but only Arch, openSUSE Tumbleweed
+  and Ubuntu 26.04 or newer have one, so on Debian 12/13 and Ubuntu 22.04/24.04
+  it failed with "not in repositories" and was retried three times. It no
+  longer appears there.
+- **Alpine no longer offers Ollama, Java JDK and gamemode on releases without
+  them** (fixes #117). Ollama and Java JDK have no package on Alpine 3.22, and
+  gamemode none on 3.22 or 3.23, so the entries appeared and then could not
+  install. They now appear from 3.23, 3.23 and 3.24 respectively.
+- **A failed auto-cpufreq update no longer leaves its service removed** (fixes
+  #118). The update stopped and removed the running service before it had even
+  downloaded the new version, so a failed download left power management off
+  until you noticed. It now downloads and unpacks first, and if the new
+  version's installer fails it starts the previous service again.
 - **"github_allow_prerelease: command not found" when starting** (fixes #98). On
   systems set to `en_US.UTF-8` the installer files were loaded in an order that
   read krdpc's before the shared helpers, so the message appeared on every start

@@ -5907,7 +5907,8 @@ test_system_tools_family_gates() {
     sed -n "$((line-1))p" "$f" | grep -qF 'opensuse-leap' || { gaps=1; echo "  auto-cpufreq not held back on openSUSE Leap"; }
     sed -n "$((line-1))p" "$f" | grep -qF -- '-ge 10' || { gaps=1; echo "  auto-cpufreq not held back on Rocky/Alma 8 and 9"; }
     line=$(grep -n 'register_utility "Ghostty"' "$f" | cut -d: -f1)
-    sed -n "$((line-1))p" "$f" | grep -qF 'debian" || "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse"' || { gaps=1; echo "  Ghostty not limited to Debian, Arch, openSUSE"; }
+    sed -n "$((line-2)),$((line-1))p" "$f" | grep -qF '"$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse"' || { gaps=1; echo "  Ghostty not limited to Arch, openSUSE, Ubuntu"; }
+    sed -n "$((line-2)),$((line-1))p" "$f" | grep -qF '"$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -ge 26' || { gaps=1; echo "  Ghostty not held back on Debian and Ubuntu before 26.04"; }
     line=$(grep -n 'register_utility "WezTerm"' "$f" | cut -d: -f1)
     sed -n "$((line-1))p" "$f" | grep -qF 'arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "alpine"' || { gaps=1; echo "  WezTerm not limited to Arch, openSUSE, Alpine"; }
     for n in TLP inxi; do
@@ -7268,6 +7269,53 @@ text-named-rpm=caught" "$out" "Download verification rejects <!DOCTYPE html> pag
     rm -rf "$dir"
 }
 
+# #117: Ollama, Java JDK and gamemode are offered on Alpine only from the release
+# that has their package.
+test_alpine_hides_packages_missing_on_older_releases() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh" 2>/dev/null
+        for v in 3.22.1 3.23.0 3.24.0; do
+            DISTRO_VERSION_ID=$v
+            printf '%s:' "$v"
+            for n in Ollama "Java JDK" "Feral Gamemode"; do
+                min="${_ALPINE_MIN_RELEASE[$n]}"
+                _alpine_release_at_least "$min" && printf ' %s' "$n"
+            done
+            echo
+        done
+    )
+    assert_eq "3.22.1:
+3.23.0: Ollama Java JDK
+3.24.0: Ollama Java JDK Feral Gamemode" "$out" "Ollama, Java JDK and gamemode appear on Alpine only from 3.23, 3.23 and 3.24"
+}
+
+# #118: an auto-cpufreq update downloads first and stops the running service only
+# afterwards, and puts the service back if upstream's installer fails.
+test_auto_cpufreq_update_keeps_service_on_failure() {
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_acf_XXXXXX)
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/auto_cpufreq.sh"
+        info() { :; }; warn() { echo "WARN: $*"; }; error() { echo "ERR: $*"; }
+        sudo() { echo "SUDO $*" | sed "s|$dir|DIR|g"; [[ "$*" == *"$FAIL"* ]] && return 1; return 0; }
+        touch "$dir/remover"; _ACF_DAEMON_REMOVER="$dir/remover"
+        _acf_fetch_source() { [[ "$FETCH_OK" == 1 ]] || return 1; local -n _o="$2"; _o="$dir/src"; }
+        echo "-- download fails:"
+        FETCH_OK=0 FAIL=zzz _acf_deploy 3.3.0 >/dev/null; echo "rc=$?"
+        echo "-- installer fails:"
+        FETCH_OK=1 FAIL=auto-cpufreq-installer _acf_deploy 3.3.0 2>&1 | grep -v "^ERR"; 
+    )
+    assert_eq "-- download fails:
+rc=1
+-- installer fails:
+SUDO auto-cpufreq --remove
+SUDO bash DIR/src/auto-cpufreq-installer --install
+SUDO auto-cpufreq --install
+WARN: The previous auto-cpufreq service was started again." "$out" "A failed auto-cpufreq download never stops the service, and a failed installer puts the service back"
+    rm -rf "$dir"
+}
+
 # Helix and Helm choose the package when the repository has one.
 test_helix_helm_route() {
     local out
@@ -7363,6 +7411,8 @@ test_elevate_repo_package_over_https
 test_timeshift_setup_needs_terminal_and_backs_up_config
 test_stale_release_cleanup_asks_before_removing
 test_verify_download_catches_html_and_names
+test_alpine_hides_packages_missing_on_older_releases
+test_auto_cpufreq_update_keeps_service_on_failure
 test_snapper_snapshot_list_not_empty
 test_dnf_autoremove_finds_orphans
 test_rpm_reboot_pending
