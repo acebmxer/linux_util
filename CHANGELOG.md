@@ -133,6 +133,17 @@ when a release is cut.
   downloaded the new version, so a failed download left power management off
   until you noticed. It now downloads and unpacks first, and if the new
   version's installer fails it starts the previous service again.
+- **Documentation and shell completions matched to the program** (fixes #119).
+  Tab completion was missing 127 of the 334 utility names and listed one that
+  does not exist ("Full System Upgrade/Update"); `--export-profile` completed
+  utility names where a profile label belongs, and zsh offered an "All Profiles"
+  label the command rejects. Both files are now built from the registered names,
+  and a test fails whenever they drift again (the CONTRIBUTING step is no longer
+  optional). The README command list now shows `--export-profile` and
+  `--import-profile`, the test badge shows the real count, Kopia's description
+  says its distro package is on openSUSE only (Fedora has it only in
+  updates-testing), and the Ptyxis entry says Ubuntu's default terminal since
+  25.10.
 - **"github_allow_prerelease: command not found" when starting** (fixes #98). On
   systems set to `en_US.UTF-8` the installer files were loaded in an order that
   read krdpc's before the shared helpers, so the message appeared on every start
@@ -143,7 +154,7 @@ when a release is cut.
 
 - **Six more terminals** in System Tools, Terminal Emulators: Konsole, Kwi
   (KDE's new terminal, still in early development), Ptyxis (Ubuntu's default
-  terminal since 26.04), Terminator, Xfce Terminal and Yakuake. Each comes from
+  terminal since 25.10), Terminator, Xfce Terminal and Yakuake. Each comes from
   the distribution's own repositories (EPEL on Rocky/Alma). Kwi uses KDE's
   Flathub listing everywhere but Arch, and Ptyxis uses Flathub on Ubuntu
   22.04/24.04 and Rocky/Alma 8 and 9, which do not package it. Kwi is not

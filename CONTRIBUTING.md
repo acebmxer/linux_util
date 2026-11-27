@@ -158,9 +158,9 @@ Environments`, `Development`, `Disk Utilities`, `Drivers`, `File Managers`,
 `Productivity`, `Remote Admin Tools`, `System Tools`, `Window Managers` — unless
 you are deliberately adding a new one.
 
-### Step 3 — Add it to shell completions (optional but appreciated)
+### Step 3 — Add it to shell completions (required)
 
-Add the display name to both `completions/linux_util.bash` (the `_linux_util_utilities` function) and `completions/_linux_util` (the `_linux_util_utilities` array) in alphabetical order.
+The test suite fails when a registered name is missing from either file, or a name is listed that is not registered. Add the display name to both `completions/linux_util.bash` (the `_linux_util_utilities` function) and `completions/_linux_util` (the `_linux_util_utilities` array) in alphabetical order.
 
 ### Step 4 — Update profiles if relevant
 

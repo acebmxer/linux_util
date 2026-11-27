@@ -2,8 +2,9 @@
 # Kopia installer functions
 #
 # Fast, encrypted, deduplicating backup with snapshots and a web page
-# (kopia server start). The command-line program. The distro package on Fedora
-# and openSUSE; everywhere else Kopia's GitHub release (a single binary), checked
+# (kopia server start). The command-line program. The distro package where the
+# repositories have one (openSUSE Tumbleweed; Fedora's is only in updates-testing,
+# so a normal Fedora uses the release); everywhere else Kopia's GitHub release (a single binary), checked
 # against its published SHA-256 and put in /usr/local/bin. The KopiaUI desktop
 # app is a separate download and is not installed. Not offered on Alpine.
 

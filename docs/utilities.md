@@ -116,7 +116,7 @@ appear when it applies.
 | **Grsync** | Graphical front-end for rsync with saved presets. Distro package (EPEL on RHEL clones); not available on Alpine *(File Backup)* |
 | **restic** | Encrypted, deduplicating command-line backup to local, SFTP, S3 and cloud stores. Distro package; not available on Rocky/Alma 8 *(Command Line)* |
 | **rclone** | Command-line copy and sync to dozens of cloud storage services. Distro package; not available on Rocky/Alma 8 *(Command Line)* |
-| **Kopia** | Fast, encrypted, deduplicating backup with a web page (`kopia server start`). Distro package on Fedora and openSUSE, SHA-256 checked GitHub release elsewhere; command line only; not available on Alpine *(Command Line)* |
+| **Kopia** | Fast, encrypted, deduplicating backup with a web page (`kopia server start`). Distro package on openSUSE Tumbleweed, SHA-256 checked GitHub release elsewhere (Fedora included); command line only; not available on Alpine *(Command Line)* |
 | **rsnapshot** | Scheduled rsync snapshots with hard links; you write the config and the schedule *(Command Line)* |
 | **Clonezilla** | Disk and partition cloning for disks that are not mounted; the live disk is needed to clone the running system. Debian, Ubuntu and Arch only |
 

@@ -7316,6 +7316,26 @@ WARN: The previous auto-cpufreq service was started again." "$out" "A failed aut
     rm -rf "$dir"
 }
 
+# #119: the shell completions list exactly the registered utility names (every
+# register_utility / register_system_task in installers.sh, whichever distro it is
+# gated to) and the profile labels in profiles.sh.
+test_completions_match_registry() {
+    local reg bash_list zsh_list bad
+    reg=$(grep -oP '^\s*register_(utility|system_task)\s+"\K[^"]+' "${SCRIPT_DIR}/lib/installers.sh" | LC_ALL=C sort -u)
+    bash_list=$(sed -n "/^_linux_util_utilities() {/,/^EOF/p" "${SCRIPT_DIR}/completions/linux_util.bash" | sed '1,2d;$d' | LC_ALL=C sort -u)
+    zsh_list=$(sed -n "/^_linux_util_utilities=(/,/^)/p" "${SCRIPT_DIR}/completions/_linux_util" | sed '1d;$d' | sed "s/^ *'//; s/'\$//" | LC_ALL=C sort -u)
+    bad=$(LC_ALL=C comm -3 <(echo "$reg") <(echo "$bash_list") | head -5 | tr '\n' ';')
+    assert_eq "" "$bad" "bash completion lists exactly the registered utility names"
+    bad=$(LC_ALL=C comm -3 <(echo "$reg") <(echo "$zsh_list") | head -5 | tr '\n' ';')
+    assert_eq "" "$bad" "zsh completion lists exactly the registered utility names"
+    local profiles bash_prof zsh_prof
+    profiles=$(grep -oP '^register_profile "\K[^"]+' "${SCRIPT_DIR}/lib/profiles.sh" | LC_ALL=C sort)
+    bash_prof=$(sed -n "/^_linux_util_profiles() {/,/^EOF/p" "${SCRIPT_DIR}/completions/linux_util.bash" | sed '1,2d;$d' | LC_ALL=C sort)
+    zsh_prof=$(sed -n "/local profiles=(/,/^            )/p" "${SCRIPT_DIR}/completions/_linux_util" | sed '1d;$d' | sed "s/^ *'//; s/'\$//" | LC_ALL=C sort)
+    assert_eq "$profiles" "$bash_prof" "bash completion offers the registered profile labels for --export-profile"
+    assert_eq "$profiles" "$zsh_prof" "zsh completion offers the registered profile labels for --export-profile"
+}
+
 # Helix and Helm choose the package when the repository has one.
 test_helix_helm_route() {
     local out
@@ -7413,6 +7433,7 @@ test_stale_release_cleanup_asks_before_removing
 test_verify_download_catches_html_and_names
 test_alpine_hides_packages_missing_on_older_releases
 test_auto_cpufreq_update_keeps_service_on_failure
+test_completions_match_registry
 test_snapper_snapshot_list_not_empty
 test_dnf_autoremove_finds_orphans
 test_rpm_reboot_pending

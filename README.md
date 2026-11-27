@@ -10,7 +10,7 @@
 [![Unique cloners](https://img.shields.io/badge/unique%20cloners-91-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
-[![Tests](https://img.shields.io/badge/tests-649%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-690%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 [![Distros tested](https://img.shields.io/badge/distros%20tested-7-informational)](#supported-distributions)
 [![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
@@ -164,6 +164,10 @@ run `./linux_util.sh --list`.
       --json              Machine-readable JSON output (with --list or --check)
       --no-color          Disable coloured output
       --setup-logrotate   Install logrotate config for linux_util logs
+      --export-profile [<profile>] <file>
+                          Export a profile's utility list (or every profile) to JSON
+      --import-profile <file>
+                          Install the utilities listed in an exported profile
 ```
 
 Utility names are matched case-insensitively and support partial matches.
