@@ -70,8 +70,8 @@ uninstall_lutris() {
                 ;;
         esac
     fi
-    rm -rf "$HOME/.config/lutris"
-    rm -rf "$HOME/.local/share/lutris"
+    # Game library and settings stay (issue #101).
+    info "Your Lutris library and settings in ~/.config/lutris and ~/.local/share/lutris were kept."
 }
 
 update_lutris() {

@@ -6760,6 +6760,41 @@ test_python_uninstall_keeps_interpreter() {
 python-pip" "$out" "Python uninstall removes pip, venv and headers but never python3 itself"
 }
 
+# #101: uninstalling an app removes the program only. The user's own settings
+# and data (Neovim config, Podman images, Wine prefixes, saved connections,
+# notes, game library, registry logins) must still be there afterwards.
+test_uninstall_keeps_user_data() {
+    local home out
+    home=$(mktemp -d /tmp/linux_util_home_XXXXXX)
+    local keep=(
+        ".config/nvim" ".local/share/nvim"
+        ".config/containers" ".local/share/containers"
+        ".local/share/bottles"
+        ".local/share/DBeaverData" ".dbeaver"
+        ".config/joplin-desktop" ".config/joplin"
+        ".config/lutris" ".local/share/lutris"
+        ".config/docker" ".docker"
+    )
+    local d
+    for d in "${keep[@]}"; do mkdir -p "$home/$d"; echo mine > "$home/$d/data"; done
+    (
+        export HOME="$home"
+        for f in neovim podman bottles dbeaver joplin lutris docker; do
+            source "${SCRIPT_DIR}/lib/installers/$f.sh"
+        done
+        info() { :; }; warn() { :; }; error() { :; }; sudo() { :; }; run_as_root() { :; }
+        pkg_remove() { :; }; aur_remove() { :; }; refresh_desktop_caches() { :; }
+        flatpak_is_installed() { return 1; }
+        DISTRO_FAMILY=debian
+        uninstall_neovim; uninstall_podman; uninstall_bottles; uninstall_dbeaver
+        uninstall_joplin; uninstall_lutris; uninstall_docker
+    ) >/dev/null 2>&1
+    local missing=""
+    for d in "${keep[@]}"; do [[ -f "$home/$d/data" ]] || missing+=" $d"; done
+    assert_eq "" "$missing" "Uninstalling Neovim, Podman, Bottles, DBeaver, Joplin, Lutris and Docker keeps the user's data folders"
+    rm -rf "$home"
+}
+
 # Helix and Helm choose the package when the repository has one.
 test_helix_helm_route() {
     local out
@@ -6841,6 +6876,7 @@ test_native_or_github_update_route
 test_tldr_and_java_package_choice
 test_runtime_package_names
 test_python_uninstall_keeps_interpreter
+test_uninstall_keeps_user_data
 test_helix_helm_route
 test_ollama_routes
 test_virtualbox_refuses_unsupported_release

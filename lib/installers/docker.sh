@@ -158,8 +158,8 @@ uninstall_docker() {
             pkg_remove docker docker-compose docker-buildx
             ;;
     esac
-    rm -rf ~/.config/docker
-    rm -rf ~/.docker
+    # Registry credentials and contexts stay (issue #101).
+    info "Your Docker settings in ~/.docker were kept."
 }
 
 update_docker() {

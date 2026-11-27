@@ -18,6 +18,17 @@ when a release is cut.
   `--dry-run --install`, `--update` and `--update-all` used to refresh the
   package lists first (a full `pacman -Syu` upgrade on Arch) and ask for the
   sudo password. They now print what they would do and run no root command.
+- **`--update-all` on Arch now syncs and upgrades in full before updating**
+  (fixes #100). It used to sync the package database only, then updated each
+  utility on its own against a database newer than the installed system, which
+  Arch does not support. The comment claiming System Updates ran in that loop
+  was wrong: System Updates is never part of it.
+- **Uninstalling Neovim, Podman, Bottles, DBeaver, Joplin, Lutris or Docker no
+  longer deletes your own data** (fixes #101). Those uninstalls removed your
+  Neovim configuration, Podman images and volumes, Wine prefixes, saved database
+  connections, Joplin notes and settings, Lutris library and Docker logins
+  without asking. They now remove the program only, say which folders were kept,
+  and `docs/utilities.md` states it for each.
 - **"github_allow_prerelease: command not found" when starting** (fixes #98). On
   systems set to `en_US.UTF-8` the installer files were loaded in an order that
   read krdpc's before the shared helpers, so the message appeared on every start

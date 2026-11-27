@@ -65,8 +65,8 @@ uninstall_dbeaver() {
             pkg_remove dbeaver-ce
             ;;
     esac
-    rm -rf "$HOME/.local/share/DBeaverData"
-    rm -rf "$HOME/.dbeaver"
+    # Saved connections and scripts stay (issue #101).
+    info "Your DBeaver connections and scripts in ~/.local/share/DBeaverData were kept."
 }
 
 update_dbeaver() {

@@ -65,7 +65,8 @@ uninstall_neovim() {
         arch)        pkg_remove neovim 2>/dev/null || true ;;
         suse)        pkg_remove neovim 2>/dev/null || true ;;
     esac
-    rm -rf "$HOME/.config/nvim" "$HOME/.local/share/nvim"
+    # Your own configuration and plugins stay (issue #101).
+    info "Your Neovim settings in ~/.config/nvim and ~/.local/share/nvim were kept."
 }
 
 update_neovim() {

@@ -982,9 +982,14 @@ EOF
             --update-all)
                 shift
                 echo "Updating all installed utilities..."
-                # System Updates is in this loop and does the full upgrade itself.
+                # Nothing in this loop performs a full system upgrade (System
+                # Updates is a run-action task, never "installed"), so the
+                # refresh must be the complete one: on Arch a bare -Sy would
+                # leave every single-package update running against a database
+                # newer than the installed system. A dry run skips the refresh
+                # and the snapshot prompt and only lists what would be updated.
                 if [[ "$DRY_RUN" != "true" ]]; then
-                    PKG_REFRESH_SYNC_ONLY=true pkg_refresh
+                    pkg_refresh
                     timeshift_prompt_create_snapshot "linux_util: Before updating all installed utilities"
                 fi
                 local _updated=0 _failed=0

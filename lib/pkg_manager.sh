@@ -140,7 +140,7 @@ _pkg_cache_is_fresh() {
 }
 
 # Set by callers whose own operation performs the full system upgrade itself
-# (System Updates, --update-all). On Arch this suppresses the -u in pkg_refresh's
+# (System Updates). On Arch this suppresses the -u in pkg_refresh's
 # -Syu, so the pre-flight step syncs the database and nothing else and the upgrade
 # happens inside the update run where the user asked for it -- matching how apt and
 # dnf already behave, where pre-flight only ever refreshes metadata.

@@ -137,7 +137,7 @@ appear when it applies.
 | Utility | Description |
 |---------|-------------|
 | **Ansible** | IT automation and configuration management tool |
-| **DBeaver** | Universal database management tool |
+| **DBeaver** | Universal database management tool. Uninstall keeps your saved connections and scripts |
 | **OpenTofu** | Open-source Terraform-compatible infrastructure-as-code tool |
 | **Postman** | API development and testing platform |
 | **PowerShell** | Microsoft's cross-platform automation shell built on .NET — Microsoft's apt repo where available, otherwise the GitHub release `.deb` |
@@ -154,7 +154,7 @@ Grouped into folders inside the Development tab:
 | **VSCodium** | Telemetry-free community build of VS Code (Open VSX extensions) |
 | **Cursor IDE** | AI-powered code editor built on VS Code |
 | **JetBrains Toolbox** | Manager for JetBrains IDEs (IntelliJ, PyCharm, WebStorm, etc.) |
-| **Neovim** | Extensible Vim-based text editor |
+| **Neovim** | Extensible Vim-based text editor. Uninstall keeps your configuration and plugins |
 | **Vim** | The classic modal editor (`vim-enhanced` on Fedora and RHEL clones) |
 | **Emacs** | GNU Emacs, the extensible editor, with its graphical window |
 | **Helix** | Modal terminal editor with language-server support built in. Distro package (Fedora, Rocky/Alma 9 and 10, Arch, openSUSE, Alpine); on Debian, Ubuntu and Rocky/Alma 8 the GitHub release, SHA-256 checked, in `/opt/helix` |
@@ -197,8 +197,8 @@ Grouped into folders inside the Development tab:
 
 | Utility | Description |
 |---------|-------------|
-| **Docker** | Container platform — official repos, adds user to `docker` group |
-| **Podman** | Daemonless OCI container engine |
+| **Docker** | Container platform — official repos, adds user to `docker` group. Uninstall keeps `~/.docker` (registry logins and contexts) |
+| **Podman** | Daemonless OCI container engine. Uninstall keeps your images, containers and volumes |
 | **Podman Desktop** | Graphical manager for Podman containers, pods and Kubernetes. Distro package on Arch, Flathub elsewhere; not available on Alpine |
 | **kubectl** | Kubernetes command-line tool |
 | **k9s** | Terminal UI for managing Kubernetes clusters |
@@ -234,14 +234,14 @@ Grouped into folders inside the Development tab:
 
 | Utility | Description |
 |---------|-------------|
-| **Bottles** | Wine prefix manager for running Windows software |
+| **Bottles** | Wine prefix manager for running Windows software. Uninstall keeps your Wine prefixes |
 | **Boxflat** | Settings manager for Moza Racing sim-racing hardware (Flatpak) |
 | **Dolphin Emulator** | Nintendo GameCube and Wii emulator. Distro package; Flathub on RHEL clones *(Emulators)* |
 | **Feral Gamemode** | Optimizes system performance while gaming |
 | **Flatseal** | Shows and changes the permissions of Flatpak apps. Distro package where there is one, else Flathub; not available on Alpine *(Gaming Utilities)* |
 | **Gear Lever** | Manages AppImage files (menu entries, updates, removal). Distro package on openSUSE, Flathub elsewhere; not available on Alpine *(Gaming Utilities)* |
 | **Heroic Games Launcher** | Open-source launcher for Epic, GOG, and Amazon Prime Gaming |
-| **Lutris** | Open gaming platform for multiple game sources |
+| **Lutris** | Open gaming platform for multiple game sources. Uninstall keeps your game library and settings |
 | **MangoHud** | Vulkan/OpenGL overlay for FPS, frame times, and hardware monitoring |
 | **Moonlight** | Streams games from a Sunshine or GeForce PC to this one. Distro package on Fedora, Arch, openSUSE and Alpine, Flathub elsewhere *(Game Streaming)* |
 | **PPSSPP** | Sony PSP emulator. Distro package on Arch, openSUSE and Alpine, Flathub elsewhere *(Emulators)* |
@@ -339,7 +339,7 @@ Additional, cross-distro managers that run alongside the native package manager 
 | **GIMP** | GNU Image Manipulation Program *(Graphics & Photo)* |
 | **HandBrake** | Open-source video transcoder *(Video & Audio)* |
 | **Inkscape** | Professional vector graphics editor *(Graphics & Photo)* |
-| **Joplin Client** | Note-taking app with Markdown and sync (AppImage) *(Notes)* |
+| **Joplin Client** | Note-taking app with Markdown and sync (AppImage). Uninstall keeps your notes and sync settings *(Notes)* |
 | **Kdenlive** | Open-source video editor by KDE *(Video & Audio)* |
 | **KeePassXC** | Offline password manager that keeps passwords in an encrypted file you control, with browser integration and TOTP. Distro package, Flathub where the repository has none. Uninstall keeps your database *(Password Managers)* |
 | **Kodi** | Home-theater media center for local and network media. Distro package on Debian/Ubuntu and Arch, RPM Fusion Free on Fedora and RHEL clones, Flathub on openSUSE *(Media)* |

@@ -39,7 +39,8 @@ uninstall_podman() {
         arch)        pkg_remove podman ;;
         suse)        pkg_remove podman ;;
     esac
-    rm -rf "$HOME/.config/containers" "$HOME/.local/share/containers"
+    # Images, containers and named volumes stay (issue #101).
+    info "Your Podman images and volumes in ~/.local/share/containers were kept."
 }
 
 update_podman() {
