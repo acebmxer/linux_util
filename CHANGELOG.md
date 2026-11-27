@@ -12,6 +12,8 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.13.2] - 2026-11-27
+
 ### Fixed
 
 - **`--dry-run` on the command line no longer changes anything** (fixes #99).

@@ -7,10 +7,10 @@
 [![Issues](https://img.shields.io/github/issues/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/issues)
 [![Stars](https://img.shields.io/github/stars/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/stargazers)
 [![Forks](https://img.shields.io/github/forks/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/forks)
-[![Unique cloners](https://img.shields.io/badge/unique%20cloners-91-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
+[![Unique cloners](https://img.shields.io/badge/unique%20cloners-100-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
-[![Tests](https://img.shields.io/badge/tests-690%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-687%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 [![Distros tested](https://img.shields.io/badge/distros%20tested-7-informational)](#supported-distributions)
 [![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
