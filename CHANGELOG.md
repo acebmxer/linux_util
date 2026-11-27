@@ -50,6 +50,31 @@ when a release is cut.
   now downloaded to a file first and the result is checked; the Homebrew
   uninstaller does the same and leaves your shell files alone if it cannot be
   fetched.
+- **Tailscale now installs on Debian** (fixes #106). The Debian path used
+  Tailscale's Ubuntu repository address, which does not exist for Debian
+  releases, so the key and repository files came out empty and the install
+  failed. Debian now uses `/debian/`, Ubuntu and its derivatives keep
+  `/ubuntu/`, and a failed download or package install stops with an error.
+- **Updating Go no longer risks leaving you with no Go** (fixes #105). The
+  binary route deleted `/usr/local/go` before the new archive was checked or
+  unpacked, ignored a failed unpack and printed success. It now checks the
+  archive against the SHA-256 go.dev publishes, unpacks it beside the old copy
+  and swaps only when that worked; on any failure the old Go stays.
+- **The reboot-pending check now works on Fedora 41 and newer** (fixes #109).
+  It looked for a `needs-restarting` program, which Fedora's dnf5 no longer
+  ships (the check is `dnf needs-restarting -r`), so on Fedora a kernel or glibc
+  update never triggered the "Reboot now?" offer, repair tasks reported no
+  change instead of a reboot, and Full System Upgrade did not stop for a pending
+  reboot. All four places now use one shared check.
+- **Thorough Cleanup now removes orphaned packages on Fedora and RHEL clones**
+  (fixes #108). On Fedora 45 (dnf5) it always said "No orphaned packages to
+  remove": dnf5 words the list "Removing:" and dnf exits 1 when asked only for a
+  preview, which the old test counted as "none". The preview is also now run
+  with root rights, as dnf needs.
+- **Snapper's snapshot list is no longer always empty** (fixes #107). The
+  pattern meant to hide snapshot 0 matched every line, so the banner said "No
+  snapshots found" and Restore Snapshot and Delete Snapshot reported none even
+  when snapshots existed.
 - **"github_allow_prerelease: command not found" when starting** (fixes #98). On
   systems set to `en_US.UTF-8` the installer files were loaded in an order that
   read krdpc's before the shared helpers, so the message appeared on every start

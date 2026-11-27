@@ -61,10 +61,9 @@ _is_wsl2() {
 _reboot_required() {
     # Debian/Ubuntu marker dropped by update-notifier-common.
     [[ -f /var/run/reboot-required ]] && return 0
-    # RHEL/Fedora: needs-restarting -r exits non-zero when a reboot is pending.
-    if command -v needs-restarting >/dev/null 2>&1; then
-        needs-restarting -r >/dev/null 2>&1 || return 0
-    fi
+    # RHEL/Fedora: "needs-restarting -r" (dnf5: "dnf needs-restarting -r") exits
+    # non-zero when a reboot is pending.
+    rpm_reboot_pending && return 0
     # Arch family: no marker file and no needs-restarting, so neither check above
     # can ever fire -- the script reported "No reboot needed" while the desktop
     # was showing a reboot notification for the very same upgrade. Detect it the

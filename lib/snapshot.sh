@@ -362,7 +362,7 @@ _snapper_cache_last_snapshot() {
     #  # | Type   | Pre # | Date                     | User | Cleanup  | Description
     # Columns: 1=#, 2=Type, 3=Pre#, 4=Date, 5=User, 6=Cleanup, 7=Description
     local last_line
-    last_line=$(echo "$list_output" | grep -E '^\s*[0-9]+\s*\|' | grep -v '^\s*0\s*\|' | tail -1)
+    last_line=$(echo "$list_output" | grep -E '^\s*[0-9]+\s*\|' | grep -vE '^\s*0\s*\|' | tail -1)
 
     if [[ -n "$last_line" ]]; then
         local snap_num snap_date snap_desc
@@ -449,7 +449,7 @@ _snapper_list_snapshots() {
         local snap_num
         snap_num=$(echo "$line" | awk -F'|' '{gsub(/^ +| +$/,"",$1); print $1}')
         [[ -n "$snap_num" && "$snap_num" != "0" ]] && SNAPSHOT_NAMES+=("$snap_num")
-    done < <(echo "$list_output" | grep -E '^\s*[0-9]+\s*\|' | grep -v '^\s*0\s*\|')
+    done < <(echo "$list_output" | grep -E '^\s*[0-9]+\s*\|' | grep -vE '^\s*0\s*\|')
 
     [[ ${#SNAPSHOT_NAMES[@]} -gt 0 ]] && return 0 || return 1
 }

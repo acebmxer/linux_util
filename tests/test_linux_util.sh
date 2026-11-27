@@ -6902,6 +6902,130 @@ test_docker_and_opentofu_report_failed_steps() {
     fi
 }
 
+# #105: the Go archive is checked against go.dev's published SHA-256 BEFORE the
+# installed Go is touched. A wrong or missing digest must stop with no sudo call.
+test_go_binary_install_verifies_before_replacing() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/verify.sh"
+        source "${SCRIPT_DIR}/lib/installers/golang.sh"
+        info() { :; }; warn() { :; }; verbose() { :; }; error() { echo "ERR: $*"; }
+        CLEANUP_FILES=()
+        sudo() { echo "SUDO-CALLED $*"; }
+        wget() { echo "archive" > "$2"; }
+        curl() {
+            case "$*" in
+                *VERSION*)   printf 'go1.99.1\ntime 2026-01-01\n' ;;
+                *mode=json*) printf '[{"version":"go1.99.1","files":[{"filename":"go1.99.1.linux-amd64.tar.gz","os":"linux","arch":"amd64","version":"go1.99.1","sha256":"%s","size":1}]}]' "$GO_SHA" ;;
+            esac
+        }
+        GO_SHA=$(printf 'archive\n' | sha256sum | cut -d' ' -f1)
+        GO_SHA="0${GO_SHA:1}"
+        _install_golang_binary; echo "wrong-digest rc=$?"
+        GO_SHA=""
+        _install_golang_binary; echo "no-digest rc=$?"
+    )
+    assert_contains "$out" "wrong-digest rc=1" "Go install fails when the archive does not match go.dev's SHA-256"
+    assert_contains "$out" "no-digest rc=1" "Go install fails when go.dev publishes no SHA-256 for the archive"
+    if grep -q "SUDO-CALLED" <<<"$out"; then
+        _fail "Go install leaves the existing Go alone when verification fails (sudo was called)"
+    else
+        _pass "Go install leaves the existing Go alone when verification fails"
+    fi
+}
+
+# #106: Debian uses Tailscale's /debian/ repository, Ubuntu and its derivatives
+# /ubuntu/; a failed key or list download stops the install.
+test_tailscale_repository_path() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/tailscale.sh"
+        info() { :; }; warn() { :; }; error() { echo "ERR: $*"; }
+        ensure_tools() { :; }; pkg_install() { echo "PKG $*"; }
+        sudo() { :; }; apt() { :; }
+        download_script() { echo "GET $1"; local -n _o="$2"; _o=/dev/null; }
+        DISTRO_FAMILY=debian DISTRO_ID=debian DISTRO_VERSION_CODENAME=trixie; install_tailscale | grep GET | head -1
+        DISTRO_ID=ubuntu DISTRO_VERSION_CODENAME=noble; install_tailscale | grep GET | head -1
+        download_script() { return 1; }
+        DISTRO_ID=debian DISTRO_VERSION_CODENAME=trixie; install_tailscale >/dev/null; echo "fail rc=$?"
+    )
+    assert_eq "GET https://pkgs.tailscale.com/stable/debian/trixie.noarmor.gpg
+GET https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg
+fail rc=1" "$out" "Tailscale uses the debian repository on Debian, ubuntu on Ubuntu, and stops when a download fails"
+}
+
+# #107: the Snapper list drops snapshot 0 only. The old grep pattern ended in
+# an empty alternation and matched every line, so the list was always empty.
+test_snapper_snapshot_list_not_empty() {
+    local out
+    out=$(
+        TIMESHIFT_AVAILABLE=true
+        sudo() {
+            printf '%s\n' \
+                '    # | Type   | Pre # | Date                     | User | Cleanup | Description | Userdata' \
+                '------+--------+-------+--------------------------+------+---------+-------------+---------' \
+                '   0  | single |       |                          | root |         | current     |' \
+                '  12  | single |       | Fri 20 Nov 2026 10:00:00 | root | number  | before dnf  |' \
+                '  13  | pre    |       | Sat 21 Nov 2026 11:30:00 | root | number  | Before foo  |'
+        }
+        _snapper_cache_last_snapshot
+        echo "last=${TIMESHIFT_LAST_SNAPSHOT}"
+        _snapper_list_snapshots >/dev/null; echo "rc=$? names=${SNAPSHOT_NAMES[*]}"
+    )
+    assert_eq "last=#13 Sat 21 Nov 2026 11:30:00 - Before foo
+rc=0 names=12 13" "$out" "Snapper snapshot list shows existing snapshots and skips only number 0"
+}
+
+# #108: dnf5 heads the orphan list "Removing:" and exits 1 on --assumeno, which
+# made the old "dnf ... | grep" test false under pipefail. Both wordings count.
+test_dnf_autoremove_finds_orphans() {
+    local out
+    out=$(
+        set -o pipefail
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        info() { echo "INFO: $*"; }
+        run_with_spinner() { shift; echo "RAN: $*"; }
+        PKG_MGR=dnf
+        sudo() { printf 'Transaction Summary:\n Removing:           5 packages\n\nRemoving:\n binutils x86_64\n'; return 1; }
+        pkg_autoremove
+        sudo() { printf 'Transaction Summary\nRemove  11 Packages\n'; return 1; }
+        pkg_autoremove
+        sudo() { printf 'Nothing to do.\n'; return 1; }
+        pkg_autoremove
+    )
+    assert_eq "RAN: sudo dnf autoremove -y
+RAN: sudo dnf autoremove -y
+INFO: No orphaned packages to remove." "$out" "dnf autoremove finds orphans in dnf5 and dnf4 wording despite the exit status of --assumeno"
+}
+
+# #109: Fedora 41+ (dnf5) has no needs-restarting program; the check is the
+# subcommand "dnf needs-restarting -r". A missing dnf plugin is not "pending".
+test_rpm_reboot_pending() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        local bin; bin=$(mktemp -d /tmp/linux_util_rb_XXXXXX)
+        mkdir -p "$bin"; ln -s "$(command -v bash)" "$bin/bash"; ln -s "$(command -v grep)" "$bin/grep"
+        printf '#!/bin/bash\n[[ "$1" == needs-restarting ]] || exit 9\necho "Reboot is required to fully utilize these updates."; exit 1\n' > "$bin/dnf"
+        chmod +x "$bin/dnf"
+        PATH="$bin"   # from here only bash and grep are on PATH
+        rpm_reboot_pending && echo "pending=yes" || echo "pending=no"
+        printf '#!/bin/bash\necho "Reboot should not be necessary."; exit 0\n' > "$bin/dnf"
+        rpm_reboot_pending && echo "pending=yes" || echo "pending=no"
+        printf '#!/bin/bash\necho "No such command: needs-restarting."; exit 1\n' > "$bin/dnf"
+        rpm_reboot_pending && echo "pending=yes" || echo "pending=no"
+        printf '#!/bin/bash\nexit 1\n' > "$bin/needs-restarting"
+        chmod() { /bin/chmod "$@"; }; chmod +x "$bin/needs-restarting"
+        rpm_reboot_pending && echo "pending=yes" || echo "pending=no"
+        /bin/rm -rf "$bin"
+    )
+    assert_eq "pending=yes
+pending=no
+pending=no
+pending=yes" "$out" "Reboot-pending check works through 'dnf needs-restarting -r' and treats a missing plugin as not pending"
+}
+
 # Helix and Helm choose the package when the repository has one.
 test_helix_helm_route() {
     local out
@@ -6988,6 +7112,11 @@ test_apt_remove_guards_meta_package
 test_download_script_reports_failure
 test_zsh_and_homebrew_installs_fail_when_download_fails
 test_docker_and_opentofu_report_failed_steps
+test_go_binary_install_verifies_before_replacing
+test_tailscale_repository_path
+test_snapper_snapshot_list_not_empty
+test_dnf_autoremove_finds_orphans
+test_rpm_reboot_pending
 test_helix_helm_route
 test_ollama_routes
 test_virtualbox_refuses_unsupported_release

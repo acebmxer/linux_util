@@ -316,6 +316,25 @@ pkg_install_local() {
     esac
 }
 
+# True (0) when an RPM-based system says a reboot is pending, false (1) when it
+# says none is needed or cannot tell. Fedora 41+ (dnf5) has no needs-restarting
+# program: the same check is the subcommand "dnf needs-restarting -r", which exits
+# 1 when a reboot is needed. On dnf4 the plugin may not be installed, and then
+# the command also exits 1 ("No such command"); that is "cannot tell", not
+# "reboot pending". The one place this is decided; do not add another copy.
+rpm_reboot_pending() {
+    if command -v needs-restarting >/dev/null 2>&1; then
+        needs-restarting -r >/dev/null 2>&1 && return 1
+        return 0
+    fi
+    command -v dnf >/dev/null 2>&1 || return 1
+    local _out _rc=0
+    _out=$(dnf needs-restarting -r 2>&1) || _rc=$?
+    [[ $_rc -eq 0 ]] && return 1
+    grep -qiE 'no such command|unknown (command|argument)|unrecognized' <<<"$_out" && return 1
+    return 0
+}
+
 pkg_autoremove() {
     local mode="${1:-spinner}"
     local _run _y _nc
@@ -339,7 +358,13 @@ pkg_autoremove() {
             fi
             ;;
         dnf|yum)
-            if "$PKG_MGR" autoremove --assumeno 2>/dev/null | grep -qE "^Remove "; then
+            # Capture the dry run first. dnf exits 1 on --assumeno, so under
+            # pipefail "dnf ... | grep -q" was false even with orphans present,
+            # and dnf5 heads the list "Removing:" where dnf4's summary says
+            # "Remove". It needs root, like the apt dry run above.
+            local _dnf_dry
+            _dnf_dry=$(sudo "$PKG_MGR" autoremove --assumeno 2>/dev/null) || true
+            if grep -qE '^[[:space:]]*Remov(e|ing)[: ]' <<< "$_dnf_dry"; then
                 # shellcheck disable=SC2086
                 "$_run" "Removing orphaned packages" sudo "$PKG_MGR" autoremove $_y
             else
@@ -1583,7 +1608,7 @@ pkg_distro_upgrade() {
             }
 
             # Check if a reboot is needed before proceeding
-            if command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+            if rpm_reboot_pending; then
                 warn "A reboot is required before the Fedora upgrade can proceed."
                 warn "Please reboot the system and re-run this script to continue the upgrade to Fedora ${target_version}."
                 return 1
@@ -1678,7 +1703,7 @@ pkg_distro_upgrade() {
             }
 
             # Check if a reboot is needed before proceeding
-            if command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+            if rpm_reboot_pending; then
                 warn "A reboot is required before the RHEL-family upgrade can proceed."
                 warn "Please reboot the system and re-run this script to continue the upgrade to version ${target_version}."
                 return 1
