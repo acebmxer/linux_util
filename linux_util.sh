@@ -227,7 +227,11 @@ fi
 # is not re-prompted mid-install when the sudo timeout expires.
 # Only run when stdin is a terminal (skip during non-interactive/test invocations
 # so that child processes cannot inherit the lock fd and block subsequent runs).
-if [[ -t 0 ]]; then
+# A --dry-run changes nothing, so it never asks for the password either.
+_lu_dry_run_arg=false
+for _lu_arg in "$@"; do [[ "$_lu_arg" == "--dry-run" ]] && _lu_dry_run_arg=true; done
+unset _lu_arg
+if [[ -t 0 && "$_lu_dry_run_arg" != true ]]; then
     if [[ "$LU_ROOT_METHOD" == "su" ]]; then
         # su cannot remember a password: there is nothing to cache or keep alive.
         warn "Neither sudo nor doas is installed, so root commands use su and ask for the root password each time."
@@ -789,13 +793,16 @@ process_selected() {
 #   func — resolved function name (already validated by caller)
 _cli_op() {
     local _op="$1" _util="$2" _func="$3"
+    # A dry run changes nothing and asks for nothing, so it returns before the
+    # package-list refresh (on Arch that is a full pacman -Syu) and the snapshot
+    # prompt.
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] Would ${_op}: ${_util}"; exit 0
+    fi
     if [[ "$_op" == "install" || "$_op" == "update" ]]; then
         local _sync_only=false
         utility_performs_full_upgrade "$_util" && _sync_only=true
         PKG_REFRESH_SYNC_ONLY="$_sync_only" pkg_refresh
-    fi
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "[DRY RUN] Would ${_op}: ${_util}"; exit 0
     fi
     local _snap_msg
     if [[ "$_op" == "install" && "${UNINSTALL_FUNCS[$_util]:-}" == "noop_function" ]]; then
@@ -976,8 +983,10 @@ EOF
                 shift
                 echo "Updating all installed utilities..."
                 # System Updates is in this loop and does the full upgrade itself.
-                PKG_REFRESH_SYNC_ONLY=true pkg_refresh
-                timeshift_prompt_create_snapshot "linux_util: Before updating all installed utilities"
+                if [[ "$DRY_RUN" != "true" ]]; then
+                    PKG_REFRESH_SYNC_ONLY=true pkg_refresh
+                    timeshift_prompt_create_snapshot "linux_util: Before updating all installed utilities"
+                fi
                 local _updated=0 _failed=0
                 for _util in "${UTILITIES[@]}"; do
                     local _check="${CHECK_FUNCS[$_util]:-}"

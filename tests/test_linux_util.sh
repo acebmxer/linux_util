@@ -1262,9 +1262,43 @@ test_cli_install_no_arg_error_message
 test_cli_uninstall_no_arg_exits_nonzero
 test_cli_update_no_arg_exits_nonzero
 test_cli_unknown_flag_exits_nonzero
+# #99: a dry run must not run ANY root command -- no package-list refresh (on
+# Arch a full pacman -Syu) and no snapshot prompt. A logging sudo stand-in sits
+# first on PATH; every call it receives is a root command the run attempted.
+_run_cli_logged_root() {
+    local _log _bin _tmp_out
+    _log=$(mktemp /tmp/linux_util_rootlog_XXXXXX)
+    _bin=$(mktemp -d /tmp/linux_util_logbin_XXXXXX)
+    printf '#!/bin/bash\necho "$*" >> "%s"\nexit 0\n' "$_log" > "$_bin/sudo"
+    chmod +x "$_bin/sudo"
+    cp "$_FAKE_BIN/git" "$_bin/git"
+    _tmp_out=$(mktemp /tmp/linux_util_cli_out_XXXXXX)
+    PATH="$_bin:$PATH" PKG_CACHE_MAX_AGE_SECS=0 \
+        LINUX_UTIL_CONFIG_FILE="$_CLI_CONF_DIR/linux_util.conf" \
+        timeout -k 2 10 bash "$SCRIPT_DIR/linux_util.sh" "$@" </dev/null >"$_tmp_out" 2>&1
+    _RUN_RC=$?
+    _RUN_OUTPUT=$(<"$_tmp_out")
+    _ROOT_CALLS=$(<"$_log")
+    rm -rf "$_log" "$_bin" "$_tmp_out"
+}
+
+test_cli_dry_run_install_runs_no_root_command() {
+    _run_cli_logged_root --dry-run --install htop
+    assert_eq "0" "$_RUN_RC" "--dry-run --install htop exits with code 0"
+    assert_eq "" "$_ROOT_CALLS" "--dry-run --install htop runs no root command"
+}
+
+test_cli_dry_run_update_all_runs_no_root_command() {
+    _run_cli_logged_root --dry-run --update-all
+    [[ "$_RUN_RC" -eq 124 ]] && { _skip "--dry-run --update-all root-command check (timed out in this environment)"; return; }
+    assert_eq "" "$_ROOT_CALLS" "--dry-run --update-all runs no root command"
+}
+
 test_cli_dry_run_install_exits_zero
 test_cli_dry_run_install_output_indicator
 test_cli_dry_run_update_all_exits_zero
+test_cli_dry_run_install_runs_no_root_command
+test_cli_dry_run_update_all_runs_no_root_command
 
 # _FAKE_BIN is kept alive until all _run_cli tests (including profile export/import
 # below) are done. The cleanup at the end of this file removes it.

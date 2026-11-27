@@ -14,6 +14,10 @@ when a release is cut.
 
 ### Fixed
 
+- **`--dry-run` on the command line no longer changes anything** (fixes #99).
+  `--dry-run --install`, `--update` and `--update-all` used to refresh the
+  package lists first (a full `pacman -Syu` upgrade on Arch) and ask for the
+  sudo password. They now print what they would do and run no root command.
 - **"github_allow_prerelease: command not found" when starting** (fixes #98). On
   systems set to `en_US.UTF-8` the installer files were loaded in an order that
   read krdpc's before the shared helpers, so the message appeared on every start
