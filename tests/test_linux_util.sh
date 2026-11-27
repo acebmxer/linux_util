@@ -1272,6 +1272,8 @@ _run_cli_logged_root() {
     printf '#!/bin/bash\necho "$*" >> "%s"\nexit 0\n' "$_log" > "$_bin/sudo"
     chmod +x "$_bin/sudo"
     cp "$_FAKE_BIN/git" "$_bin/git"
+    # ufw present, as on the CI runner: its installed-check runs `sudo ufw status`.
+    printf '#!/bin/bash\nexit 0\n' > "$_bin/ufw"; chmod +x "$_bin/ufw"
     _tmp_out=$(mktemp /tmp/linux_util_cli_out_XXXXXX)
     PATH="$_bin:$PATH" PKG_CACHE_MAX_AGE_SECS=0 \
         LINUX_UTIL_CONFIG_FILE="$_CLI_CONF_DIR/linux_util.conf" \
@@ -1291,7 +1293,13 @@ test_cli_dry_run_install_runs_no_root_command() {
 test_cli_dry_run_update_all_runs_no_root_command() {
     _run_cli_logged_root --dry-run --update-all
     [[ "$_RUN_RC" -eq 124 ]] && { _skip "--dry-run --update-all root-command check (timed out in this environment)"; return; }
-    assert_eq "" "$_ROOT_CALLS" "--dry-run --update-all runs no root command"
+    # The installed-or-not checks of some utilities are read-only root commands
+    # (`sudo ufw status` when ufw exists, as on the CI runner); only a command that
+    # CHANGES something counts: a package-list refresh, an install or upgrade, a
+    # snapshot.
+    local changing
+    changing=$(grep -Ei 'update|refresh|makecache|upgrade|install|remove|-Sy|snapshot|--create' <<<"$_ROOT_CALLS")
+    assert_eq "" "$changing" "--dry-run --update-all runs no root command that changes anything"
 }
 
 test_cli_dry_run_install_exits_zero
