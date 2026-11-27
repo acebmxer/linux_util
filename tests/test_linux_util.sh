@@ -6408,6 +6408,18 @@ test_krdpc_registered() {
     assert_eq "0" "$gaps" "krdpc is registered with category, folder, description, upstream marker, completions, docs row and all five functions"
 }
 
+# krdpc.sh calls github_allow_prerelease while it loads. The installer glob
+# sorts _shared.sh after krdpc.sh in en_US.UTF-8, so installers.sh must source
+# _shared.sh by name before the loop (#98).
+test_shared_sourced_before_installer_glob() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" shared loop
+    shared=$(grep -n 'source "${SCRIPT_DIR}/lib/installers/_shared.sh"' "$f" | head -1 | cut -d: -f1)
+    loop=$(grep -n 'for _installer_file in' "$f" | head -1 | cut -d: -f1)
+    assert_true "installers.sh sources _shared.sh before the installer glob loop" \
+        test -n "$shared" -a -n "$loop" -a "${shared:-999999}" -lt "${loop:-0}"
+}
+test_shared_sourced_before_installer_glob
+
 # krdpc has only pre-releases, which GitHub's "latest" answer skips; the file
 # names and versions must match what its release really publishes.
 test_krdpc_release_lookup() {

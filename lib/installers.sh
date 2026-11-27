@@ -32,8 +32,13 @@
 # ============================================================================
 
 # --- Source all per-utility installer scripts ---
+# _shared.sh first, by name: the glob below sorts "_shared.sh" after "krdpc.sh"
+# in en_US.UTF-8 (the underscore is ignored) but before it in the C locale, and
+# an installer that calls a shared helper while it loads needs it defined.
+source "${SCRIPT_DIR}/lib/installers/_shared.sh" || { echo "Error: Failed to source _shared.sh"; exit 1; }
 for _installer_file in "${SCRIPT_DIR}/lib/installers/"*.sh; do
     [[ -f "$_installer_file" ]] || continue
+    [[ "$_installer_file" == */_shared.sh ]] && continue
     source "$_installer_file" || { echo "Error: Failed to source $_installer_file"; exit 1; }
 done
 unset _installer_file
