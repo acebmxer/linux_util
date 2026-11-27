@@ -117,6 +117,11 @@ _ALPINE_TABLE=(
     "Alacritty|alacritty|alacritty||"
     "kitty|kitty|kitty||"
     "WezTerm|wezterm|wezterm||"
+    "Konsole|konsole|konsole||"
+    "Ptyxis|ptyxis|ptyxis||"
+    "Terminator|terminator|terminator||"
+    "Xfce Terminal|xfce4-terminal|xfce4-terminal||"
+    "Yakuake|yakuake|yakuake||"
     "CUPS|cups||cupsd|"
     "Vim|vim|vim||"
     "Emacs|emacs|emacs||"
@@ -136,6 +141,24 @@ _ALPINE_TABLE=(
     "Ollama|ollama|ollama|ollama|"
     "Java JDK|openjdk25-jdk|javac||"
 )
+
+# Utilities whose package is missing from older Alpine releases the project
+# still supports (checked with `apk search -e` on 3.22, 3.23 and 3.24): the
+# name is only offered from the release listed here. Delete a row when the
+# release it names is the oldest one supported.
+declare -A _ALPINE_MIN_RELEASE=(
+    ["Ollama"]="3.23"
+    ["Java JDK"]="3.23"
+    ["Feral Gamemode"]="3.24"
+)
+
+# True when the running Alpine release (DISTRO_VERSION_ID, e.g. 3.23.0) is at
+# least $1 (e.g. 3.23).
+_alpine_release_at_least() {
+    local want="$1" have="${DISTRO_VERSION_ID:-}"
+    [[ -n "$have" ]] || return 0
+    [[ "$(printf '%s\n%s\n' "$want" "$have" | sort -V | head -1)" == "$want" ]]
+}
 
 # Registered utilities whose own installer file has an Alpine branch.
 _ALPINE_OWN_HANDLERS=(
@@ -216,6 +239,10 @@ apply_alpine_registry() {
         # Only utilities the registry already lists are rebound; a name that is
         # in the table but not registered is simply not offered.
         [[ -n "${INSTALL_FUNCS[$name]:-}" ]] || continue
+        # No package on this (older) release: not offered at all.
+        if [[ -n "${_ALPINE_MIN_RELEASE[$name]:-}" ]] && ! _alpine_release_at_least "${_ALPINE_MIN_RELEASE[$name]}"; then
+            continue
+        fi
         _keep["$name"]=1
         id="${name//[^A-Za-z0-9]/_}"
         eval "_alpine_install_${id}()   { _alpine_install   $(printf '%q' "$name"); }"

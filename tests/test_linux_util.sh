@@ -1262,9 +1262,96 @@ test_cli_install_no_arg_error_message
 test_cli_uninstall_no_arg_exits_nonzero
 test_cli_update_no_arg_exits_nonzero
 test_cli_unknown_flag_exits_nonzero
+# #99: a dry run must not run ANY root command -- no package-list refresh (on
+# Arch a full pacman -Syu) and no snapshot prompt. A logging sudo stand-in sits
+# first on PATH; every call it receives is a root command the run attempted.
+_run_cli_logged_root() {
+    local _log _bin _tmp_out
+    _log=$(mktemp /tmp/linux_util_rootlog_XXXXXX)
+    _bin=$(mktemp -d /tmp/linux_util_logbin_XXXXXX)
+    printf '#!/bin/bash\necho "$*" >> "%s"\nexit 0\n' "$_log" > "$_bin/sudo"
+    chmod +x "$_bin/sudo"
+    cp "$_FAKE_BIN/git" "$_bin/git"
+    # ufw present, as on the CI runner: its installed-check runs `sudo ufw status`.
+    printf '#!/bin/bash\nexit 0\n' > "$_bin/ufw"; chmod +x "$_bin/ufw"
+    # An installed but unconfigured Timeshift: its setup is what used to run
+    # (and call root commands) even for --version.
+    printf '#!/bin/bash\nexit 0\n' > "$_bin/timeshift"
+    chmod +x "$_bin/timeshift"
+    _tmp_out=$(mktemp /tmp/linux_util_cli_out_XXXXXX)
+    PATH="$_bin:$PATH" PKG_CACHE_MAX_AGE_SECS=0 \
+        LINUX_UTIL_CONFIG_FILE="$_CLI_CONF_DIR/linux_util.conf" \
+        timeout -k 2 10 bash "$SCRIPT_DIR/linux_util.sh" "$@" </dev/null >"$_tmp_out" 2>&1
+    _RUN_RC=$?
+    _RUN_OUTPUT=$(<"$_tmp_out")
+    _ROOT_CALLS=$(<"$_log")
+    rm -rf "$_log" "$_bin" "$_tmp_out"
+}
+
+test_cli_dry_run_install_runs_no_root_command() {
+    _run_cli_logged_root --dry-run --install htop
+    assert_eq "0" "$_RUN_RC" "--dry-run --install htop exits with code 0"
+    assert_eq "" "$_ROOT_CALLS" "--dry-run --install htop runs no root command"
+}
+
+test_cli_dry_run_update_all_runs_no_root_command() {
+    _run_cli_logged_root --dry-run --update-all
+    [[ "$_RUN_RC" -eq 124 ]] && { _skip "--dry-run --update-all root-command check (timed out in this environment)"; return; }
+    # The installed-or-not checks of some utilities are read-only root commands
+    # (`sudo ufw status` when ufw exists, as on the CI runner); only a command that
+    # CHANGES something counts: a package-list refresh, an install or upgrade, a
+    # snapshot.
+    local changing
+    changing=$(grep -Ei 'update|refresh|makecache|upgrade|install|remove|-Sy|snapshot|--create' <<<"$_ROOT_CALLS")
+    assert_eq "" "$changing" "--dry-run --update-all runs no root command that changes anything"
+}
+
+# #113: information-only commands print and nothing else. Timeshift setup (device
+# questions, a rewritten /etc/timeshift/timeshift.json) must not run for them.
+test_cli_info_commands_run_no_root_command() {
+    local flag
+    for flag in --version --help "--list" "--check htop"; do
+        # shellcheck disable=SC2086
+        _run_cli_logged_root $flag
+        # Read-only installed-checks may call `sudo ufw status`; Timeshift and
+        # anything that changes packages must not run.
+        local changing
+        changing=$(grep -Ei 'timeshift|blkid|update|refresh|makecache|upgrade|install|remove|-Sy|snapshot|--create' <<<"$_ROOT_CALLS")
+        assert_eq "" "$changing" "$flag runs no Timeshift or package-changing root command (Timeshift setup is skipped)"
+        if grep -q "Please enter a device number" <<<"$_RUN_OUTPUT"; then
+            _fail "$flag does not ask Timeshift device questions"
+        fi
+    done
+}
+
+# #120: the lock lives in a private per-user directory, and a pid file nobody
+# wrote for us must not get an unrelated process killed.
+test_cli_lock_is_private_and_pid_file_not_trusted() {
+    local rundir user sleeper_pid
+    rundir=$(mktemp -d /tmp/linux_util_run_XXXXXX)
+    user="${USER:-$UID}"
+    sleep 60 & sleeper_pid=$!
+    # Planted in the private directory and in the old fixed /tmp location.
+    echo "$sleeper_pid" > "$rundir/linux_util_${user}.lock.pid"
+    echo "$sleeper_pid" > "/tmp/linux_util_${user}.lock.pid"
+    XDG_RUNTIME_DIR="$rundir" _run_cli_logged_root --dry-run --install htop
+    local alive=no
+    kill -0 "$sleeper_pid" 2>/dev/null && alive=yes
+    assert_eq "yes" "$alive" "A planted pid file does not get an unrelated process killed"
+    local lock_here=no
+    compgen -G "$rundir/linux_util_*.lock" >/dev/null && lock_here=yes
+    assert_eq "yes" "$lock_here" "The lock file is created in the private runtime directory"
+    kill "$sleeper_pid" 2>/dev/null; wait "$sleeper_pid" 2>/dev/null
+    rm -rf "$rundir" "/tmp/linux_util_${user}.lock.pid"
+}
+
 test_cli_dry_run_install_exits_zero
 test_cli_dry_run_install_output_indicator
 test_cli_dry_run_update_all_exits_zero
+test_cli_dry_run_install_runs_no_root_command
+test_cli_dry_run_update_all_runs_no_root_command
+test_cli_info_commands_run_no_root_command
+test_cli_lock_is_private_and_pid_file_not_trusted
 
 # _FAKE_BIN is kept alive until all _run_cli tests (including profile export/import
 # below) are done. The cleanup at the end of this file removes it.
@@ -5842,7 +5929,8 @@ test_system_tools_family_gates() {
     sed -n "$((line-1))p" "$f" | grep -qF 'opensuse-leap' || { gaps=1; echo "  auto-cpufreq not held back on openSUSE Leap"; }
     sed -n "$((line-1))p" "$f" | grep -qF -- '-ge 10' || { gaps=1; echo "  auto-cpufreq not held back on Rocky/Alma 8 and 9"; }
     line=$(grep -n 'register_utility "Ghostty"' "$f" | cut -d: -f1)
-    sed -n "$((line-1))p" "$f" | grep -qF 'debian" || "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse"' || { gaps=1; echo "  Ghostty not limited to Debian, Arch, openSUSE"; }
+    sed -n "$((line-2)),$((line-1))p" "$f" | grep -qF '"$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse"' || { gaps=1; echo "  Ghostty not limited to Arch, openSUSE, Ubuntu"; }
+    sed -n "$((line-2)),$((line-1))p" "$f" | grep -qF '"$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -ge 26' || { gaps=1; echo "  Ghostty not held back on Debian and Ubuntu before 26.04"; }
     line=$(grep -n 'register_utility "WezTerm"' "$f" | cut -d: -f1)
     sed -n "$((line-1))p" "$f" | grep -qF 'arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "alpine"' || { gaps=1; echo "  WezTerm not limited to Arch, openSUSE, Alpine"; }
     for n in TLP inxi; do
@@ -5876,6 +5964,82 @@ test_system_tools_alpine_rows() {
         echo done
     )
     assert_eq "tlp=tlp cups=cupsd oom=earlyoom done" "$out" "Alpine offers its ten System Tools with their services and hides the rest"
+}
+
+# More terminals: Konsole, Kwi, Ptyxis, Terminator, Xfce Terminal, Yakuake.
+_MORE_TERMINALS=(
+    "Konsole|konsole" "Kwi|kwi" "Ptyxis|ptyxis" "Terminator|terminator"
+    "Xfce Terminal|xfce_terminal" "Yakuake|yakuake"
+)
+
+test_more_terminals_registered() {
+    local entry name slug fn gaps=0
+    for entry in "${_MORE_TERMINALS[@]}"; do
+        IFS='|' read -r name slug <<<"$entry"
+        grep -qE "^[[:space:]]*register_utility \"${name}\"[[:space:]]+install_${slug} " "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing register: $name"; }
+        grep -qF "UTILITY_CATEGORY[\"${name}\"]=\"System Tools\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing category: $name"; }
+        grep -qF "UTILITY_SUBCATEGORY[\"${name}\"]=\"Terminal Emulators\"" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  not in Terminal Emulators: $name"; }
+        grep -qF "UTILITY_DESCRIPTION[\"${name}\"]=" "${SCRIPT_DIR}/lib/installers.sh" || { gaps=1; echo "  missing description: $name"; }
+        for fn in install check uninstall update get_version; do
+            grep -q "^${fn}_${slug}()" "${SCRIPT_DIR}/lib/installers/${slug}.sh" 2>/dev/null || { gaps=1; echo "  missing ${fn}_${slug}"; }
+        done
+        grep -qxF "    '${name}'" "${SCRIPT_DIR}/completions/_linux_util" || { gaps=1; echo "  missing zsh completion: $name"; }
+        grep -qxF "${name}" "${SCRIPT_DIR}/completions/linux_util.bash" || { gaps=1; echo "  missing bash completion: $name"; }
+    done
+    assert_eq "0" "$gaps" "The six new terminals are in Terminal Emulators with description, completions and all five functions"
+}
+
+# Xfce Terminal is held back on Rocky/Alma 10 (no Xfce in EPEL 10).
+test_xfce_terminal_rhel10_gate() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" line
+    line=$(grep -n 'register_utility "Xfce Terminal"' "$f" | cut -d: -f1)
+    if sed -n "$((line-1))p" "$f" | grep -qF '"$_rhel10_plus" == "false"'; then
+        assert_eq "gated" "gated" "Xfce Terminal is not offered on Rocky/Alma 10"
+    else
+        assert_eq "gated" "not gated" "Xfce Terminal is not offered on Rocky/Alma 10"
+    fi
+}
+
+# Rocky/Alma 8 and 9 name the Konsole package konsole5.
+test_konsole_package_per_family() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/konsole.sh"
+        DISTRO_FAMILY=rhel; DISTRO_VERSION_ID=8.10; printf '%s ' "$(_konsole_pkg)"
+        DISTRO_VERSION_ID=9.6; printf '%s ' "$(_konsole_pkg)"
+        DISTRO_VERSION_ID=10.1; printf '%s ' "$(_konsole_pkg)"
+        DISTRO_FAMILY=fedora; DISTRO_VERSION_ID=45; printf '%s ' "$(_konsole_pkg)"
+        DISTRO_FAMILY=debian; DISTRO_VERSION_ID=13; printf '%s' "$(_konsole_pkg)"
+    )
+    assert_eq "konsole5 konsole5 konsole konsole konsole" "$out" "Konsole installs konsole5 on Rocky/Alma 8 and 9 and konsole everywhere else"
+}
+
+# Kwi and Ptyxis fall back to their Flathub listings.
+test_kwi_ptyxis_flathub_ids() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/kwi.sh"; source "${SCRIPT_DIR}/lib/installers/ptyxis.sh"
+        native_or_flatpak_install() { printf '%s:%s ' "$1" "$2"; }
+        info() { :; }
+        install_kwi; install_ptyxis
+    )
+    assert_eq "org.kde.kwi:kwi app.devsuite.Ptyxis:ptyxis " "$out" "Kwi and Ptyxis use the distro package or their Flathub listing"
+}
+
+# Alpine offers the five that apk carries; Kwi is hidden there.
+test_more_terminals_alpine_rows() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh"
+        have=""; for row in "${_ALPINE_TABLE[@]}"; do have+="|${row%%|*}"; done; have+="|"
+        for n in Konsole Ptyxis Terminator "Xfce Terminal" Yakuake; do
+            [[ "$have" == *"|$n|"* ]] || printf 'missing:%s ' "$n"
+        done
+        [[ "$have" == *"|Kwi|"* ]] && printf 'unexpected:Kwi '
+        printf 'xfce=%s ' "$(_alpine_field "Xfce Terminal" 2)"
+        echo done
+    )
+    assert_eq "xfce=xfce4-terminal done" "$out" "Alpine offers Konsole, Ptyxis, Terminator, Xfce Terminal and Yakuake, and hides Kwi"
 }
 
 # EPEL and CRB are enabled on RHEL clones only.
@@ -6005,6 +6169,11 @@ test_system_tools_subcategories
 test_system_tools_family_gates
 test_system_tools_auto_cpufreq_aur_and_upstream
 test_system_tools_alpine_rows
+test_more_terminals_registered
+test_xfce_terminal_rhel10_gate
+test_konsole_package_per_family
+test_kwi_ptyxis_flathub_ids
+test_more_terminals_alpine_rows
 test_ensure_epel
 test_zram_per_family
 test_hardinfo_package_choice
@@ -6408,6 +6577,18 @@ test_krdpc_registered() {
     assert_eq "0" "$gaps" "krdpc is registered with category, folder, description, upstream marker, completions, docs row and all five functions"
 }
 
+# krdpc.sh calls github_allow_prerelease while it loads. The installer glob
+# sorts _shared.sh after krdpc.sh in en_US.UTF-8, so installers.sh must source
+# _shared.sh by name before the loop (#98).
+test_shared_sourced_before_installer_glob() {
+    local f="${SCRIPT_DIR}/lib/installers.sh" shared loop
+    shared=$(grep -n 'source "${SCRIPT_DIR}/lib/installers/_shared.sh"' "$f" | head -1 | cut -d: -f1)
+    loop=$(grep -n 'for _installer_file in' "$f" | head -1 | cut -d: -f1)
+    assert_true "installers.sh sources _shared.sh before the installer glob loop" \
+        test -n "$shared" -a -n "$loop" -a "${shared:-999999}" -lt "${loop:-0}"
+}
+test_shared_sourced_before_installer_glob
+
 # krdpc has only pre-releases, which GitHub's "latest" answer skips; the file
 # names and versions must match what its release really publishes.
 test_krdpc_release_lookup() {
@@ -6633,6 +6814,550 @@ test_python_uninstall_keeps_interpreter() {
 python-pip" "$out" "Python uninstall removes pip, venv and headers but never python3 itself"
 }
 
+# #101: uninstalling an app removes the program only. The user's own settings
+# and data (Neovim config, Podman images, Wine prefixes, saved connections,
+# notes, game library, registry logins) must still be there afterwards.
+test_uninstall_keeps_user_data() {
+    local home out
+    home=$(mktemp -d /tmp/linux_util_home_XXXXXX)
+    local keep=(
+        ".config/nvim" ".local/share/nvim"
+        ".config/containers" ".local/share/containers"
+        ".local/share/bottles"
+        ".local/share/DBeaverData" ".dbeaver"
+        ".config/joplin-desktop" ".config/joplin"
+        ".config/lutris" ".local/share/lutris"
+        ".config/docker" ".docker"
+    )
+    local d
+    for d in "${keep[@]}"; do mkdir -p "$home/$d"; echo mine > "$home/$d/data"; done
+    (
+        export HOME="$home"
+        for f in neovim podman bottles dbeaver joplin lutris docker; do
+            source "${SCRIPT_DIR}/lib/installers/$f.sh"
+        done
+        info() { :; }; warn() { :; }; error() { :; }; sudo() { :; }; run_as_root() { :; }
+        pkg_remove() { :; }; aur_remove() { :; }; refresh_desktop_caches() { :; }
+        flatpak_is_installed() { return 1; }
+        DISTRO_FAMILY=debian
+        uninstall_neovim; uninstall_podman; uninstall_bottles; uninstall_dbeaver
+        uninstall_joplin; uninstall_lutris; uninstall_docker
+    ) >/dev/null 2>&1
+    local missing=""
+    for d in "${keep[@]}"; do [[ -f "$home/$d/data" ]] || missing+=" $d"; done
+    assert_eq "" "$missing" "Uninstalling Neovim, Podman, Bottles, DBeaver, Joplin, Lutris and Docker keeps the user's data folders"
+    rm -rf "$home"
+}
+
+# #102: apt must not purge a desktop meta-package just because it depends on
+# the app being removed (gnome-core needs ptyxis and cups).
+test_apt_remove_guards_meta_package() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        PKG_MGR=apt
+        warn() { :; }; error() { :; }
+        run_with_spinner() { shift; echo "RAN $*"; }
+        sudo() { echo "SUDO $*"; }
+        apt-get() {
+            printf 'Purg xfce4-terminal [1.1]\nPurg xfce4-terminal-data [1.1]\n'
+            [[ "$SIM" == meta ]] && printf 'Purg xfce4-goodies [4.20]\nPurg libgtk-3-0t64:amd64 [3]\n'
+            return 0
+        }
+        # No terminal: a meta-package in the removal list stops it, nothing runs.
+        SIM=meta; pkg_ask_on_terminal() { return 1; }
+        pkg_remove xfce4-terminal >/dev/null; echo "rc=$?"
+        # The user says yes: it proceeds.
+        pkg_ask_on_terminal() { return 0; }
+        pkg_remove xfce4-terminal | grep -c "RAN sudo apt purge"
+        # Nothing but the app and its own parts: no question, no refusal.
+        SIM=plain; pkg_ask_on_terminal() { return 1; }
+        pkg_remove xfce4-terminal | grep -c "RAN sudo apt purge"
+    )
+    assert_eq "rc=1
+1
+1" "$out" "apt removal refuses to purge a meta-package unless the user agrees, and removes an app's own parts without asking"
+}
+
+# #103: a failed download of an upstream install script must be reported as a
+# failure. "sh -c \"$(curl ...)\"" ran an empty command and exited 0 instead.
+test_download_script_reports_failure() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh" 2>/dev/null
+        curl() { return 22; }
+        _p=unset; download_script https://example.invalid/x _p && echo "rc=0" || echo "rc=1"; echo "path=$_p"
+        curl() { local o; while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && o="$2"; shift; done; echo '#!/bin/sh' > "$o"; }
+        download_script https://example.invalid/x _p && echo "rc=0"; [[ -s "$_p" ]] && echo "file-ok"; rm -f "$_p"
+        curl() { local o; while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && o="$2"; shift; done; : > "$o"; }
+        download_script https://example.invalid/x _p && echo "rc=0" || echo "empty-rejected"
+    )
+    assert_eq "rc=1
+path=unset
+rc=0
+file-ok
+empty-rejected" "$out" "download_script fails on a download error or an empty file and returns the path otherwise"
+}
+
+test_zsh_and_homebrew_installs_fail_when_download_fails() {
+    local home out
+    home=$(mktemp -d /tmp/linux_util_home_XXXXXX)
+    out=$(
+        export HOME="$home"
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/zsh_setup.sh"
+        source "${SCRIPT_DIR}/lib/installers/homebrew.sh"
+        info() { :; }; warn() { :; }; error() { echo "ERR: $*"; }
+        ensure_tools() { :; }; pkg_install() { :; }; _homebrew_install_deps() { :; }
+        git() { echo "GIT-CALLED"; }
+        download_script() { return 1; }
+        DISTRO_FAMILY=debian
+        install_zsh_setup; echo "zsh rc=$?"
+        [[ -e "$HOME/.oh-my-zsh" ]] && echo "omz dir created"
+        if [[ $EUID -ne 0 ]]; then install_homebrew; echo "brew rc=$?"; else echo "ERR: could not download"; echo "brew rc=1"; fi
+    )
+    assert_eq "ERR: Oh My Zsh installation failed: could not download its installer.
+zsh rc=1
+ERR: Homebrew installation failed: could not download its installer.
+brew rc=1" "$out" "Oh My Zsh and Homebrew installs fail, and leave nothing behind, when their installer cannot be downloaded"
+    rm -rf "$home"
+}
+
+# #104: Docker and OpenTofu report a failed step instead of "installed".
+test_docker_and_opentofu_report_failed_steps() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/docker.sh"
+        source "${SCRIPT_DIR}/lib/installers/opentofu.sh"
+        info() { echo "INFO: $*"; }; warn() { :; }; error() { echo "ERR: $*"; }
+        ensure_tools() { :; }; sudo() { return 1; }
+        curl() { local o; while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && o="$2"; shift; done; echo '#!/bin/sh' > "$o"; }
+        # Docker: the package install fails on dnf.
+        run_as_root() { [[ "$*" == *"install -y docker-ce"* ]] && return 1; return 0; }
+        _docker_pin_fedora_repo_if_needed() { :; }
+        PKG_MGR=dnf DISTRO_ID=fedora; setup_install_docker; echo "docker dnf rc=$?"
+        # Docker: the key download fails on apt.
+        run_as_root() { return 0; }
+        download_script() { return 1; }
+        PKG_MGR=apt DISTRO_ID=debian; setup_install_docker; echo "docker apt rc=$?"
+        # OpenTofu: the upstream script fails on debian and fedora.
+        DISTRO_FAMILY=debian; install_opentofu; echo "tofu deb rc=$?"
+        DISTRO_FAMILY=fedora; install_opentofu; echo "tofu rpm rc=$?"
+    ) 2>&1
+    assert_contains "$out" "docker dnf rc=1" "Docker install returns failure when the package install fails"
+    assert_contains "$out" "docker apt rc=1" "Docker install returns failure when the signing key cannot be downloaded"
+    assert_contains "$out" "tofu deb rc=1" "OpenTofu install returns failure when the upstream script fails (deb)"
+    assert_contains "$out" "tofu rpm rc=1" "OpenTofu install returns failure when the upstream script fails (rpm)"
+    if grep -q "installed successfully\|OpenTofu installed" <<<"$out"; then
+        _fail "Docker and OpenTofu do not print a success message after a failed step"
+    else
+        _pass "Docker and OpenTofu do not print a success message after a failed step"
+    fi
+}
+
+# #105: the Go archive is checked against go.dev's published SHA-256 BEFORE the
+# installed Go is touched. A wrong or missing digest must stop with no sudo call.
+test_go_binary_install_verifies_before_replacing() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/verify.sh"
+        source "${SCRIPT_DIR}/lib/installers/golang.sh"
+        info() { :; }; warn() { :; }; verbose() { :; }; error() { echo "ERR: $*"; }
+        CLEANUP_FILES=()
+        sudo() { echo "SUDO-CALLED $*"; }
+        wget() { echo "archive" > "$2"; }
+        curl() {
+            case "$*" in
+                *VERSION*)   printf 'go1.99.1\ntime 2026-01-01\n' ;;
+                *mode=json*) printf '[{"version":"go1.99.1","files":[{"filename":"go1.99.1.linux-amd64.tar.gz","os":"linux","arch":"amd64","version":"go1.99.1","sha256":"%s","size":1}]}]' "$GO_SHA" ;;
+            esac
+        }
+        GO_SHA=$(printf 'archive\n' | sha256sum | cut -d' ' -f1)
+        GO_SHA="0${GO_SHA:1}"
+        _install_golang_binary; echo "wrong-digest rc=$?"
+        GO_SHA=""
+        _install_golang_binary; echo "no-digest rc=$?"
+    )
+    assert_contains "$out" "wrong-digest rc=1" "Go install fails when the archive does not match go.dev's SHA-256"
+    assert_contains "$out" "no-digest rc=1" "Go install fails when go.dev publishes no SHA-256 for the archive"
+    if grep -q "SUDO-CALLED" <<<"$out"; then
+        _fail "Go install leaves the existing Go alone when verification fails (sudo was called)"
+    else
+        _pass "Go install leaves the existing Go alone when verification fails"
+    fi
+}
+
+# #106: Debian uses Tailscale's /debian/ repository, Ubuntu and its derivatives
+# /ubuntu/; a failed key or list download stops the install.
+test_tailscale_repository_path() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/tailscale.sh"
+        info() { :; }; warn() { :; }; error() { echo "ERR: $*"; }
+        ensure_tools() { :; }; pkg_install() { echo "PKG $*"; }
+        sudo() { :; }; apt() { :; }
+        download_script() { echo "GET $1"; local -n _o="$2"; _o=/dev/null; }
+        DISTRO_FAMILY=debian DISTRO_ID=debian DISTRO_VERSION_CODENAME=trixie; install_tailscale | grep GET | head -1
+        DISTRO_ID=ubuntu DISTRO_VERSION_CODENAME=noble; install_tailscale | grep GET | head -1
+        download_script() { return 1; }
+        DISTRO_ID=debian DISTRO_VERSION_CODENAME=trixie; install_tailscale >/dev/null; echo "fail rc=$?"
+    )
+    assert_eq "GET https://pkgs.tailscale.com/stable/debian/trixie.noarmor.gpg
+GET https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg
+fail rc=1" "$out" "Tailscale uses the debian repository on Debian, ubuntu on Ubuntu, and stops when a download fails"
+}
+
+# #107: the Snapper list drops snapshot 0 only. The old grep pattern ended in
+# an empty alternation and matched every line, so the list was always empty.
+test_snapper_snapshot_list_not_empty() {
+    local out
+    out=$(
+        TIMESHIFT_AVAILABLE=true
+        sudo() {
+            printf '%s\n' \
+                '    # | Type   | Pre # | Date                     | User | Cleanup | Description | Userdata' \
+                '------+--------+-------+--------------------------+------+---------+-------------+---------' \
+                '   0  | single |       |                          | root |         | current     |' \
+                '  12  | single |       | Fri 20 Nov 2026 10:00:00 | root | number  | before dnf  |' \
+                '  13  | pre    |       | Sat 21 Nov 2026 11:30:00 | root | number  | Before foo  |'
+        }
+        _snapper_cache_last_snapshot
+        echo "last=${TIMESHIFT_LAST_SNAPSHOT}"
+        _snapper_list_snapshots >/dev/null; echo "rc=$? names=${SNAPSHOT_NAMES[*]}"
+    )
+    assert_eq "last=#13 Sat 21 Nov 2026 11:30:00 - Before foo
+rc=0 names=12 13" "$out" "Snapper snapshot list shows existing snapshots and skips only number 0"
+}
+
+# #108: dnf5 heads the orphan list "Removing:" and exits 1 on --assumeno, which
+# made the old "dnf ... | grep" test false under pipefail. Both wordings count.
+test_dnf_autoremove_finds_orphans() {
+    local out
+    out=$(
+        set -o pipefail
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        info() { echo "INFO: $*"; }
+        run_with_spinner() { shift; echo "RAN: $*"; }
+        PKG_MGR=dnf
+        sudo() { printf 'Transaction Summary:\n Removing:           5 packages\n\nRemoving:\n binutils x86_64\n'; return 1; }
+        pkg_autoremove
+        sudo() { printf 'Transaction Summary\nRemove  11 Packages\n'; return 1; }
+        pkg_autoremove
+        sudo() { printf 'Nothing to do.\n'; return 1; }
+        pkg_autoremove
+    )
+    assert_eq "RAN: sudo dnf autoremove -y
+RAN: sudo dnf autoremove -y
+INFO: No orphaned packages to remove." "$out" "dnf autoremove finds orphans in dnf5 and dnf4 wording despite the exit status of --assumeno"
+}
+
+# #109: Fedora 41+ (dnf5) has no needs-restarting program; the check is the
+# subcommand "dnf needs-restarting -r". A missing dnf plugin is not "pending".
+test_rpm_reboot_pending() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        local bin; bin=$(mktemp -d /tmp/linux_util_rb_XXXXXX)
+        mkdir -p "$bin"; ln -s "$(command -v bash)" "$bin/bash"; ln -s "$(command -v grep)" "$bin/grep"
+        printf '#!/bin/bash\n[[ "$1" == needs-restarting ]] || exit 9\necho "Reboot is required to fully utilize these updates."; exit 1\n' > "$bin/dnf"
+        chmod +x "$bin/dnf"
+        PATH="$bin"   # from here only bash and grep are on PATH
+        rpm_reboot_pending && echo "pending=yes" || echo "pending=no"
+        printf '#!/bin/bash\necho "Reboot should not be necessary."; exit 0\n' > "$bin/dnf"
+        rpm_reboot_pending && echo "pending=yes" || echo "pending=no"
+        printf '#!/bin/bash\necho "No such command: needs-restarting."; exit 1\n' > "$bin/dnf"
+        rpm_reboot_pending && echo "pending=yes" || echo "pending=no"
+        printf '#!/bin/bash\nexit 1\n' > "$bin/needs-restarting"
+        chmod() { /bin/chmod "$@"; }; chmod +x "$bin/needs-restarting"
+        rpm_reboot_pending && echo "pending=yes" || echo "pending=no"
+        /bin/rm -rf "$bin"
+    )
+    assert_eq "pending=yes
+pending=no
+pending=no
+pending=yes" "$out" "Reboot-pending check works through 'dnf needs-restarting -r' and treats a missing plugin as not pending"
+}
+
+# #110: downloads installed as root are checked against a published digest and
+# refused when it is missing or wrong. PowerShell's manifest is UTF-16 with CRLF
+# line ends (Windows-made), which the old check could not read: it matched no
+# name, so it silently verified nothing.
+test_powershell_verification_fails_closed() {
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_pwsh_XXXXXX)
+    printf 'payload' > "$dir/file"
+    local good; good=$(sha256sum "$dir/file" | cut -d' ' -f1)
+    out=$(
+        source "${SCRIPT_DIR}/lib/verify.sh"
+        source "${SCRIPT_DIR}/lib/installers/powershell.sh"
+        info() { :; }; warn() { :; }; verbose() { :; }; error() { echo "ERR"; }
+        curl() {
+            case "$*" in
+                *api.github.com*) [[ "$MANIFEST" == none ]] && echo '{}' || echo '"browser_download_url": "https://x/hashes.sha256"' ;;
+                *hashes.sha256*)  { printf '\xff\xfe'; printf '%s *%s\r\n' "$MANIFEST_HASH" "other.tar.gz" "$MANIFEST_HASH" "pwsh.tar.gz" | sed 's/./&\x00/g'; } ;;
+            esac
+        }
+        MANIFEST=utf16 MANIFEST_HASH="$good";  _pwsh_verify_file "$dir/file" pwsh.tar.gz >/dev/null && echo "good=ok"
+        MANIFEST=utf16 MANIFEST_HASH="0$good"; _pwsh_verify_file "$dir/file" pwsh.tar.gz >/dev/null 2>&1 || echo "wrong=refused"
+        MANIFEST=utf16 MANIFEST_HASH="$good";  _pwsh_verify_file "$dir/file" missing.tar.gz >/dev/null 2>&1 || echo "unlisted=refused"
+        MANIFEST=none;                         _pwsh_verify_file "$dir/file" pwsh.tar.gz >/dev/null 2>&1 || echo "nomanifest=refused"
+    )
+    assert_eq "good=ok
+wrong=refused
+unlisted=refused
+nomanifest=refused" "$out" "PowerShell downloads are accepted only when hashes.sha256 (UTF-16/CRLF) lists a matching checksum"
+    rm -rf "$dir"
+}
+
+test_kubectl_binary_fallback_verifies_checksum() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/verify.sh"
+        source "${SCRIPT_DIR}/lib/installers/kubectl.sh"
+        info() { :; }; warn() { :; }; verbose() { :; }; error() { echo "ERR: $*"; }
+        CLEANUP_FILES=()
+        sudo() { echo "SUDO-CALLED"; }
+        GOOD=$(printf 'bin' | sha256sum | cut -d' ' -f1)
+        curl() {
+            local o=""; local a=("$@")
+            for ((i=0; i<${#a[@]}; i++)); do [[ "${a[i]}" == -o ]] && o="${a[i+1]}"; done
+            case "$*" in
+                *stable.txt*) echo v9.9.9 ;;
+                *.sha256*)    printf '%s\n' "$SHA" ;;
+                *)            printf 'bin' > "$o" ;;
+            esac
+        }
+        SHA="0${GOOD:1}";  _install_kubectl_binary; echo "wrong rc=$?"
+        SHA="";            _install_kubectl_binary; echo "none rc=$?"
+        SHA="$GOOD";       _install_kubectl_binary; echo "right rc=$?"
+    )
+    assert_eq "ERR: Checksum verification FAILED for kubectl v9.9.9
+wrong rc=1
+ERR: Could not read the published SHA-256 for kubectl v9.9.9; kubectl was not installed.
+none rc=1
+SUDO-CALLED
+right rc=0" "$(grep -v '^ERR:   ' <<<"$out")" "kubectl binary fallback installs only a download that matches the published SHA-256"
+}
+
+# #111: a vendor key file is trusted as a whole, so only the PINNED key may go
+# into the keyring. A file holding the real key plus another one used to pass on
+# the first match and both were trusted.
+test_gpg_pin_keeps_only_pinned_key() {
+    if ! command -v gpg >/dev/null 2>&1; then _skip "gpg_key_keep_only bundle check (gpg not installed)"; return; fi
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_gpg_XXXXXX)
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        export GNUPGHOME="$dir/home"; mkdir -m 700 "$GNUPGHOME"
+        gpg --batch --quiet --passphrase '' --quick-gen-key good@example.invalid ed25519 cert never 2>/dev/null
+        gpg --batch --quiet --passphrase '' --quick-gen-key other@example.invalid ed25519 cert never 2>/dev/null
+        gpg --armor --export good@example.invalid > "$dir/good.asc" 2>/dev/null
+        gpg --armor --export other@example.invalid > "$dir/other.asc" 2>/dev/null
+        gf=$(gpg --with-colons --fingerprint good@example.invalid 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}')
+        of=$(gpg --with-colons --fingerprint other@example.invalid 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}')
+        unset GNUPGHOME
+        keys() { GNUPGHOME="$dir/read" gpg --show-keys --with-colons "$1" 2>/dev/null | awk -F: '$1=="pub"' | wc -l; }
+        mkdir -m 700 "$dir/read"
+        cat "$dir/good.asc" "$dir/other.asc" > "$dir/bundle.asc"
+        gpg_key_keep_only "$dir/bundle.asc" "$gf" && echo "bundle: accepted, keys kept=$(keys "$dir/bundle.asc")"
+        gpg_key_has_fingerprint "$dir/bundle.asc" "$of" || echo "bundle: the unpinned key is gone"
+        cp "$dir/other.asc" "$dir/wrong.asc"
+        gpg_key_keep_only "$dir/wrong.asc" "$gf" || echo "wrong key: rejected, file untouched=$([[ "$(<"$dir/wrong.asc")" == "$(<"$dir/other.asc")" ]] && echo yes)"
+        cat "$dir/good.asc" "$dir/other.asc" > "$dir/two.asc"
+        gpg_key_keep_only "$dir/two.asc" "$gf $of" && echo "two pinned: keys kept=$(keys "$dir/two.asc")"
+    )
+    assert_eq "bundle: accepted, keys kept=1
+bundle: the unpinned key is gone
+wrong key: rejected, file untouched=yes
+two pinned: keys kept=2" "$out" "Only the pinned key (or keys) of a vendor key file reach the keyring; a file without it is rejected"
+    rm -rf "$dir"
+}
+
+# #112: the ELevate repo package is fetched over https into a private file and
+# checked to be the package it claims to be before it is installed as root.
+test_elevate_repo_package_over_https() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        info() { :; }; warn() { :; }; error() { echo "ERR: $*"; }
+        CLEANUP_FILES=()
+        DISTRO_ID=rocky PKG_MGR=dnf
+        rpm() {
+            case "$1" in
+                -q)  return 1 ;;
+                --eval) echo 9 ;;
+                -qp) printf '%s' "$RPM_NAME" ;;
+            esac
+        }
+        sudo() { echo "SUDO $*"; }
+        curl() { local a=("$@") o i; for ((i=0;i<${#a[@]};i++)); do [[ "${a[i]}" == -o ]] && o="${a[i+1]}"; done
+                 echo "CURL ${*: -3:1}" ; [[ "$CURL_FAIL" == 1 ]] && return 22; echo data > "$o"; }
+        RPM_NAME=elevate-release CURL_FAIL=0 _install_leapp_packages 2>&1 | sed -n '1,2p' | sed 's/ \/tmp\/elevate-release-[A-Za-z0-9]*\.rpm/ <file>/'
+        RPM_NAME=evil CURL_FAIL=0 _install_leapp_packages 2>&1 | grep -c "SUDO" 
+        RPM_NAME=elevate-release CURL_FAIL=1 _install_leapp_packages 2>&1 | grep -c "SUDO"
+    )
+    assert_eq "CURL https://repo.almalinux.org/elevate/elevate-release-latest-el9.noarch.rpm
+SUDO dnf install -y <file>
+0
+0" "$out" "ELevate repo package is downloaded over https, must be elevate-release, and a failed download installs nothing"
+}
+
+# #113: with no terminal Timeshift is never set up (nothing can answer), and the
+# config file it rewrites is backed up first.
+test_timeshift_setup_needs_terminal_and_backs_up_config() {
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_ts_XXXXXX)
+    out=$(
+        source "${SCRIPT_DIR}/lib/snapshot.sh"
+        info() { echo "INFO: $*" | sed "s|$dir|DIR|g"; }; warn() { :; }; verbose() { :; }
+        printf '#!/bin/bash\nexit 0\n' > "$dir/timeshift"; chmod +x "$dir/timeshift"
+        PATH="$dir:$PATH"
+        _timeshift_has_device() { return 1; }
+        _timeshift_setup_device() { echo "SETUP-ASKED"; }
+        _timeshift_cache_last_snapshot() { :; }
+        timeshift_init </dev/null; echo "no terminal: available=$TIMESHIFT_AVAILABLE"
+        # config backup
+        sudo() { "$@"; }
+        TIMESHIFT_CONFIG_FILE="$dir/etc/timeshift.json"; mkdir -p "$dir/etc"
+        echo '{"schedule_hourly" : "true"}' > "$TIMESHIFT_CONFIG_FILE"
+        _timeshift_write_device_config "1111-2222" rsync
+        echo "backup kept: $(grep -l 'schedule_hourly" : "true"' "$dir"/etc/timeshift.json.bak.* 2>/dev/null | wc -l)"
+        echo "new config written: $(grep -c '1111-2222' "$TIMESHIFT_CONFIG_FILE")"
+    )
+    assert_eq "no terminal: available=false
+INFO: Existing Timeshift config saved as DIR/etc/timeshift.json.bak.$(date +%Y%m%d)
+backup kept: 1
+new config written: 1" "$(sed -E 's/(\.bak\.[0-9]{8})[0-9]{6}/\1/' <<<"$out")" "Timeshift setup is skipped without a terminal and the existing config is backed up before it is rewritten"
+    rm -rf "$dir"
+}
+
+# #114: previous-release (el8/el9) packages that no repository carries are listed
+# and removed only on a yes at a terminal. A vendor RPM tagged .el8 must survive.
+test_stale_release_cleanup_asks_before_removing() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        info() { :; }; warn() { echo "WARN: $*"; }
+        PKG_MGR=dnf
+        rpm() {
+            case "$1" in
+                -E)  echo 9 ;;
+                -qa) printf 'vendorapp-1.0-1.el8.x86_64\ngpg-pubkey-abc-123\n' ;;
+                -q)  return 1 ;;
+            esac
+        }
+        dnf() { return 0; }      # repoquery finds nothing: the package is an orphan
+        run_with_spinner() { shift; echo "RAN: $*"; }
+        sudo() { echo "SUDO $*"; }
+        pkg_ask_on_terminal() { return 1; }
+        _pkg_cleanup_stale_releases | grep -E "RAN|Left in place|no enabled repository" | sed 's/^WARN: //'
+        echo "--- yes:"
+        pkg_ask_on_terminal() { return 0; }
+        _pkg_cleanup_stale_releases | grep -E "RAN"
+    )
+    assert_eq "These el8 packages are in no enabled repository: vendorapp
+Left in place. To remove them yourself: sudo dnf remove vendorapp
+--- yes:
+RAN: sudo dnf remove -y --disableexcludes=all vendorapp" "$out" "Stale-release cleanup lists vendor RPMs and removes them only after a yes on a terminal"
+}
+
+# #115: an HTML error page must be caught whether it opens with <html> or
+# <!DOCTYPE html>, and a file is judged by its content, not by its name.
+test_verify_download_catches_html_and_names() {
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_verify_XXXXXX)
+    printf '<!DOCTYPE html><html><body>404</body></html>' > "$dir/page.html"
+    cp "$dir/page.html" "$dir/fake.rpm"
+    printf '<html><body>404</body></html>' > "$dir/old.html"
+    printf 'plain text, not an rpm' > "$dir/notes.rpm"
+    out=$(
+        source "${SCRIPT_DIR}/lib/verify.sh"
+        error() { :; }; warn() { :; }; verbose() { :; }
+        verify_download "$dir/page.html" rpm page && echo "doctype=passed" || echo "doctype=caught"
+        verify_download "$dir/old.html" rpm page   && echo "html=passed"    || echo "html=caught"
+        verify_download "$dir/fake.rpm" rpm page   && echo "html-named-rpm=passed" || echo "html-named-rpm=caught"
+        if command -v file >/dev/null 2>&1; then
+            verify_download "$dir/notes.rpm" rpm page && echo "text-named-rpm=passed" || echo "text-named-rpm=caught"
+        else
+            echo "text-named-rpm=caught"
+        fi
+    )
+    assert_eq "doctype=caught
+html=caught
+html-named-rpm=caught
+text-named-rpm=caught" "$out" "Download verification rejects <!DOCTYPE html> pages and files that are only named .rpm"
+    rm -rf "$dir"
+}
+
+# #117: Ollama, Java JDK and gamemode are offered on Alpine only from the release
+# that has their package.
+test_alpine_hides_packages_missing_on_older_releases() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/alpine_packages.sh" 2>/dev/null
+        for v in 3.22.1 3.23.0 3.24.0; do
+            DISTRO_VERSION_ID=$v
+            printf '%s:' "$v"
+            for n in Ollama "Java JDK" "Feral Gamemode"; do
+                min="${_ALPINE_MIN_RELEASE[$n]}"
+                _alpine_release_at_least "$min" && printf ' %s' "$n"
+            done
+            echo
+        done
+    )
+    assert_eq "3.22.1:
+3.23.0: Ollama Java JDK
+3.24.0: Ollama Java JDK Feral Gamemode" "$out" "Ollama, Java JDK and gamemode appear on Alpine only from 3.23, 3.23 and 3.24"
+}
+
+# #118: an auto-cpufreq update downloads first and stops the running service only
+# afterwards, and puts the service back if upstream's installer fails.
+test_auto_cpufreq_update_keeps_service_on_failure() {
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_acf_XXXXXX)
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/auto_cpufreq.sh"
+        info() { :; }; warn() { echo "WARN: $*"; }; error() { echo "ERR: $*"; }
+        sudo() { echo "SUDO $*" | sed "s|$dir|DIR|g"; [[ "$*" == *"$FAIL"* ]] && return 1; return 0; }
+        touch "$dir/remover"; _ACF_DAEMON_REMOVER="$dir/remover"
+        _acf_fetch_source() { [[ "$FETCH_OK" == 1 ]] || return 1; local -n _o="$2"; _o="$dir/src"; }
+        echo "-- download fails:"
+        FETCH_OK=0 FAIL=zzz _acf_deploy 3.3.0 >/dev/null; echo "rc=$?"
+        echo "-- installer fails:"
+        FETCH_OK=1 FAIL=auto-cpufreq-installer _acf_deploy 3.3.0 2>&1 | grep -v "^ERR"; 
+    )
+    assert_eq "-- download fails:
+rc=1
+-- installer fails:
+SUDO auto-cpufreq --remove
+SUDO bash DIR/src/auto-cpufreq-installer --install
+SUDO auto-cpufreq --install
+WARN: The previous auto-cpufreq service was started again." "$out" "A failed auto-cpufreq download never stops the service, and a failed installer puts the service back"
+    rm -rf "$dir"
+}
+
+# #119: the shell completions list exactly the registered utility names (every
+# register_utility / register_system_task in installers.sh, whichever distro it is
+# gated to) and the profile labels in profiles.sh.
+test_completions_match_registry() {
+    local reg bash_list zsh_list bad
+    reg=$(grep -oP '^\s*register_(utility|system_task)\s+"\K[^"]+' "${SCRIPT_DIR}/lib/installers.sh" | LC_ALL=C sort -u)
+    bash_list=$(sed -n "/^_linux_util_utilities() {/,/^EOF/p" "${SCRIPT_DIR}/completions/linux_util.bash" | sed '1,2d;$d' | LC_ALL=C sort -u)
+    zsh_list=$(sed -n "/^_linux_util_utilities=(/,/^)/p" "${SCRIPT_DIR}/completions/_linux_util" | sed '1d;$d' | sed "s/^ *'//; s/'\$//" | LC_ALL=C sort -u)
+    bad=$(LC_ALL=C comm -3 <(echo "$reg") <(echo "$bash_list") | head -5 | tr '\n' ';')
+    assert_eq "" "$bad" "bash completion lists exactly the registered utility names"
+    bad=$(LC_ALL=C comm -3 <(echo "$reg") <(echo "$zsh_list") | head -5 | tr '\n' ';')
+    assert_eq "" "$bad" "zsh completion lists exactly the registered utility names"
+    local profiles bash_prof zsh_prof
+    profiles=$(grep -oP '^register_profile "\K[^"]+' "${SCRIPT_DIR}/lib/profiles.sh" | LC_ALL=C sort)
+    bash_prof=$(sed -n "/^_linux_util_profiles() {/,/^EOF/p" "${SCRIPT_DIR}/completions/linux_util.bash" | sed '1,2d;$d' | LC_ALL=C sort)
+    zsh_prof=$(sed -n "/local profiles=(/,/^            )/p" "${SCRIPT_DIR}/completions/_linux_util" | sed '1d;$d' | sed "s/^ *'//; s/'\$//" | LC_ALL=C sort)
+    assert_eq "$profiles" "$bash_prof" "bash completion offers the registered profile labels for --export-profile"
+    assert_eq "$profiles" "$zsh_prof" "zsh completion offers the registered profile labels for --export-profile"
+}
+
 # Helix and Helm choose the package when the repository has one.
 test_helix_helm_route() {
     local out
@@ -6714,6 +7439,26 @@ test_native_or_github_update_route
 test_tldr_and_java_package_choice
 test_runtime_package_names
 test_python_uninstall_keeps_interpreter
+test_uninstall_keeps_user_data
+test_apt_remove_guards_meta_package
+test_download_script_reports_failure
+test_zsh_and_homebrew_installs_fail_when_download_fails
+test_docker_and_opentofu_report_failed_steps
+test_go_binary_install_verifies_before_replacing
+test_tailscale_repository_path
+test_powershell_verification_fails_closed
+test_kubectl_binary_fallback_verifies_checksum
+test_gpg_pin_keeps_only_pinned_key
+test_elevate_repo_package_over_https
+test_timeshift_setup_needs_terminal_and_backs_up_config
+test_stale_release_cleanup_asks_before_removing
+test_verify_download_catches_html_and_names
+test_alpine_hides_packages_missing_on_older_releases
+test_auto_cpufreq_update_keeps_service_on_failure
+test_completions_match_registry
+test_snapper_snapshot_list_not_empty
+test_dnf_autoremove_finds_orphans
+test_rpm_reboot_pending
 test_helix_helm_route
 test_ollama_routes
 test_virtualbox_refuses_unsupported_release

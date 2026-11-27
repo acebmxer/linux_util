@@ -38,7 +38,8 @@ uninstall_bottles() {
                 ;;
         esac
     fi
-    rm -rf "$HOME/.local/share/bottles"
+    # The Wine prefixes (bottles) stay (issue #101).
+    info "Your Wine prefixes in ~/.local/share/bottles were kept."
 }
 
 update_bottles() {

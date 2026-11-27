@@ -47,13 +47,22 @@ _install_kubectl_binary() {
     [[ -z "$version" ]] && { error "Could not determine latest kubectl version."; return 1; }
     arch="amd64"
     [[ "$(uname -m)" == "aarch64" ]] && arch="arm64"
-    if ! curl -fsSL "https://dl.k8s.io/release/${version}/bin/linux/${arch}/kubectl" \
-        -o /tmp/kubectl; then
+    # A private temp file (not a fixed /tmp name another user could plant), and
+    # the binary must match the SHA-256 Kubernetes publishes beside it.
+    local tmpfile base="https://dl.k8s.io/release/${version}/bin/linux/${arch}/kubectl" want
+    tmpfile=$(mktemp /tmp/kubectl-XXXXXX) || return 1
+    CLEANUP_FILES+=("$tmpfile")
+    if ! curl -fsSL "$base" -o "$tmpfile"; then
         error "Failed to download kubectl binary."
         return 1
     fi
-    sudo install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl
-    rm -f /tmp/kubectl
+    want=$(curl -fsSL "${base}.sha256" 2>/dev/null | awk '{print $1}')
+    if [[ ! "$want" =~ ^[0-9a-fA-F]{64}$ ]]; then
+        error "Could not read the published SHA-256 for kubectl ${version}; kubectl was not installed."
+        return 1
+    fi
+    verify_sha256 "$tmpfile" "$want" "kubectl ${version}" || return 1
+    sudo install -o root -g root -m 0755 "$tmpfile" /usr/local/bin/kubectl
 }
 
 uninstall_kubectl() {

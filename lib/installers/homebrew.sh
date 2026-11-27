@@ -86,9 +86,17 @@ install_homebrew() {
 
     # NONINTERACTIVE=1 skips the installer's confirmation prompt; it still uses
     # sudo internally to create /home/linuxbrew.
-    if ! NONINTERACTIVE=1 /bin/bash -c \
-            "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
+    local brew_script
+    download_script https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh brew_script || {
+        error "Homebrew installation failed: could not download its installer."
+        return 1
+    }
+    if ! NONINTERACTIVE=1 /bin/bash "$brew_script"; then
         error "Homebrew installation failed."
+        return 1
+    fi
+    if ! _brew_path &>/dev/null; then
+        error "Homebrew installation failed: brew was not found after the installer ran."
         return 1
     fi
     _homebrew_configure_shells
@@ -102,8 +110,12 @@ uninstall_homebrew() {
         return 1
     fi
     warn "All packages installed via Homebrew will be removed."
-    NONINTERACTIVE=1 /bin/bash -c \
-        "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)" 2>/dev/null || true
+    local brew_script
+    download_script https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh brew_script || {
+        error "Could not download Homebrew's uninstaller; Homebrew was not removed."
+        return 1
+    }
+    NONINTERACTIVE=1 /bin/bash "$brew_script" 2>/dev/null || true
     _homebrew_deconfigure_shells
 }
 

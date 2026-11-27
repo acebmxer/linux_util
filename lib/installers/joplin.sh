@@ -73,8 +73,8 @@ uninstall_joplin() {
     rm -f ~/.local/share/icons/hicolor/*/apps/joplin.png
     rm -f ~/.local/share/icons/hicolor/*/apps/appimagekit-joplin.png
     rm -f ~/.local/bin/joplin
-    rm -rf ~/.config/joplin-desktop
-    rm -rf ~/.config/joplin
+    # Notes, sync settings and the command-line profile stay (issue #101).
+    info "Your Joplin notes and settings in ~/.config/joplin-desktop and ~/.config/joplin were kept."
     refresh_desktop_caches
 }
 update_joplin() {

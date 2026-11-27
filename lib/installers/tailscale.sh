@@ -19,13 +19,27 @@ install_tailscale() {
             elif [[ "$DISTRO_ID" == "neon" ]]; then
                 codename=$(grep -oP '(?<=DISTRIB_CODENAME=).+' /etc/upstream-release/lsb-release 2>/dev/null || echo "noble")
             fi
+            # Tailscale keeps separate Debian and Ubuntu repositories; a Debian
+            # codename under /ubuntu/ is a 404.
+            local ts_dist=ubuntu
+            [[ "$DISTRO_ID" == "debian" ]] && ts_dist=debian
+            local ts_base="https://pkgs.tailscale.com/stable/${ts_dist}/${codename}"
+            local ts_key ts_list
             sudo mkdir -p /etc/apt/keyrings
-            curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${codename}.noarmor.gpg" | \
-                sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg > /dev/null
-            curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${codename}.tailscale-keyring.list" | \
-                sudo tee /etc/apt/sources.list.d/tailscale.list > /dev/null
+            # Download to files first: with "curl | tee" a failed download left
+            # empty key and repository files behind and the install went on.
+            download_script "${ts_base}.noarmor.gpg" ts_key && \
+                download_script "${ts_base}.tailscale-keyring.list" ts_list || {
+                error "Tailscale installation failed: could not download its ${ts_dist}/${codename} repository files."
+                return 1
+            }
+            sudo install -m 0644 "$ts_key" /usr/share/keyrings/tailscale-archive-keyring.gpg && \
+                sudo install -m 0644 "$ts_list" /etc/apt/sources.list.d/tailscale.list || {
+                error "Tailscale installation failed: could not store its repository files."
+                return 1
+            }
             sudo apt update
-            pkg_install tailscale
+            pkg_install tailscale || return 1
             ;;
         fedora|rhel)
             sudo "$PKG_MGR" config-manager --add-repo \
@@ -40,23 +54,26 @@ repo_gpgcheck=1
 gpgcheck=0
 gpgkey=https://pkgs.tailscale.com/stable/fedora/repo.gpg
 REPO
-            pkg_install tailscale
+            pkg_install tailscale || return 1
             ;;
         arch)
-            pkg_install tailscale
+            pkg_install tailscale || return 1
             ;;
         suse)
             sudo zypper addrepo -f \
                 "https://pkgs.tailscale.com/stable/opensuse/tumbleweed/tailscale.repo" \
                 tailscale 2>/dev/null || true
             sudo zypper refresh
-            pkg_install tailscale
+            pkg_install tailscale || return 1
             ;;
     esac
 
     # Enable and start the service
-    sudo systemctl enable --now tailscaled
-    info "Tailscale installed and daemon started."
+    if sudo systemctl enable --now tailscaled; then
+        info "Tailscale installed and daemon started."
+    else
+        warn "Tailscale is installed, but its service (tailscaled) could not be started."
+    fi
     info "Run 'sudo tailscale up' to connect to your tailnet."
 }
 

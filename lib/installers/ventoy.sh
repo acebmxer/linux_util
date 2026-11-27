@@ -13,24 +13,13 @@ install_ventoy() {
     info "Installing Ventoy..."
     ensure_tools
 
-    local version arch tmpfile
-    version=$(curl -fsSL https://api.github.com/repos/ventoy/Ventoy/releases/latest \
-        | grep -oP '"tag_name"\s*:\s*"\K[^"]+')
-    [[ -z "$version" ]] && { error "Could not determine latest Ventoy version."; return 1; }
-    # Strip leading 'v' if present
-    local ver_num="${version#v}"
-
-    arch="x86_64"
-    [[ "$(uname -m)" == "aarch64" ]] && arch="aarch64"
-
-    tmpfile=$(mktemp /tmp/ventoy-XXXXXX.tar.gz)
-    CLEANUP_FILES+=("$tmpfile")
-
-    if ! wget -qO "$tmpfile" \
-        "https://github.com/ventoy/Ventoy/releases/download/${version}/ventoy-${ver_num}-linux.tar.gz"; then
-        error "Failed to download Ventoy."
-        return 1
-    fi
+    # Root unpacks this into /opt, so it must match the SHA-256 GitHub
+    # publishes for the release file.
+    local tmpdir tmpfile ver_num
+    tmpdir=$(mktemp -d /tmp/ventoy-XXXXXX) || return 1
+    CLEANUP_FILES+=("$tmpdir")
+    tmpfile=$(github_asset_download ventoy/Ventoy 'ventoy-[0-9.]+-linux\.tar\.gz' "$tmpdir") || return 1
+    ver_num=$(basename "$tmpfile" | grep -oP 'ventoy-\K[0-9.]+(?=-linux)')
 
     sudo mkdir -p "$_VENTOY_INSTALL_DIR"
     # Tarball entries are prefixed './ventoy-X.Y.Z/...', so strip the leading

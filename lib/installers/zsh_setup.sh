@@ -248,8 +248,12 @@ install_zsh_setup() {
     # 2. Install Oh My Zsh (unattended — skip chsh, no auto-launch)
     if [[ ! -d "$_OMZ_DIR" ]]; then
         info "Installing Oh My Zsh..."
-        RUNZSH=no CHSH=no KEEP_ZSHRC=yes \
-            sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || {
+        local omz_script
+        download_script https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh omz_script || {
+            error "Oh My Zsh installation failed: could not download its installer."
+            return 1
+        }
+        RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh "$omz_script" || {
             error "Oh My Zsh installation failed."
             return 1
         }

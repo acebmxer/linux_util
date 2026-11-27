@@ -19,11 +19,11 @@ check_zen_browser() {
     _check_standard zen-browser "" "$_ZEN_FLATPAK_ID" || [[ -x "$_ZEN_BIN" ]]
 }
 
-# Echo the official tarball download URL for this machine's architecture.
-_zen_tarball_url() {
+# Echo the official tarball's file name for this machine's architecture.
+_zen_tarball_name() {
     case "$(uname -m)" in
-        x86_64)  echo "https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x86_64.tar.xz" ;;
-        aarch64) echo "https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-aarch64.tar.xz" ;;
+        x86_64)  echo "zen.linux-x86_64.tar.xz" ;;
+        aarch64) echo "zen.linux-aarch64.tar.xz" ;;
         *) error "Unsupported architecture: $(uname -m)"; return 1 ;;
     esac
 }
@@ -31,8 +31,8 @@ _zen_tarball_url() {
 # Default install path: official tarball + wrapper script + desktop entry.
 # The tarball extracts to a top-level "zen/" directory.
 _install_zen_tarball() {
-    local download_url
-    download_url=$(_zen_tarball_url) || return 1
+    local tarball_name
+    tarball_name=$(_zen_tarball_name) || return 1
 
     # tar -xJf needs the xz binary; most distros ship it, Debian calls it xz-utils
     if ! command -v xz &>/dev/null; then
@@ -42,14 +42,17 @@ _install_zen_tarball() {
         esac
     fi
 
-    local tmptar
-    tmptar=$(mktemp /tmp/zen-XXXXXX.tar.xz)
+    # The tarball is unpacked and run as the user; it must match the SHA-256
+    # GitHub publishes for the release file (refused otherwise, and the caller
+    # then falls back to Flatpak).
+    local tmpdir tmptar
+    tmpdir=$(mktemp -d /tmp/zen-XXXXXX) || return 1
+    CLEANUP_FILES+=("$tmpdir")
     info "Downloading Zen Browser tarball..."
-    if ! wget -qO "$tmptar" "$download_url"; then
-        rm -f "$tmptar"
+    tmptar=$(github_asset_download zen-browser/desktop "${tarball_name//./\\.}" "$tmpdir") || {
         error "Failed to download Zen Browser tarball."
         return 1
-    fi
+    }
 
     mkdir -p "$_ZEN_DIR"
     # Preserve distribution/ (policies.json written by the browser-extension

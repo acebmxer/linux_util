@@ -12,6 +12,165 @@ when a release is cut.
 
 ## [Unreleased]
 
+## [1.13.2] - 2026-11-27
+
+### Fixed
+
+- **`--dry-run` on the command line no longer changes anything** (fixes #99).
+  `--dry-run --install`, `--update` and `--update-all` used to refresh the
+  package lists first (a full `pacman -Syu` upgrade on Arch) and ask for the
+  sudo password. They now print what they would do and run no root command.
+- **`--update-all` on Arch now syncs and upgrades in full before updating**
+  (fixes #100). It used to sync the package database only, then updated each
+  utility on its own against a database newer than the installed system, which
+  Arch does not support. The comment claiming System Updates ran in that loop
+  was wrong: System Updates is never part of it.
+- **Uninstalling Neovim, Podman, Bottles, DBeaver, Joplin, Lutris or Docker no
+  longer deletes your own data** (fixes #101). Those uninstalls removed your
+  Neovim configuration, Podman images and volumes, Wine prefixes, saved database
+  connections, Joplin notes and settings, Lutris library and Docker logins
+  without asking. They now remove the program only, say which folders were kept,
+  and `docs/utilities.md` states it for each.
+- **Removing a terminal or CUPS on Debian/Ubuntu no longer takes a whole
+  desktop with it** (fixes #102). `apt purge --autoremove -y` removed any
+  package that depended on the one being uninstalled: on Debian, Xfce Terminal
+  pulled out `xfce4-goodies` and its libraries, and Ptyxis and CUPS are needed by
+  `gnome-core`. The uninstall now checks first. If anything else would go, it
+  lists it and asks (default No); with no terminal, or with `auto_confirm`, it
+  removes nothing and says why.
+- **Docker and OpenTofu installs now stop and say so when a step fails**
+  (fixes #104). Docker never checked its key download, repository setup or
+  package install and always ended with "installed successfully"; OpenTofu
+  ignored a failing upstream script on Debian/Ubuntu and Fedora/RHEL. Both now
+  report the failed step and exit with an error, so `--install` and profile runs
+  no longer report success. Docker's signing key is also downloaded to a file
+  first, rather than piped.
+- **Zsh + Oh My Zsh and Homebrew installs now fail when their installer cannot
+  be downloaded** (fixes #103). With no network they ran an empty command that
+  "succeeded": Oh My Zsh then looked installed (its plugin folder had been
+  created) and Homebrew printed "installed" with nothing there. The scripts are
+  now downloaded to a file first and the result is checked; the Homebrew
+  uninstaller does the same and leaves your shell files alone if it cannot be
+  fetched.
+- **Tailscale now installs on Debian** (fixes #106). The Debian path used
+  Tailscale's Ubuntu repository address, which does not exist for Debian
+  releases, so the key and repository files came out empty and the install
+  failed. Debian now uses `/debian/`, Ubuntu and its derivatives keep
+  `/ubuntu/`, and a failed download or package install stops with an error.
+- **Updating Go no longer risks leaving you with no Go** (fixes #105). The
+  binary route deleted `/usr/local/go` before the new archive was checked or
+  unpacked, ignored a failed unpack and printed success. It now checks the
+  archive against the SHA-256 go.dev publishes, unpacks it beside the old copy
+  and swaps only when that worked; on any failure the old Go stays.
+- **The reboot-pending check now works on Fedora 41 and newer** (fixes #109).
+  It looked for a `needs-restarting` program, which Fedora's dnf5 no longer
+  ships (the check is `dnf needs-restarting -r`), so on Fedora a kernel or glibc
+  update never triggered the "Reboot now?" offer, repair tasks reported no
+  change instead of a reboot, and Full System Upgrade did not stop for a pending
+  reboot. All four places now use one shared check.
+- **Thorough Cleanup now removes orphaned packages on Fedora and RHEL clones**
+  (fixes #108). On Fedora 45 (dnf5) it always said "No orphaned packages to
+  remove": dnf5 words the list "Removing:" and dnf exits 1 when asked only for a
+  preview, which the old test counted as "none". The preview is also now run
+  with root rights, as dnf needs.
+- **Snapper's snapshot list is no longer always empty** (fixes #107). The
+  pattern meant to hide snapshot 0 matched every line, so the banner said "No
+  snapshots found" and Restore Snapshot and Delete Snapshot reported none even
+  when snapshots existed.
+- **k9s, Ventoy, Zen Browser, Neovim (AppImage), kubectl (openSUSE fallback)
+  and PowerShell downloads are now checked before they are installed** (fixes
+  #110). They were unpacked or installed as root with no check at all, or, for
+  PowerShell, with a check that never ran: Microsoft's `hashes.sha256` is a
+  Windows-format file the old code could not read, so it found no entry and
+  skipped the check without a message. k9s, Ventoy, Zen Browser and Neovim now
+  have to match the SHA-256 GitHub publishes for the file, kubectl the checksum
+  Kubernetes publishes beside it, and PowerShell its manifest; a missing or
+  wrong checksum stops the install. The Distrobox and Joplin scripts are
+  unchanged: they run upstream's own installer from its repository, which has no
+  published checksum.
+- **A vendor key file is no longer trusted whole just because it contains the
+  pinned key** (fixes #111). The check passed any file in which one key matched
+  the pinned fingerprint, and then every key in the file went into the trusted
+  keyring. Now only the pinned key is kept. Sublime Text's file really holds
+  three keys, and its repository is signed by one that was never pinned (the
+  pin was on a different key in the same file); all three are pinned now.
+- **The AlmaLinux ELevate repository package is no longer fetched over plain
+  http** (fixes #112). Full System Upgrade's upgrade check on Rocky/Alma
+  installed it as root from an `http://` address and its comment claimed dnf
+  verified the signature, which it does not for a package given by address.
+  It now comes over https into a private file and must be the `elevate-release`
+  package before it is installed. Its own signature is still not checked at that
+  point, because AlmaLinux's key is not on the system yet.
+- **Information commands no longer start Timeshift setup, and setup no longer
+  overwrites your Timeshift config unseen** (fixes #113). `--help`, `--version`,
+  `--list` and `--check` ran Timeshift's device questions (and root commands)
+  before printing, and with no terminal the default answer wrote
+  `/etc/timeshift/timeshift.json`. They now skip Timeshift entirely; a run with
+  no terminal, or `--dry-run`, never sets it up (snapshots are simply not
+  offered); and when setup does rewrite the file, the old one is saved beside
+  it as `timeshift.json.bak.<date>` first.
+- **Thorough Cleanup and System Updates on Rocky/Alma no longer silently remove
+  other vendors' software** (fixes #114). Any installed RPM whose release tag
+  said the previous major version (`.el8` on version 9, `.el9` on 10) and that no
+  repository carried was removed, along with everything that depended on it,
+  with no question. They are now listed and removed only if you answer yes at
+  the prompt (`auto_confirm` does not count as yes); with no terminal they are
+  only reported.
+- **Download checks no longer let an HTML page through** (fixes #115). A page
+  starting `<!DOCTYPE html>` (exactly 15 bytes, the length the check read) was
+  not recognised as an error page, and a file named `*.rpm` always passed the
+  package-type check because `file` prints the file's name first. Both checks
+  now look at the content only.
+- **Ghostty is now offered only where a package exists** (fixes #116). It was
+  listed on every Debian and Ubuntu release but only Arch, openSUSE Tumbleweed
+  and Ubuntu 26.04 or newer have one, so on Debian 12/13 and Ubuntu 22.04/24.04
+  it failed with "not in repositories" and was retried three times. It no
+  longer appears there.
+- **Alpine no longer offers Ollama, Java JDK and gamemode on releases without
+  them** (fixes #117). Ollama and Java JDK have no package on Alpine 3.22, and
+  gamemode none on 3.22 or 3.23, so the entries appeared and then could not
+  install. They now appear from 3.23, 3.23 and 3.24 respectively.
+- **A failed auto-cpufreq update no longer leaves its service removed** (fixes
+  #118). The update stopped and removed the running service before it had even
+  downloaded the new version, so a failed download left power management off
+  until you noticed. It now downloads and unpacks first, and if the new
+  version's installer fails it starts the previous service again.
+- **Documentation and shell completions matched to the program** (fixes #119).
+  Tab completion was missing 127 of the 334 utility names and listed one that
+  does not exist ("Full System Upgrade/Update"); `--export-profile` completed
+  utility names where a profile label belongs, and zsh offered an "All Profiles"
+  label the command rejects. Both files are now built from the registered names,
+  and a test fails whenever they drift again (the CONTRIBUTING step is no longer
+  optional). The README command list now shows `--export-profile` and
+  `--import-profile`, the test badge shows the real count, Kopia's description
+  says its distro package is on openSUSE only (Fedora has it only in
+  updates-testing), and the Ptyxis entry says Ubuntu's default terminal since
+  25.10.
+- **The start-up lock, the sudo keep-alive pid file and the kubectl download no
+  longer use predictable names in `/tmp`** (fixes #120). On a shared machine
+  another user could pre-create `/tmp/linux_util_<name>.lock.pid` holding a
+  process number and have the next start stop that process, or block start-up
+  by creating the lock name. The lock and pid file now live in your private
+  runtime folder (`$XDG_RUNTIME_DIR`, else a `/tmp/linux_util-<uid>` folder that
+  must be yours), and a pid file is only acted on when it names one of your own
+  linux_util processes. The kubectl fallback download uses a private temporary
+  file.
+- **"github_allow_prerelease: command not found" when starting** (fixes #98). On
+  systems set to `en_US.UTF-8` the installer files were loaded in an order that
+  read krdpc's before the shared helpers, so the message appeared on every start
+  and krdpc's newest-release lookup could fail. The shared helpers are now
+  always loaded first.
+
+### Added
+
+- **Six more terminals** in System Tools, Terminal Emulators: Konsole, Kwi
+  (KDE's new terminal, still in early development), Ptyxis (Ubuntu's default
+  terminal since 25.10), Terminator, Xfce Terminal and Yakuake. Each comes from
+  the distribution's own repositories (EPEL on Rocky/Alma). Kwi uses KDE's
+  Flathub listing everywhere but Arch, and Ptyxis uses Flathub on Ubuntu
+  22.04/24.04 and Rocky/Alma 8 and 9, which do not package it. Kwi is not
+  offered on Alpine, and Xfce Terminal is not offered on Rocky/Alma 10.
+
 ## [1.13.1] - 2026-11-24
 
 ### Added

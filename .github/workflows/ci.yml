@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: ["**"]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Unit Tests
@@ -59,7 +62,7 @@ jobs:
             family: debian
             pkg_mgr: apt
           - image: ubuntu:26.10
-            # EOL 2027-07-01 (endoflife.date): drop this entry on or just after that day
+            # EOL 2027-07-15 (endoflife.date): drop this entry on or just after that day
             name: Ubuntu 26.10
             family: debian
             pkg_mgr: apt

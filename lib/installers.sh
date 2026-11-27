@@ -32,8 +32,13 @@
 # ============================================================================
 
 # --- Source all per-utility installer scripts ---
+# _shared.sh first, by name: the glob below sorts "_shared.sh" after "krdpc.sh"
+# in en_US.UTF-8 (the underscore is ignored) but before it in the C locale, and
+# an installer that calls a shared helper while it loads needs it defined.
+source "${SCRIPT_DIR}/lib/installers/_shared.sh" || { echo "Error: Failed to source _shared.sh"; exit 1; }
 for _installer_file in "${SCRIPT_DIR}/lib/installers/"*.sh; do
     [[ -f "$_installer_file" ]] || continue
+    [[ "$_installer_file" == */_shared.sh ]] && continue
     source "$_installer_file" || { echo "Error: Failed to source $_installer_file"; exit 1; }
 done
 unset _installer_file
@@ -418,9 +423,14 @@ register_utility "earlyoom"          install_earlyoom           check_earlyoom  
 register_utility "HardInfo"          install_hardinfo           check_hardinfo           uninstall_hardinfo           update_hardinfo           get_version_hardinfo
 register_utility "htop"              install_htop               check_htop               uninstall_htop               update_htop               get_version_htop
 register_utility "kitty"             install_kitty              check_kitty              uninstall_kitty              update_kitty              get_version_kitty
+register_utility "Konsole"           install_konsole            check_konsole            uninstall_konsole            update_konsole            get_version_konsole
+register_utility "Kwi"               install_kwi                check_kwi                uninstall_kwi                update_kwi                get_version_kwi
 register_utility "ncdu"              install_ncdu               check_ncdu               uninstall_ncdu               update_ncdu               get_version_ncdu
 register_utility "nvtop"             install_nvtop              check_nvtop              uninstall_nvtop              update_nvtop              get_version_nvtop
+register_utility "Ptyxis"            install_ptyxis             check_ptyxis             uninstall_ptyxis             update_ptyxis             get_version_ptyxis
 register_utility "smartmontools"     install_smartmontools      check_smartmontools      uninstall_smartmontools      update_smartmontools      get_version_smartmontools
+register_utility "Terminator"        install_terminator         check_terminator         uninstall_terminator         update_terminator         get_version_terminator
+register_utility "Yakuake"           install_yakuake            check_yakuake            uninstall_yakuake            update_yakuake            get_version_yakuake
 register_utility "zram"              install_zram               check_zram               uninstall_zram               update_zram               get_version_zram
 # Development and shell tools (#91). Alpine keeps only the ones in alpine_packages.sh.
 register_utility "Emacs"             install_emacs              check_emacs              uninstall_emacs              update_emacs              get_version_emacs
@@ -461,9 +471,15 @@ fi
 if [[ "$DISTRO_ID" != "opensuse-leap" && "$DISTRO_ID" != "sles" ]] && { [[ "$DISTRO_FAMILY" != "rhel" ]] || [[ "${DISTRO_VERSION_ID%%.*}" -ge 10 ]]; }; then
     register_utility "auto-cpufreq"      install_auto_cpufreq       check_auto_cpufreq       uninstall_auto_cpufreq       update_auto_cpufreq       get_version_auto_cpufreq
 fi
-# Ghostty: only the Debian family, Arch and openSUSE carry a package.
-if [[ "$DISTRO_FAMILY" == "debian" || "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]]; then
+# Ghostty: only Arch, openSUSE and Ubuntu 26.04 and newer carry a package (Debian 13,
+# Ubuntu 22.04 and 24.04 have none).
+if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" ]] || \
+   [[ "$DISTRO_ID" == "ubuntu" && "${DISTRO_VERSION_ID%%.*}" -ge 26 ]]; then
     register_utility "Ghostty"           install_ghostty            check_ghostty            uninstall_ghostty            update_ghostty            get_version_ghostty
+fi
+# Xfce Terminal: EPEL 10 has no Xfce.
+if [[ "$_rhel10_plus" == "false" ]]; then
+    register_utility "Xfce Terminal"     install_xfce_terminal      check_xfce_terminal      uninstall_xfce_terminal      update_xfce_terminal      get_version_xfce_terminal
 fi
 # WezTerm: only Arch, openSUSE and Alpine carry a maintained package.
 if [[ "$DISTRO_FAMILY" == "arch" || "$DISTRO_FAMILY" == "suse" || "$DISTRO_FAMILY" == "alpine" ]]; then
@@ -895,6 +911,12 @@ UTILITY_CATEGORY["zram"]="System Tools"
 UTILITY_CATEGORY["Alacritty"]="System Tools"
 UTILITY_CATEGORY["Ghostty"]="System Tools"
 UTILITY_CATEGORY["WezTerm"]="System Tools"
+UTILITY_CATEGORY["Konsole"]="System Tools"
+UTILITY_CATEGORY["Kwi"]="System Tools"
+UTILITY_CATEGORY["Ptyxis"]="System Tools"
+UTILITY_CATEGORY["Terminator"]="System Tools"
+UTILITY_CATEGORY["Xfce Terminal"]="System Tools"
+UTILITY_CATEGORY["Yakuake"]="System Tools"
 UTILITY_CATEGORY["inxi"]="System Tools"
 UTILITY_CATEGORY["TLP"]="System Tools"
 UTILITY_CATEGORY["k9s"]="Development"
@@ -1118,6 +1140,12 @@ UTILITY_SUBCATEGORY["Alacritty"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["Ghostty"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["kitty"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["WezTerm"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Konsole"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Kwi"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Ptyxis"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Terminator"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Xfce Terminal"]="Terminal Emulators"
+UTILITY_SUBCATEGORY["Yakuake"]="Terminal Emulators"
 UTILITY_SUBCATEGORY["Vim"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Emacs"]="IDEs & Editors"
 UTILITY_SUBCATEGORY["Helix"]="IDEs & Editors"
@@ -1492,11 +1520,17 @@ UTILITY_DESCRIPTION["BleachBit"]="Disk cleaner that clears caches, logs, history
 UTILITY_DESCRIPTION["CPU-X"]="CPU-Z-style window showing the CPU, motherboard, memory, GPU and system. Distro package, or Flathub on Rocky/Alma/RHEL. Not available on Alpine."
 UTILITY_DESCRIPTION["CUPS"]="The printing system: installs the print server and starts it at boot. Add printers at http://localhost:631 or in the desktop's printer settings."
 UTILITY_DESCRIPTION["earlyoom"]="Ends the biggest memory hog before the machine freezes, instead of waiting for the kernel's slow out-of-memory killer. Started at boot."
-UTILITY_DESCRIPTION["Ghostty"]="Fast GPU-accelerated terminal emulator. Installed from the distro package, which exists on Arch, openSUSE Tumbleweed and Ubuntu 26.04 and newer; elsewhere it says so and changes nothing. Not offered on Fedora, Rocky/Alma/RHEL or Alpine."
+UTILITY_DESCRIPTION["Ghostty"]="Fast GPU-accelerated terminal emulator. Installed from the distro package, which exists on Arch, openSUSE Tumbleweed and Ubuntu 26.04 and newer; elsewhere it says so and changes nothing. Not offered on Debian, Ubuntu 22.04/24.04, Fedora, Rocky/Alma/RHEL or Alpine."
 UTILITY_DESCRIPTION["HardInfo"]="System profiler and benchmark window: CPU, memory, storage, sensors and network. Installs HardInfo2, the maintained fork (the old HardInfo on Ubuntu 22.04). Distro package, or EPEL on Rocky/Alma. Not available on Alpine."
 UTILITY_DESCRIPTION["htop"]="Interactive process viewer with colours, a tree view and mouse support."
 UTILITY_DESCRIPTION["inxi"]="Prints a readable summary of the hardware and system: CPU, GPU, disks, network and sensors. Try inxi -Fxz. Not available on Rocky/Alma 10, where EPEL has no package."
 UTILITY_DESCRIPTION["kitty"]="Fast GPU-accelerated terminal emulator with tabs, splits and image display. Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["Konsole"]="KDE's terminal emulator with tabs, split views and profiles. Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["Kwi"]="KDE's new fast terminal emulator, still in early development. Distro package on Arch; Flathub elsewhere. Not available on Alpine."
+UTILITY_DESCRIPTION["Ptyxis"]="GNOME's terminal emulator, the default on Ubuntu 26.04 and RHEL 10, with tabs that open straight into Toolbox, Distrobox and Podman containers. Distro package where there is one; Flathub elsewhere."
+UTILITY_DESCRIPTION["Terminator"]="Terminal emulator that splits one window into a grid of terminals. Distro package (EPEL on Rocky/Alma)."
+UTILITY_DESCRIPTION["Xfce Terminal"]="Xfce's light terminal emulator with tabs and a drop-down mode. Distro package (EPEL on Rocky/Alma 8 and 9); not available on Rocky/Alma 10, which has no Xfce."
+UTILITY_DESCRIPTION["Yakuake"]="KDE's drop-down terminal: press F12 to slide it down from the top of the screen. Distro package (EPEL on Rocky/Alma)."
 UTILITY_DESCRIPTION["ncdu"]="Terminal disk-usage browser: shows which folders use the space and lets you delete from the list."
 UTILITY_DESCRIPTION["nvtop"]="htop-style monitor for GPUs (NVIDIA, AMD, Intel). Distro package (EPEL on Rocky/Alma). Not available on Alpine."
 UTILITY_DESCRIPTION["smartmontools"]="smartctl reads a drive's SMART health data and smartd watches it in the background. Installs the package and leaves its services as the package sets them."
@@ -1521,7 +1555,7 @@ UTILITY_DESCRIPTION["Duplicati"]="Cloud backup tool with a web-based GUI support
 UTILITY_DESCRIPTION["Back In Time"]="Simple snapshot backups of your files using rsync, with a Qt window; restore any snapshot. Distro package on Debian, Ubuntu, Fedora, RHEL clones 8 and 9 (EPEL) and openSUSE; on Arch from the AUR (only with AUR support enabled). Not available on Rocky/Alma 10 or Alpine. Uninstall keeps your snapshots and profiles."
 UTILITY_DESCRIPTION["Clonezilla"]="Disk and partition cloning and imaging. Installs the Clonezilla package (Debian, Ubuntu, Arch) for use on disks that are not mounted; cloning the running system's own disk needs the live Clonezilla disk (Ventoy can boot it). Not available on Fedora, RHEL clones, openSUSE or Alpine."
 UTILITY_DESCRIPTION["Grsync"]="Graphical front-end for rsync: sync and back up folders with saved presets. Distro package (EPEL on RHEL clones). Not available on Alpine. Uninstall keeps your saved sessions."
-UTILITY_DESCRIPTION["Kopia"]="Fast, encrypted, deduplicating backup with snapshots and a web page (kopia server start). The command-line program: distro package on Fedora and openSUSE; elsewhere Kopia's GitHub release, SHA-256 checked, in /usr/local/bin. The KopiaUI desktop app is not installed. Not available on Alpine. Uninstall keeps your repository connections."
+UTILITY_DESCRIPTION["Kopia"]="Fast, encrypted, deduplicating backup with snapshots and a web page (kopia server start). The command-line program: distro package on openSUSE Tumbleweed; elsewhere (Fedora included) Kopia's GitHub release, SHA-256 checked, in /usr/local/bin. The KopiaUI desktop app is not installed. Not available on Alpine. Uninstall keeps your repository connections."
 UTILITY_DESCRIPTION["luckyBackup"]="Graphical rsync-based backup and sync with profiles and scheduling. Distro package on Debian, Ubuntu, Fedora and openSUSE; on Arch from the AUR (only with AUR support enabled). Not available on RHEL clones or Alpine. Uninstall keeps your profiles."
 UTILITY_DESCRIPTION["Pika Backup"]="Simple scheduled backups of your home folder with BorgBackup, in a desktop window. Distro package on Arch and openSUSE Tumbleweed; Flathub elsewhere. Not available on Alpine. Uninstall keeps your schedule and repository settings."
 UTILITY_DESCRIPTION["rclone"]="Command-line tool that copies and syncs files to and from dozens of cloud storage services. Distro package (EPEL on RHEL clones 9 and newer). Not available on Rocky/Alma 8. Uninstall keeps your rclone.conf."

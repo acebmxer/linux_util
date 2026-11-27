@@ -71,7 +71,29 @@ ORIGINAL_ARGS=("$@")
 # operation. Skipping the lock also means that if such a command is killed
 # (e.g. by a `timeout` in the test suite) it cannot orphan a child holding the
 # lock fd and block subsequent invocations.
-LOCK_FILE="/tmp/linux_util_${USER:-$UID}.lock"
+#
+# The lock and the sudo keep-alive pid file live in a directory only this user
+# can write: $XDG_RUNTIME_DIR (/run/user/<uid>) where the session has one, else a
+# private per-user folder under /tmp that is checked to be a real directory
+# owned by us. A fixed, shared /tmp name could be pre-created by another user
+# (blocking start-up, or planting a pid that the next start would kill).
+_lu_private_dir() {
+    local d
+    if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" && -w "$XDG_RUNTIME_DIR" ]]; then
+        printf '%s' "$XDG_RUNTIME_DIR"
+        return 0
+    fi
+    d="/tmp/linux_util-$(id -u)"
+    mkdir -m 700 "$d" 2>/dev/null
+    if [[ -d "$d" && ! -L "$d" && -O "$d" && -w "$d" ]]; then
+        printf '%s' "$d"
+        return 0
+    fi
+    echo "Error: $d exists but is not a private folder owned by you; remove it or set XDG_RUNTIME_DIR." >&2
+    return 1
+}
+_LU_RUN_DIR=$(_lu_private_dir) || exit 1
+LOCK_FILE="${_LU_RUN_DIR}/linux_util_${USER:-$UID}.lock"
 _lu_needs_lock=true
 for _lu_arg in "$@"; do
     case "$_lu_arg" in
@@ -217,7 +239,11 @@ SUDO_PID_FILE="${LOCK_FILE}.pid"
 readonly SUDO_PID_FILE
 if [[ -f "$SUDO_PID_FILE" ]]; then
     _orphan_pid=$(<"$SUDO_PID_FILE")
-    if [[ -n "$_orphan_pid" ]] && kill -0 "$_orphan_pid" 2>/dev/null; then
+    # Only a process that is ours AND is a linux_util keep-alive is stopped: the
+    # file's content is not trusted to name a process of any other program.
+    if [[ "$_orphan_pid" =~ ^[0-9]+$ ]] && kill -0 "$_orphan_pid" 2>/dev/null \
+       && [[ "$(stat -c %u "/proc/${_orphan_pid}" 2>/dev/null)" == "$(id -u)" ]] \
+       && tr '\0' ' ' < "/proc/${_orphan_pid}/cmdline" 2>/dev/null | grep -q 'linux_util'; then
         kill "$_orphan_pid" 2>/dev/null || true
     fi
     rm -f "$SUDO_PID_FILE"
@@ -227,7 +253,11 @@ fi
 # is not re-prompted mid-install when the sudo timeout expires.
 # Only run when stdin is a terminal (skip during non-interactive/test invocations
 # so that child processes cannot inherit the lock fd and block subsequent runs).
-if [[ -t 0 ]]; then
+# A --dry-run changes nothing, so it never asks for the password either.
+_lu_dry_run_arg=false
+for _lu_arg in "$@"; do [[ "$_lu_arg" == "--dry-run" ]] && _lu_dry_run_arg=true; done
+unset _lu_arg
+if [[ -t 0 && "$_lu_dry_run_arg" != true ]]; then
     if [[ "$LU_ROOT_METHOD" == "su" ]]; then
         # su cannot remember a password: there is nothing to cache or keep alive.
         warn "Neither sudo nor doas is installed, so root commands use su and ask for the root password each time."
@@ -240,8 +270,21 @@ if [[ -t 0 ]]; then
     fi
 fi
 
-# Initialize Timeshift integration (Debian/Ubuntu only — silent no-op otherwise)
-timeshift_init
+# Initialize Timeshift integration. Skipped for the information-only commands
+# (--help, --version, --list, --check, --export-profile): they must print and
+# nothing else, and setup can ask questions and rewrite the Timeshift config.
+# A --dry-run still detects Timeshift but never sets it up.
+_lu_info_only=false
+for _lu_arg in "$@"; do
+    case "$_lu_arg" in
+        --help|-h|--version|--list|--check|--export-profile) _lu_info_only=true ;;
+    esac
+done
+unset _lu_arg
+if [[ "$_lu_info_only" != true ]]; then
+    TIMESHIFT_NO_SETUP="$_lu_dry_run_arg"
+    timeshift_init
+fi
 
 # ============================================================================
 # UTILITY REGISTRY INITIALIZATION
@@ -789,13 +832,16 @@ process_selected() {
 #   func — resolved function name (already validated by caller)
 _cli_op() {
     local _op="$1" _util="$2" _func="$3"
+    # A dry run changes nothing and asks for nothing, so it returns before the
+    # package-list refresh (on Arch that is a full pacman -Syu) and the snapshot
+    # prompt.
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] Would ${_op}: ${_util}"; exit 0
+    fi
     if [[ "$_op" == "install" || "$_op" == "update" ]]; then
         local _sync_only=false
         utility_performs_full_upgrade "$_util" && _sync_only=true
         PKG_REFRESH_SYNC_ONLY="$_sync_only" pkg_refresh
-    fi
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "[DRY RUN] Would ${_op}: ${_util}"; exit 0
     fi
     local _snap_msg
     if [[ "$_op" == "install" && "${UNINSTALL_FUNCS[$_util]:-}" == "noop_function" ]]; then
@@ -975,9 +1021,16 @@ EOF
             --update-all)
                 shift
                 echo "Updating all installed utilities..."
-                # System Updates is in this loop and does the full upgrade itself.
-                PKG_REFRESH_SYNC_ONLY=true pkg_refresh
-                timeshift_prompt_create_snapshot "linux_util: Before updating all installed utilities"
+                # Nothing in this loop performs a full system upgrade (System
+                # Updates is a run-action task, never "installed"), so the
+                # refresh must be the complete one: on Arch a bare -Sy would
+                # leave every single-package update running against a database
+                # newer than the installed system. A dry run skips the refresh
+                # and the snapshot prompt and only lists what would be updated.
+                if [[ "$DRY_RUN" != "true" ]]; then
+                    pkg_refresh
+                    timeshift_prompt_create_snapshot "linux_util: Before updating all installed utilities"
+                fi
                 local _updated=0 _failed=0
                 for _util in "${UTILITIES[@]}"; do
                     local _check="${CHECK_FUNCS[$_util]:-}"

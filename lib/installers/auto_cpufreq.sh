@@ -31,9 +31,12 @@ check_auto_cpufreq() {
     _check_standard auto-cpufreq auto-cpufreq ""
 }
 
-# Download release $1 and run upstream's installer from it.
-_acf_install_source() {
-    local ver="$1" tmp
+# Download release $1 and unpack it; sets the variable named by $2 to the source
+# directory (removed on exit). Nothing on the system is touched.
+_acf_fetch_source() {
+    local ver="$1"
+    local -n _acf_src="$2"
+    local tmp
     ensure_tools
     tmp=$(mktemp -d) || return 1
     CLEANUP_FILES+=("$tmp")
@@ -43,20 +46,32 @@ _acf_install_source() {
         -o "${tmp}/src.tar.gz" || { error "Could not download auto-cpufreq ${ver}."; rm -rf "$tmp"; return 1; }
     mkdir "${tmp}/src" && tar -xzf "${tmp}/src.tar.gz" -C "${tmp}/src" --strip-components=1 \
         || { error "Could not unpack the auto-cpufreq download."; rm -rf "$tmp"; return 1; }
-    sudo bash "${tmp}/src/auto-cpufreq-installer" --install
-    local rc=$?
-    rm -rf "$tmp"
-    return "$rc"
+    _acf_src="${tmp}/src"
 }
 
 # Put release $1 in place and start its service. Upstream's installer refuses to
-# run while the service is installed, so a running install is stopped first.
+# run while the service is installed, so a running install is stopped first --
+# but only AFTER the release has been downloaded and unpacked, so a failed
+# download leaves the running service alone, and if the installer itself fails
+# the service is put back.
 _acf_deploy() {
-    local ver="$1"
+    local ver="$1" src had_daemon=false
+    _acf_fetch_source "$ver" src || return 1
     if [[ -e "$_ACF_DAEMON_REMOVER" ]]; then
+        had_daemon=true
         sudo auto-cpufreq --remove || { error "Could not stop the auto-cpufreq service for the update."; return 1; }
     fi
-    _acf_install_source "$ver" || return 1
+    if ! sudo bash "${src}/auto-cpufreq-installer" --install; then
+        error "The auto-cpufreq installer failed."
+        if [[ "$had_daemon" == true ]]; then
+            if sudo auto-cpufreq --install; then
+                warn "The previous auto-cpufreq service was started again."
+            else
+                warn "The auto-cpufreq service is not running; run 'sudo auto-cpufreq --install' to start it."
+            fi
+        fi
+        return 1
+    fi
     sudo auto-cpufreq --install || warn "Could not install the auto-cpufreq service; run 'sudo auto-cpufreq --install' later."
 }
 
@@ -87,15 +102,9 @@ uninstall_auto_cpufreq() {
         local tmp ver
         ver=$(_acf_latest_version)
         [[ -n "$ver" ]] || { error "Could not read the auto-cpufreq version from GitHub to run its remover."; return 1; }
-        tmp=$(mktemp -d) || return 1
-        CLEANUP_FILES+=("$tmp")
-        curl -fsSL --max-time 120 "https://github.com/AdnanHodzic/auto-cpufreq/archive/refs/tags/v${ver}.tar.gz" \
-            -o "${tmp}/src.tar.gz" && mkdir "${tmp}/src" \
-            && tar -xzf "${tmp}/src.tar.gz" -C "${tmp}/src" --strip-components=1 \
-            && sudo bash "${tmp}/src/auto-cpufreq-installer" --remove
-        local rc=$?
-        rm -rf "$tmp"
-        return "$rc"
+        _acf_fetch_source "$ver" tmp || return 1
+        sudo bash "${tmp}/auto-cpufreq-installer" --remove
+        return $?
     fi
     svc_disable_now auto-cpufreq 2>/dev/null || true
     pkg_remove auto-cpufreq

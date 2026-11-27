@@ -140,7 +140,7 @@ _pkg_cache_is_fresh() {
 }
 
 # Set by callers whose own operation performs the full system upgrade itself
-# (System Updates, --update-all). On Arch this suppresses the -u in pkg_refresh's
+# (System Updates). On Arch this suppresses the -u in pkg_refresh's
 # -Syu, so the pre-flight step syncs the database and nothing else and the upgrade
 # happens inside the update run where the user asked for it -- matching how apt and
 # dnf already behave, where pre-flight only ever refreshes metadata.
@@ -221,10 +221,59 @@ pkg_install() {
     esac
 }
 
+# Ask a yes/no question on the terminal and return 0 only on an explicit y/yes.
+# Unlike _confirm_step this IGNORES auto_confirm: it guards removals the user
+# never named (a desktop meta-package, vendor RPMs), which unattended mode must
+# not approve. With no terminal it declines.
+pkg_ask_on_terminal() {
+    local prompt="$1" reply=""
+    # Opening /dev/tty is the real test: a detached session still has the file.
+    { : < /dev/tty; } 2>/dev/null || return 1
+    read -rp "${YELLOW:-}${prompt} [y/N]: ${RESET:-}" reply < /dev/tty
+    [[ "${reply,,}" =~ ^(y|yes)$ ]]
+}
+
+# Print the installed apt packages, other than the requested ones, that purging
+# the requested packages would remove with them: whatever depends on them. A
+# desktop meta-package (gnome-core needs ptyxis and cups, xfce4-goodies needs
+# xfce4-terminal) is the case that matters, because "apt purge --autoremove -y"
+# then removes it and everything only it kept. Packages named after a requested
+# one (libreoffice-writer for libreoffice) are that program's own parts, not
+# collateral. Prints nothing when the simulation cannot run.
+_apt_removal_collateral() {
+    local _sim _line _name _req _own
+    _sim=$(apt-get -s purge "$@" 2>/dev/null) || return 0
+    while IFS= read -r _line; do
+        [[ "$_line" == "Purg "* ]] || continue
+        _name="${_line#Purg }"; _name="${_name%% *}"; _name="${_name%%:*}"
+        _own=false
+        for _req in "$@"; do
+            _req="${_req%%:*}"
+            [[ "$_name" == "$_req"* ]] && { _own=true; break; }
+        done
+        [[ "$_own" == true ]] || printf '%s\n' "$_name"
+    done <<<"$_sim"
+}
+
+# Return 0 when apt may purge the requested packages: nothing else would go, or
+# the user saw the list and said yes. Return 1 and remove nothing otherwise.
+_apt_remove_allowed() {
+    local _extra
+    _extra=$(_apt_removal_collateral "$@" | paste -sd' ')
+    [[ -z "$_extra" ]] && return 0
+    warn "Removing $* would also remove: ${_extra}"
+    if pkg_ask_on_terminal "Remove those as well?"; then
+        return 0
+    fi
+    warn "Nothing was removed. Remove ${_extra} yourself first if you want $* gone."
+    return 1
+}
+
 pkg_remove() {
     local _label="Removing: $*"
     case "$PKG_MGR" in
-        apt)     run_with_spinner "$_label" sudo apt purge --autoremove -y "$@" &&
+        apt)     _apt_remove_allowed "$@" || return 1
+                 run_with_spinner "$_label" sudo apt purge --autoremove -y "$@" &&
                  run_with_spinner "Cleaning apt cache" sudo apt autoclean ;;
         dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" remove -y "$@" ;;
         pacman)  run_with_spinner "$_label" sudo pacman -Rs --noconfirm "$@" ;;
@@ -267,6 +316,25 @@ pkg_install_local() {
     esac
 }
 
+# True (0) when an RPM-based system says a reboot is pending, false (1) when it
+# says none is needed or cannot tell. Fedora 41+ (dnf5) has no needs-restarting
+# program: the same check is the subcommand "dnf needs-restarting -r", which exits
+# 1 when a reboot is needed. On dnf4 the plugin may not be installed, and then
+# the command also exits 1 ("No such command"); that is "cannot tell", not
+# "reboot pending". The one place this is decided; do not add another copy.
+rpm_reboot_pending() {
+    if command -v needs-restarting >/dev/null 2>&1; then
+        needs-restarting -r >/dev/null 2>&1 && return 1
+        return 0
+    fi
+    command -v dnf >/dev/null 2>&1 || return 1
+    local _out _rc=0
+    _out=$(dnf needs-restarting -r 2>&1) || _rc=$?
+    [[ $_rc -eq 0 ]] && return 1
+    grep -qiE 'no such command|unknown (command|argument)|unrecognized' <<<"$_out" && return 1
+    return 0
+}
+
 pkg_autoremove() {
     local mode="${1:-spinner}"
     local _run _y _nc
@@ -290,7 +358,13 @@ pkg_autoremove() {
             fi
             ;;
         dnf|yum)
-            if "$PKG_MGR" autoremove --assumeno 2>/dev/null | grep -qE "^Remove "; then
+            # Capture the dry run first. dnf exits 1 on --assumeno, so under
+            # pipefail "dnf ... | grep -q" was false even with orphans present,
+            # and dnf5 heads the list "Removing:" where dnf4's summary says
+            # "Remove". It needs root, like the apt dry run above.
+            local _dnf_dry
+            _dnf_dry=$(sudo "$PKG_MGR" autoremove --assumeno 2>/dev/null) || true
+            if grep -qE '^[[:space:]]*Remov(e|ing)[: ]' <<< "$_dnf_dry"; then
                 # shellcheck disable=SC2086
                 "$_run" "Removing orphaned packages" sudo "$PKG_MGR" autoremove $_y
             else
@@ -485,15 +559,25 @@ _pkg_cleanup_stale_releases() {
             }
         fi
 
-        # Remove orphan packages that have no equivalent in current repos
+        # Packages built for the previous release that no enabled repository carries.
+        # They may be leftovers of an upgrade -- or software from another vendor
+        # whose release tag happens to say ${prev_el}, which this cannot tell apart.
+        # dnf remove also removes whatever depends on them, so they are listed and
+        # removed only when the user says yes on a terminal (auto_confirm does not
+        # count); with no terminal they are only reported.
         # --disableexcludes=all bypasses repo exclude filters (e.g. ELevate excludes leapp packages)
         if [[ -n "${orphan// /}" ]]; then
-            info "Removing ${prev_el} packages with no current-release equivalent:${orphan}"
-            # shellcheck disable=SC2086
-            "$_run" "Removing orphaned ${prev_el} packages" \
-                sudo dnf remove -y --disableexcludes=all $orphan || {
-                warn "Some orphaned packages could not be removed automatically."
-            }
+            warn "These ${prev_el} packages are in no enabled repository:${orphan}"
+            warn "They may be left over from the upgrade, or software from another vendor. Removing them also removes anything that depends on them."
+            if pkg_ask_on_terminal "Remove them?"; then
+                # shellcheck disable=SC2086
+                "$_run" "Removing orphaned ${prev_el} packages" \
+                    sudo dnf remove -y --disableexcludes=all $orphan || {
+                    warn "Some orphaned packages could not be removed automatically."
+                }
+            else
+                warn "Left in place. To remove them yourself: sudo dnf remove${orphan}"
+            fi
         fi
     fi
 
@@ -843,18 +927,26 @@ _apt_codename_upgrade_restore() {
 # RHEL proper ships leapp in its standard repos.
 _install_leapp_packages() {
     # For community distros, install the ELevate repo first.
-    # Trust model: we install a noarch RPM directly from repo.almalinux.org.
-    # DNF verifies the RPM's built-in GPG signature on install, so the package
-    # itself is authenticated. This RPM then adds the ELevate repo with its GPG
-    # key, after which all subsequent ELevate packages are signature-verified.
-    # This is the standard bootstrapping pattern for third-party RHEL repos.
+    # Trust model: the noarch RPM comes from repo.almalinux.org over https, so the
+    # server is authenticated and the file cannot be swapped on the network path.
+    # It is NOT signature-checked here: dnf only checks an RPM given as a file
+    # when localpkg_gpgcheck is on (off by default), and AlmaLinux's key is not
+    # imported yet. The RPM then adds the ELevate repo with its GPG key, after
+    # which all subsequent ELevate packages are signature-verified.
     if [[ "$DISTRO_ID" != "rhel" ]]; then
         if ! rpm -q elevate-release &>/dev/null; then
             info "Installing ELevate repo for upgrade support..."
-            local el_ver
+            local el_ver el_rpm
             el_ver=$(rpm --eval '%{rhel}')
-            sudo "$PKG_MGR" install -y \
-                "http://repo.almalinux.org/elevate/elevate-release-latest-el${el_ver}.noarch.rpm" || {
+            el_rpm=$(mktemp /tmp/elevate-release-XXXXXX.rpm) || return 1
+            CLEANUP_FILES+=("$el_rpm")
+            if ! curl --proto '=https' --tlsv1.2 -fsSL \
+                    "https://repo.almalinux.org/elevate/elevate-release-latest-el${el_ver}.noarch.rpm" \
+                    -o "$el_rpm" || [[ "$(rpm -qp --qf '%{NAME}' "$el_rpm" 2>/dev/null)" != "elevate-release" ]]; then
+                error "Could not download the ELevate repo package. Cannot check for upgrades."
+                return 1
+            fi
+            sudo "$PKG_MGR" install -y "$el_rpm" || {
                 error "Could not install ELevate repo. Cannot check for upgrades."
                 return 1
             }
@@ -1534,7 +1626,7 @@ pkg_distro_upgrade() {
             }
 
             # Check if a reboot is needed before proceeding
-            if command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+            if rpm_reboot_pending; then
                 warn "A reboot is required before the Fedora upgrade can proceed."
                 warn "Please reboot the system and re-run this script to continue the upgrade to Fedora ${target_version}."
                 return 1
@@ -1629,7 +1721,7 @@ pkg_distro_upgrade() {
             }
 
             # Check if a reboot is needed before proceeding
-            if command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+            if rpm_reboot_pending; then
                 warn "A reboot is required before the RHEL-family upgrade can proceed."
                 warn "Please reboot the system and re-run this script to continue the upgrade to version ${target_version}."
                 return 1
@@ -2087,8 +2179,9 @@ _ver_from_snap() {
 # ============================================================================
 
 # True when the key file $1 (armored or binary) holds a key with fingerprint $2.
-# A throwaway GNUPGHOME so reading the key never creates ~/.gnupg. Used by
-# _add_apt_repo and rpm_import_key_checked.
+# A throwaway GNUPGHOME so reading the key never creates ~/.gnupg. This only
+# says the pinned key is IN the file; the file is then trusted as a whole, so
+# callers that install a vendor key use gpg_key_keep_only instead.
 gpg_key_has_fingerprint() {
     local keyfile="$1" want="$2" home fprs
     home=$(mktemp -d)
@@ -2096,6 +2189,33 @@ gpg_key_has_fingerprint() {
         awk -F: '$1 == "fpr" { print $10 }')
     rm -rf "$home"
     grep -qx "$want" <<< "$fprs"
+}
+
+# Rewrite the key file $1 so it holds ONLY the keys named by fingerprint in $2
+# (armored), and return 1, leaving the file as it was, when none of them is in
+# it. $2 is one fingerprint, or several separated by spaces for a vendor that
+# really publishes more than one key in one file (Sublime Text). A file that
+# carries a pinned key next to some other key used to be accepted whole and every
+# key in it went into the trusted keyring; now only the pinned keys do. Used by
+# _add_apt_repo and rpm_import_key_checked.
+gpg_key_keep_only() {
+    local keyfile="$1" wanted="$2" home out fpr found=false
+    home=$(mktemp -d) || return 1
+    out=$(mktemp) || { rm -rf "$home"; return 1; }
+    if GNUPGHOME="$home" gpg --batch --quiet --import "$keyfile" 2>/dev/null; then
+        # shellcheck disable=SC2086  # $wanted is a space-separated list
+        for fpr in $wanted; do
+            GNUPGHOME="$home" gpg --batch --quiet --armor --export "$fpr" 2>/dev/null >> "$out" &&
+                gpg_key_has_fingerprint "$out" "$fpr" && found=true
+        done
+    fi
+    if [[ "$found" == true && -s "$out" ]]; then
+        cat "$out" > "$keyfile"
+        rm -rf "$home" "$out"
+        return 0
+    fi
+    rm -rf "$home" "$out"
+    return 1
 }
 
 # Add an APT repository with a GPG keyring.
@@ -2127,7 +2247,7 @@ _add_apt_repo() {
         error "Failed to download GPG key from: $key_url"
         return 1
     fi
-    if [[ -n "$key_fingerprint" ]] && ! gpg_key_has_fingerprint "$_tmpkey" "$key_fingerprint"; then
+    if [[ -n "$key_fingerprint" ]] && ! gpg_key_keep_only "$_tmpkey" "$key_fingerprint"; then
         rm -f "$_tmpkey"
         error "GPG key from $key_url does not match fingerprint $key_fingerprint"
         return 1

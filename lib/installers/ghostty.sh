@@ -6,7 +6,7 @@
 # publishes no Linux packages of its own (the .deb and Copr builds linked from
 # its site are made by third parties, unsigned), so where the repositories do
 # not carry it the installer says so and changes nothing. Not offered on
-# Fedora, RHEL clones or Alpine.
+# Debian, Ubuntu 22.04/24.04, Fedora, RHEL clones or Alpine.
 
 # --- Ghostty ---
 

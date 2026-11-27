@@ -61,10 +61,9 @@ _is_wsl2() {
 _reboot_required() {
     # Debian/Ubuntu marker dropped by update-notifier-common.
     [[ -f /var/run/reboot-required ]] && return 0
-    # RHEL/Fedora: needs-restarting -r exits non-zero when a reboot is pending.
-    if command -v needs-restarting >/dev/null 2>&1; then
-        needs-restarting -r >/dev/null 2>&1 || return 0
-    fi
+    # RHEL/Fedora: "needs-restarting -r" (dnf5: "dnf needs-restarting -r") exits
+    # non-zero when a reboot is pending.
+    rpm_reboot_pending && return 0
     # Arch family: no marker file and no needs-restarting, so neither check above
     # can ever fire -- the script reported "No reboot needed" while the desktop
     # was showing a reboot notification for the very same upgrade. Detect it the
@@ -513,6 +512,30 @@ native_or_flatpak_version() {
 }
 
 # ============================================================================
+# Upstream install scripts
+#
+# Download an upstream installer script to a private temp file and report
+# whether the download worked, so the caller runs a file it has checked exists
+# rather than "sh -c \"$(curl ...)\"": that form runs an EMPTY command and exits
+# 0 when curl fails, so a failed download looked like a successful install.
+# Usage: download_script URL VARNAME   -- sets VARNAME to the file path (it is
+#        removed on exit); returns 1 and sets nothing when the download fails
+#        or the file is empty. Do not add another copy of this.
+# ============================================================================
+download_script() {
+    local _url="$1"
+    local -n _dl_out="$2"
+    local _tmp
+    _tmp=$(mktemp /tmp/linux_util-script-XXXXXX) || return 1
+    CLEANUP_FILES+=("$_tmp")
+    if ! curl --proto '=https' --tlsv1.2 -fsSL "$_url" -o "$_tmp" || [[ ! -s "$_tmp" ]]; then
+        rm -f "$_tmp"
+        return 1
+    fi
+    _dl_out="$_tmp"
+}
+
+# ============================================================================
 # Upstream GitHub release downloads, verified
 #
 # For apps no distro package covers on every release (lazygit, eza, helix,
@@ -753,7 +776,8 @@ native_or_github_update() {
 
 # rpm_import_key_checked URL FINGERPRINT
 # Imports a vendor's RPM signing key only when the downloaded key carries the
-# pinned fingerprint. Used by Sublime Text and VirtualBox.
+# pinned fingerprint, and imports that key alone. Used by Sublime Text and
+# VirtualBox.
 rpm_import_key_checked() {
     local url="$1" fpr="$2" tmp
     ensure_tools
@@ -761,7 +785,7 @@ rpm_import_key_checked() {
     if ! curl -fsSL --max-time 30 "$url" -o "$tmp"; then
         rm -f "$tmp"; error "Could not download the signing key from ${url}."; return 1
     fi
-    if ! gpg_key_has_fingerprint "$tmp" "$fpr"; then
+    if ! gpg_key_keep_only "$tmp" "$fpr"; then
         rm -f "$tmp"; error "The key from ${url} does not match fingerprint ${fpr}."; return 1
     fi
     sudo rpm --import "$tmp"

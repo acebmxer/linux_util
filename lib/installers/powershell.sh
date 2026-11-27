@@ -7,6 +7,32 @@ check_powershell() {
     _check_standard pwsh powershell "" powershell-bin || { has_snap && snap list powershell &>/dev/null 2>&1; }
 }
 
+# Check a downloaded PowerShell release file against the hashes.sha256 manifest
+# in the same GitHub release. Fails closed: an unreachable manifest, or one with
+# no line for the file, stops the install (root installs this file), where it used
+# to be skipped without a word.
+# Usage: _pwsh_verify_file FILE NAME_AS_PUBLISHED
+_pwsh_verify_file() {
+    local file="$1" name="$2" sums want
+    sums=$(curl -fsSL "https://api.github.com/repos/PowerShell/PowerShell/releases/latest" 2>/dev/null \
+        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+hashes\.sha256')
+    if [[ -z "$sums" ]]; then
+        error "The PowerShell release has no hashes.sha256 to check ${name} against; not installing it."
+        return 1
+    fi
+    # Microsoft writes this manifest on Windows: UTF-16 with a byte-order mark
+    # and CRLF line ends, lines "<sha256> *<file>". Plain grep never matched a
+    # name in it, which is why the old check skipped itself without a word.
+    want=$(curl -fsSL "$sums" 2>/dev/null | tr -d '\000\r\377\376' \
+        | sed -E 's/^[[:space:]]*([0-9a-fA-F]{64})[[:space:]]+\*?[[:space:]]*(.*)$/\1 \2/' \
+        | awk -v n="$name" '$2 == n {print $1; exit}')
+    if [[ ! "$want" =~ ^[0-9a-fA-F]{64}$ ]]; then
+        error "hashes.sha256 has no checksum for ${name}; not installing it."
+        return 1
+    fi
+    verify_sha256 "$file" "$want" "$name" || return 1
+}
+
 # Downloads the latest PowerShell .deb from GitHub releases and installs via dpkg.
 # Used when the Microsoft apt repo doesn't yet carry the package for this distro version.
 _powershell_install_github_deb() {
@@ -25,6 +51,10 @@ _powershell_install_github_deb() {
         error "Failed to download PowerShell .deb from GitHub"
         return 1
     fi
+    if ! _pwsh_verify_file "$_deb_tmp" "$(basename "$_deb_url")"; then
+        rm -f "$_deb_tmp"
+        return 1
+    fi
     sudo dpkg -i "$_deb_tmp" || true
     sudo apt-get install -f -y
     rm -f "$_deb_tmp"
@@ -41,7 +71,7 @@ _PWSH_DIR="/opt/microsoft/powershell"
 _PWSH_LINK="/usr/local/bin/pwsh"
 
 _pwsh_install_tarball() {
-    local machine pattern url tmpdir tarball sums
+    local machine pattern url tmpdir tarball
     machine=$(uname -m)
     case "$machine" in
         x86_64)        pattern='linux-x64\.tar\.gz$' ;;
@@ -61,21 +91,8 @@ _pwsh_install_tarball() {
     info "Downloading PowerShell..."
     wget -qO "$tarball" "$url" || { error "Failed to download PowerShell."; return 1; }
 
-    # Verify against upstream's hashes.sha256 when it is present in the release.
-    sums=$(curl -fsSL "$_PWSH_GH_API" 2>/dev/null \
-        | grep -oP '"browser_download_url"\s*:\s*"\K[^"]+hashes\.sha256')
-    if [[ -n "$sums" ]]; then
-        local want got
-        want=$(curl -fsSL "$sums" 2>/dev/null | grep -F "$(basename "$url")" | awk '{print $1}' | head -1)
-        got=$(sha256sum "$tarball" | awk '{print $1}')
-        if [[ -n "$want" && "$want" != "$got" ]]; then
-            error "PowerShell checksum mismatch — refusing to install."
-            return 1
-        fi
-        [[ -n "$want" ]] && verbose "PowerShell checksum verified."
-    else
-        warn "No hashes.sha256 in the PowerShell release; skipping checksum verification."
-    fi
+    # Verify against upstream's hashes.sha256; no manifest or no entry stops here.
+    _pwsh_verify_file "$tarball" "$(basename "$url")" || return 1
 
     local version
     version=$(basename "$url" | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | head -1)

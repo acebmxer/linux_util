@@ -13,7 +13,9 @@ _verify_not_empty_or_html() {
         error "Download verification failed: ${label} is empty (0 bytes)."
         return 1
     fi
-    if head -c 15 "$file" 2>/dev/null | grep -qi "<html"; then
+    # "<!DOCTYPE html>" is exactly 15 bytes and holds no "<html", so the first
+    # bytes are checked for either opening.
+    if head -c 64 "$file" 2>/dev/null | grep -qiE "<!doctype|<html"; then
         error "Download verification failed: server returned an HTML error page instead of ${label}."
         return 1
     fi
@@ -30,8 +32,11 @@ _verify_magic_bytes() {
         verbose "Skipping magic-byte check for ${label} (file command unavailable)"
         return 0
     fi
+    # -b: the file TYPE only. Without it `file` starts with the file's own name,
+    # and installers use temp names like /tmp/dbeaver-XXXXXX.rpm, so "rpm" was
+    # always in the output and any content passed as an .rpm.
     local file_output
-    file_output=$(file "$file" 2>/dev/null)
+    file_output=$(file -b "$file" 2>/dev/null)
     case "$ext" in
         deb)
             echo "$file_output" | grep -qiE "Debian binary package|current ar archive" && return 0

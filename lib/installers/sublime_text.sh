@@ -12,8 +12,10 @@
 # --- Sublime Text ---
 
 _SUBL_KEY_URL="https://download.sublimetext.com/sublimehq-pub.gpg"
-# Primary fingerprint of the Sublime HQ signing key.
-_SUBL_KEY_FPR="1EDDE2CDFC025D17F6DA9EC0ADAE6AD28A8F901A"
+# Fingerprints of the three signing keys in Sublime HQ's key file. The repository
+# is signed by the last one, so all three are pinned; any other key in the file is
+# dropped before the file is trusted.
+_SUBL_KEY_FPR="1EDDE2CDFC025D17F6DA9EC0ADAE6AD28A8F901A 1B64279675A4299DCFC70858CA464A9A222D23D0 EBC733B78AAB352DC773BF857FE2FA12CF6E38F2"
 _SUBL_APT_KEYRING="/usr/share/keyrings/sublimehq-archive.gpg"
 _SUBL_APT_LIST="/etc/apt/sources.list.d/sublime-text.list"
 _SUBL_REPO_FILE="/etc/yum.repos.d/sublime-text.repo"

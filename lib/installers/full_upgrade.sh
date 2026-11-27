@@ -121,7 +121,7 @@ setup_full_upgrade() {
                     local reboot_needed=false
                     if [[ -f /var/run/reboot-required ]]; then
                         reboot_needed=true
-                    elif command -v needs-restarting &>/dev/null && ! needs-restarting -r &>/dev/null; then
+                    elif rpm_reboot_pending; then
                         reboot_needed=true
                     fi
 

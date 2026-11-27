@@ -20,7 +20,7 @@ install_golang() {
         rhel)
             pkg_install golang 2>/dev/null || {
                 # Fall back to binary install for older RHEL releases
-                _install_golang_binary
+                _install_golang_binary || return 1
             }
             ;;
         arch)
@@ -46,14 +46,43 @@ _install_golang_binary() {
     [[ -z "$go_version" ]] && { error "Could not determine latest Go version."; return 1; }
     arch="amd64"
     [[ "$(uname -m)" == "aarch64" ]] && arch="arm64"
+    local archive="${go_version}.linux-${arch}.tar.gz"
     tmpfile=$(mktemp /tmp/go-XXXXXX.tar.gz)
     CLEANUP_FILES+=("$tmpfile")
-    if ! wget -qO "$tmpfile" "https://dl.google.com/go/${go_version}.linux-${arch}.tar.gz"; then
+    if ! wget -qO "$tmpfile" "https://dl.google.com/go/${archive}"; then
         error "Failed to download Go binary."
         return 1
     fi
-    sudo rm -rf /usr/local/go
-    sudo tar -C /usr/local -xzf "$tmpfile"
+    # go.dev publishes a SHA-256 for every file; the archive must match it
+    # before anything on the system is touched. The listing is flattened so one
+    # file's entry is one run of text up to its closing brace.
+    local listing expected
+    listing=$(curl -fsSL 'https://go.dev/dl/?mode=json' 2>/dev/null | tr -d '\n\t ')
+    expected=$(grep -oP "\"filename\":\"${archive//./\\.}\"[^}]*?\"sha256\":\"\K[0-9a-f]{64}" <<<"$listing" | head -1)
+    if [[ -z "$expected" ]]; then
+        error "Could not find the published SHA-256 for ${archive} on go.dev; Go was not changed."
+        return 1
+    fi
+    verify_sha256 "$tmpfile" "$expected" "$archive" || return 1
+    # Unpack beside the live copy, check it, then swap with two renames on the
+    # same filesystem: a failed extract leaves the old Go exactly as it was.
+    local staging=/usr/local/.go-new.$$ old=/usr/local/.go-old.$$
+    sudo rm -rf "$staging" "$old"
+    sudo mkdir "$staging" && sudo tar -C "$staging" -xzf "$tmpfile" && [[ -x "$staging/go/bin/go" ]] || {
+        sudo rm -rf "$staging"
+        error "Could not unpack Go; the existing Go was left in place."
+        return 1
+    }
+    if [[ -e /usr/local/go ]]; then
+        sudo mv /usr/local/go "$old" || { sudo rm -rf "$staging"; error "Could not replace the existing Go."; return 1; }
+    fi
+    if ! sudo mv "$staging/go" /usr/local/go; then
+        [[ -e "$old" ]] && sudo mv "$old" /usr/local/go
+        sudo rm -rf "$staging"
+        error "Could not put the new Go in place; the existing Go was restored."
+        return 1
+    fi
+    sudo rm -rf "$staging" "$old"
     # Add to system-wide PATH
     if ! grep -q '/usr/local/go/bin' /etc/profile.d/golang.sh 2>/dev/null; then
         echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee /etc/profile.d/golang.sh > /dev/null
