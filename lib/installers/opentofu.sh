@@ -18,7 +18,10 @@ install_opentofu() {
                 error "Failed to download OpenTofu installer."
                 return 1
             fi
-            sudo bash "$tmpfile" -- --install-method deb
+            sudo bash "$tmpfile" -- --install-method deb || {
+                error "OpenTofu installation failed."
+                return 1
+            }
             ;;
         fedora|rhel)
             local tmpfile
@@ -29,7 +32,10 @@ install_opentofu() {
                 error "Failed to download OpenTofu installer."
                 return 1
             fi
-            sudo bash "$tmpfile" -- --install-method rpm
+            sudo bash "$tmpfile" -- --install-method rpm || {
+                error "OpenTofu installation failed."
+                return 1
+            }
             ;;
         arch)
             repo_or_aur opentofu

@@ -221,10 +221,59 @@ pkg_install() {
     esac
 }
 
+# Ask a yes/no question on the terminal and return 0 only on an explicit y/yes.
+# Unlike _confirm_step this IGNORES auto_confirm: it guards removals the user
+# never named (a desktop meta-package, vendor RPMs), which unattended mode must
+# not approve. With no terminal it declines.
+pkg_ask_on_terminal() {
+    local prompt="$1" reply=""
+    # Opening /dev/tty is the real test: a detached session still has the file.
+    { : < /dev/tty; } 2>/dev/null || return 1
+    read -rp "${YELLOW:-}${prompt} [y/N]: ${RESET:-}" reply < /dev/tty
+    [[ "${reply,,}" =~ ^(y|yes)$ ]]
+}
+
+# Print the installed apt packages, other than the requested ones, that purging
+# the requested packages would remove with them: whatever depends on them. A
+# desktop meta-package (gnome-core needs ptyxis and cups, xfce4-goodies needs
+# xfce4-terminal) is the case that matters, because "apt purge --autoremove -y"
+# then removes it and everything only it kept. Packages named after a requested
+# one (libreoffice-writer for libreoffice) are that program's own parts, not
+# collateral. Prints nothing when the simulation cannot run.
+_apt_removal_collateral() {
+    local _sim _line _name _req _own
+    _sim=$(apt-get -s purge "$@" 2>/dev/null) || return 0
+    while IFS= read -r _line; do
+        [[ "$_line" == "Purg "* ]] || continue
+        _name="${_line#Purg }"; _name="${_name%% *}"; _name="${_name%%:*}"
+        _own=false
+        for _req in "$@"; do
+            _req="${_req%%:*}"
+            [[ "$_name" == "$_req"* ]] && { _own=true; break; }
+        done
+        [[ "$_own" == true ]] || printf '%s\n' "$_name"
+    done <<<"$_sim"
+}
+
+# Return 0 when apt may purge the requested packages: nothing else would go, or
+# the user saw the list and said yes. Return 1 and remove nothing otherwise.
+_apt_remove_allowed() {
+    local _extra
+    _extra=$(_apt_removal_collateral "$@" | paste -sd' ')
+    [[ -z "$_extra" ]] && return 0
+    warn "Removing $* would also remove: ${_extra}"
+    if pkg_ask_on_terminal "Remove those as well?"; then
+        return 0
+    fi
+    warn "Nothing was removed. Remove ${_extra} yourself first if you want $* gone."
+    return 1
+}
+
 pkg_remove() {
     local _label="Removing: $*"
     case "$PKG_MGR" in
-        apt)     run_with_spinner "$_label" sudo apt purge --autoremove -y "$@" &&
+        apt)     _apt_remove_allowed "$@" || return 1
+                 run_with_spinner "$_label" sudo apt purge --autoremove -y "$@" &&
                  run_with_spinner "Cleaning apt cache" sudo apt autoclean ;;
         dnf|yum) run_with_spinner "$_label" sudo "$PKG_MGR" remove -y "$@" ;;
         pacman)  run_with_spinner "$_label" sudo pacman -Rs --noconfirm "$@" ;;

@@ -58,10 +58,16 @@ setup_install_docker() {
     case "$PKG_MGR" in
         apt)
             run_as_root apt-get update
-            run_as_root apt-get install -y apt-transport-https ca-certificates curl gnupg
+            run_as_root apt-get install -y apt-transport-https ca-certificates curl gnupg || {
+                error "Docker installation failed: could not install the packages it needs first."
+                return 1
+            }
 
             if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "linuxmint" || "$DISTRO_ID" == "pop" || "$DISTRO_ID" == "neon" ]]; then
-                run_as_root apt-get install -y software-properties-common
+                run_as_root apt-get install -y software-properties-common || {
+                    error "Docker installation failed: could not install software-properties-common."
+                    return 1
+                }
             fi
 
             local docker_dist="$DISTRO_ID"
@@ -76,21 +82,43 @@ setup_install_docker() {
                 fi
             fi
 
-            run_as_root_sh "curl -fsSL https://download.docker.com/linux/${docker_dist}/gpg | gpg --yes --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
+            # Download the key to a file first: in "curl | gpg" a failed download
+            # hands gpg nothing and the step could still look as if it worked.
+            local docker_key
+            download_script "https://download.docker.com/linux/${docker_dist}/gpg" docker_key || {
+                error "Docker installation failed: could not download Docker's signing key."
+                return 1
+            }
+            run_as_root gpg --yes --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg "$docker_key" || {
+                error "Docker installation failed: could not store Docker's signing key."
+                return 1
+            }
             run_as_root chmod 644 /usr/share/keyrings/docker-archive-keyring.gpg
             echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/${docker_dist} ${docker_codename} stable" | \
-                sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                sudo tee /etc/apt/sources.list.d/docker.list > /dev/null || {
+                error "Docker installation failed: could not add Docker's package repository."
+                return 1
+            }
             run_as_root apt-get update
-            run_as_root apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            run_as_root apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || {
+                error "Docker installation failed: the Docker packages could not be installed."
+                return 1
+            }
             ;;
 
         dnf|yum)
-            run_as_root_sh "$PKG_MGR install -y dnf-plugins-core 2>/dev/null || $PKG_MGR install -y yum-utils"
+            run_as_root_sh "$PKG_MGR install -y dnf-plugins-core 2>/dev/null || $PKG_MGR install -y yum-utils" || {
+                error "Docker installation failed: could not install the repository tools."
+                return 1
+            }
 
             local docker_repo
             [[ "$DISTRO_ID" == "fedora" ]] && docker_repo="https://download.docker.com/linux/fedora/docker-ce.repo" || docker_repo="https://download.docker.com/linux/centos/docker-ce.repo"
 
-            run_as_root curl -fsSLo /etc/yum.repos.d/docker-ce.repo "${docker_repo}"
+            run_as_root curl -fsSLo /etc/yum.repos.d/docker-ce.repo "${docker_repo}" || {
+                error "Docker installation failed: could not download Docker's repository file."
+                return 1
+            }
 
             # Docker's repo file uses $releasever in its baseurl, and DNF resolves
             # that from the running system. A new Fedora release (e.g. a beta) is
@@ -100,21 +128,30 @@ setup_install_docker() {
             # publishes, so install and future updates work against a real repo.
             _docker_pin_fedora_repo_if_needed
 
-            run_as_root "$PKG_MGR" install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-            run_as_root systemctl start docker
-            run_as_root systemctl enable docker
+            run_as_root "$PKG_MGR" install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || {
+                error "Docker installation failed: the Docker packages could not be installed."
+                return 1
+            }
+            run_as_root systemctl start docker || warn "Could not start the Docker service."
+            run_as_root systemctl enable docker || warn "Could not enable the Docker service at boot."
             ;;
 
         zypper)
-            run_as_root zypper install -y docker docker-compose
-            run_as_root systemctl start docker
-            run_as_root systemctl enable docker
+            run_as_root zypper install -y docker docker-compose || {
+                error "Docker installation failed: the Docker packages could not be installed."
+                return 1
+            }
+            run_as_root systemctl start docker || warn "Could not start the Docker service."
+            run_as_root systemctl enable docker || warn "Could not enable the Docker service at boot."
             ;;
 
         pacman)
-            run_as_root pacman -S --noconfirm docker docker-compose docker-buildx
-            run_as_root systemctl enable --now containerd.service
-            run_as_root systemctl enable --now docker.service
+            run_as_root pacman -S --noconfirm docker docker-compose docker-buildx || {
+                error "Docker installation failed: the Docker packages could not be installed."
+                return 1
+            }
+            run_as_root systemctl enable --now containerd.service || warn "Could not start the containerd service."
+            run_as_root systemctl enable --now docker.service || warn "Could not start the Docker service."
             ;;
 
         *)

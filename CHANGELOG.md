@@ -29,6 +29,27 @@ when a release is cut.
   connections, Joplin notes and settings, Lutris library and Docker logins
   without asking. They now remove the program only, say which folders were kept,
   and `docs/utilities.md` states it for each.
+- **Removing a terminal or CUPS on Debian/Ubuntu no longer takes a whole
+  desktop with it** (fixes #102). `apt purge --autoremove -y` removed any
+  package that depended on the one being uninstalled: on Debian, Xfce Terminal
+  pulled out `xfce4-goodies` and its libraries, and Ptyxis and CUPS are needed by
+  `gnome-core`. The uninstall now checks first. If anything else would go, it
+  lists it and asks (default No); with no terminal, or with `auto_confirm`, it
+  removes nothing and says why.
+- **Docker and OpenTofu installs now stop and say so when a step fails**
+  (fixes #104). Docker never checked its key download, repository setup or
+  package install and always ended with "installed successfully"; OpenTofu
+  ignored a failing upstream script on Debian/Ubuntu and Fedora/RHEL. Both now
+  report the failed step and exit with an error, so `--install` and profile runs
+  no longer report success. Docker's signing key is also downloaded to a file
+  first, rather than piped.
+- **Zsh + Oh My Zsh and Homebrew installs now fail when their installer cannot
+  be downloaded** (fixes #103). With no network they ran an empty command that
+  "succeeded": Oh My Zsh then looked installed (its plugin folder had been
+  created) and Homebrew printed "installed" with nothing there. The scripts are
+  now downloaded to a file first and the result is checked; the Homebrew
+  uninstaller does the same and leaves your shell files alone if it cannot be
+  fetched.
 - **"github_allow_prerelease: command not found" when starting** (fixes #98). On
   systems set to `en_US.UTF-8` the installer files were loaded in an order that
   read krdpc's before the shared helpers, so the message appeared on every start

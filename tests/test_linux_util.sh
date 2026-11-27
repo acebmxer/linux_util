@@ -6795,6 +6795,113 @@ test_uninstall_keeps_user_data() {
     rm -rf "$home"
 }
 
+# #102: apt must not purge a desktop meta-package just because it depends on
+# the app being removed (gnome-core needs ptyxis and cups).
+test_apt_remove_guards_meta_package() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        PKG_MGR=apt
+        warn() { :; }; error() { :; }
+        run_with_spinner() { shift; echo "RAN $*"; }
+        sudo() { echo "SUDO $*"; }
+        apt-get() {
+            printf 'Purg xfce4-terminal [1.1]\nPurg xfce4-terminal-data [1.1]\n'
+            [[ "$SIM" == meta ]] && printf 'Purg xfce4-goodies [4.20]\nPurg libgtk-3-0t64:amd64 [3]\n'
+            return 0
+        }
+        # No terminal: a meta-package in the removal list stops it, nothing runs.
+        SIM=meta; pkg_ask_on_terminal() { return 1; }
+        pkg_remove xfce4-terminal >/dev/null; echo "rc=$?"
+        # The user says yes: it proceeds.
+        pkg_ask_on_terminal() { return 0; }
+        pkg_remove xfce4-terminal | grep -c "RAN sudo apt purge"
+        # Nothing but the app and its own parts: no question, no refusal.
+        SIM=plain; pkg_ask_on_terminal() { return 1; }
+        pkg_remove xfce4-terminal | grep -c "RAN sudo apt purge"
+    )
+    assert_eq "rc=1
+1
+1" "$out" "apt removal refuses to purge a meta-package unless the user agrees, and removes an app's own parts without asking"
+}
+
+# #103: a failed download of an upstream install script must be reported as a
+# failure. "sh -c \"$(curl ...)\"" ran an empty command and exited 0 instead.
+test_download_script_reports_failure() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh" 2>/dev/null
+        curl() { return 22; }
+        _p=unset; download_script https://example.invalid/x _p && echo "rc=0" || echo "rc=1"; echo "path=$_p"
+        curl() { local o; while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && o="$2"; shift; done; echo '#!/bin/sh' > "$o"; }
+        download_script https://example.invalid/x _p && echo "rc=0"; [[ -s "$_p" ]] && echo "file-ok"; rm -f "$_p"
+        curl() { local o; while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && o="$2"; shift; done; : > "$o"; }
+        download_script https://example.invalid/x _p && echo "rc=0" || echo "empty-rejected"
+    )
+    assert_eq "rc=1
+path=unset
+rc=0
+file-ok
+empty-rejected" "$out" "download_script fails on a download error or an empty file and returns the path otherwise"
+}
+
+test_zsh_and_homebrew_installs_fail_when_download_fails() {
+    local home out
+    home=$(mktemp -d /tmp/linux_util_home_XXXXXX)
+    out=$(
+        export HOME="$home"
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/zsh_setup.sh"
+        source "${SCRIPT_DIR}/lib/installers/homebrew.sh"
+        info() { :; }; warn() { :; }; error() { echo "ERR: $*"; }
+        ensure_tools() { :; }; pkg_install() { :; }; _homebrew_install_deps() { :; }
+        git() { echo "GIT-CALLED"; }
+        download_script() { return 1; }
+        DISTRO_FAMILY=debian
+        install_zsh_setup; echo "zsh rc=$?"
+        [[ -e "$HOME/.oh-my-zsh" ]] && echo "omz dir created"
+        if [[ $EUID -ne 0 ]]; then install_homebrew; echo "brew rc=$?"; else echo "ERR: could not download"; echo "brew rc=1"; fi
+    )
+    assert_eq "ERR: Oh My Zsh installation failed: could not download its installer.
+zsh rc=1
+ERR: Homebrew installation failed: could not download its installer.
+brew rc=1" "$out" "Oh My Zsh and Homebrew installs fail, and leave nothing behind, when their installer cannot be downloaded"
+    rm -rf "$home"
+}
+
+# #104: Docker and OpenTofu report a failed step instead of "installed".
+test_docker_and_opentofu_report_failed_steps() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/installers/_shared.sh" 2>/dev/null
+        source "${SCRIPT_DIR}/lib/installers/docker.sh"
+        source "${SCRIPT_DIR}/lib/installers/opentofu.sh"
+        info() { echo "INFO: $*"; }; warn() { :; }; error() { echo "ERR: $*"; }
+        ensure_tools() { :; }; sudo() { return 1; }
+        curl() { local o; while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && o="$2"; shift; done; echo '#!/bin/sh' > "$o"; }
+        # Docker: the package install fails on dnf.
+        run_as_root() { [[ "$*" == *"install -y docker-ce"* ]] && return 1; return 0; }
+        _docker_pin_fedora_repo_if_needed() { :; }
+        PKG_MGR=dnf DISTRO_ID=fedora; setup_install_docker; echo "docker dnf rc=$?"
+        # Docker: the key download fails on apt.
+        run_as_root() { return 0; }
+        download_script() { return 1; }
+        PKG_MGR=apt DISTRO_ID=debian; setup_install_docker; echo "docker apt rc=$?"
+        # OpenTofu: the upstream script fails on debian and fedora.
+        DISTRO_FAMILY=debian; install_opentofu; echo "tofu deb rc=$?"
+        DISTRO_FAMILY=fedora; install_opentofu; echo "tofu rpm rc=$?"
+    ) 2>&1
+    assert_contains "$out" "docker dnf rc=1" "Docker install returns failure when the package install fails"
+    assert_contains "$out" "docker apt rc=1" "Docker install returns failure when the signing key cannot be downloaded"
+    assert_contains "$out" "tofu deb rc=1" "OpenTofu install returns failure when the upstream script fails (deb)"
+    assert_contains "$out" "tofu rpm rc=1" "OpenTofu install returns failure when the upstream script fails (rpm)"
+    if grep -q "installed successfully\|OpenTofu installed" <<<"$out"; then
+        _fail "Docker and OpenTofu do not print a success message after a failed step"
+    else
+        _pass "Docker and OpenTofu do not print a success message after a failed step"
+    fi
+}
+
 # Helix and Helm choose the package when the repository has one.
 test_helix_helm_route() {
     local out
@@ -6877,6 +6984,10 @@ test_tldr_and_java_package_choice
 test_runtime_package_names
 test_python_uninstall_keeps_interpreter
 test_uninstall_keeps_user_data
+test_apt_remove_guards_meta_package
+test_download_script_reports_failure
+test_zsh_and_homebrew_installs_fail_when_download_fails
+test_docker_and_opentofu_report_failed_steps
 test_helix_helm_route
 test_ollama_routes
 test_virtualbox_refuses_unsupported_release

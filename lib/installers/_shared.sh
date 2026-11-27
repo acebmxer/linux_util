@@ -513,6 +513,30 @@ native_or_flatpak_version() {
 }
 
 # ============================================================================
+# Upstream install scripts
+#
+# Download an upstream installer script to a private temp file and report
+# whether the download worked, so the caller runs a file it has checked exists
+# rather than "sh -c \"$(curl ...)\"": that form runs an EMPTY command and exits
+# 0 when curl fails, so a failed download looked like a successful install.
+# Usage: download_script URL VARNAME   -- sets VARNAME to the file path (it is
+#        removed on exit); returns 1 and sets nothing when the download fails
+#        or the file is empty. Do not add another copy of this.
+# ============================================================================
+download_script() {
+    local _url="$1"
+    local -n _dl_out="$2"
+    local _tmp
+    _tmp=$(mktemp /tmp/linux_util-script-XXXXXX) || return 1
+    CLEANUP_FILES+=("$_tmp")
+    if ! curl --proto '=https' --tlsv1.2 -fsSL "$_url" -o "$_tmp" || [[ ! -s "$_tmp" ]]; then
+        rm -f "$_tmp"
+        return 1
+    fi
+    _dl_out="$_tmp"
+}
+
+# ============================================================================
 # Upstream GitHub release downloads, verified
 #
 # For apps no distro package covers on every release (lazygit, eza, helix,
