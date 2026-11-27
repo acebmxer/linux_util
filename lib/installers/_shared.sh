@@ -776,7 +776,8 @@ native_or_github_update() {
 
 # rpm_import_key_checked URL FINGERPRINT
 # Imports a vendor's RPM signing key only when the downloaded key carries the
-# pinned fingerprint. Used by Sublime Text and VirtualBox.
+# pinned fingerprint, and imports that key alone. Used by Sublime Text and
+# VirtualBox.
 rpm_import_key_checked() {
     local url="$1" fpr="$2" tmp
     ensure_tools
@@ -784,7 +785,7 @@ rpm_import_key_checked() {
     if ! curl -fsSL --max-time 30 "$url" -o "$tmp"; then
         rm -f "$tmp"; error "Could not download the signing key from ${url}."; return 1
     fi
-    if ! gpg_key_has_fingerprint "$tmp" "$fpr"; then
+    if ! gpg_key_keep_only "$tmp" "$fpr"; then
         rm -f "$tmp"; error "The key from ${url} does not match fingerprint ${fpr}."; return 1
     fi
     sudo rpm --import "$tmp"

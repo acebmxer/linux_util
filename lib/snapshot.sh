@@ -45,9 +45,19 @@ timeshift_init() {
         TIMESHIFT_AVAILABLE=true
         verbose "Timeshift: Detected and available"
 
-        # Check if a backup device is configured; if not, set one up
+        # Check if a backup device is configured; if not, set one up. The setup
+        # asks questions and writes /etc/timeshift/timeshift.json, so it is only
+        # for a person at a terminal who is not previewing: a piped or scripted
+        # run (stdin is not a terminal), and --dry-run, get no snapshots instead
+        # of a config nobody chose.
         if ! _timeshift_has_device; then
-            _timeshift_setup_device
+            if [[ -t 0 && "${TIMESHIFT_NO_SETUP:-false}" != "true" ]]; then
+                _timeshift_setup_device
+            else
+                verbose "Timeshift: No backup device configured and no terminal to ask on -- snapshots skipped"
+                TIMESHIFT_AVAILABLE=false
+                return 0
+            fi
         fi
 
         # Cache the last snapshot info for the banner
@@ -244,7 +254,7 @@ _timeshift_setup_device() {
 _timeshift_write_device_config() {
     local uuid="$1"
     local snapshot_type="${2:-rsync}"
-    local config_file="/etc/timeshift/timeshift.json"
+    local config_file="${TIMESHIFT_CONFIG_FILE:-/etc/timeshift/timeshift.json}"
 
     local btrfs_mode="false"
     local btrfs_home="false"
@@ -255,7 +265,18 @@ _timeshift_write_device_config() {
     # Always write the full config — timeshift --list-devices may have created
     # an incomplete config as a side effect (e.g. missing btrfs_mode field),
     # so patching with sed is unreliable. Overwrite with our known-good config.
-    sudo mkdir -p /etc/timeshift
+    sudo mkdir -p "$(dirname "$config_file")"
+    # The file is replaced, so keep the one that was there (schedules, retention
+    # counts, excludes the user may have set) next to it.
+    if [[ -f "$config_file" ]]; then
+        local config_backup="${config_file}.bak.$(date +%Y%m%d%H%M%S)"
+        if sudo cp -p "$config_file" "$config_backup"; then
+            info "Existing Timeshift config saved as ${config_backup}"
+        else
+            warn "Could not back up ${config_file}; leaving it unchanged."
+            return 1
+        fi
+    fi
     sudo tee "$config_file" > /dev/null <<TSCFG
 {
   "backup_device_uuid" : "${uuid}",

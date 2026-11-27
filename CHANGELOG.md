@@ -86,6 +86,39 @@ when a release is cut.
   wrong checksum stops the install. The Distrobox and Joplin scripts are
   unchanged: they run upstream's own installer from its repository, which has no
   published checksum.
+- **A vendor key file is no longer trusted whole just because it contains the
+  pinned key** (fixes #111). The check passed any file in which one key matched
+  the pinned fingerprint, and then every key in the file went into the trusted
+  keyring. Now only the pinned key is kept. Sublime Text's file really holds
+  three keys, and its repository is signed by one that was never pinned (the
+  pin was on a different key in the same file); all three are pinned now.
+- **The AlmaLinux ELevate repository package is no longer fetched over plain
+  http** (fixes #112). Full System Upgrade's upgrade check on Rocky/Alma
+  installed it as root from an `http://` address and its comment claimed dnf
+  verified the signature, which it does not for a package given by address.
+  It now comes over https into a private file and must be the `elevate-release`
+  package before it is installed. Its own signature is still not checked at that
+  point, because AlmaLinux's key is not on the system yet.
+- **Information commands no longer start Timeshift setup, and setup no longer
+  overwrites your Timeshift config unseen** (fixes #113). `--help`, `--version`,
+  `--list` and `--check` ran Timeshift's device questions (and root commands)
+  before printing, and with no terminal the default answer wrote
+  `/etc/timeshift/timeshift.json`. They now skip Timeshift entirely; a run with
+  no terminal, or `--dry-run`, never sets it up (snapshots are simply not
+  offered); and when setup does rewrite the file, the old one is saved beside
+  it as `timeshift.json.bak.<date>` first.
+- **Thorough Cleanup and System Updates on Rocky/Alma no longer silently remove
+  other vendors' software** (fixes #114). Any installed RPM whose release tag
+  said the previous major version (`.el8` on version 9, `.el9` on 10) and that no
+  repository carried was removed, along with everything that depended on it,
+  with no question. They are now listed and removed only if you answer yes at
+  the prompt (`auto_confirm` does not count as yes); with no terminal they are
+  only reported.
+- **Download checks no longer let an HTML page through** (fixes #115). A page
+  starting `<!DOCTYPE html>` (exactly 15 bytes, the length the check read) was
+  not recognised as an error page, and a file named `*.rpm` always passed the
+  package-type check because `file` prints the file's name first. Both checks
+  now look at the content only.
 - **"github_allow_prerelease: command not found" when starting** (fixes #98). On
   systems set to `en_US.UTF-8` the installer files were loaded in an order that
   read krdpc's before the shared helpers, so the message appeared on every start

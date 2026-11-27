@@ -244,8 +244,21 @@ if [[ -t 0 && "$_lu_dry_run_arg" != true ]]; then
     fi
 fi
 
-# Initialize Timeshift integration (Debian/Ubuntu only — silent no-op otherwise)
-timeshift_init
+# Initialize Timeshift integration. Skipped for the information-only commands
+# (--help, --version, --list, --check, --export-profile): they must print and
+# nothing else, and setup can ask questions and rewrite the Timeshift config.
+# A --dry-run still detects Timeshift but never sets it up.
+_lu_info_only=false
+for _lu_arg in "$@"; do
+    case "$_lu_arg" in
+        --help|-h|--version|--list|--check|--export-profile) _lu_info_only=true ;;
+    esac
+done
+unset _lu_arg
+if [[ "$_lu_info_only" != true ]]; then
+    TIMESHIFT_NO_SETUP="$_lu_dry_run_arg"
+    timeshift_init
+fi
 
 # ============================================================================
 # UTILITY REGISTRY INITIALIZATION

@@ -1274,6 +1274,10 @@ _run_cli_logged_root() {
     cp "$_FAKE_BIN/git" "$_bin/git"
     # ufw present, as on the CI runner: its installed-check runs `sudo ufw status`.
     printf '#!/bin/bash\nexit 0\n' > "$_bin/ufw"; chmod +x "$_bin/ufw"
+    # An installed but unconfigured Timeshift: its setup is what used to run
+    # (and call root commands) even for --version.
+    printf '#!/bin/bash\nexit 0\n' > "$_bin/timeshift"
+    chmod +x "$_bin/timeshift"
     _tmp_out=$(mktemp /tmp/linux_util_cli_out_XXXXXX)
     PATH="$_bin:$PATH" PKG_CACHE_MAX_AGE_SECS=0 \
         LINUX_UTIL_CONFIG_FILE="$_CLI_CONF_DIR/linux_util.conf" \
@@ -1302,11 +1306,30 @@ test_cli_dry_run_update_all_runs_no_root_command() {
     assert_eq "" "$changing" "--dry-run --update-all runs no root command that changes anything"
 }
 
+# #113: information-only commands print and nothing else. Timeshift setup (device
+# questions, a rewritten /etc/timeshift/timeshift.json) must not run for them.
+test_cli_info_commands_run_no_root_command() {
+    local flag
+    for flag in --version --help "--list" "--check htop"; do
+        # shellcheck disable=SC2086
+        _run_cli_logged_root $flag
+        # Read-only installed-checks may call `sudo ufw status`; Timeshift and
+        # anything that changes packages must not run.
+        local changing
+        changing=$(grep -Ei 'timeshift|blkid|update|refresh|makecache|upgrade|install|remove|-Sy|snapshot|--create' <<<"$_ROOT_CALLS")
+        assert_eq "" "$changing" "$flag runs no Timeshift or package-changing root command (Timeshift setup is skipped)"
+        if grep -q "Please enter a device number" <<<"$_RUN_OUTPUT"; then
+            _fail "$flag does not ask Timeshift device questions"
+        fi
+    done
+}
+
 test_cli_dry_run_install_exits_zero
 test_cli_dry_run_install_output_indicator
 test_cli_dry_run_update_all_exits_zero
 test_cli_dry_run_install_runs_no_root_command
 test_cli_dry_run_update_all_runs_no_root_command
+test_cli_info_commands_run_no_root_command
 
 # _FAKE_BIN is kept alive until all _run_cli tests (including profile export/import
 # below) are done. The cleanup at the end of this file removes it.
@@ -7095,6 +7118,156 @@ SUDO-CALLED
 right rc=0" "$(grep -v '^ERR:   ' <<<"$out")" "kubectl binary fallback installs only a download that matches the published SHA-256"
 }
 
+# #111: a vendor key file is trusted as a whole, so only the PINNED key may go
+# into the keyring. A file holding the real key plus another one used to pass on
+# the first match and both were trusted.
+test_gpg_pin_keeps_only_pinned_key() {
+    if ! command -v gpg >/dev/null 2>&1; then _skip "gpg_key_keep_only bundle check (gpg not installed)"; return; fi
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_gpg_XXXXXX)
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        export GNUPGHOME="$dir/home"; mkdir -m 700 "$GNUPGHOME"
+        gpg --batch --quiet --passphrase '' --quick-gen-key good@example.invalid ed25519 cert never 2>/dev/null
+        gpg --batch --quiet --passphrase '' --quick-gen-key other@example.invalid ed25519 cert never 2>/dev/null
+        gpg --armor --export good@example.invalid > "$dir/good.asc" 2>/dev/null
+        gpg --armor --export other@example.invalid > "$dir/other.asc" 2>/dev/null
+        gf=$(gpg --with-colons --fingerprint good@example.invalid 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}')
+        of=$(gpg --with-colons --fingerprint other@example.invalid 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}')
+        unset GNUPGHOME
+        keys() { GNUPGHOME="$dir/read" gpg --show-keys --with-colons "$1" 2>/dev/null | awk -F: '$1=="pub"' | wc -l; }
+        mkdir -m 700 "$dir/read"
+        cat "$dir/good.asc" "$dir/other.asc" > "$dir/bundle.asc"
+        gpg_key_keep_only "$dir/bundle.asc" "$gf" && echo "bundle: accepted, keys kept=$(keys "$dir/bundle.asc")"
+        gpg_key_has_fingerprint "$dir/bundle.asc" "$of" || echo "bundle: the unpinned key is gone"
+        cp "$dir/other.asc" "$dir/wrong.asc"
+        gpg_key_keep_only "$dir/wrong.asc" "$gf" || echo "wrong key: rejected, file untouched=$([[ "$(<"$dir/wrong.asc")" == "$(<"$dir/other.asc")" ]] && echo yes)"
+        cat "$dir/good.asc" "$dir/other.asc" > "$dir/two.asc"
+        gpg_key_keep_only "$dir/two.asc" "$gf $of" && echo "two pinned: keys kept=$(keys "$dir/two.asc")"
+    )
+    assert_eq "bundle: accepted, keys kept=1
+bundle: the unpinned key is gone
+wrong key: rejected, file untouched=yes
+two pinned: keys kept=2" "$out" "Only the pinned key (or keys) of a vendor key file reach the keyring; a file without it is rejected"
+    rm -rf "$dir"
+}
+
+# #112: the ELevate repo package is fetched over https into a private file and
+# checked to be the package it claims to be before it is installed as root.
+test_elevate_repo_package_over_https() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        info() { :; }; warn() { :; }; error() { echo "ERR: $*"; }
+        CLEANUP_FILES=()
+        DISTRO_ID=rocky PKG_MGR=dnf
+        rpm() {
+            case "$1" in
+                -q)  return 1 ;;
+                --eval) echo 9 ;;
+                -qp) printf '%s' "$RPM_NAME" ;;
+            esac
+        }
+        sudo() { echo "SUDO $*"; }
+        curl() { local a=("$@") o i; for ((i=0;i<${#a[@]};i++)); do [[ "${a[i]}" == -o ]] && o="${a[i+1]}"; done
+                 echo "CURL ${*: -3:1}" ; [[ "$CURL_FAIL" == 1 ]] && return 22; echo data > "$o"; }
+        RPM_NAME=elevate-release CURL_FAIL=0 _install_leapp_packages 2>&1 | sed -n '1,2p' | sed 's/ \/tmp\/elevate-release-[A-Za-z0-9]*\.rpm/ <file>/'
+        RPM_NAME=evil CURL_FAIL=0 _install_leapp_packages 2>&1 | grep -c "SUDO" 
+        RPM_NAME=elevate-release CURL_FAIL=1 _install_leapp_packages 2>&1 | grep -c "SUDO"
+    )
+    assert_eq "CURL https://repo.almalinux.org/elevate/elevate-release-latest-el9.noarch.rpm
+SUDO dnf install -y <file>
+0
+0" "$out" "ELevate repo package is downloaded over https, must be elevate-release, and a failed download installs nothing"
+}
+
+# #113: with no terminal Timeshift is never set up (nothing can answer), and the
+# config file it rewrites is backed up first.
+test_timeshift_setup_needs_terminal_and_backs_up_config() {
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_ts_XXXXXX)
+    out=$(
+        source "${SCRIPT_DIR}/lib/snapshot.sh"
+        info() { echo "INFO: $*" | sed "s|$dir|DIR|g"; }; warn() { :; }; verbose() { :; }
+        printf '#!/bin/bash\nexit 0\n' > "$dir/timeshift"; chmod +x "$dir/timeshift"
+        PATH="$dir:$PATH"
+        _timeshift_has_device() { return 1; }
+        _timeshift_setup_device() { echo "SETUP-ASKED"; }
+        _timeshift_cache_last_snapshot() { :; }
+        timeshift_init </dev/null; echo "no terminal: available=$TIMESHIFT_AVAILABLE"
+        # config backup
+        sudo() { "$@"; }
+        TIMESHIFT_CONFIG_FILE="$dir/etc/timeshift.json"; mkdir -p "$dir/etc"
+        echo '{"schedule_hourly" : "true"}' > "$TIMESHIFT_CONFIG_FILE"
+        _timeshift_write_device_config "1111-2222" rsync
+        echo "backup kept: $(grep -l 'schedule_hourly" : "true"' "$dir"/etc/timeshift.json.bak.* 2>/dev/null | wc -l)"
+        echo "new config written: $(grep -c '1111-2222' "$TIMESHIFT_CONFIG_FILE")"
+    )
+    assert_eq "no terminal: available=false
+INFO: Existing Timeshift config saved as DIR/etc/timeshift.json.bak.$(date +%Y%m%d)
+backup kept: 1
+new config written: 1" "$(sed -E 's/(\.bak\.[0-9]{8})[0-9]{6}/\1/' <<<"$out")" "Timeshift setup is skipped without a terminal and the existing config is backed up before it is rewritten"
+    rm -rf "$dir"
+}
+
+# #114: previous-release (el8/el9) packages that no repository carries are listed
+# and removed only on a yes at a terminal. A vendor RPM tagged .el8 must survive.
+test_stale_release_cleanup_asks_before_removing() {
+    local out
+    out=$(
+        source "${SCRIPT_DIR}/lib/pkg_manager.sh" 2>/dev/null
+        info() { :; }; warn() { echo "WARN: $*"; }
+        PKG_MGR=dnf
+        rpm() {
+            case "$1" in
+                -E)  echo 9 ;;
+                -qa) printf 'vendorapp-1.0-1.el8.x86_64\ngpg-pubkey-abc-123\n' ;;
+                -q)  return 1 ;;
+            esac
+        }
+        dnf() { return 0; }      # repoquery finds nothing: the package is an orphan
+        run_with_spinner() { shift; echo "RAN: $*"; }
+        sudo() { echo "SUDO $*"; }
+        pkg_ask_on_terminal() { return 1; }
+        _pkg_cleanup_stale_releases | grep -E "RAN|Left in place|no enabled repository" | sed 's/^WARN: //'
+        echo "--- yes:"
+        pkg_ask_on_terminal() { return 0; }
+        _pkg_cleanup_stale_releases | grep -E "RAN"
+    )
+    assert_eq "These el8 packages are in no enabled repository: vendorapp
+Left in place. To remove them yourself: sudo dnf remove vendorapp
+--- yes:
+RAN: sudo dnf remove -y --disableexcludes=all vendorapp" "$out" "Stale-release cleanup lists vendor RPMs and removes them only after a yes on a terminal"
+}
+
+# #115: an HTML error page must be caught whether it opens with <html> or
+# <!DOCTYPE html>, and a file is judged by its content, not by its name.
+test_verify_download_catches_html_and_names() {
+    local out dir
+    dir=$(mktemp -d /tmp/linux_util_verify_XXXXXX)
+    printf '<!DOCTYPE html><html><body>404</body></html>' > "$dir/page.html"
+    cp "$dir/page.html" "$dir/fake.rpm"
+    printf '<html><body>404</body></html>' > "$dir/old.html"
+    printf 'plain text, not an rpm' > "$dir/notes.rpm"
+    out=$(
+        source "${SCRIPT_DIR}/lib/verify.sh"
+        error() { :; }; warn() { :; }; verbose() { :; }
+        verify_download "$dir/page.html" rpm page && echo "doctype=passed" || echo "doctype=caught"
+        verify_download "$dir/old.html" rpm page   && echo "html=passed"    || echo "html=caught"
+        verify_download "$dir/fake.rpm" rpm page   && echo "html-named-rpm=passed" || echo "html-named-rpm=caught"
+        if command -v file >/dev/null 2>&1; then
+            verify_download "$dir/notes.rpm" rpm page && echo "text-named-rpm=passed" || echo "text-named-rpm=caught"
+        else
+            echo "text-named-rpm=caught"
+        fi
+    )
+    assert_eq "doctype=caught
+html=caught
+html-named-rpm=caught
+text-named-rpm=caught" "$out" "Download verification rejects <!DOCTYPE html> pages and files that are only named .rpm"
+    rm -rf "$dir"
+}
+
 # Helix and Helm choose the package when the repository has one.
 test_helix_helm_route() {
     local out
@@ -7185,6 +7358,11 @@ test_go_binary_install_verifies_before_replacing
 test_tailscale_repository_path
 test_powershell_verification_fails_closed
 test_kubectl_binary_fallback_verifies_checksum
+test_gpg_pin_keeps_only_pinned_key
+test_elevate_repo_package_over_https
+test_timeshift_setup_needs_terminal_and_backs_up_config
+test_stale_release_cleanup_asks_before_removing
+test_verify_download_catches_html_and_names
 test_snapper_snapshot_list_not_empty
 test_dnf_autoremove_finds_orphans
 test_rpm_reboot_pending

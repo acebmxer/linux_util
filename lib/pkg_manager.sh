@@ -559,15 +559,25 @@ _pkg_cleanup_stale_releases() {
             }
         fi
 
-        # Remove orphan packages that have no equivalent in current repos
+        # Packages built for the previous release that no enabled repository carries.
+        # They may be leftovers of an upgrade -- or software from another vendor
+        # whose release tag happens to say ${prev_el}, which this cannot tell apart.
+        # dnf remove also removes whatever depends on them, so they are listed and
+        # removed only when the user says yes on a terminal (auto_confirm does not
+        # count); with no terminal they are only reported.
         # --disableexcludes=all bypasses repo exclude filters (e.g. ELevate excludes leapp packages)
         if [[ -n "${orphan// /}" ]]; then
-            info "Removing ${prev_el} packages with no current-release equivalent:${orphan}"
-            # shellcheck disable=SC2086
-            "$_run" "Removing orphaned ${prev_el} packages" \
-                sudo dnf remove -y --disableexcludes=all $orphan || {
-                warn "Some orphaned packages could not be removed automatically."
-            }
+            warn "These ${prev_el} packages are in no enabled repository:${orphan}"
+            warn "They may be left over from the upgrade, or software from another vendor. Removing them also removes anything that depends on them."
+            if pkg_ask_on_terminal "Remove them?"; then
+                # shellcheck disable=SC2086
+                "$_run" "Removing orphaned ${prev_el} packages" \
+                    sudo dnf remove -y --disableexcludes=all $orphan || {
+                    warn "Some orphaned packages could not be removed automatically."
+                }
+            else
+                warn "Left in place. To remove them yourself: sudo dnf remove${orphan}"
+            fi
         fi
     fi
 
@@ -917,18 +927,26 @@ _apt_codename_upgrade_restore() {
 # RHEL proper ships leapp in its standard repos.
 _install_leapp_packages() {
     # For community distros, install the ELevate repo first.
-    # Trust model: we install a noarch RPM directly from repo.almalinux.org.
-    # DNF verifies the RPM's built-in GPG signature on install, so the package
-    # itself is authenticated. This RPM then adds the ELevate repo with its GPG
-    # key, after which all subsequent ELevate packages are signature-verified.
-    # This is the standard bootstrapping pattern for third-party RHEL repos.
+    # Trust model: the noarch RPM comes from repo.almalinux.org over https, so the
+    # server is authenticated and the file cannot be swapped on the network path.
+    # It is NOT signature-checked here: dnf only checks an RPM given as a file
+    # when localpkg_gpgcheck is on (off by default), and AlmaLinux's key is not
+    # imported yet. The RPM then adds the ELevate repo with its GPG key, after
+    # which all subsequent ELevate packages are signature-verified.
     if [[ "$DISTRO_ID" != "rhel" ]]; then
         if ! rpm -q elevate-release &>/dev/null; then
             info "Installing ELevate repo for upgrade support..."
-            local el_ver
+            local el_ver el_rpm
             el_ver=$(rpm --eval '%{rhel}')
-            sudo "$PKG_MGR" install -y \
-                "http://repo.almalinux.org/elevate/elevate-release-latest-el${el_ver}.noarch.rpm" || {
+            el_rpm=$(mktemp /tmp/elevate-release-XXXXXX.rpm) || return 1
+            CLEANUP_FILES+=("$el_rpm")
+            if ! curl --proto '=https' --tlsv1.2 -fsSL \
+                    "https://repo.almalinux.org/elevate/elevate-release-latest-el${el_ver}.noarch.rpm" \
+                    -o "$el_rpm" || [[ "$(rpm -qp --qf '%{NAME}' "$el_rpm" 2>/dev/null)" != "elevate-release" ]]; then
+                error "Could not download the ELevate repo package. Cannot check for upgrades."
+                return 1
+            fi
+            sudo "$PKG_MGR" install -y "$el_rpm" || {
                 error "Could not install ELevate repo. Cannot check for upgrades."
                 return 1
             }
@@ -2161,8 +2179,9 @@ _ver_from_snap() {
 # ============================================================================
 
 # True when the key file $1 (armored or binary) holds a key with fingerprint $2.
-# A throwaway GNUPGHOME so reading the key never creates ~/.gnupg. Used by
-# _add_apt_repo and rpm_import_key_checked.
+# A throwaway GNUPGHOME so reading the key never creates ~/.gnupg. This only
+# says the pinned key is IN the file; the file is then trusted as a whole, so
+# callers that install a vendor key use gpg_key_keep_only instead.
 gpg_key_has_fingerprint() {
     local keyfile="$1" want="$2" home fprs
     home=$(mktemp -d)
@@ -2170,6 +2189,33 @@ gpg_key_has_fingerprint() {
         awk -F: '$1 == "fpr" { print $10 }')
     rm -rf "$home"
     grep -qx "$want" <<< "$fprs"
+}
+
+# Rewrite the key file $1 so it holds ONLY the keys named by fingerprint in $2
+# (armored), and return 1, leaving the file as it was, when none of them is in
+# it. $2 is one fingerprint, or several separated by spaces for a vendor that
+# really publishes more than one key in one file (Sublime Text). A file that
+# carries a pinned key next to some other key used to be accepted whole and every
+# key in it went into the trusted keyring; now only the pinned keys do. Used by
+# _add_apt_repo and rpm_import_key_checked.
+gpg_key_keep_only() {
+    local keyfile="$1" wanted="$2" home out fpr found=false
+    home=$(mktemp -d) || return 1
+    out=$(mktemp) || { rm -rf "$home"; return 1; }
+    if GNUPGHOME="$home" gpg --batch --quiet --import "$keyfile" 2>/dev/null; then
+        # shellcheck disable=SC2086  # $wanted is a space-separated list
+        for fpr in $wanted; do
+            GNUPGHOME="$home" gpg --batch --quiet --armor --export "$fpr" 2>/dev/null >> "$out" &&
+                gpg_key_has_fingerprint "$out" "$fpr" && found=true
+        done
+    fi
+    if [[ "$found" == true && -s "$out" ]]; then
+        cat "$out" > "$keyfile"
+        rm -rf "$home" "$out"
+        return 0
+    fi
+    rm -rf "$home" "$out"
+    return 1
 }
 
 # Add an APT repository with a GPG keyring.
@@ -2201,7 +2247,7 @@ _add_apt_repo() {
         error "Failed to download GPG key from: $key_url"
         return 1
     fi
-    if [[ -n "$key_fingerprint" ]] && ! gpg_key_has_fingerprint "$_tmpkey" "$key_fingerprint"; then
+    if [[ -n "$key_fingerprint" ]] && ! gpg_key_keep_only "$_tmpkey" "$key_fingerprint"; then
         rm -f "$_tmpkey"
         error "GPG key from $key_url does not match fingerprint $key_fingerprint"
         return 1
