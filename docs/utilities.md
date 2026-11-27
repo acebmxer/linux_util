@@ -506,7 +506,13 @@ Command-line helpers and shells.
 | **Alacritty** | GPU-accelerated terminal emulator configured by a text file. Distro package; not offered on Rocky/Alma/RHEL or Ubuntu 22.04, which have none |
 | **Ghostty** | Fast GPU-accelerated terminal emulator. From the distro package: Arch, openSUSE Tumbleweed, Ubuntu 26.04 and newer. Upstream publishes no Linux packages, so elsewhere it says so and changes nothing; not offered on Fedora, Rocky/Alma/RHEL or Alpine |
 | **kitty** | GPU-accelerated terminal emulator with tabs, splits and image display |
+| **Konsole** | KDE's terminal emulator with tabs, split views and profiles. Distro package (EPEL on Rocky/Alma) |
+| **Kwi** | KDE's new fast terminal emulator, still in early development. Distro package on Arch, KDE's Flathub listing elsewhere; not offered on Alpine |
+| **Ptyxis** | GNOME's terminal emulator, the default on Ubuntu 26.04 and RHEL 10; tabs open straight into Toolbox, Distrobox and Podman containers. Distro package where there is one, Flathub on Ubuntu 22.04/24.04 and Rocky/Alma 8 and 9 |
+| **Terminator** | Splits one window into a grid of terminals. Distro package (EPEL on Rocky/Alma) |
 | **WezTerm** | GPU-accelerated terminal emulator configured in Lua. Offered on Arch, openSUSE and Alpine only: upstream's stable build is from 2024 and its other channels are nightlies |
+| **Xfce Terminal** | Xfce's light terminal emulator with tabs and a drop-down mode. Distro package (EPEL on Rocky/Alma 8 and 9); not offered on Rocky/Alma 10, which has no Xfce |
+| **Yakuake** | KDE's drop-down terminal: F12 slides it down from the top of the screen. Distro package (EPEL on Rocky/Alma) |
 
 ### Kernel Managers
 

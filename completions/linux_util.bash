@@ -88,6 +88,8 @@ KDE Desktop
 KDiskMark
 KeePassXC
 kitty
+Konsole
+Kwi
 KMail
 Kodi
 Kopia
@@ -134,6 +136,7 @@ Pika Backup
 Podman Desktop
 PPSSPP
 Prism Launcher
+Ptyxis
 Python
 RawTherapee
 rclone
@@ -173,6 +176,7 @@ Syncthing
 System Updates
 Tailscale
 Telegram Desktop
+Terminator
 Termius SSH Client
 Thermalright TRCC
 Thorium Browser
@@ -199,8 +203,10 @@ Wireshark
 WPS Office
 XEN Guest Utilities
 Xfce Desktop
+Xfce Terminal
 Xodus Nexus
 Xournal++
+Yakuake
 Zed
 zoxide
 zram

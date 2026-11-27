@@ -12,6 +12,16 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- **Six more terminals** in System Tools, Terminal Emulators: Konsole, Kwi
+  (KDE's new terminal, still in early development), Ptyxis (Ubuntu's default
+  terminal since 26.04), Terminator, Xfce Terminal and Yakuake. Each comes from
+  the distribution's own repositories (EPEL on Rocky/Alma). Kwi uses KDE's
+  Flathub listing everywhere but Arch, and Ptyxis uses Flathub on Ubuntu
+  22.04/24.04 and Rocky/Alma 8 and 9, which do not package it. Kwi is not
+  offered on Alpine, and Xfce Terminal is not offered on Rocky/Alma 10.
+
 ## [1.13.1] - 2026-11-24
 
 ### Added

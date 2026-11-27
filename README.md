@@ -7,10 +7,10 @@
 [![Issues](https://img.shields.io/github/issues/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/issues)
 [![Stars](https://img.shields.io/github/stars/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/stargazers)
 [![Forks](https://img.shields.io/github/forks/acebmxer/linux_util)](https://github.com/acebmxer/linux_util/forks)
-[![Unique cloners](https://img.shields.io/badge/unique%20cloners-87-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
+[![Unique cloners](https://img.shields.io/badge/unique%20cloners-91-brightgreen)](https://github.com/acebmxer/linux_util/graphs/traffic)
 [![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](linux_util.sh)
 [![Platform: Linux](https://img.shields.io/badge/platform-linux-333333?logo=linux&logoColor=white)](#supported-distributions)
-[![Tests](https://img.shields.io/badge/tests-644%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-649%20unit-informational)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 [![Distros tested](https://img.shields.io/badge/distros%20tested-7-informational)](#supported-distributions)
 [![ShellCheck](https://img.shields.io/badge/shellcheck-clean-brightgreen)](https://github.com/acebmxer/linux_util/actions/workflows/ci.yml)
 
@@ -137,7 +137,7 @@ selection rules and the profile table: [docs/menu.md](docs/menu.md).
 | **Firewalls** | UFW and firewalld, each with its GUI front end (Gufw, firewall-config) |
 | **Login Screens** | SDDM, GDM, LightDM, ly, LXDM, plus SDDM themes and the LightDM Slick Greeter |
 | **Window Managers** | Hyprland, Sway, i3, bspwm, awesome, dwm, Openbox |
-| **System Tools** | Folders for Monitors (Btop, htop, nvtop, GPU Task Manager, TMOG, Stacer), Power & Memory (TLP, auto-cpufreq, zram, earlyoom), Disk & Cleanup (smartmontools, ncdu, Filelight, BleachBit), System Info (Fastfetch, inxi, HardInfo, CPU-X), Shell Tools (bat, ripgrep, fzf, eza, zoxide, starship, tldr, Pay Respects, Zsh + Oh My Zsh), Terminal Emulators (Alacritty, kitty, Ghostty, WezTerm) and Kernel Managers, plus ClamAV, CUPS, Input Leap and OCCT |
+| **System Tools** | Folders for Monitors (Btop, htop, nvtop, GPU Task Manager, TMOG, Stacer), Power & Memory (TLP, auto-cpufreq, zram, earlyoom), Disk & Cleanup (smartmontools, ncdu, Filelight, BleachBit), System Info (Fastfetch, inxi, HardInfo, CPU-X), Shell Tools (bat, ripgrep, fzf, eza, zoxide, starship, tldr, Pay Respects, Zsh + Oh My Zsh), Terminal Emulators (Alacritty, kitty, Ghostty, WezTerm, Konsole, Kwi, Ptyxis, Terminator, Xfce Terminal, Yakuake) and Kernel Managers, plus ClamAV, CUPS, Input Leap and OCCT |
 
 Every entry, with its per-utility description and any distro limits, is in
 [docs/utilities.md](docs/utilities.md). For what is installed on *this* machine,
