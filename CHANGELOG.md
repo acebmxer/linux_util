@@ -12,6 +12,14 @@ when a release is cut.
 
 ## [Unreleased]
 
+### Fixed
+
+- **"github_allow_prerelease: command not found" when starting** (fixes #98). On
+  systems set to `en_US.UTF-8` the installer files were loaded in an order that
+  read krdpc's before the shared helpers, so the message appeared on every start
+  and krdpc's newest-release lookup could fail. The shared helpers are now
+  always loaded first.
+
 ### Added
 
 - **Six more terminals** in System Tools, Terminal Emulators: Konsole, Kwi
